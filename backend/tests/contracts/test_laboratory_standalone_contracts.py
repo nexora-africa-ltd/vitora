@@ -12,6 +12,14 @@ from hmis.apps.laboratory.standalone.serializers import (
     ExternalOrderAcceptSerializer,
     ExternalOrderRejectSerializer,
     ExternalOrderRequestSerializer,
+    ExternalPatientIdentifierCrosswalkSerializer,
+    InboundIngestionEventSerializer,
+    InboundOrderIngestSerializer,
+    LISMessageMappingSerializer,
+    LISMessageMappingUpsertSerializer,
+    LISMessageMappingValidationSerializer,
+    ResultDeliveryLogSerializer,
+    ResultDeliveryRequestSerializer,
     StandaloneOrderCreateSerializer,
     StandaloneOrderItemSerializer,
     WalkInPatientCreateSerializer,
@@ -24,6 +32,9 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "auto_create_walkin",
+                "diagnostic_package",
+                "enable_billing",
+                "payer_type",
             }
         ),
     ),
@@ -64,16 +75,144 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
+        ExternalPatientIdentifierCrosswalkSerializer,
+        frozenset(
+            {
+                "created_at",
+                "external_member_id",
+                "external_patient_id",
+                "id",
+                "patient",
+                "patient_name_snapshot",
+                "source_system",
+                "updated_at",
+                "walkin_patient",
+            }
+        ),
+    ),
+    (
+        InboundIngestionEventSerializer,
+        frozenset(
+            {
+                "channel",
+                "created_at",
+                "error_message",
+                "external_order",
+                "id",
+                "idempotency_key",
+                "last_replayed_at",
+                "processed_at",
+                "replay_count",
+                "source_system",
+                "status",
+                "trace_id",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        InboundOrderIngestSerializer,
+        frozenset(
+            {
+                "channel",
+                "hl7_message",
+                "message_format",
+                "payload",
+                "source_system",
+            }
+        ),
+    ),
+    (
+        LISMessageMappingSerializer,
+        frozenset(
+            {
+                "code_system",
+                "created_at",
+                "external_code",
+                "external_display",
+                "id",
+                "is_active",
+                "notes",
+                "relationship",
+                "test_code",
+                "test_id",
+                "test_name",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        LISMessageMappingUpsertSerializer,
+        frozenset(
+            {
+                "code_system",
+                "external_code",
+                "external_display",
+                "is_active",
+                "notes",
+                "relationship",
+                "test_code",
+            }
+        ),
+    ),
+    (
+        LISMessageMappingValidationSerializer,
+        frozenset(
+            {
+                "hl7_message",
+                "message_format",
+                "payload",
+                "source_system",
+            }
+        ),
+    ),
+    (
+        ResultDeliveryLogSerializer,
+        frozenset(
+            {
+                "attempt_count",
+                "channel",
+                "created_at",
+                "delivered_at",
+                "destination",
+                "error_message",
+                "external_order",
+                "id",
+                "lab_order",
+                "pdf_filename",
+                "requested_by",
+                "response_body",
+                "response_status_code",
+                "status",
+                "trace_id",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        ResultDeliveryRequestSerializer,
+        frozenset(
+            {
+                "channel",
+                "destination",
+            }
+        ),
+    ),
+    (
         StandaloneOrderCreateSerializer,
         frozenset(
             {
                 "clinical_notes",
+                "diagnostic_package",
+                "enable_billing",
                 "items",
                 "patient_id",
+                "payer_type",
                 "priority",
                 "referring_clinician",
                 "walkin_dob",
                 "walkin_gender",
+                "walkin_mrn",
                 "walkin_name",
                 "walkin_national_id",
                 "walkin_patient_id",

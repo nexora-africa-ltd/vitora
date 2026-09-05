@@ -19,6 +19,8 @@ from hmis.apps.laboratory.analyzers.serializers import (
     InstrumentChannelCreateSerializer,
     InstrumentChannelDetailSerializer,
     InstrumentChannelListSerializer,
+    MessageFailureExplanationSerializer,
+    ReplayAnalyzerMessageSerializer,
 )
 
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
@@ -120,12 +122,14 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "channel_id",
                 "channel_name",
                 "connection_status",
+                "error_rate",
                 "errors_last_hour",
                 "instrument_code",
                 "is_healthy",
                 "last_activity_at",
                 "last_error",
                 "messages_last_hour",
+                "queue_depth",
             }
         ),
     ),
@@ -225,6 +229,31 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "protocol",
                 "protocol_display",
                 "updated_at",
+            }
+        ),
+    ),
+    (
+        MessageFailureExplanationSerializer,
+        frozenset(
+            {
+                "channel_id",
+                "message_id",
+                "next_action",
+                "protocol",
+                "recommended_fix",
+                "root_cause",
+                "sample_id",
+                "status",
+                "test_code",
+            }
+        ),
+    ),
+    (
+        ReplayAnalyzerMessageSerializer,
+        frozenset(
+            {
+                "original_message_id",
+                "replay_message",
             }
         ),
     ),
