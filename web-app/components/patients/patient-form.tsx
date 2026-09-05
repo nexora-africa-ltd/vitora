@@ -114,7 +114,6 @@ import {
   type DuplicateMatch,
   IDENTIFICATION_TYPE_OPTIONS,
   TITLE_OPTIONS,
-  PAYMENT_MODE_OPTIONS,
 } from '@/lib/types/patient';
 import type {
   ClientRegistryClient,
@@ -194,11 +193,6 @@ const patientFormSchema = z.object({
   ward: z.number().optional(),
   village: z.string().optional(),
 
-  // Payment
-  payment_mode: z.enum(['cash', 'sha', 'insurance_private', 'insurance_corporate']).default('cash'),
-  insurance_provider: z.string().optional(),
-  insurance_member_number: z.string().optional(),
-
   // Emergency Contact
   emergency_contact_name: z.string().optional(),
   emergency_contact_phone: z.string().optional(),
@@ -269,10 +263,7 @@ interface PatientFormProps {
   /** Pre-populated SHA member or dependant from external lookup */
   prePopulatedShaPerson?: SHAPayloadPerson | null;
   /**
-   * Eligibility result tied to the pre-populated SHA person. When provided,
-   * controls whether `payment_mode` is auto-set to `sha` (eligible) or
-   * `cash` (ineligible). When omitted, defaults to `sha` if a SHA number
-   * is present (legacy behaviour).
+   * Eligibility result tied to the pre-populated SHA person.
    */
   prePopulatedShaEligibility?: DirectEligibilityCheckResponse | null;
   isEditing?: boolean;
@@ -459,9 +450,6 @@ export function PatientForm({
       email: '',
       address: '',
       village: '',
-      payment_mode: 'cash',
-      insurance_provider: '',
-      insurance_member_number: '',
       referral_source: 'self',
       referred_from_facility: '',
       emergency_contact_name: '',
@@ -478,7 +466,6 @@ export function PatientForm({
   const selectedSubCounty = form.watch('sub_county');
   const identificationType = form.watch('identification_type');
   const identificationNumber = form.watch('identification_number');
-  const paymentMode = form.watch('payment_mode');
   const referralSource = form.watch('referral_source');
   const householdNumber = form.watch('household_number');
   const shaNumber = form.watch('sha_number');
@@ -670,10 +657,6 @@ export function PatientForm({
         }
       }
 
-      // Only auto-select SHA payment mode if eligible
-      if (details.is_eligible) {
-        form.setValue('payment_mode', 'sha');
-      }
     },
     [form]
   );
@@ -715,14 +698,6 @@ export function PatientForm({
 
       if (person.sha_number) {
         form.setValue('sha_number', person.sha_number);
-        // Choose payment mode from eligibility: ineligible → cash, eligible (or
-        // unknown for legacy callers) → sha. Caller can override later.
-        const isEligible = eligibility?.is_eligible;
-        if (isEligible === false) {
-          form.setValue('payment_mode', 'cash');
-        } else {
-          form.setValue('payment_mode', 'sha');
-        }
       }
 
       // For dependants, set the principal's national ID (needed for eligibility checks)
@@ -910,11 +885,6 @@ export function PatientForm({
                 form.setValue('date_of_birth', dob);
               }
             }
-            // Only auto-select SHA payment mode if eligible
-            if (pendingShaDetails?.is_eligible) {
-              form.setValue('payment_mode', 'sha');
-            }
-
             // Run duplicate check for the dependent using name + DOB
             if (depFirstName && depLastName && dep.date_of_birth) {
               await runPostSelectionDuplicateCheck({
@@ -1118,18 +1088,6 @@ export function PatientForm({
           });
         }
 
-        // If ineligible and SHA was selected, switch to cash
-        if (!response.is_eligible) {
-          const currentPaymentMode = form.getValues('payment_mode');
-          if (currentPaymentMode === 'sha') {
-            form.setValue('payment_mode', 'cash');
-            toast({
-              title: 'Payment Mode Changed',
-              description: 'SHA coverage is not available. Switched to Cash payment.',
-              variant: 'default',
-            });
-          }
-        }
       } catch (error) {
         console.error('SHA eligibility check failed:', error);
         // On error, allow SHA as an option but show warning
@@ -1518,13 +1476,6 @@ export function PatientForm({
             });
           }
 
-          // Handle ineligible SHA
-          if (!response.is_eligible) {
-            const currentPaymentMode = form.getValues('payment_mode');
-            if (currentPaymentMode === 'sha') {
-              form.setValue('payment_mode', 'cash');
-            }
-          }
         } else {
           // SHA check failed
           console.error('SHA eligibility check failed:', shaResult.reason);
@@ -1693,9 +1644,6 @@ export function PatientForm({
       email: '',
       address: '',
       village: '',
-      payment_mode: 'cash',
-      insurance_provider: '',
-      insurance_member_number: '',
       referral_source: 'self',
       referred_from_facility: '',
       emergency_contact_name: '',
@@ -2130,7 +2078,7 @@ export function PatientForm({
             </div>
 
             {!isCompactMode && (
-              <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {/* CR Number (Read-only) */}
               <FormField
                 control={form.control}
@@ -2185,7 +2133,7 @@ export function PatientForm({
                   control={form.control}
                   name="principal_national_id"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="lg:order-last lg:col-span-3">
                       <FormLabel
                         className={`flex items-center gap-1 ${principalNationalId ? 'text-teal-400' : 'text-amber-500'}`}
                       >
@@ -2238,50 +2186,6 @@ export function PatientForm({
                     </FormDescription>
                   </FormItem>
                 )}
-              />
-              {/* TODO : modularise all reusable components */}
-              {/* Payment Method */}
-              <FormField
-                control={form.control}
-                name="payment_mode"
-                render={({ field }) => {
-                  const isShaDisabled = shaEligibility.checked && !shaEligibility.isEligible;
-
-                  return (
-                    <FormItem className={cn(!shaNumber && 'lg:col-span-2')}>
-                      <FormLabel>Payment Method *</FormLabel>
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        disabled={formLocked || isFormLoading}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="h-10">
-                            <SelectValue placeholder="Select payment method" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {PAYMENT_MODE_OPTIONS.map((option) => {
-                            if (option.value === 'sha' && isShaDisabled) {
-                              return null;
-                            }
-                            return (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
-                      {isShaDisabled && (
-                        <FormDescription className="text-warning-foreground">
-                          SHA is unavailable: {shaEligibility.reason || 'Patient not eligible'}
-                        </FormDescription>
-                      )}
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
               />
               </div>
             )}
@@ -2698,53 +2602,6 @@ export function PatientForm({
           {!isCompactMode && <Separator />}
 
           {/* ================================================================== */}
-          {/* SECTION 5: Insurance Details (conditional) */}
-          {/* ================================================================== */}
-          {!isCompactMode &&
-            (paymentMode === 'insurance_private' || paymentMode === 'insurance_corporate') && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Insurance Details</h3>
-              <div className="grid gap-4 rounded-lg border bg-muted/30 p-4 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="insurance_provider"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Insurance Provider *</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="e.g., Jubilee, AAR, Britam"
-                          {...field}
-                          disabled={formLocked || isFormLoading}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="insurance_member_number"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Member/Policy Number</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Enter member number"
-                          {...field}
-                          disabled={formLocked || isFormLoading}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-            )}
-
-          {!isCompactMode && <Separator />}
-
-          {/* ================================================================== */}
           {/* SECTION 6: Emergency Contact */}
           {/* ================================================================== */}
           {!isCompactMode && <div className="space-y-4">
@@ -3034,9 +2891,6 @@ export function PatientForm({
                       email: '',
                       address: '',
                       village: '',
-                      payment_mode: 'cash',
-                      insurance_provider: '',
-                      insurance_member_number: '',
                       referral_source: 'self',
                       referred_from_facility: '',
                       emergency_contact_name: '',

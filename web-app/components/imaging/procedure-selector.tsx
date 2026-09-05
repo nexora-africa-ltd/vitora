@@ -42,8 +42,9 @@ export function ProcedureSelector({
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedQuery = useDebounce(searchQuery, 300);
+  const procedureQuery = debouncedQuery.length >= 2 ? debouncedQuery : '';
 
-  const { data: procedures, isLoading } = useImagingProcedureSearch(debouncedQuery);
+  const { data: procedures, isLoading } = useImagingProcedureSearch(procedureQuery, open);
 
   const handleSelect = useCallback(
     (procedure: ImagingProcedure) => {
@@ -100,9 +101,7 @@ export function ProcedureSelector({
               </div>
             )}
             <CommandEmpty className="py-4 text-xs sm:py-6 sm:text-sm">
-              {searchQuery.length < 2
-                ? 'Type at least 2 characters to search...'
-                : 'No procedures found.'}
+              {procedureQuery ? 'No procedures found.' : 'No procedures available.'}
             </CommandEmpty>
             <CommandGroup>
               {(procedures || []).map((procedure) => (

@@ -21,7 +21,6 @@ import {
   GenderSchema,
   IdentificationTypeSchema,
   ReferralSourceSchema,
-  PaymentModeSchema,
   EncounterStatusSchema,
   PatientTitleSchema,
   TitleEnumSchema,
@@ -347,23 +346,4 @@ describe('Patient Contract Tests', () => {
     });
   });
 
-  describe('PaymentModeSchema (enum)', () => {
-    it('should match OpenAPI PaymentTypeEnum values', () => {
-      const zodValues = getZodEnumValues(PaymentModeSchema);
-      const apiValues = getSchemaEnumValues(openapi, 'PaymentTypeEnum');
-
-      if (!apiValues) {
-        console.warn('PaymentTypeEnum not found in OpenAPI');
-        return;
-      }
-
-      const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-
-      if (missingInZod.length > 0) {
-        console.warn(`PaymentModeSchema: Missing values: ${missingInZod.join(', ')}`);
-      }
-
-      expect(missingInZod).toEqual([]);
-    });
-  });
 });

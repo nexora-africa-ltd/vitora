@@ -203,6 +203,13 @@ describe('PatientForm Component', () => {
     expect(radioButtons.length).toBeGreaterThan(0);
   });
 
+  it('does not collect payment details during registration', () => {
+    render(<PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
+
+    expect(screen.queryByText('Payment Method *')).not.toBeInTheDocument();
+    expect(screen.queryByText('Insurance Details')).not.toBeInTheDocument();
+  });
+
   it('should render county selection', () => {
     render(<PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
 

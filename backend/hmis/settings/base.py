@@ -491,6 +491,7 @@ SPECTACULAR_SETTINGS = {
             "hmis.apps.inpatient.models.NursingKardex", "RISK_CHOICES"
         ),
         "BabyGenderEnum": lambda: _model_attr("hmis.apps.mch.models.Delivery", "GENDER_CHOICES"),
+        "GenderEnum": lambda: _model_attr("hmis.apps.patients.models.Patient", "GENDER_CHOICES"),
         "FacilityLevelEnum": lambda: _model_attr("hmis.apps.core.models.Facility", "FacilityLevel"),
         "FacilityOwnershipEnum": lambda: _model_attr(
             "hmis.apps.core.models.Facility", "OwnershipType"

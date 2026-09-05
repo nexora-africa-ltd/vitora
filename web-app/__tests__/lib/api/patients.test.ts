@@ -43,7 +43,6 @@ const mockPatient = {
   county: 1,
   sub_county: 1,
   ward: null,
-  payment_mode: 'cash' as const,
   referral_source: 'self' as const,
   consent_given: false,
   consent_date: null,

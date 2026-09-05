@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactNode } from 'react';
 import {
   useImagingProcedures,
+  useImagingProcedureSearch,
   useImagingOrder,
   useImagingOrders,
   usePatientImagingOrders,
@@ -136,6 +137,24 @@ describe('useImagingProcedures', () => {
     expect(mockImagingApi.listProcedures).toHaveBeenCalledWith({
       modality: 'CT',
       page: 2,
+    });
+  });
+});
+
+describe('useImagingProcedureSearch', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('fetches the initial procedure catalog when enabled without a search query', async () => {
+    mockImagingApi.searchProcedures.mockResolvedValue([]);
+
+    renderHook(() => useImagingProcedureSearch('', true), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(mockImagingApi.searchProcedures).toHaveBeenCalledWith('');
     });
   });
 });

@@ -32,17 +32,6 @@ export const GenderSchema = z.enum(['M', 'F', 'O']);
 
 export const ReferralSourceSchema = z.enum(['self', 'clinic', 'other_facility']);
 
-export const PaymentModeSchema = z.enum([
-  'cash',
-  'sha',
-  'insurance_private',
-  'insurance_corporate',
-  'mpesa',
-  'insurance',
-  'corporate',
-  'mixed',
-]);
-
 export const EncounterStatusSchema = z.enum([
   'CREATED',
   'CHECKED_IN',
@@ -253,11 +242,6 @@ export const PatientCreateDataSchema = z.object({
   sub_county: z.number({ required_error: 'Sub-county is required' }),
   ward: z.number().optional(),
   village: z.string().optional(),
-
-  // Payment
-  payment_mode: PaymentModeSchema.optional(),
-  insurance_provider: z.string().optional(),
-  insurance_member_number: z.string().optional(),
 
   // Other
   referral_source: ReferralSourceSchema.optional(),

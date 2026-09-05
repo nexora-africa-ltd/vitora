@@ -47,9 +47,6 @@ type HealthcloudDefaults = {
   last_name?: string;
   gender?: 'M' | 'F' | 'O';
   date_of_birth?: Date;
-  payment_mode?: PatientCreateData['payment_mode'];
-  insurance_provider?: string;
-  insurance_member_number?: string;
 };
 
 type HealthcloudEnrollmentContext = {
@@ -167,9 +164,6 @@ export default function NewPatientPage() {
           last_name?: string;
           gender?: string;
           date_of_birth?: string;
-          payment_mode?: PatientCreateData['payment_mode'];
-          insurance_provider?: string;
-          insurance_member_number?: string;
         };
         setCrClient(null);
         setSelectedShaPerson(null);
@@ -181,9 +175,6 @@ export default function NewPatientPage() {
           last_name: data.last_name || '',
           gender: normalizeGender(data.gender),
           date_of_birth: parsedDate && !Number.isNaN(parsedDate.getTime()) ? parsedDate : undefined,
-          payment_mode: data.payment_mode || 'insurance_private',
-          insurance_provider: data.insurance_provider || '',
-          insurance_member_number: data.insurance_member_number || '',
         });
         if (data.provider_id && data.member_number) {
           setHealthcloudEnrollmentContext({

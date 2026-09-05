@@ -132,10 +132,6 @@ export interface PatientCreateData {
   sub_county: number;
   ward?: number;
   village?: string;
-  // Payment
-  payment_mode?: PaymentMode;
-  insurance_provider?: string;
-  insurance_member_number?: string;
   // Other
   referral_source?: 'self' | 'clinic' | 'other_facility';
   referred_from_facility?: string;

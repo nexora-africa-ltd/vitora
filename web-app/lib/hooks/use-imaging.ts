@@ -96,11 +96,11 @@ export function useImagingProcedure(code: string) {
 /**
  * Hook for searching procedures.
  */
-export function useImagingProcedureSearch(query: string) {
+export function useImagingProcedureSearch(query: string, enabled = query.length >= 2) {
   return useQuery({
     queryKey: imagingKeys.proceduresSearch(query),
     queryFn: () => imagingApi.searchProcedures(query),
-    enabled: query.length >= 2,
+    enabled: enabled && (query.length === 0 || query.length >= 2),
   });
 }
 
