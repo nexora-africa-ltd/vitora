@@ -26,10 +26,14 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Search, Plus, Monitor, Clock, WifiOff, Ban, CheckCircle2 } from 'lucide-react';
+import { Search, Plus, Monitor, Clock, WifiOff, Ban, CheckCircle2, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
-import type { InstallationListItem, InstallationStatus } from '@/lib/types/licensing';
+import type {
+  GenerateCodeResponse,
+  InstallationListItem,
+  InstallationStatus,
+} from '@/lib/types/licensing';
 
 const statusColors: Record<InstallationStatus, string> = {
   PENDING: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
@@ -52,9 +56,11 @@ export default function InstallationsPage() {
   const { refresh, isRefreshing } = usePageRefresh();
   const [search, setSearch] = useState('');
   const [generateOpen, setGenerateOpen] = useState(false);
+  const [generatedCodeDialogOpen, setGeneratedCodeDialogOpen] = useState(false);
   const [orgId, setOrgId] = useState('');
   const [facilityId, setFacilityId] = useState('');
   const [installName, setInstallName] = useState('');
+  const [generatedCode, setGeneratedCode] = useState<GenerateCodeResponse | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'installations', search],
@@ -90,10 +96,9 @@ export default function InstallationsPage() {
     mutationFn: (data: { organization_id: number; name?: string; facility_id?: number }) =>
       licensingAdminApi.generateCode(data),
     onSuccess: (result) => {
-      toast.success('Activation code generated', {
-        description: result.activation_code,
-        duration: 15000,
-      });
+      toast.success('Activation code generated');
+      setGeneratedCode(result);
+      setGeneratedCodeDialogOpen(true);
       queryClient.invalidateQueries({ queryKey: ['admin', 'installations'] });
       setGenerateOpen(false);
       setOrgId('');
@@ -102,6 +107,26 @@ export default function InstallationsPage() {
     },
     onError: () => toast.error('Failed to generate code'),
   });
+
+  const copyGeneratedCode = async () => {
+    if (!generatedCode?.activation_code) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(generatedCode.activation_code);
+      toast.success('Activation code copied');
+    } catch {
+      const input = document.createElement('input');
+      input.value = generatedCode.activation_code;
+      document.body.appendChild(input);
+      input.select();
+      input.setSelectionRange(0, input.value.length);
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      toast.success('Activation code copied');
+    }
+  };
 
   if (!isSuperuser) {
     return (
@@ -201,6 +226,42 @@ export default function InstallationsPage() {
             </Dialog>
           }
         />
+
+        <Dialog open={generatedCodeDialogOpen} onOpenChange={setGeneratedCodeDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Activation Code Ready</DialogTitle>
+              <DialogDescription>
+                Share this one-time code with the facility desktop during setup.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <code className="block select-all rounded bg-muted px-3 py-2 text-center font-mono text-lg">
+                {generatedCode?.activation_code}
+              </code>
+              <p className="text-sm text-muted-foreground">
+                Org: {generatedCode?.organization}
+                {generatedCode?.facility ? ` • Facility: ${generatedCode.facility}` : ''}
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={copyGeneratedCode} className="gap-2">
+                <Copy className="h-4 w-4" />
+                Copy Code
+              </Button>
+              <Button
+                onClick={() => {
+                  if (generatedCode?.id) {
+                    router.push(`/admin/installations/${generatedCode.id}`);
+                  }
+                  setGeneratedCodeDialogOpen(false);
+                }}
+              >
+                View Installation
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
