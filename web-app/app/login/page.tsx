@@ -158,7 +158,8 @@ export default function LoginPage() {
   }, []);
 
   const isDark = mounted && resolvedTheme === 'dark';
-  const showSignupLink = !(isDesktopMode && isOffline);
+  // Desktop installations are provisioned through desktop setup, not self-service signup.
+  const showSignupLink = !isDesktopMode;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
