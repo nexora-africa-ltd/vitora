@@ -5,6 +5,7 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils/cn';
 import { ChevronDown } from 'lucide-react';
+import { buttonVariants } from '@/components/ui/button';
 
 interface SelectContextValue {
   value: string;
@@ -171,7 +172,8 @@ const SelectTrigger = React.forwardRef<
       aria-haspopup="listbox"
       aria-controls={context.listboxId}
       className={cn(
-        'flex h-10 w-full animate-pulse items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground hover:bg-teal-400/10 hover:text-foreground hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+        buttonVariants({ variant: 'outline' }),
+        'w-full justify-between font-normal dark:border-slate-700 dark:bg-slate-950/50 dark:text-slate-100 dark:hover:border-teal-600/70 dark:hover:bg-teal-400/10 dark:focus-visible:ring-teal-300/70',
         className
       )}
       onClick={() => context.setOpen(!context.open)}
@@ -222,7 +224,7 @@ const SelectContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTML
         id={context.listboxId}
         hidden={!context.open}
         className={cn(
-          'absolute left-0 top-full z-50 mt-1 max-h-60 w-full min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95',
+          'absolute left-0 top-full z-50 mt-1 max-h-60 w-full min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100',
           !context.open && 'hidden',
           className
         )}
@@ -272,8 +274,8 @@ const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
         role="option"
         aria-selected={isSelected ? 'true' : 'false'}
         className={cn(
-          'relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground',
-          isSelected && 'bg-accent text-accent-foreground',
+          'relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground dark:hover:bg-teal-400/15 dark:hover:text-teal-100 dark:focus:bg-teal-400/15 dark:focus:text-teal-100',
+          isSelected && 'bg-accent text-accent-foreground dark:bg-teal-400/20 dark:text-teal-100',
           className
         )}
         onClick={() => context.onValueChange(value, textContent)}
@@ -311,7 +313,10 @@ const SelectLabel = React.forwardRef<HTMLDivElement, SelectLabelProps>(
     return (
       <div
         ref={ref}
-        className={cn('px-2 py-1.5 text-xs font-semibold text-muted-foreground', className)}
+        className={cn(
+          'px-2 py-1.5 text-xs font-semibold text-muted-foreground dark:text-slate-400',
+          className
+        )}
         {...props}
       >
         {children}
@@ -323,7 +328,7 @@ SelectLabel.displayName = 'SelectLabel';
 
 const SelectSeparator = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('-mx-1 my-1 h-px bg-muted', className)} {...props} />
+    <div ref={ref} className={cn('-mx-1 my-1 h-px bg-muted dark:bg-slate-700', className)} {...props} />
   )
 );
 SelectSeparator.displayName = 'SelectSeparator';

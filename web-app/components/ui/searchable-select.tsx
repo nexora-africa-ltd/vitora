@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -21,7 +21,11 @@ export interface SearchableSelectOption {
   disabled?: boolean;
 }
 
-interface SearchableSelectProps {
+interface SearchableSelectProps
+  extends Pick<
+    React.ButtonHTMLAttributes<HTMLButtonElement>,
+    'id' | 'aria-describedby' | 'aria-invalid'
+  > {
   options: SearchableSelectOption[];
   value?: string;
   onValueChange: (value: string) => void;
@@ -30,6 +34,7 @@ interface SearchableSelectProps {
   emptyMessage?: string;
   className?: string;
   disabled?: boolean;
+  isLoading?: boolean;
   maxVisibleOptions?: number;
 }
 
@@ -42,7 +47,11 @@ export function SearchableSelect({
   emptyMessage = 'No results found.',
   className,
   disabled,
+  isLoading = false,
   maxVisibleOptions = 150,
+  id,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
@@ -68,21 +77,34 @@ export function SearchableSelect({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
+          id={id}
           role="combobox"
           aria-expanded={open}
-          disabled={disabled}
+          aria-describedby={ariaDescribedBy}
+          aria-invalid={ariaInvalid}
+          aria-busy={isLoading}
+          disabled={disabled || isLoading}
           className={cn(
-            'w-full justify-between font-normal',
+            'w-full justify-between font-normal dark:border-slate-700 dark:bg-slate-950/50 dark:text-slate-100 dark:hover:border-teal-600/70 dark:hover:bg-teal-400/10 dark:focus-visible:ring-teal-300/70',
             !selected && 'text-muted-foreground',
             className
           )}
         >
-          <span className="truncate">{selected ? selected.label : placeholder}</span>
+          <span className="truncate">
+            {isLoading ? 'Loading...' : selected ? selected.label : placeholder}
+          </span>
+          {isLoading && <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin" />}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command shouldFilter={false}>
+      <PopoverContent
+        className="w-[--radix-popover-trigger-width] border-border p-0 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+        align="start"
+      >
+        <Command
+          shouldFilter={false}
+          className="dark:bg-transparent dark:[&_[cmdk-input-wrapper]]:border-slate-700 dark:[&_[cmdk-item][data-selected=true]]:bg-teal-400/15 dark:[&_[cmdk-item][data-selected=true]]:text-teal-100"
+        >
           <CommandInput placeholder={searchPlaceholder} value={query} onValueChange={setQuery} />
           <CommandList>
             <CommandEmpty>{emptyMessage}</CommandEmpty>

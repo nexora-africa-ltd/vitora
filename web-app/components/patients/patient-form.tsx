@@ -25,10 +25,7 @@ import {
   Info,
   Search,
   Lock,
-  ChevronDown,
   HelpCircle,
-  ChevronsUpDown,
-  Check,
   Ban,
   ChevronLeft,
   ChevronRight,
@@ -67,15 +64,11 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Dialog,
@@ -85,14 +78,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -101,7 +86,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { LocationCombobox } from '@/components/ui/location-combobox';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { ConsentConfirmationDialog, type ConsentDecision } from './consent-confirmation-dialog';
 import { DuplicatePatientAlert } from './duplicate-patient-alert';
@@ -120,12 +105,11 @@ import {
   REFERRAL_SOURCE_OPTIONS,
   RELATIONSHIP_OPTIONS,
 } from '@/lib/utils/constants';
-import { NATIONALITIES, NATIONALITY_OPTIONS } from '@/lib/utils/nationalities';
+import { NATIONALITY_OPTIONS } from '@/lib/utils/nationalities';
 import {
   type PatientCreateData,
   type HouseholdMember,
   type IdentificationType,
-  type PatientTitle,
   type DuplicateCheckResult,
   type DuplicateMatch,
   IDENTIFICATION_TYPE_OPTIONS,
@@ -440,9 +424,6 @@ export function PatientForm({
   } | null>(null);
   const [householdMembers, setHouseholdMembers] = useState<HouseholdMember[]>([]);
   const [isLoadingHouseholdMembers, setIsLoadingHouseholdMembers] = useState(false);
-
-  // Nationality combobox state
-  const [nationalityOpen, setNationalityOpen] = useState(false);
 
   // UI state
   const [dobPopoverOpen, setDobPopoverOpen] = useState(false);
@@ -2322,34 +2303,27 @@ export function PatientForm({
                   render={({ field }) => (
                     <FormItem className="sm:col-span-1">
                       <FormLabel>Title</FormLabel>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            disabled={formLocked || isFormLoading}
-                            className={cn(
-                              'w-full justify-between font-normal',
-                              !field.value && 'text-muted-foreground'
-                            )}
-                          >
-                            {field.value
-                              ? TITLE_OPTIONS.find((t) => t.value === field.value)?.label
-                              : 'Select'}
-                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start">
+                      <Select
+                        value={field.value || '__none__'}
+                        onValueChange={(value) => field.onChange(value === '__none__' ? '' : value)}
+                        disabled={formLocked || isFormLoading}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
                           {TITLE_OPTIONS.map((option) => (
-                            <DropdownMenuItem
-                              key={option.value}
-                              onSelect={() => field.onChange(option.value || 'none')}
+                            <SelectItem
+                              key={option.value || '__none__'}
+                              value={option.value || '__none__'}
                             >
                               {option.label}
-                            </DropdownMenuItem>
+                            </SelectItem>
                           ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        </SelectContent>
+                      </Select>
                     </FormItem>
                   )}
                 />
@@ -2414,36 +2388,26 @@ export function PatientForm({
                 control={form.control}
                 name="gender"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Gender *</FormLabel>
-                    <FormControl>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className="w-full justify-between"
-                            disabled={formLocked || isFormLoading}
-                          >
-                            {field.value
-                              ? GENDER_OPTIONS.find((opt) => opt.value === field.value)?.label
-                              : 'Select gender'}
-                            <ChevronDown className="h-4 w-4 opacity-50" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-full min-w-[140px]">
-                          <DropdownMenuRadioGroup
-                            value={field.value}
-                            onValueChange={field.onChange}
-                          >
-                            {GENDER_OPTIONS.map((option) => (
-                              <DropdownMenuRadioItem key={option.value} value={option.value}>
-                                {option.label}
-                              </DropdownMenuRadioItem>
-                            ))}
-                          </DropdownMenuRadioGroup>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </FormControl>
+                    <FormItem>
+                      <FormLabel>Gender *</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={formLocked || isFormLoading}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select gender" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {GENDER_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -2491,53 +2455,17 @@ export function PatientForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Nationality</FormLabel>
-                      <Popover open={nationalityOpen} onOpenChange={setNationalityOpen}>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              aria-expanded={nationalityOpen}
-                              className={cn(
-                                'w-full justify-between',
-                                !field.value && 'text-muted-foreground'
-                              )}
-                              disabled={formLocked || isFormLoading}
-                            >
-                              {field.value || 'Select nationality'}
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[250px] p-0" align="start">
-                          <Command>
-                            <CommandInput placeholder="Search nationality..." />
-                            <CommandList>
-                              <CommandEmpty>No nationality found.</CommandEmpty>
-                              <CommandGroup className="max-h-[300px] overflow-y-auto">
-                                {NATIONALITIES.map((nationality) => (
-                                  <CommandItem
-                                    key={nationality}
-                                    value={nationality}
-                                    onSelect={() => {
-                                      field.onChange(nationality);
-                                      setNationalityOpen(false);
-                                    }}
-                                  >
-                                    <Check
-                                      className={cn(
-                                        'mr-2 h-4 w-4',
-                                        field.value === nationality ? 'opacity-100' : 'opacity-0'
-                                      )}
-                                    />
-                                    {nationality}
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
+                      <FormControl>
+                        <SearchableSelect
+                          options={NATIONALITY_OPTIONS}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          placeholder="Select nationality"
+                          searchPlaceholder="Search nationality..."
+                          emptyMessage="No nationality found."
+                          disabled={formLocked || isFormLoading}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -2666,23 +2594,23 @@ export function PatientForm({
                 control={form.control}
                 name="county"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>County *</FormLabel>
-                    <FormControl>
-                      <LocationCombobox
-                        options={
-                          counties?.map((c) => ({ value: c.id.toString(), label: c.name })) || []
-                        }
-                        value={field.value?.toString()}
-                        onSelect={(value) => {
+                    <FormItem>
+                      <FormLabel>County *</FormLabel>
+                      <FormControl>
+                        <SearchableSelect
+                          options={
+                            counties?.map((c) => ({ value: c.id.toString(), label: c.name })) || []
+                          }
+                          value={field.value?.toString()}
+                          onValueChange={(value) => {
                           field.onChange(Number(value));
                           form.setValue('sub_county', undefined as unknown as number);
                           form.setValue('ward', undefined);
                         }}
                         placeholder="Select county"
                         searchPlaceholder="Search counties..."
-                        emptyMessage="No county found."
-                        isLoading={isLoadingCounties}
+                          emptyMessage="No county found."
+                          isLoading={isLoadingCounties}
                         disabled={formLocked || isFormLoading}
                       />
                     </FormControl>
@@ -2695,16 +2623,16 @@ export function PatientForm({
                 control={form.control}
                 name="sub_county"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Sub-County *</FormLabel>
-                    <FormControl>
-                      <LocationCombobox
+                    <FormItem>
+                      <FormLabel>Sub-County *</FormLabel>
+                      <FormControl>
+                        <SearchableSelect
                         options={
                           subCounties?.map((sc) => ({ value: sc.id.toString(), label: sc.name })) ||
                           []
                         }
                         value={field.value?.toString()}
-                        onSelect={(value) => {
+                          onValueChange={(value) => {
                           field.onChange(Number(value));
                           form.setValue('ward', undefined);
                         }}
@@ -2728,12 +2656,12 @@ export function PatientForm({
                     <FormItem>
                       <FormLabel>Ward (Optional)</FormLabel>
                       <FormControl>
-                        <LocationCombobox
+                        <SearchableSelect
                           options={
                             wards?.map((w) => ({ value: w.id.toString(), label: w.name })) || []
                           }
                           value={field.value?.toString()}
-                          onSelect={(value) => field.onChange(Number(value))}
+                          onValueChange={(value) => field.onChange(Number(value))}
                           placeholder={!selectedSubCounty ? 'Select sub-county first' : 'Select ward'}
                           searchPlaceholder="Search wards..."
                           emptyMessage="No ward found."

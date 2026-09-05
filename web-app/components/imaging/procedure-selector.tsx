@@ -1,7 +1,7 @@
 /**
  * Imaging procedure selector (combobox) component.
  * Provides searchable dropdown for selecting imaging procedures.
- * Uses the same Command + Popover pattern as LocationCombobox for proper scroll.
+ * Uses the shared Command + Popover pattern for proper scroll behavior.
  */
 'use client';
 

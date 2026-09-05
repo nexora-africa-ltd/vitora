@@ -210,4 +210,21 @@ describe('PatientForm Component', () => {
     const countyElements = screen.getAllByText(/Select county/i);
     expect(countyElements.length).toBeGreaterThan(0);
   });
+
+  it('uses shared select controls for title, gender, nationality, and location fields', async () => {
+    const user = userEvent.setup();
+    render(<PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
+
+    await user.click(screen.getByRole('combobox', { name: 'Title' }));
+    expect(await screen.findByRole('option', { name: 'Mr' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('combobox', { name: 'Gender *' }));
+    expect(await screen.findByRole('option', { name: 'Female' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('combobox', { name: 'Nationality' }));
+    expect(await screen.findByPlaceholderText('Search nationality...')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('combobox', { name: 'County *' }));
+    expect(await screen.findByPlaceholderText('Search counties...')).toBeInTheDocument();
+  });
 });
