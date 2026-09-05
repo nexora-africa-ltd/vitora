@@ -192,16 +192,15 @@ class TestSHRSettingsStructure:
         """
         Requirement: SHA/SHR settings should be defined.
         """
-        sha_settings = [
-            "SHA_API_BASE_URL",
-            "SHA_FHIR_BASE_URL",
-            "SHA_API_ENDPOINTS",
+        shr_settings = [
+            "SHR_ENABLED",
+            "SHR_ILM_BASE_URL",
         ]
 
-        missing = [s for s in sha_settings if not hasattr(settings, s)]
+        missing = [s for s in shr_settings if not hasattr(settings, s)]
 
         assert not missing, (
-            f"Required SHA settings not configured: {missing}. "
+            f"Required SHR settings not configured: {missing}. "
             "These are required for SHR integration."
         )
 

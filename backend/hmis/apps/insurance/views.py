@@ -12,6 +12,7 @@ Supported inputs/args:
 """
 
 # Backward-compatible patch point used by tests and split modules.
+from hmis.apps.insurance.services.adapters import get_adapter  # noqa: F401
 from hmis.apps.insurance.views_claims import *  # noqa: F403
 from hmis.apps.insurance.views_core import *  # noqa: F403
 from hmis.apps.insurance.views_remittance_webhook import *  # noqa: F403

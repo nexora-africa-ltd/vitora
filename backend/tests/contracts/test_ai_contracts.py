@@ -8,10 +8,7 @@ Re-run the script to update after serializer changes:
 
 import pytest  # type: ignore
 
-from hmis.apps.ai.serializers import (
-    AIAdvisoryBulkSeedSerializer,
-    AIAdvisoryOrderLinkActionSerializer,
-    AIAdvisoryOrderLinkSerializer,
+from hmis.apps.ai.serializers_core_context import (
     AIChatMessageSerializer,
     AIChatSessionDetailResponseSerializer,
     AIChatSessionListResponseSerializer,
@@ -20,37 +17,21 @@ from hmis.apps.ai.serializers import (
     AIClinicalChatResponseSerializer,
     AIEncounterContextSerializer,
     AIFacilityContextSerializer,
-    AIFeedbackRequestSerializer,
-    AIFeedbackResponseSerializer,
-    AIFeedbackStatsResponseSerializer,
     AIPageContextSerializer,
     AIPatientContextSerializer,
     AIStatusResponseSerializer,
-    AISuggestionAuditItemSerializer,
-    AISuggestionAuditRequestSerializer,
-    AISuggestionAuditResponseSerializer,
     AIUserContextSerializer,
     AIVitalsSerializer,
-    AutopopulateRequestSerializer,
-    AutopopulateResponseSerializer,
-    AutopopulateSuggestedFieldSerializer,
-    CarePlanADPIEEntrySerializer,
-    CarePlanFollowUpSerializer,
-    CarePlanGenerateRequestSerializer,
-    CarePlanGoalSerializer,
-    CarePlanInterventionCategorySerializer,
-    CarePlanInterventionItemSerializer,
-    CarePlanResponseSerializer,
+    ClinicalAssistRequestSerializer,
+    ClinicalChatRequestSerializer,
+    ICD10SuggestionSerializer,
+    ICD10SuggestRequestSerializer,
+    ICD10SuggestResponseSerializer,
+)
+from hmis.apps.ai.serializers_docs_cds_stored import (
     CDSAlertItemSerializer,
     CDSEvaluateRequestSerializer,
     CDSEvaluateResponseSerializer,
-    ClerkingAutocompleteRequestSerializer,
-    ClerkingAutocompleteResponseSerializer,
-    ClerkingAutocompleteSuggestionSerializer,
-    ClerkingStructureRequestSerializer,
-    ClerkingStructureResponseSerializer,
-    ClinicalAssistRequestSerializer,
-    ClinicalChatRequestSerializer,
     ClinicalDocAdmissionContextSerializer,
     ClinicalDocCitationSerializer,
     ClinicalDocEncounterContextSerializer,
@@ -61,37 +42,73 @@ from hmis.apps.ai.serializers import (
     ClinicalDocPatientContextSerializer,
     ClinicalDocSectionSerializer,
     ClinicalDocVitalsSerializer,
+    EGFRCalculateRequestSerializer,
+    EGFRCalculateResponseSerializer,
+    StoredAIResultSerializer,
+    StoredCarePlanSerializer,
+    StoredCDSResultSerializer,
+    StoredDischargeResultSerializer,
+    StoredEGFRResultSerializer,
+    StoredICURiskResultSerializer,
+    StoredLabInterpretSerializer,
+)
+from hmis.apps.ai.serializers_lab_care import (
+    CarePlanADPIEEntrySerializer,
+    CarePlanFollowUpSerializer,
+    CarePlanGenerateRequestSerializer,
+    CarePlanGoalSerializer,
+    CarePlanInterventionCategorySerializer,
+    CarePlanInterventionItemSerializer,
+    CarePlanResponseSerializer,
+    ClerkingAutocompleteRequestSerializer,
+    ClerkingAutocompleteResponseSerializer,
+    ClerkingAutocompleteSuggestionSerializer,
+    ClerkingStructureRequestSerializer,
+    ClerkingStructureResponseSerializer,
+    DischargeAssessRequestSerializer,
+    DischargeAssessResponseSerializer,
+    DischargeCriterionSerializer,
+    LabFlagSerializer,
+    LabInterpretRequestSerializer,
+    LabInterpretResponseSerializer,
+    LabPatternSerializer,
+    LabResultItemSerializer,
+    VitalsSnapshotSerializer,
+)
+from hmis.apps.ai.serializers_prediction_feedback import (
+    AIFeedbackRequestSerializer,
+    AIFeedbackResponseSerializer,
+    AIFeedbackStatsResponseSerializer,
+    AISuggestionAuditItemSerializer,
+    AISuggestionAuditRequestSerializer,
+    AISuggestionAuditResponseSerializer,
+    AutopopulateRequestSerializer,
+    AutopopulateResponseSerializer,
+    AutopopulateSuggestedFieldSerializer,
     ConditionPredictPatientFeaturesSerializer,
     ConditionPredictRequestSerializer,
     ConditionPredictResponseSerializer,
     ConditionRiskFactorSerializer,
     DifferentialConditionSerializer,
-    DischargeAssessRequestSerializer,
-    DischargeAssessResponseSerializer,
-    DischargeCriterionSerializer,
-    EGFRCalculateRequestSerializer,
-    EGFRCalculateResponseSerializer,
-    FacilityKBDocumentDeleteResponseSerializer,
-    FacilityKBDocumentSerializer,
-    FacilityKBInfoResponseSerializer,
-    FacilityKBSearchResponseSerializer,
-    FacilityKBSearchResultSerializer,
-    FacilityKBUploadResponseSerializer,
-    ICD10SuggestionSerializer,
-    ICD10SuggestRequestSerializer,
-    ICD10SuggestResponseSerializer,
     ICUCriticalAlertSerializer,
     ICUEscalationSerializer,
     ICUPredictPatientDataSerializer,
     ICUPredictRequestSerializer,
     ICUPredictResponseSerializer,
     ICUQSOFALiteRequestSerializer,
+    SOFAScoreBreakdownSerializer,
+)
+from hmis.apps.ai.serializers_surgical_ops import (
+    AIAdvisoryBulkSeedSerializer,
+    AIAdvisoryOrderLinkActionSerializer,
+    AIAdvisoryOrderLinkSerializer,
+    FacilityKBDocumentDeleteResponseSerializer,
+    FacilityKBDocumentSerializer,
+    FacilityKBInfoResponseSerializer,
+    FacilityKBSearchResponseSerializer,
+    FacilityKBSearchResultSerializer,
+    FacilityKBUploadResponseSerializer,
     InvestigationSuggestRequestSerializer,
-    LabFlagSerializer,
-    LabInterpretRequestSerializer,
-    LabInterpretResponseSerializer,
-    LabPatternSerializer,
-    LabResultItemSerializer,
     ProactiveInsightEncounterContextSerializer,
     ProactiveInsightItemSerializer,
     ProactiveInsightPatientContextSerializer,
@@ -99,15 +116,7 @@ from hmis.apps.ai.serializers import (
     ProactiveInsightsResponseSerializer,
     ProactiveInsightTierCountsSerializer,
     ProactiveInsightVitalsSerializer,
-    SOFAScoreBreakdownSerializer,
-    StoredAIResultSerializer,
-    StoredCarePlanSerializer,
-    StoredCDSResultSerializer,
-    StoredDischargeResultSerializer,
-    StoredEGFRResultSerializer,
-    StoredICURiskResultSerializer,
     StoredInvestigationSuggestSerializer,
-    StoredLabInterpretSerializer,
     StoredSurgicalChecklistSessionSerializer,
     StoredSurgicalPostOpCarePlanSerializer,
     StoredSurgicalPreOpAssessSerializer,
@@ -120,7 +129,6 @@ from hmis.apps.ai.serializers import (
     SurgicalPreOpAssessResponseSerializer,
     SurgicalProcedureDetailResponseSerializer,
     SurgicalProcedureListResponseSerializer,
-    VitalsSnapshotSerializer,
     WebhookDeliveryListResponseSerializer,
     WebhookDeliverySerializer,
     WebhookItemSerializer,
@@ -130,46 +138,6 @@ from hmis.apps.ai.serializers import (
 )
 
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
-    (
-        AIAdvisoryBulkSeedSerializer,
-        frozenset(
-            {
-                "ai_result_id",
-                "ai_result_type",
-            }
-        ),
-    ),
-    (
-        AIAdvisoryOrderLinkActionSerializer,
-        frozenset(
-            {
-                "imaging_order_id",
-                "lab_order_id",
-                "prescription_id",
-                "status",
-            }
-        ),
-    ),
-    (
-        AIAdvisoryOrderLinkSerializer,
-        frozenset(
-            {
-                "actioned_at",
-                "actioned_by",
-                "ai_result_id",
-                "created_at",
-                "id",
-                "imaging_order_id",
-                "lab_order_id",
-                "order_number",
-                "prescription_id",
-                "status",
-                "suggestion_category",
-                "suggestion_index",
-                "suggestion_text",
-            }
-        ),
-    ),
     (
         AIChatMessageSerializer,
         frozenset(
@@ -262,41 +230,6 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
-        AIFeedbackRequestSerializer,
-        frozenset(
-            {
-                "bot_response",
-                "conversation_id",
-                "feedback",
-                "message_id",
-                "metadata",
-                "risk_level",
-                "service_type",
-                "user_query",
-            }
-        ),
-    ),
-    (
-        AIFeedbackResponseSerializer,
-        frozenset(
-            {
-                "feedback_id",
-                "message",
-                "status",
-            }
-        ),
-    ),
-    (
-        AIFeedbackStatsResponseSerializer,
-        frozenset(
-            {
-                "recent_negatives",
-                "total_down",
-                "total_up",
-            }
-        ),
-    ),
-    (
         AIPageContextSerializer,
         frozenset(
             {
@@ -333,40 +266,6 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
-        AISuggestionAuditItemSerializer,
-        frozenset(
-            {
-                "accepted_value",
-                "confidence",
-                "field_name",
-                "source",
-                "suggestion_id",
-            }
-        ),
-    ),
-    (
-        AISuggestionAuditRequestSerializer,
-        frozenset(
-            {
-                "encounter_type",
-                "event_type",
-                "note_format",
-                "suggestion_type",
-                "suggestions",
-            }
-        ),
-    ),
-    (
-        AISuggestionAuditResponseSerializer,
-        frozenset(
-            {
-                "logged_count",
-                "message",
-                "status",
-            }
-        ),
-    ),
-    (
         AIUserContextSerializer,
         frozenset(
             {
@@ -389,39 +288,61 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
-        AutopopulateRequestSerializer,
+        ClinicalAssistRequestSerializer,
         frozenset(
             {
-                "allergies",
-                "chief_complaint",
-                "clinical_notes",
-                "current_medications",
-                "encounter_type",
-                "patient_age",
-                "patient_sex",
-                "vitals",
+                "encounter_context",
+                "facility_context",
+                "page_context",
+                "patient_context",
+                "query",
+                "user_context",
+                "verbosity",
             }
         ),
     ),
     (
-        AutopopulateResponseSerializer,
+        ClinicalChatRequestSerializer,
         frozenset(
             {
+                "encounter_context",
+                "facility_context",
+                "message",
+                "page_context",
+                "patient_context",
+                "session_id",
+                "stream",
+                "user_context",
+                "verbosity",
+            }
+        ),
+    ),
+    (
+        ICD10SuggestRequestSerializer,
+        frozenset(
+            {
+                "clinical_text",
+            }
+        ),
+    ),
+    (
+        ICD10SuggestResponseSerializer,
+        frozenset(
+            {
+                "clinical_text_preview",
                 "error",
-                "icd10_suggestions",
-                "suggested_fields",
+                "suggestions",
             }
         ),
     ),
     (
-        AutopopulateSuggestedFieldSerializer,
+        ICD10SuggestionSerializer,
         frozenset(
             {
+                "code",
                 "confidence",
-                "field_name",
-                "reason",
-                "source",
-                "value",
+                "description",
+                "is_billable",
             }
         ),
     ),
@@ -469,6 +390,284 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "recommendations",
                 "rules_evaluated",
                 "rules_fired",
+            }
+        ),
+    ),
+    (
+        ClinicalDocAdmissionContextSerializer,
+        frozenset(
+            {
+                "admission_date",
+                "clinical_notes",
+                "complications",
+                "condition_at_discharge",
+                "discharge_date",
+                "discharge_medications",
+                "discharge_type",
+                "follow_up_instructions",
+                "icd10_code",
+                "key_investigations",
+                "length_of_stay_days",
+                "medications_given",
+                "primary_diagnosis",
+                "procedures_performed",
+                "secondary_diagnoses",
+                "ward",
+            }
+        ),
+    ),
+    (
+        ClinicalDocCitationSerializer,
+        frozenset(
+            {
+                "section",
+                "source",
+            }
+        ),
+    ),
+    (
+        ClinicalDocEncounterContextSerializer,
+        frozenset(
+            {
+                "chief_complaint",
+                "clinical_notes",
+                "examination_findings",
+                "hpi",
+                "vitals",
+            }
+        ),
+    ),
+    (
+        ClinicalDocFacilityContextSerializer,
+        frozenset(
+            {
+                "county",
+                "level",
+            }
+        ),
+    ),
+    (
+        ClinicalDocGenerateRequestSerializer,
+        frozenset(
+            {
+                "additional_instructions",
+                "admission_context",
+                "discharge_layout",
+                "document_type",
+                "encounter_context",
+                "facility_context",
+                "generation_mode",
+                "include_icd10_codes",
+                "output_format",
+                "patient_context",
+                "system_instruction",
+                "template_sections",
+            }
+        ),
+    ),
+    (
+        ClinicalDocGenerateResponseSerializer,
+        frozenset(
+            {
+                "citations",
+                "disclaimer",
+                "document_type",
+                "error",
+                "fhir_resource",
+                "full_text",
+                "generation_mode",
+                "has_safety_concerns",
+                "mode",
+                "model_used",
+                "processing_time_ms",
+                "safety_alerts",
+                "section_provenance",
+                "sections",
+                "suggested_icd10_codes",
+            }
+        ),
+    ),
+    (
+        ClinicalDocICD10SuggestionSerializer,
+        frozenset(
+            {
+                "code",
+                "confidence",
+                "description",
+            }
+        ),
+    ),
+    (
+        ClinicalDocPatientContextSerializer,
+        frozenset(
+            {
+                "allergies",
+                "comorbidities",
+                "current_medications",
+                "facility_level",
+                "patient_age",
+                "patient_sex",
+            }
+        ),
+    ),
+    (
+        ClinicalDocSectionSerializer,
+        frozenset(
+            {
+                "content",
+                "section_id",
+                "title",
+            }
+        ),
+    ),
+    (
+        ClinicalDocVitalsSerializer,
+        frozenset(
+            {
+                "blood_pressure_diastolic",
+                "blood_pressure_systolic",
+                "heart_rate",
+                "respiratory_rate",
+                "spo2",
+                "temperature",
+            }
+        ),
+    ),
+    (
+        EGFRCalculateRequestSerializer,
+        frozenset(
+            {
+                "age",
+                "creatinine",
+                "creatinine_unit",
+                "encounter_id",
+                "height_cm",
+                "patient_id",
+                "sex",
+                "weight_kg",
+            }
+        ),
+    ),
+    (
+        EGFRCalculateResponseSerializer,
+        frozenset(
+            {
+                "category",
+                "ckd_stage",
+                "creatinine_used_mg_dl",
+                "dose_adjustment_band",
+                "egfr_ckd_epi",
+                "egfr_cockcroft_gault",
+                "flags",
+                "interpretation",
+                "mode",
+                "stored_id",
+            }
+        ),
+    ),
+    (
+        StoredAIResultSerializer,
+        frozenset(
+            {
+                "created_at",
+                "created_by",
+                "id",
+                "result_data",
+                "service_mode",
+            }
+        ),
+    ),
+    (
+        StoredCDSResultSerializer,
+        frozenset(
+            {
+                "alert_count",
+                "created_at",
+                "created_by",
+                "encounter_id",
+                "id",
+                "result_data",
+                "rules_fired",
+                "service_mode",
+            }
+        ),
+    ),
+    (
+        StoredCarePlanSerializer,
+        frozenset(
+            {
+                "admission_id",
+                "created_at",
+                "created_by",
+                "encounter_id",
+                "id",
+                "primary_diagnosis",
+                "result_data",
+                "service_mode",
+            }
+        ),
+    ),
+    (
+        StoredDischargeResultSerializer,
+        frozenset(
+            {
+                "admission_id",
+                "created_at",
+                "created_by",
+                "id",
+                "readiness_level",
+                "readiness_score",
+                "result_data",
+                "service_mode",
+            }
+        ),
+    ),
+    (
+        StoredEGFRResultSerializer,
+        frozenset(
+            {
+                "ckd_stage",
+                "created_at",
+                "created_by",
+                "dose_adjustment_band",
+                "egfr_ckd_epi",
+                "encounter_id",
+                "id",
+                "patient_id",
+                "result_data",
+                "service_mode",
+            }
+        ),
+    ),
+    (
+        StoredICURiskResultSerializer,
+        frozenset(
+            {
+                "admission_id",
+                "created_at",
+                "created_by",
+                "id",
+                "prediction_type",
+                "result_data",
+                "risk_level",
+                "risk_score",
+                "service_mode",
+            }
+        ),
+    ),
+    (
+        StoredLabInterpretSerializer,
+        frozenset(
+            {
+                "abnormal_count",
+                "created_at",
+                "created_by",
+                "critical_count",
+                "encounter_id",
+                "id",
+                "lab_result_id",
+                "result_data",
+                "service_mode",
             }
         ),
     ),
@@ -625,172 +824,246 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
-        ClinicalAssistRequestSerializer,
+        DischargeAssessRequestSerializer,
         frozenset(
             {
-                "encounter_context",
-                "facility_context",
-                "page_context",
-                "patient_context",
-                "query",
-                "user_context",
-                "verbosity",
-            }
-        ),
-    ),
-    (
-        ClinicalChatRequestSerializer,
-        frozenset(
-            {
-                "encounter_context",
-                "facility_context",
-                "message",
-                "page_context",
-                "patient_context",
-                "session_id",
-                "stream",
-                "user_context",
-                "verbosity",
-            }
-        ),
-    ),
-    (
-        ClinicalDocAdmissionContextSerializer,
-        frozenset(
-            {
-                "admission_date",
-                "clinical_notes",
-                "complications",
-                "condition_at_discharge",
-                "discharge_date",
-                "discharge_medications",
-                "discharge_type",
-                "follow_up_instructions",
-                "icd10_code",
-                "key_investigations",
-                "length_of_stay_days",
-                "medications_given",
-                "primary_diagnosis",
-                "procedures_performed",
-                "secondary_diagnoses",
-                "ward",
-            }
-        ),
-    ),
-    (
-        ClinicalDocCitationSerializer,
-        frozenset(
-            {
-                "section",
-                "source",
-            }
-        ),
-    ),
-    (
-        ClinicalDocEncounterContextSerializer,
-        frozenset(
-            {
-                "chief_complaint",
-                "clinical_notes",
-                "examination_findings",
-                "hpi",
-                "vitals",
-            }
-        ),
-    ),
-    (
-        ClinicalDocFacilityContextSerializer,
-        frozenset(
-            {
-                "county",
-                "level",
-            }
-        ),
-    ),
-    (
-        ClinicalDocGenerateRequestSerializer,
-        frozenset(
-            {
-                "additional_instructions",
-                "admission_context",
-                "discharge_layout",
-                "document_type",
-                "encounter_context",
-                "facility_context",
-                "generation_mode",
-                "include_icd10_codes",
-                "output_format",
-                "patient_context",
-                "system_instruction",
-                "template_sections",
-            }
-        ),
-    ),
-    (
-        ClinicalDocGenerateResponseSerializer,
-        frozenset(
-            {
-                "citations",
-                "disclaimer",
-                "document_type",
-                "error",
-                "fhir_resource",
-                "full_text",
-                "generation_mode",
-                "has_safety_concerns",
-                "mode",
-                "model_used",
-                "processing_time_ms",
-                "safety_alerts",
-                "section_provenance",
-                "sections",
-                "suggested_icd10_codes",
-            }
-        ),
-    ),
-    (
-        ClinicalDocICD10SuggestionSerializer,
-        frozenset(
-            {
-                "code",
-                "confidence",
-                "description",
-            }
-        ),
-    ),
-    (
-        ClinicalDocPatientContextSerializer,
-        frozenset(
-            {
-                "allergies",
-                "comorbidities",
+                "admission_id",
+                "admission_type",
+                "can_ambulate",
+                "can_tolerate_oral",
+                "chw_referral_made",
                 "current_medications",
-                "facility_level",
+                "days_admitted",
+                "has_caregiver_at_home",
+                "has_follow_up_arranged",
+                "has_nhif_or_sha",
+                "lab_results",
+                "patient_age",
+                "primary_diagnosis",
+                "vitals_history",
+            }
+        ),
+    ),
+    (
+        DischargeAssessResponseSerializer,
+        frozenset(
+            {
+                "criteria",
+                "error",
+                "mode",
+                "readiness_level",
+                "readiness_score",
+                "readmission_risk",
+                "readmission_risk_level",
+                "recommendations",
+                "stored_id",
+                "unmet_criteria_count",
+                "vitals_stability",
+            }
+        ),
+    ),
+    (
+        DischargeCriterionSerializer,
+        frozenset(
+            {
+                "category",
+                "criterion",
+                "current_value",
+                "details",
+                "met",
+                "name",
+                "notes",
+                "source",
+                "target_value",
+            }
+        ),
+    ),
+    (
+        LabFlagSerializer,
+        frozenset(
+            {
+                "deviation_percent",
+                "message",
+                "reference_range",
+                "status",
+                "test_name",
+                "unit",
+                "value",
+            }
+        ),
+    ),
+    (
+        LabInterpretRequestSerializer,
+        frozenset(
+            {
+                "diagnoses",
+                "encounter_id",
+                "gestational_weeks",
+                "is_pregnant",
+                "lab_result_id",
+                "lab_results",
                 "patient_age",
                 "patient_sex",
             }
         ),
     ),
     (
-        ClinicalDocSectionSerializer,
+        LabInterpretResponseSerializer,
         frozenset(
             {
-                "content",
-                "section_id",
-                "title",
+                "critical_alerts",
+                "error",
+                "flags",
+                "interpretation_summary",
+                "mode",
+                "patterns",
+                "suggested_followup_labs",
             }
         ),
     ),
     (
-        ClinicalDocVitalsSerializer,
+        LabPatternSerializer,
         frozenset(
             {
-                "blood_pressure_diastolic",
-                "blood_pressure_systolic",
+                "confidence",
+                "contributing_tests",
+                "description",
+                "pattern_name",
+                "significance",
+            }
+        ),
+    ),
+    (
+        LabResultItemSerializer,
+        frozenset(
+            {
+                "flag",
+                "reference_high",
+                "reference_low",
+                "test_name",
+                "timestamp",
+                "unit",
+                "value",
+            }
+        ),
+    ),
+    (
+        VitalsSnapshotSerializer,
+        frozenset(
+            {
+                "diastolic_bp",
                 "heart_rate",
+                "oxygen_saturation",
                 "respiratory_rate",
-                "spo2",
+                "systolic_bp",
                 "temperature",
+                "timestamp",
+            }
+        ),
+    ),
+    (
+        AIFeedbackRequestSerializer,
+        frozenset(
+            {
+                "bot_response",
+                "conversation_id",
+                "feedback",
+                "message_id",
+                "metadata",
+                "risk_level",
+                "service_type",
+                "user_query",
+            }
+        ),
+    ),
+    (
+        AIFeedbackResponseSerializer,
+        frozenset(
+            {
+                "feedback_id",
+                "message",
+                "status",
+            }
+        ),
+    ),
+    (
+        AIFeedbackStatsResponseSerializer,
+        frozenset(
+            {
+                "recent_negatives",
+                "total_down",
+                "total_up",
+            }
+        ),
+    ),
+    (
+        AISuggestionAuditItemSerializer,
+        frozenset(
+            {
+                "accepted_value",
+                "confidence",
+                "field_name",
+                "source",
+                "suggestion_id",
+            }
+        ),
+    ),
+    (
+        AISuggestionAuditRequestSerializer,
+        frozenset(
+            {
+                "encounter_type",
+                "event_type",
+                "note_format",
+                "suggestion_type",
+                "suggestions",
+            }
+        ),
+    ),
+    (
+        AISuggestionAuditResponseSerializer,
+        frozenset(
+            {
+                "logged_count",
+                "message",
+                "status",
+            }
+        ),
+    ),
+    (
+        AutopopulateRequestSerializer,
+        frozenset(
+            {
+                "allergies",
+                "chief_complaint",
+                "clinical_notes",
+                "current_medications",
+                "encounter_type",
+                "patient_age",
+                "patient_sex",
+                "vitals",
+            }
+        ),
+    ),
+    (
+        AutopopulateResponseSerializer,
+        frozenset(
+            {
+                "error",
+                "icd10_suggestions",
+                "suggested_fields",
+            }
+        ),
+    ),
+    (
+        AutopopulateSuggestedFieldSerializer,
+        frozenset(
+            {
+                "confidence",
+                "field_name",
+                "reason",
+                "source",
+                "value",
             }
         ),
     ),
@@ -854,186 +1127,6 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "condition",
                 "confidence",
                 "icd10_code",
-            }
-        ),
-    ),
-    (
-        DischargeAssessRequestSerializer,
-        frozenset(
-            {
-                "admission_id",
-                "admission_type",
-                "can_ambulate",
-                "can_tolerate_oral",
-                "chw_referral_made",
-                "current_medications",
-                "days_admitted",
-                "has_caregiver_at_home",
-                "has_follow_up_arranged",
-                "has_nhif_or_sha",
-                "lab_results",
-                "patient_age",
-                "primary_diagnosis",
-                "vitals_history",
-            }
-        ),
-    ),
-    (
-        DischargeAssessResponseSerializer,
-        frozenset(
-            {
-                "criteria",
-                "error",
-                "mode",
-                "readiness_level",
-                "readiness_score",
-                "readmission_risk",
-                "readmission_risk_level",
-                "recommendations",
-                "stored_id",
-                "unmet_criteria_count",
-                "vitals_stability",
-            }
-        ),
-    ),
-    (
-        DischargeCriterionSerializer,
-        frozenset(
-            {
-                "category",
-                "criterion",
-                "current_value",
-                "details",
-                "met",
-                "name",
-                "notes",
-                "source",
-                "target_value",
-            }
-        ),
-    ),
-    (
-        EGFRCalculateRequestSerializer,
-        frozenset(
-            {
-                "age",
-                "creatinine",
-                "creatinine_unit",
-                "encounter_id",
-                "height_cm",
-                "patient_id",
-                "sex",
-                "weight_kg",
-            }
-        ),
-    ),
-    (
-        EGFRCalculateResponseSerializer,
-        frozenset(
-            {
-                "category",
-                "ckd_stage",
-                "creatinine_used_mg_dl",
-                "dose_adjustment_band",
-                "egfr_ckd_epi",
-                "egfr_cockcroft_gault",
-                "flags",
-                "interpretation",
-                "mode",
-                "stored_id",
-            }
-        ),
-    ),
-    (
-        FacilityKBDocumentDeleteResponseSerializer,
-        frozenset(
-            {
-                "message",
-                "status",
-            }
-        ),
-    ),
-    (
-        FacilityKBDocumentSerializer,
-        frozenset(
-            {
-                "filename",
-                "id",
-                "size_bytes",
-                "status",
-                "uploaded_at",
-            }
-        ),
-    ),
-    (
-        FacilityKBInfoResponseSerializer,
-        frozenset(
-            {
-                "document_count",
-                "documents",
-                "facility_name",
-                "total_size_bytes",
-            }
-        ),
-    ),
-    (
-        FacilityKBSearchResponseSerializer,
-        frozenset(
-            {
-                "query",
-                "results",
-                "total",
-            }
-        ),
-    ),
-    (
-        FacilityKBSearchResultSerializer,
-        frozenset(
-            {
-                "filename",
-                "id",
-                "score",
-                "snippet",
-            }
-        ),
-    ),
-    (
-        FacilityKBUploadResponseSerializer,
-        frozenset(
-            {
-                "filename",
-                "id",
-                "size_bytes",
-                "status",
-            }
-        ),
-    ),
-    (
-        ICD10SuggestRequestSerializer,
-        frozenset(
-            {
-                "clinical_text",
-            }
-        ),
-    ),
-    (
-        ICD10SuggestResponseSerializer,
-        frozenset(
-            {
-                "clinical_text_preview",
-                "error",
-                "suggestions",
-            }
-        ),
-    ),
-    (
-        ICD10SuggestionSerializer,
-        frozenset(
-            {
-                "code",
-                "confidence",
-                "description",
-                "is_billable",
             }
         ),
     ),
@@ -1129,6 +1222,123 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
+        SOFAScoreBreakdownSerializer,
+        frozenset(
+            {
+                "cardiovascular",
+                "coagulation",
+                "liver",
+                "neurological",
+                "renal",
+                "respiratory",
+            }
+        ),
+    ),
+    (
+        AIAdvisoryBulkSeedSerializer,
+        frozenset(
+            {
+                "ai_result_id",
+                "ai_result_type",
+            }
+        ),
+    ),
+    (
+        AIAdvisoryOrderLinkActionSerializer,
+        frozenset(
+            {
+                "imaging_order_id",
+                "lab_order_id",
+                "prescription_id",
+                "status",
+            }
+        ),
+    ),
+    (
+        AIAdvisoryOrderLinkSerializer,
+        frozenset(
+            {
+                "actioned_at",
+                "actioned_by",
+                "ai_result_id",
+                "created_at",
+                "id",
+                "imaging_order_id",
+                "lab_order_id",
+                "order_number",
+                "prescription_id",
+                "status",
+                "suggestion_category",
+                "suggestion_index",
+                "suggestion_text",
+            }
+        ),
+    ),
+    (
+        FacilityKBDocumentDeleteResponseSerializer,
+        frozenset(
+            {
+                "message",
+                "status",
+            }
+        ),
+    ),
+    (
+        FacilityKBDocumentSerializer,
+        frozenset(
+            {
+                "filename",
+                "id",
+                "size_bytes",
+                "status",
+                "uploaded_at",
+            }
+        ),
+    ),
+    (
+        FacilityKBInfoResponseSerializer,
+        frozenset(
+            {
+                "document_count",
+                "documents",
+                "facility_name",
+                "total_size_bytes",
+            }
+        ),
+    ),
+    (
+        FacilityKBSearchResponseSerializer,
+        frozenset(
+            {
+                "query",
+                "results",
+                "total",
+            }
+        ),
+    ),
+    (
+        FacilityKBSearchResultSerializer,
+        frozenset(
+            {
+                "filename",
+                "id",
+                "score",
+                "snippet",
+            }
+        ),
+    ),
+    (
+        FacilityKBUploadResponseSerializer,
+        frozenset(
+            {
+                "filename",
+                "id",
+                "size_bytes",
+                "status",
+            }
+        ),
+    ),
+    (
         InvestigationSuggestRequestSerializer,
         frozenset(
             {
@@ -1145,75 +1355,6 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "patient_sex",
                 "region",
                 "symptoms",
-            }
-        ),
-    ),
-    (
-        LabFlagSerializer,
-        frozenset(
-            {
-                "deviation_percent",
-                "message",
-                "reference_range",
-                "status",
-                "test_name",
-                "unit",
-                "value",
-            }
-        ),
-    ),
-    (
-        LabInterpretRequestSerializer,
-        frozenset(
-            {
-                "diagnoses",
-                "encounter_id",
-                "gestational_weeks",
-                "is_pregnant",
-                "lab_result_id",
-                "lab_results",
-                "patient_age",
-                "patient_sex",
-            }
-        ),
-    ),
-    (
-        LabInterpretResponseSerializer,
-        frozenset(
-            {
-                "critical_alerts",
-                "error",
-                "flags",
-                "interpretation_summary",
-                "mode",
-                "patterns",
-                "suggested_followup_labs",
-            }
-        ),
-    ),
-    (
-        LabPatternSerializer,
-        frozenset(
-            {
-                "confidence",
-                "contributing_tests",
-                "description",
-                "pattern_name",
-                "significance",
-            }
-        ),
-    ),
-    (
-        LabResultItemSerializer,
-        frozenset(
-            {
-                "flag",
-                "reference_high",
-                "reference_low",
-                "test_name",
-                "timestamp",
-                "unit",
-                "value",
             }
         ),
     ),
@@ -1302,109 +1443,6 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
-        SOFAScoreBreakdownSerializer,
-        frozenset(
-            {
-                "cardiovascular",
-                "coagulation",
-                "liver",
-                "neurological",
-                "renal",
-                "respiratory",
-            }
-        ),
-    ),
-    (
-        StoredAIResultSerializer,
-        frozenset(
-            {
-                "created_at",
-                "created_by",
-                "id",
-                "result_data",
-                "service_mode",
-            }
-        ),
-    ),
-    (
-        StoredCDSResultSerializer,
-        frozenset(
-            {
-                "alert_count",
-                "created_at",
-                "created_by",
-                "encounter_id",
-                "id",
-                "result_data",
-                "rules_fired",
-                "service_mode",
-            }
-        ),
-    ),
-    (
-        StoredCarePlanSerializer,
-        frozenset(
-            {
-                "admission_id",
-                "created_at",
-                "created_by",
-                "encounter_id",
-                "id",
-                "primary_diagnosis",
-                "result_data",
-                "service_mode",
-            }
-        ),
-    ),
-    (
-        StoredDischargeResultSerializer,
-        frozenset(
-            {
-                "admission_id",
-                "created_at",
-                "created_by",
-                "id",
-                "readiness_level",
-                "readiness_score",
-                "result_data",
-                "service_mode",
-            }
-        ),
-    ),
-    (
-        StoredEGFRResultSerializer,
-        frozenset(
-            {
-                "ckd_stage",
-                "created_at",
-                "created_by",
-                "dose_adjustment_band",
-                "egfr_ckd_epi",
-                "encounter_id",
-                "id",
-                "patient_id",
-                "result_data",
-                "service_mode",
-            }
-        ),
-    ),
-    (
-        StoredICURiskResultSerializer,
-        frozenset(
-            {
-                "admission_id",
-                "created_at",
-                "created_by",
-                "id",
-                "prediction_type",
-                "result_data",
-                "risk_level",
-                "risk_score",
-                "service_mode",
-            }
-        ),
-    ),
-    (
         StoredInvestigationSuggestSerializer,
         frozenset(
             {
@@ -1416,22 +1454,6 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "result_data",
                 "service_mode",
                 "suggestion_count",
-            }
-        ),
-    ),
-    (
-        StoredLabInterpretSerializer,
-        frozenset(
-            {
-                "abnormal_count",
-                "created_at",
-                "created_by",
-                "critical_count",
-                "encounter_id",
-                "id",
-                "lab_result_id",
-                "result_data",
-                "service_mode",
             }
         ),
     ),
@@ -1621,20 +1643,6 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "error",
                 "procedures",
                 "results",
-            }
-        ),
-    ),
-    (
-        VitalsSnapshotSerializer,
-        frozenset(
-            {
-                "diastolic_bp",
-                "heart_rate",
-                "oxygen_saturation",
-                "respiratory_rate",
-                "systolic_bp",
-                "temperature",
-                "timestamp",
             }
         ),
     ),

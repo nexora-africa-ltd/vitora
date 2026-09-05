@@ -15,6 +15,7 @@ import importlib
 import inspect
 import os
 import sys
+from pathlib import Path
 
 import django
 
@@ -32,16 +33,18 @@ APPS_DIR = os.path.join(os.path.dirname(__file__), "..", "hmis", "apps")
 
 
 def find_serializer_modules(base_dir: str, base_package: str = "hmis.apps") -> list[str]:
-    """Walk hmis/apps and find all serializers.py modules."""
+    """Walk hmis/apps and find every Python module with ``serializer`` in its filename."""
     modules = []
-    for root, dirs, files in os.walk(base_dir):
-        if "serializers.py" in files:
+    for root, _dirs, files in os.walk(base_dir):
+        for filename in files:
+            stem = Path(filename).stem
+            if not filename.endswith(".py") or "serializer" not in stem:
+                continue
             rel = os.path.relpath(root, base_dir)
-            if rel == ".":
-                module_path = base_package + ".serializers"
-            else:
-                module_path = base_package + "." + rel.replace(os.sep, ".") + ".serializers"
-            modules.append(module_path)
+            package_path = (
+                base_package if rel == "." else base_package + "." + rel.replace(os.sep, ".")
+            )
+            modules.append(f"{package_path}.{stem}")
     return sorted(modules)
 
 
@@ -186,7 +189,7 @@ def generate_test_file(app_label: str, serializers: list) -> str:
     lines.append("        )")
     lines.append("")
 
-    return "\n".join(lines) + "\n"
+    return "\n".join(lines).rstrip() + "\n"
 
 
 # Output directory

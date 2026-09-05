@@ -320,6 +320,8 @@ class TestBuildUserInfo:
             "permissions",
             "facility",
             "onboarding_complete",
+            "lis_onboarding_complete",
+            "lis_onboarding_completed_at",
             "memberships",
             "subscription_tier",
             "plan_features",
