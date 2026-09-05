@@ -421,7 +421,8 @@ def _safe_response_excerpt(response: requests.Response, max_bytes: int = 4096) -
     ctype = response.headers.get("Content-Type", "")
     if "json" in ctype.lower():
         try:
-            return response.json() if len(response.text or "") <= max_bytes else json.loads(text)
+            payload = response.json() if len(response.text or "") <= max_bytes else json.loads(text)
+            return _redact(payload)
         except (ValueError, json.JSONDecodeError):
             return {"raw": text}
     return {"raw": text}

@@ -185,6 +185,7 @@ def _build_user_info(user) -> dict:
                     "operating_mode": operating_mode,
                     "deployment_profile": deployment_profile,
                     "sha_contracted": fac.sha_contracted,
+                    "shr_enabled": django_settings.SHR_ENABLED,
                 }
 
     # Fall back to Django groups for role

@@ -762,6 +762,7 @@ class AuthFacilitySerializer(serializers.Serializer):
     operating_mode = serializers.ChoiceField(choices=Facility.OperatingMode.choices)
     deployment_profile = serializers.ChoiceField(choices=AUTH_DEPLOYMENT_PROFILE_CHOICES)
     sha_contracted = serializers.BooleanField()
+    shr_enabled = serializers.BooleanField()
 
 
 class AuthUserInfoSerializer(serializers.Serializer):

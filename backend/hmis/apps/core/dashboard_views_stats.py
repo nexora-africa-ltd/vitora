@@ -869,7 +869,14 @@ def _get_allied_health_stats(today, facility=None, organization=None) -> dict:
         try:
             from hmis.apps.social_work.models import SocialWorkCase
 
-            open_cases = SocialWorkCase.objects.filter(status="OPEN", **scope).count()
+            # SocialWorkCase has no direct tenant fields; its referral owns the facility/org scope.
+            social_work_scope = _build_scope_filter(
+                facility,
+                organization,
+                facility_field="referral__facility",
+                organization_field="referral__organization",
+            )
+            open_cases = SocialWorkCase.objects.filter(status="OPEN", **social_work_scope).count()
         except ImportError as exc:
             logger.info(
                 "Optional allied health stats dependency unavailable",

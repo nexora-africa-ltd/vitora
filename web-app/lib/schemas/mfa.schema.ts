@@ -118,6 +118,7 @@ const UserFacilitySchema = z.object({
   level: z.string(),
   modules: FacilityModulesSchema,
   sha_contracted: z.boolean(),
+  shr_enabled: z.boolean(),
 });
 
 export const MFAVerifyUserSchema = z.object({

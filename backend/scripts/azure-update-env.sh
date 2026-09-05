@@ -160,6 +160,8 @@ az containerapp update \
     "SHA_API_TIMEOUT=${SHA_API_TIMEOUT:-30}" \
     "SHA_FACILITY_FR_CODE=${SHA_FACILITY_FR_CODE:-}" \
     "SHA_TIBERBU_BASE_URL=${SHA_TIBERBU_BASE_URL:-https://api-uat.tiberbu.health}" \
+    "SHR_ENABLED=${SHR_ENABLED:-false}" \
+    "SHR_ILM_BASE_URL=${SHR_ILM_BASE_URL:-https://ilm-dev.dha.go.ke/uat-middleware/api/v1}" \
     "ILM_BASE_URL=${ILM_BASE_URL:-}" \
     "ILM_REQUEST_TIMEOUT=${ILM_REQUEST_TIMEOUT:-30}" \
     "ILM_MAX_RETRIES=${ILM_MAX_RETRIES:-2}" \

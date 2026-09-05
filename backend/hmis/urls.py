@@ -1216,6 +1216,8 @@ urlpatterns = [
     path("api/billing/", include("hmis.apps.billing.urls", namespace="billing")),
     # SHA (Social Health Authority) API
     path("api/sha/", include("hmis.apps.billing.sha_urls", namespace="sha")),
+    # DHA Shared Health Record API
+    path("api/shr/", include("hmis.apps.shr.urls", namespace="shr")),
     # Insurance (Private Insurers) API
     path("api/insurance/", include("hmis.apps.insurance.urls", namespace="insurance")),
     # Inpatient API

@@ -105,6 +105,8 @@ export interface NavItemVisibilityContext {
   activeClinicTypes?: Set<string>;
   /** Whether the current user is a Nexora superuser */
   isSuperuser?: boolean;
+  /** Global DHA Shared Health Record availability, supplied by the backend auth payload. */
+  shrEnabled?: boolean;
 }
 
 export interface NavItem {
@@ -186,6 +188,13 @@ const _allNavItems: NavItemType[] = [
         requiresInternet: true,
       },
       { label: 'New Patient', href: '/patients/new', icon: UserPlus2 },
+      {
+        label: 'Shared Health Records',
+        href: '/patients/shared-health-records',
+        icon: ShieldCheck,
+        requiresInternet: true,
+        visibleWhen: ({ shrEnabled }) => shrEnabled === true,
+      },
     ],
   },
   {

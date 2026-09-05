@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "django_prometheus",  # Prometheus metrics export (/metrics)
     # Local apps
     "hmis.apps.core",
+    "hmis.apps.shr.apps.SHRConfig",
     "hmis.apps.patients",
     "hmis.apps.encounters",
     "hmis.apps.clinical_templates",
@@ -948,13 +949,11 @@ SHA_CONSENT_LOCAL_EXPIRY_DEFAULT_SECONDS = int(
     os.getenv("SHA_CONSENT_LOCAL_EXPIRY_DEFAULT_SECONDS", "3600")
 )
 
-# SHA API Endpoints for Shared Health Record (SHR) Integration
-# Reference: docs/sha-guides/shr-integration.md
-SHA_API_ENDPOINTS = {
-    "patient_resource": "/v1/patient-resource",  # PUT - Patient registration/update
-    "shr_submission": "/v1/shr-submission",  # POST - MedicationRequest/MedicationDispense
-    "shr_summary": "/v1/shr/summary",  # GET - IPS/Patient summary retrieval
-}
+# DHA Shared Health Record consent service. This host includes the ILM /api/v1 prefix.
+SHR_ENABLED = os.getenv("SHR_ENABLED", "false").lower() in ("1", "true", "yes", "on")
+SHR_ILM_BASE_URL = os.getenv(
+    "SHR_ILM_BASE_URL", "https://ilm-dev.dha.go.ke/uat-middleware/api/v1"
+).rstrip("/")
 
 # SHA API Endpoints (Official Kenya Digital Superhighway)
 SHA_ENDPOINTS = {

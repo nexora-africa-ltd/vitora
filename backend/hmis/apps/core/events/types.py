@@ -109,6 +109,13 @@ class BillingEvents:
     SHA_REMITTANCE_AUTO_FETCHED = "billing.sha_remittance.auto_fetched"
 
 
+class SHREvents:
+    """Shared Health Record consent lifecycle event types."""
+
+    CONSENT_REQUESTED = "shr.consent.requested"
+    STATUS_CHANGED = "shr.consent.status_changed"
+
+
 class PharmacyEvents:
     """Pharmacy domain event types."""
 

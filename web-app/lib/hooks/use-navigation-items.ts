@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { usePermissions } from '@/lib/hooks/use-permissions';
+import { useAuth } from '@/lib/auth';
 import { useFacility } from '@/lib/context/facility-context';
 import { useNavigationMode } from '@/lib/context/navigation-mode-context';
 import { useSubscription } from '@/lib/hooks/use-subscription';
@@ -26,6 +27,7 @@ export interface NavigationResult {
 }
 
 export function useNavigationItems(): NavigationResult {
+  const { user } = useAuth();
   const { canAccessModule, canPerformAction, isSuperuser } = usePermissions();
   const { hasModule, facilityDetail, facility } = useFacility();
   const { navigationMode, isClinicalNavigationEligible } = useNavigationMode();
@@ -86,6 +88,7 @@ export function useNavigationItems(): NavigationResult {
       facilityOwnership: facilityDetail?.ownership,
       activeClinicTypes,
       isSuperuser,
+      shrEnabled: user?.facility?.shr_enabled,
     };
 
     const isAllowed = (item: {
@@ -192,5 +195,6 @@ export function useNavigationItems(): NavigationResult {
     isSustainedOffline,
     interfacilityTransfersEnabled,
     facility,
+    user?.facility?.shr_enabled,
   ]);
 }

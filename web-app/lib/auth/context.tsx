@@ -55,6 +55,7 @@ export interface UserFacility {
     | 'STANDALONE_DIAGNOSTIC';
   deployment_profile?: 'full_hmis' | 'lis_standalone';
   sha_contracted: boolean;
+  shr_enabled: boolean;
 }
 
 // User type matching Django backend

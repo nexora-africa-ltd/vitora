@@ -587,6 +587,30 @@ class TestDashboardStatsFieldRegression:
         assert all("updated_at__date" not in kwargs for kwargs in calls)
         assert stats["sessions_today"] >= 0
 
+    def test_allied_health_scopes_social_work_cases_through_referral(
+        self, monkeypatch, sample_facility, sample_organization
+    ):
+        """Social work cases inherit tenant scope from their referral, not a direct facility FK."""
+        from hmis.apps.social_work.models import SocialWorkCase
+
+        class _CountQuery:
+            def count(self):
+                return 0
+
+        calls = []
+
+        def _capture_filter(*_args, **kwargs):
+            calls.append(kwargs)
+            return _CountQuery()
+
+        monkeypatch.setattr(SocialWorkCase.objects, "filter", _capture_filter)
+
+        dashboard_views._get_allied_health_stats(
+            today=timezone.localdate(), facility=sample_facility, organization=sample_organization
+        )
+
+        assert calls == [{"status": "OPEN", "referral__facility": sample_facility}]
+
     def test_allied_health_logging_extra_avoids_reserved_module_key(
         self, monkeypatch, caplog, sample_facility, sample_organization
     ):

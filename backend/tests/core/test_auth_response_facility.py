@@ -335,6 +335,7 @@ class TestBuildUserInfo:
         modules = info["facility"]["modules"]
         expected_modules = {f[len("has_") :] for f in Facility.MODULE_FLAG_TO_FEATURE}
         assert set(modules.keys()) == expected_modules
+        assert isinstance(info["facility"]["shr_enabled"], bool)
 
     def test_user_without_staff_profile(self, db):
         """User without a StaffProfile should get role=None, facility=None."""

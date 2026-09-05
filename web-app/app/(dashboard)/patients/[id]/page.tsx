@@ -73,6 +73,7 @@ import { usePatientContext } from '@/lib/context/patient-context';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useFacility } from '@/lib/context/facility-context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
+import { useAuth } from '@/lib/auth';
 import { calculateAge, formatDate, formatPhoneNumber } from '@/lib/utils/format';
 import { PatientEncounters } from '@/components/patients/patient-encounters';
 import { EmergencyContactsList } from '@/components/patients/emergency-contacts-list';
@@ -90,6 +91,7 @@ import { PatientAlliedHealthTab } from '@/components/patients/allied-health';
 import { PatientAuditTrail } from '@/components/patients/patient-audit-trail';
 import { EGFRTrendChart } from '@/components/patients/egfr-trend-chart';
 import { IPSViewer } from '@/components/patients/ips-viewer';
+import { SHRAccessPanel } from '@/components/patients/shr-access-panel';
 import { EligibilityBanner, DependentsView, BenefitsPanel } from '@/components/billing/sha';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -141,6 +143,7 @@ export default function PatientDetailPage() {
     'all'
   );
   const { canEditPatient } = usePermissions();
+  const { user } = useAuth();
   const { hasModule, facility } = useFacility();
   const { data: emergencyContacts } = usePatientEmergencyContacts(patient?.id ?? 0);
   const contactPatientSms = useContactPatientSms();
@@ -229,6 +232,10 @@ export default function PatientDetailPage() {
             </>
           }
         />
+
+        {user?.facility?.shr_enabled && (
+          <SHRAccessPanel patientId={patient.id} hasCrNumber={Boolean(patient.cr_number)} />
+        )}
 
         {/* Patient Summary Bar */}
         <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:p-4">
