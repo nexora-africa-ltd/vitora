@@ -30,6 +30,7 @@ from .models import (
     AdmissionRecommendation,
     AdverseTransfusionReaction,
     Bed,
+    BedAssignmentRequest,
     BloodTransfusionObservation,
     BPMonitoringReading,
     CardiacRespiratoryReaction,
@@ -143,6 +144,85 @@ class BedTurnoverActionSerializer(serializers.Serializer):
         default="",
         help_text="Optional housekeeping or turnover notes",
     )
+
+
+class BedAssignmentRequestSerializer(serializers.ModelSerializer):
+    """Serializer for facility-scoped bed assignment requests."""
+
+    patient_name = serializers.CharField(source="patient.full_name", read_only=True)
+    patient_mrn = serializers.CharField(source="patient.mrn", read_only=True)
+    requested_ward_name = serializers.CharField(source="requested_ward.name", read_only=True)
+    assigned_bed_number = serializers.CharField(source="assigned_bed.bed_number", read_only=True)
+    requested_by_username = serializers.CharField(source="requested_by.username", read_only=True)
+    assigned_by_username = serializers.CharField(source="assigned_by.username", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    priority_display = serializers.CharField(source="get_priority_display", read_only=True)
+
+    class Meta:
+        model = BedAssignmentRequest
+        fields = [
+            "id",
+            "patient",
+            "patient_name",
+            "patient_mrn",
+            "recommendation",
+            "requested_ward",
+            "requested_ward_name",
+            "priority",
+            "priority_display",
+            "reason",
+            "requested_by",
+            "requested_by_username",
+            "status",
+            "status_display",
+            "assigned_bed",
+            "assigned_bed_number",
+            "assigned_by",
+            "assigned_by_username",
+            "assigned_at",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "requested_by",
+            "status",
+            "assigned_bed",
+            "assigned_by",
+            "assigned_at",
+            "created_at",
+            "updated_at",
+        ]
+
+    def validate(self, attrs):
+        """Ensure supplied records belong to the active facility context."""
+        attrs = super().validate(attrs)
+        request = self.context.get("request")
+        facility = getattr(request, "facility", None)
+        if facility is None:
+            return attrs
+
+        patient = attrs.get("patient") or getattr(self.instance, "patient", None)
+        ward = attrs.get("requested_ward") or getattr(self.instance, "requested_ward", None)
+        recommendation = attrs.get("recommendation") or getattr(
+            self.instance, "recommendation", None
+        )
+        errors = {}
+        if patient and patient.organization_id != facility.organization_id:
+            errors["patient"] = "Patient must belong to the active facility organization."
+        if ward and ward.facility_id != facility.id:
+            errors["requested_ward"] = "Requested ward must belong to the active facility."
+        if recommendation and recommendation.encounter.facility_id != facility.id:
+            errors["recommendation"] = "Recommendation must belong to the active facility."
+        if errors:
+            raise serializers.ValidationError(errors)
+        return attrs
+
+
+class BedAssignmentRequestAssignSerializer(serializers.Serializer):
+    """Input for reserving a bed for an existing assignment request."""
+
+    bed = serializers.PrimaryKeyRelatedField(queryset=Bed.objects.all())
 
 
 class AdmissionRecommendationSerializer(serializers.ModelSerializer):

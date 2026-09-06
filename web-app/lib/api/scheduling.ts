@@ -17,6 +17,8 @@ import {
   SlotCheckResultSchema,
   PaginatedShiftListSchema,
   ShiftSchema,
+  ShiftVacancySchema,
+  PaginatedShiftVacancySchema,
   StaffWorkloadSchema,
   SchedulingSettingsSchema,
   StaffConstraintSchema,
@@ -56,6 +58,10 @@ import type {
   ShiftCreateData,
   ShiftListParams,
   PaginatedShifts,
+  ShiftVacancy,
+  ShiftVacancyCreateData,
+  ShiftVacancyListParams,
+  PaginatedShiftVacancies,
   StaffWorkload,
   BulkCreateShiftsPayload,
   BulkCreateShiftsResult,
@@ -550,6 +556,40 @@ export const shiftsApi = {
     });
     return parseResponse(z.array(CrossFacilityConflictSchema), response.data, {
       context: 'shiftsApi.crossFacilityConflicts',
+    });
+  },
+};
+
+// =============================================================================
+// Shift Vacancies API
+// =============================================================================
+
+export const shiftVacanciesApi = {
+  list: async (params?: ShiftVacancyListParams): Promise<PaginatedShiftVacancies> => {
+    const response = await apiClient.get(`${BASE_URL}/vacancies/`, { params });
+    return parseResponse(PaginatedShiftVacancySchema, response.data, {
+      context: 'shiftVacanciesApi.list',
+    });
+  },
+
+  create: async (data: ShiftVacancyCreateData): Promise<ShiftVacancy> => {
+    const response = await apiClient.post(`${BASE_URL}/vacancies/`, data);
+    return parseResponse(ShiftVacancySchema, response.data, {
+      context: 'shiftVacanciesApi.create',
+    });
+  },
+
+  fill: async (id: number): Promise<ShiftVacancy> => {
+    const response = await apiClient.post(`${BASE_URL}/vacancies/${id}/fill/`);
+    return parseResponse(ShiftVacancySchema, response.data, {
+      context: 'shiftVacanciesApi.fill',
+    });
+  },
+
+  cancel: async (id: number): Promise<ShiftVacancy> => {
+    const response = await apiClient.post(`${BASE_URL}/vacancies/${id}/cancel/`);
+    return parseResponse(ShiftVacancySchema, response.data, {
+      context: 'shiftVacanciesApi.cancel',
     });
   },
 };

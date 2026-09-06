@@ -27,6 +27,7 @@ from hmis.apps.scheduling.models import (
     Schedule,
     Shift,
     ShiftSwapRequest,
+    ShiftVacancy,
 )
 
 logger = logging.getLogger(__name__)
@@ -242,6 +243,47 @@ def publish_shift_event(sender, instance, created, **kwargs):
 
     # --- In-app notifications for shift events ---
     _notify_shift_event(instance, created)
+
+
+# ---------------------------------------------------------------------------
+# Explicit shift vacancy events
+# ---------------------------------------------------------------------------
+
+_SHIFT_VACANCY_STATUS_EVENT_MAP = {
+    "FILLED": SchedulingEvents.SHIFT_VACANCY_FILLED,
+    "CANCELLED": SchedulingEvents.SHIFT_VACANCY_CANCELLED,
+}
+
+
+@receiver(post_save, sender=ShiftVacancy)
+def publish_shift_vacancy_event(sender, instance, created, **kwargs):
+    """Publish lifecycle events for explicit shift vacancies."""
+    if is_sync_materialization_active():
+        return
+    event_type = (
+        SchedulingEvents.SHIFT_VACANCY_CREATED
+        if created
+        else _SHIFT_VACANCY_STATUS_EVENT_MAP.get(instance.status)
+    )
+    if not event_type:
+        return
+
+    publish_event(
+        event_type=event_type,
+        aggregate_type="ShiftVacancy",
+        aggregate_id=instance.id,
+        payload={
+            "shift_date": str(instance.shift_date),
+            "start_time": instance.start_time.isoformat(),
+            "end_time": instance.end_time.isoformat(),
+            "shift_type": instance.shift_type,
+            "status": instance.status,
+            "department_id": instance.department_id,
+            "filled_by_id": instance.filled_by_id,
+        },
+        facility_id=instance.facility_id,
+        organization_id=instance.organization_id,
+    )
 
 
 # ---------------------------------------------------------------------------

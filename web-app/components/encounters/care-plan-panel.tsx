@@ -504,8 +504,8 @@ export function CarePlanPanel({
     if (conditions.length === 0) return false;
 
     return conditions.some((condition) => {
-      const key = (condition.key || '').toLowerCase();
-      const name = (condition.name || '').toLowerCase();
+      const key = condition.condition_key.toLowerCase();
+      const name = condition.display_name.toLowerCase();
       return (
         (key && (diagnosisCandidate.includes(key) || key.includes(diagnosisCandidate))) ||
         (name && (diagnosisCandidate.includes(name) || name.includes(diagnosisCandidate)))

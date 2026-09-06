@@ -97,5 +97,7 @@ export function toUserFacility(facility: FacilityDetail): UserFacility {
     level: facility.level,
     modules: facility.modules,
     sha_contracted: facility.sha_contracted,
+    // Facility endpoints do not expose the auth-session SHR entitlement.
+    shr_enabled: false,
   };
 }

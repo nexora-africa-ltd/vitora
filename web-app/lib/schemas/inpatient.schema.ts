@@ -38,6 +38,9 @@ export const BedStatusSchema = z.enum([
   'RESERVED',
 ]);
 
+export const BedAssignmentRequestStatusSchema = z.enum(['PENDING', 'ASSIGNED', 'CANCELLED']);
+export const BedAssignmentRequestPrioritySchema = z.enum(['ROUTINE', 'URGENT', 'EMERGENCY']);
+
 export const AdmissionRecommendationStatusSchema = z.enum([
   'PENDING',
   'ACCEPTED',
@@ -207,6 +210,39 @@ export const BedSchema = z.object({
 });
 
 export type BedSchemaType = z.infer<typeof BedSchema>;
+
+export const BedAssignmentRequestSchema = z.object({
+  id: z.number(),
+  patient: z.number(),
+  patient_name: z.string().optional(),
+  patient_mrn: z.string().optional(),
+  recommendation: z.number().nullable(),
+  requested_ward: z.number().nullable(),
+  requested_ward_name: z.string().nullable().optional(),
+  priority: BedAssignmentRequestPrioritySchema,
+  priority_display: z.string().optional(),
+  reason: z.string(),
+  requested_by: z.number(),
+  requested_by_username: z.string().optional(),
+  status: BedAssignmentRequestStatusSchema,
+  status_display: z.string().optional(),
+  assigned_bed: z.number().nullable(),
+  assigned_bed_number: z.string().nullable().optional(),
+  assigned_by: z.number().nullable(),
+  assigned_by_username: z.string().nullable().optional(),
+  assigned_at: z.string().nullable().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export const PaginatedBedAssignmentRequestSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(BedAssignmentRequestSchema),
+});
+
+export type BedAssignmentRequestSchemaType = z.infer<typeof BedAssignmentRequestSchema>;
 
 // =============================================================================
 // ADMISSION RECOMMENDATION SCHEMAS

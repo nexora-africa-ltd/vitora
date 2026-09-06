@@ -863,7 +863,7 @@ export interface AICarePlanResponse {
 
 /** Response from GET /api/ai/care-plan/conditions/ */
 export interface AICarePlanConditionsResponse {
-  conditions: { key: string; name: string; description?: string }[];
+  conditions: { condition_key: string; display_name: string; aliases?: string[] }[];
   count: number;
 }
 

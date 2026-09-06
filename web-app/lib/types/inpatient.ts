@@ -54,6 +54,41 @@ export interface Bed {
   notes?: string;
 }
 
+export type BedAssignmentRequestStatus = 'PENDING' | 'ASSIGNED' | 'CANCELLED';
+export type BedAssignmentRequestPriority = 'ROUTINE' | 'URGENT' | 'EMERGENCY';
+
+export interface BedAssignmentRequest {
+  id: number;
+  patient: number;
+  patient_name?: string;
+  patient_mrn?: string;
+  recommendation: number | null;
+  requested_ward: number | null;
+  requested_ward_name?: string | null;
+  priority: BedAssignmentRequestPriority;
+  priority_display?: string;
+  reason: string;
+  requested_by: number;
+  requested_by_username?: string;
+  status: BedAssignmentRequestStatus;
+  status_display?: string;
+  assigned_bed: number | null;
+  assigned_bed_number?: string | null;
+  assigned_by: number | null;
+  assigned_by_username?: string | null;
+  assigned_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface BedAssignmentRequestCreateData {
+  patient: number;
+  recommendation?: number;
+  requested_ward?: number;
+  priority?: BedAssignmentRequestPriority;
+  reason: string;
+}
+
 export type AdmissionRecommendationStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED';
 export type AdmissionRecommendationUrgency = 'ROUTINE' | 'URGENT' | 'EMERGENCY';
 
@@ -1094,6 +1129,18 @@ export interface BedListParams {
   status?: BedStatus;
 }
 
+export interface BedAssignmentRequestListParams {
+  status?: BedAssignmentRequestStatus;
+  priority?: BedAssignmentRequestPriority;
+  patient?: number;
+  requested_ward?: number;
+  requested_by?: number;
+  search?: string;
+  ordering?: string;
+  page?: number;
+  page_size?: number;
+}
+
 export interface DischargeListParams {
   admission?: string | number;
   discharge_type?: DischargeType;
@@ -1169,6 +1216,7 @@ export type ReviewRequestListResponse = PaginatedResponse<ReviewRequest>;
 export type KardexListResponse = PaginatedResponse<NursingKardex>;
 export type InpatientConsumableUsageListResponse = InpatientConsumableUsage[];
 export type ShiftHandoverListResponse = PaginatedResponse<ShiftHandover>;
+export type BedAssignmentRequestListResponse = PaginatedResponse<BedAssignmentRequest>;
 
 // ============================================================================
 // Ward Compatibility Types

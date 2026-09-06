@@ -255,6 +255,35 @@ export const ShiftSchema = ShiftListItemSchema.extend({
 
 export const PaginatedShiftListSchema = createPaginatedSchema(ShiftListItemSchema);
 
+// =============================================================================
+// Shift Vacancies
+// =============================================================================
+
+export const ShiftVacancyStatusSchema = z.enum(['OPEN', 'FILLED', 'CANCELLED']);
+
+export const ShiftVacancySchema = z.object({
+  id: z.number(),
+  shift_date: z.string(),
+  start_time: z.string(),
+  end_time: z.string(),
+  shift_type: ShiftTypeSchema,
+  shift_type_display: z.string(),
+  status: ShiftVacancyStatusSchema,
+  status_display: z.string(),
+  department: z.number().nullable(),
+  department_name: z.string().nullable(),
+  notes: z.string(),
+  created_by: z.number().nullable(),
+  created_by_name: z.string().nullable(),
+  filled_by: z.number().nullable(),
+  filled_by_name: z.string().nullable(),
+  filled_at: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const PaginatedShiftVacancySchema = createPaginatedSchema(ShiftVacancySchema);
+
 export const StaffWorkloadSchema = z.object({
   resource_id: z.number(),
   resource_name: z.string(),

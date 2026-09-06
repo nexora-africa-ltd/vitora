@@ -73,6 +73,151 @@ class TestInventoryBootstrapAPI:
 
 
 # ============================================================================
+# Inventory Exception Summary API
+# ============================================================================
+
+
+class TestInventoryExceptionSummaryAPI:
+    """Tests for the facility-scoped inventory exception summary endpoint."""
+
+    ENDPOINT = "/api/inventory/exceptions-summary/"
+
+    def test_returns_current_facility_exception_counts(
+        self,
+        authenticated_client,
+        sample_drug,
+        sample_supplier,
+        sample_facility,
+        sample_organization,
+        second_facility,
+        test_user,
+    ):
+        """Should count only qualifying unresolved exceptions at the current facility."""
+        from hmis.apps.inventory.models import GoodsReceiptNote, PurchaseOrder
+        from hmis.apps.pharmacy.models import StockAlert
+
+        StockAlert.objects.create(
+            drug=sample_drug,
+            alert_type="LOW_STOCK",
+            severity="MEDIUM",
+            message="Low stock",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        StockAlert.objects.create(
+            drug=sample_drug,
+            alert_type="OUT_OF_STOCK",
+            severity="CRITICAL",
+            message="Out of stock",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        StockAlert.objects.create(
+            drug=sample_drug,
+            alert_type="LOW_STOCK",
+            severity="MEDIUM",
+            message="Resolved alert",
+            is_resolved=True,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        StockAlert.objects.create(
+            drug=sample_drug,
+            alert_type="EXPIRING_SOON",
+            severity="MEDIUM",
+            message="Expiring stock",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        StockAlert.objects.create(
+            drug=sample_drug,
+            alert_type="LOW_STOCK",
+            severity="MEDIUM",
+            message="Other facility alert",
+            facility=second_facility,
+            organization=sample_organization,
+        )
+
+        PurchaseOrder.objects.create(
+            supplier=sample_supplier,
+            ordered_by=test_user,
+            expected_delivery_date=date.today() - timedelta(days=1),
+            status="APPROVED",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        PurchaseOrder.objects.create(
+            supplier=sample_supplier,
+            ordered_by=test_user,
+            expected_delivery_date=date.today() - timedelta(days=1),
+            status="PARTIALLY_RECEIVED",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        PurchaseOrder.objects.create(
+            supplier=sample_supplier,
+            ordered_by=test_user,
+            expected_delivery_date=date.today(),
+            status="APPROVED",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        PurchaseOrder.objects.create(
+            supplier=sample_supplier,
+            ordered_by=test_user,
+            expected_delivery_date=date.today() - timedelta(days=1),
+            status="SUBMITTED",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        PurchaseOrder.objects.create(
+            supplier=sample_supplier,
+            ordered_by=test_user,
+            expected_delivery_date=date.today() - timedelta(days=1),
+            status="APPROVED",
+            facility=second_facility,
+            organization=sample_organization,
+        )
+
+        GoodsReceiptNote.objects.create(
+            supplier=sample_supplier,
+            received_by=test_user,
+            status="DRAFT",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        GoodsReceiptNote.objects.create(
+            supplier=sample_supplier,
+            received_by=test_user,
+            status="CONFIRMED",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        GoodsReceiptNote.objects.create(
+            supplier=sample_supplier,
+            received_by=test_user,
+            status="DRAFT",
+            facility=second_facility,
+            organization=sample_organization,
+        )
+
+        response = authenticated_client.get(self.ENDPOINT)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data == {
+            "low_stock": 2,
+            "overdue_purchase_orders": 2,
+            "pending_grns": 1,
+            "total": 5,
+        }
+
+    def test_unauthenticated_access_is_rejected(self, api_client):
+        """Should reject summary access without authentication."""
+        response = api_client.get(self.ENDPOINT)
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+# ============================================================================
 # Supplier API
 # ============================================================================
 

@@ -41,6 +41,7 @@ from hmis.apps.scheduling.models import (
     Schedule,
     Shift,
     ShiftSwapRequest,
+    ShiftVacancy,
 )
 from hmis.apps.scheduling.serializers import (
     AppointmentCancelSerializer,
@@ -71,6 +72,7 @@ from hmis.apps.scheduling.serializers import (
     ShiftSwapRequestListSerializer,
     ShiftSwapRequestSerializer,
     ShiftTypeConfigSerializer,
+    ShiftVacancySerializer,
     SlotCheckQuerySerializer,
     StaffConstraintSerializer,
     StaffWorkloadSerializer,
@@ -109,6 +111,69 @@ class ManageSchedulesWritePermission(permissions.BasePermission):
         if request.user and request.user.is_superuser:
             return True
         return request.user.has_perm("scheduling.manage_schedules")
+
+
+class ShiftVacancyFilter(filters.FilterSet):
+    """Filter explicit vacancies by status, type, department, and date range."""
+
+    status = filters.CharFilter(field_name="status")
+    shift_type = filters.CharFilter(field_name="shift_type")
+    department = filters.NumberFilter(field_name="department__id")
+    from_date = filters.DateFilter(field_name="shift_date", lookup_expr="gte")
+    to_date = filters.DateFilter(field_name="shift_date", lookup_expr="lte")
+
+    class Meta:
+        """Meta options for ShiftVacancyFilter."""
+
+        model = ShiftVacancy
+        fields = ["status", "shift_type", "department", "from_date", "to_date"]
+
+
+class ShiftVacancyViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
+    """Manage explicit, facility-scoped shift vacancies."""
+
+    queryset = ShiftVacancy.objects.select_related("department", "created_by", "filled_by")
+    serializer_class = ShiftVacancySerializer
+    permission_classes = [
+        permissions.IsAuthenticated,
+        ManageSchedulesWritePermission,
+        ReadRequiresModelPermission,
+    ]
+    filterset_class = ShiftVacancyFilter
+    tenant_scope = "facility"
+
+    def perform_create(self, serializer):
+        """Create a vacancy in the current facility with its creator recorded."""
+        serializer.save(created_by=self.request.user, **self.get_tenant_save_kwargs())
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete a vacancy only for users with Django's delete permission."""
+        if not request.user.has_perm("scheduling.delete_shiftvacancy"):
+            return Response(
+                {"detail": "You do not have permission to delete this resource."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().destroy(request, *args, **kwargs)
+
+    @action(detail=True, methods=["post"])
+    def fill(self, request, pk=None):
+        """Mark an open vacancy as filled by the requesting user."""
+        vacancy = self.get_object()
+        try:
+            vacancy.fill(request.user)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(self.get_serializer(vacancy).data)
+
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        """Cancel an open vacancy."""
+        vacancy = self.get_object()
+        try:
+            vacancy.cancel()
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(self.get_serializer(vacancy).data)
 
 
 class ShiftViewSet(

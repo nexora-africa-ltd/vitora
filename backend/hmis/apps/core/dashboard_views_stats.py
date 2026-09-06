@@ -347,16 +347,24 @@ def _get_laboratory_stats(today, facility=None, organization=None) -> dict:
 def _get_triage_stats(today, facility=None, organization=None) -> dict:
     """Get triage statistics."""
     try:
-        from hmis.apps.triage.models import TriageAssessment
+        from hmis.apps.triage.models import TriageAssessment, WaitingQueue
 
-        scope = _build_scope_filter(facility, organization)
-        qs = TriageAssessment.objects.filter(**scope)
+        assessment_scope = _build_scope_filter(facility, organization)
+        qs = TriageAssessment.objects.filter(**assessment_scope)
 
-        waiting = qs.filter(seen_by_clinician_time__isnull=True).count()
+        waiting_scope = _build_scope_filter(
+            facility,
+            organization,
+            facility_field="encounter__facility",
+            organization_field="encounter__organization",
+        )
+        waiting_qs = WaitingQueue.objects.filter(**waiting_scope)
 
-        emergency_count = qs.filter(
-            seen_by_clinician_time__isnull=True,
-            triage_category="RED",
+        waiting = waiting_qs.filter(status="WAITING_TRIAGE").count()
+
+        emergency_count = waiting_qs.filter(
+            status="WAITING_TRIAGE",
+            priority_hint="EMERGENCY",
         ).count()
 
         # Calculate average wait time for completed assessments today

@@ -13,6 +13,8 @@ import type {
   AdmissionRecommendation,
   AdmissionRecommendationListParams,
   Bed,
+  BedAssignmentRequestCreateData,
+  BedAssignmentRequestListParams,
   BedListParams,
   BloodTransfusion,
   BloodTransfusionCreateData,
@@ -89,6 +91,8 @@ export const inpatientQueryKeys = {
   wardPredictedDischarges: (wardId: number, hoursAhead?: number) =>
     [...inpatientQueryKeys.ward(wardId), 'predicted-discharges', hoursAhead ?? 24] as const,
   beds: (params?: BedListParams) => [...inpatientQueryKeys.all, 'beds', params] as const,
+  bedAssignmentRequests: (params?: BedAssignmentRequestListParams) =>
+    [...inpatientQueryKeys.all, 'bed-assignment-requests', params] as const,
   recommendations: (params?: AdmissionRecommendationListParams) =>
     [...inpatientQueryKeys.all, 'admission-recommendations', params] as const,
   recommendation: (id: number) =>
@@ -296,6 +300,38 @@ export function useMarkBedAvailable() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.all });
     },
+  });
+}
+
+export function useBedAssignmentRequests(params?: BedAssignmentRequestListParams) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.bedAssignmentRequests(params),
+    queryFn: () => inpatientApi.listBedAssignmentRequests(params),
+  });
+}
+
+export function useCreateBedAssignmentRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: BedAssignmentRequestCreateData) => inpatientApi.createBedAssignmentRequest(data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.all }),
+  });
+}
+
+export function useAssignBedAssignmentRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ requestId, bed }: { requestId: number; bed: number }) =>
+      inpatientApi.assignBedAssignmentRequest(requestId, bed),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.all }),
+  });
+}
+
+export function useCancelBedAssignmentRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (requestId: number) => inpatientApi.cancelBedAssignmentRequest(requestId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.all }),
   });
 }
 

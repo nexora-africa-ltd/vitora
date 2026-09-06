@@ -46,8 +46,10 @@ from hmis.apps.inventory.models import (
     ETIMSConfig,
     ETIMSInvoice,
     GoodsReceiptNote,
+    GRNStatus,
     PaymentTerm,
     PurchaseOrder,
+    PurchaseOrderStatus,
     ReorderSuggestion,
     StockCount,
     StockTransfer,
@@ -95,6 +97,7 @@ from hmis.apps.inventory.serializers import (
     WardStockSerializer,
     WardStockTransactionSerializer,
 )
+from hmis.apps.pharmacy.models import StockAlert
 
 
 class InventoryBootstrapView(APIView):
@@ -189,6 +192,65 @@ class InventoryBootstrapView(APIView):
 
         serializer = InventoryBootstrapSerializer(payload)
         return Response(serializer.data)
+
+
+class InventoryExceptionSummaryView(APIView):
+    """Return actionable inventory exception counts for the current facility."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = SchemaFallbackSerializer
+
+    def get_serializer_class(self):
+        return self.serializer_class
+
+    def get_serializer(self, *args, **kwargs):
+        serializer_class = self.get_serializer_class()
+        kwargs.setdefault("context", self.get_serializer_context())
+        return serializer_class(*args, **kwargs)
+
+    def get_serializer_context(self):
+        return {"request": self.request, "format": self.format_kwarg, "view": self}
+
+    def get(self, request):
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        if facility is None:
+            return Response(
+                {
+                    "low_stock": 0,
+                    "overdue_purchase_orders": 0,
+                    "pending_grns": 0,
+                    "total": 0,
+                }
+            )
+
+        facility_id = facility.id
+        low_stock = StockAlert.objects.filter(
+            facility_id=facility_id,
+            is_resolved=False,
+            alert_type__in=["LOW_STOCK", "OUT_OF_STOCK"],
+        ).count()
+        overdue_purchase_orders = PurchaseOrder.objects.filter(
+            facility_id=facility_id,
+            expected_delivery_date__lt=timezone.localdate(),
+            status__in=[
+                PurchaseOrderStatus.APPROVED,
+                PurchaseOrderStatus.PARTIALLY_RECEIVED,
+            ],
+        ).count()
+        pending_grns = GoodsReceiptNote.objects.filter(
+            facility_id=facility_id,
+            status=GRNStatus.DRAFT,
+        ).count()
+
+        return Response(
+            {
+                "low_stock": low_stock,
+                "overdue_purchase_orders": overdue_purchase_orders,
+                "pending_grns": pending_grns,
+                "total": low_stock + overdue_purchase_orders + pending_grns,
+            }
+        )
 
 
 # ---------------------------------------------------------------------------

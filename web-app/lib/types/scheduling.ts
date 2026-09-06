@@ -355,6 +355,55 @@ export interface StaffWorkload {
 
 export type PaginatedShifts = PaginatedResponse<ShiftListItem>;
 
+// =============================================================================
+// Shift Vacancies
+// =============================================================================
+
+export type ShiftVacancyStatus = 'OPEN' | 'FILLED' | 'CANCELLED';
+
+export interface ShiftVacancy {
+  id: number;
+  shift_date: string;
+  start_time: string;
+  end_time: string;
+  shift_type: ShiftType;
+  shift_type_display: string;
+  status: ShiftVacancyStatus;
+  status_display: string;
+  department: number | null;
+  department_name: string | null;
+  notes: string;
+  created_by: number | null;
+  created_by_name: string | null;
+  filled_by: number | null;
+  filled_by_name: string | null;
+  filled_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ShiftVacancyCreateData {
+  shift_date: string;
+  start_time: string;
+  end_time: string;
+  shift_type: ShiftType;
+  department?: number | null;
+  notes?: string;
+}
+
+export interface ShiftVacancyListParams {
+  page?: number;
+  page_size?: number;
+  status?: ShiftVacancyStatus;
+  shift_type?: ShiftType;
+  department?: number;
+  from_date?: string;
+  to_date?: string;
+  ordering?: string;
+}
+
+export type PaginatedShiftVacancies = PaginatedResponse<ShiftVacancy>;
+
 export interface BulkCreateShiftsPayload {
   shifts: ShiftCreateData[];
 }

@@ -21,6 +21,7 @@ from hmis.apps.scheduling.models import (
     Shift,
     ShiftSwapRequest,
     ShiftTypeConfig,
+    ShiftVacancy,
     StaffConstraint,
     TimeSlot,
 )
@@ -293,6 +294,26 @@ class ShiftAdmin(admin.ModelAdmin):
             color,
             obj.get_status_display(),
         )
+
+
+@admin.register(ShiftVacancy)
+class ShiftVacancyAdmin(admin.ModelAdmin):
+    """Admin for explicit facility shift vacancies."""
+
+    list_display = [
+        "shift_date",
+        "start_time",
+        "end_time",
+        "shift_type",
+        "status",
+        "department",
+        "facility",
+    ]
+    list_filter = ["status", "shift_type", "department", "facility"]
+    search_fields = ["notes", "department__name"]
+    date_hierarchy = "shift_date"
+    readonly_fields = ["filled_at", "created_at", "updated_at"]
+    raw_id_fields = ["facility", "organization", "department", "created_by", "filled_by"]
 
 
 @admin.register(SchedulingSettings)

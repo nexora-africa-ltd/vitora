@@ -325,7 +325,7 @@ Convention: `<domain>.<aggregate>.<action>`
 | `PATIENT_CREATED` | `core.patient.created` | `core/signals.py` |
 | `PATIENT_UPDATED` | `core.patient.updated` | — (defined, not yet wired) |
 
-### SchedulingEvents (19 constants)
+### SchedulingEvents (22 constants)
 
 | Constant | Value | Published From |
 |----------|-------|---------------|
@@ -348,6 +348,9 @@ Convention: `<domain>.<aggregate>.<action>`
 | `SHIFT_STARTED` | `scheduling.shift.started` | `scheduling/signals.py` |
 | `SHIFT_COMPLETED` | `scheduling.shift.completed` | `scheduling/signals.py` |
 | `SHIFT_CANCELLED` | `scheduling.shift.cancelled` | `scheduling/signals.py` |
+| `SHIFT_VACANCY_CREATED` | `scheduling.shift_vacancy.created` | `scheduling/signals.py` |
+| `SHIFT_VACANCY_FILLED` | `scheduling.shift_vacancy.filled` | `scheduling/signals.py` |
+| `SHIFT_VACANCY_CANCELLED` | `scheduling.shift_vacancy.cancelled` | `scheduling/signals.py` |
 
 ### ImagingEvents (11 constants)
 
@@ -542,6 +545,7 @@ Convention: `<domain>.<aggregate>.<action>`
 | `publish_override_event` | `post_save` | `AssignmentOverride` | `OVERRIDE_CREATED` / `OVERRIDE_APPROVED` / `OVERRIDE_REJECTED` | `target_type`, `target_id`, `override_reason`, `approval_status`, `original_resource_id`, `new_resource_id` |
 | `publish_rule_toggle_event` | `post_save` | `AssignmentRule` | `RULE_ACTIVATED` / `RULE_DEACTIVATED` | `rule_code`, `applies_to`, `priority` |
 | `publish_shift_event` | `post_save` | `Shift` | `SHIFT_CREATED` / `SHIFT_STARTED` / `SHIFT_COMPLETED` / `SHIFT_CANCELLED` / `SHIFT_BREAK_STARTED` | `staff_resource_id`, `shift_date`, `status`, `shift_type`, `department`, `clock_in_method`, `auto_clocked_out`, `late_minutes` |
+| `publish_shift_vacancy_event` | `post_save` | `ShiftVacancy` | `SHIFT_VACANCY_CREATED` / `SHIFT_VACANCY_FILLED` / `SHIFT_VACANCY_CANCELLED` | `shift_date`, `start_time`, `end_time`, `shift_type`, `status`, `department_id`, `filled_by_id` |
 
 Appointment status → Event mapping:
 

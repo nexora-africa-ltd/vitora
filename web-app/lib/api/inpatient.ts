@@ -8,6 +8,7 @@ import { parseResponse } from '@/lib/schemas/validation';
 import {
   WardSchema,
   BedSchema,
+  BedAssignmentRequestSchema,
   AdmissionRecommendationSchema,
   AdmissionSchema,
   CriticalCareWorkflowHealthSchema,
@@ -30,6 +31,7 @@ import {
   ShiftHandoverSchema,
   PaginatedWardSchema,
   PaginatedBedSchema,
+  PaginatedBedAssignmentRequestSchema,
   PaginatedAdmissionRecommendationSchema,
   PaginatedAdmissionSchema,
   PaginatedDischargeSchema,
@@ -87,6 +89,10 @@ import type {
   AdmissionRecommendationListParams,
   AdmissionRecommendationListResponse,
   Bed,
+  BedAssignmentRequest,
+  BedAssignmentRequestCreateData,
+  BedAssignmentRequestListParams,
+  BedAssignmentRequestListResponse,
   BedListParams,
   BulkCompatibilityResult,
   CompatibilityCheckResult,
@@ -410,6 +416,53 @@ export const inpatientApi = {
   async markBedAvailable(bedId: number): Promise<Bed> {
     const response = await apiClient.post<Bed>(`/api/inpatient/beds/${bedId}/mark_available/`, {});
     return parseResponse(BedSchema, response.data, { context: 'inpatientApi.markBedAvailable' });
+  },
+
+  // ============================================================================
+  // Bed Assignment Requests
+  // ============================================================================
+  async listBedAssignmentRequests(
+    params?: BedAssignmentRequestListParams
+  ): Promise<BedAssignmentRequestListResponse> {
+    const response = await apiClient.get<BedAssignmentRequestListResponse>(
+      '/api/inpatient/bed-assignment-requests/',
+      { params }
+    );
+    return parseResponse(PaginatedBedAssignmentRequestSchema, response.data, {
+      context: 'inpatientApi.listBedAssignmentRequests',
+    });
+  },
+
+  async createBedAssignmentRequest(
+    data: BedAssignmentRequestCreateData
+  ): Promise<BedAssignmentRequest> {
+    const response = await apiClient.post<BedAssignmentRequest>(
+      '/api/inpatient/bed-assignment-requests/',
+      data
+    );
+    return parseResponse(BedAssignmentRequestSchema, response.data, {
+      context: 'inpatientApi.createBedAssignmentRequest',
+    });
+  },
+
+  async assignBedAssignmentRequest(requestId: number, bed: number): Promise<BedAssignmentRequest> {
+    const response = await apiClient.post<BedAssignmentRequest>(
+      `/api/inpatient/bed-assignment-requests/${requestId}/assign/`,
+      { bed }
+    );
+    return parseResponse(BedAssignmentRequestSchema, response.data, {
+      context: 'inpatientApi.assignBedAssignmentRequest',
+    });
+  },
+
+  async cancelBedAssignmentRequest(requestId: number): Promise<BedAssignmentRequest> {
+    const response = await apiClient.post<BedAssignmentRequest>(
+      `/api/inpatient/bed-assignment-requests/${requestId}/cancel/`,
+      {}
+    );
+    return parseResponse(BedAssignmentRequestSchema, response.data, {
+      context: 'inpatientApi.cancelBedAssignmentRequest',
+    });
   },
 
   // ============================================================================

@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Q
 from django.utils import timezone
 
@@ -530,6 +530,138 @@ class Bed(TimeStampedModel):
         self.status = "RESERVED"
         self.status_changed_by = user
         self.save()
+
+
+class BedAssignmentRequest(FacilityScopedModel, TimeStampedModel):
+    """A facility-scoped request to reserve a bed before admission is created."""
+
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        ASSIGNED = "ASSIGNED", "Assigned"
+        CANCELLED = "CANCELLED", "Cancelled"
+
+    class Priority(models.TextChoices):
+        ROUTINE = "ROUTINE", "Routine"
+        URGENT = "URGENT", "Urgent"
+        EMERGENCY = "EMERGENCY", "Emergency"
+
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.PROTECT,
+        related_name="bed_assignment_requests",
+        help_text="Patient requiring a bed assignment.",
+    )
+    recommendation = models.ForeignKey(
+        "inpatient.AdmissionRecommendation",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="bed_assignment_requests",
+        help_text="Optional admission recommendation supporting this request.",
+    )
+    requested_ward = models.ForeignKey(
+        Ward,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="bed_assignment_requests",
+        help_text="Preferred ward, when known.",
+    )
+    priority = models.CharField(
+        max_length=20,
+        choices=Priority.choices,
+        default=Priority.ROUTINE,
+        help_text="Clinical priority for bed allocation.",
+    )
+    reason = models.TextField(help_text="Clinical or operational reason for the request.")
+    requested_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="bed_assignment_requests_made",
+        help_text="User who requested the bed assignment.",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+        help_text="Current bed assignment request status.",
+    )
+    assigned_bed = models.ForeignKey(
+        Bed,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="bed_assignment_requests",
+        help_text="Bed reserved for this request.",
+    )
+    assigned_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="bed_assignment_requests_assigned",
+        help_text="User who assigned the bed.",
+    )
+    assigned_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the bed was assigned.",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        ordering = ["priority", "created_at"]
+        indexes = [
+            models.Index(fields=["facility", "status", "priority"]),
+            models.Index(fields=["patient", "status"]),
+        ]
+        verbose_name = "Bed Assignment Request"
+        verbose_name_plural = "Bed Assignment Requests"
+
+    def __str__(self):
+        return f"Bed assignment request for {self.patient} - {self.status}"
+
+    def assign(self, bed: Bed, user):
+        """Reserve an available facility bed for this pending request."""
+        with transaction.atomic():
+            request = type(self).objects.select_for_update().get(pk=self.pk)
+            locked_bed = Bed.objects.select_for_update().select_related("ward").get(pk=bed.pk)
+
+            if request.status != self.Status.PENDING:
+                raise ValueError("Only pending bed assignment requests can be assigned.")
+            if locked_bed.ward.facility_id != request.facility_id:
+                raise ValueError("Assigned bed must belong to the request facility.")
+            if request.requested_ward_id and locked_bed.ward_id != request.requested_ward_id:
+                raise ValueError("Assigned bed must belong to the requested ward.")
+            if locked_bed.status != "AVAILABLE":
+                raise ValueError(f"Bed is not available (status: {locked_bed.status}).")
+
+            locked_bed.mark_reserved(user)
+            request.status = self.Status.ASSIGNED
+            request.assigned_bed = locked_bed
+            request.assigned_by = user
+            request.assigned_at = timezone.now()
+            request.save(
+                update_fields=["status", "assigned_bed", "assigned_by", "assigned_at", "updated_at"]
+            )
+
+        self.refresh_from_db()
+
+    def cancel(self):
+        """Cancel a pending or assigned request and release its reservation when applicable."""
+        with transaction.atomic():
+            request = type(self).objects.select_for_update().get(pk=self.pk)
+            if request.status == self.Status.CANCELLED:
+                raise ValueError("Bed assignment request is already cancelled.")
+
+            if request.assigned_bed_id:
+                bed = Bed.objects.select_for_update().get(pk=request.assigned_bed_id)
+                if bed.status == "RESERVED":
+                    bed.mark_available(request.assigned_by)
+
+            request.status = self.Status.CANCELLED
+            request.save(update_fields=["status", "updated_at"])
+
+        self.refresh_from_db()
 
 
 class AdmissionRecommendation(TimeStampedModel):

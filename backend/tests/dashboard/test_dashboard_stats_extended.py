@@ -406,13 +406,20 @@ class TestDashboardStatsFieldRegression:
         test_user,
     ):
         from hmis.apps.encounters.models import Encounter
-        from hmis.apps.triage.models import TriageAssessment
+        from hmis.apps.triage.models import TriageAssessment, WaitingQueue
 
         now = timezone.now()
         waiting_encounter = Encounter.objects.create(
             patient=sample_patient,
             encounter_type="EMERGENCY",
             chief_complaint="Shortness of breath",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        historical_encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Historical triage assessment",
             facility=sample_facility,
             organization=sample_organization,
         )
@@ -425,7 +432,7 @@ class TestDashboardStatsFieldRegression:
         )
 
         TriageAssessment.objects.create(
-            encounter=waiting_encounter,
+            encounter=historical_encounter,
             chief_complaint="Shortness of breath",
             chief_complaint_category="DIFFICULTY_BREATHING",
             mental_status="A",
@@ -436,6 +443,25 @@ class TestDashboardStatsFieldRegression:
             arrival_time=now - timezone.timedelta(minutes=25),
             triage_start_time=now - timezone.timedelta(minutes=20),
             triaged_by=test_user,
+        )
+        TriageAssessment.objects.create(
+            encounter=waiting_encounter,
+            chief_complaint="Historical triage assessment",
+            chief_complaint_category="OTHER",
+            mental_status="A",
+            mobility="AMBULATORY",
+            triage_category="GREEN",
+            auto_calculated_category="GREEN",
+            assigned_area="OPD",
+            arrival_time=now - timezone.timedelta(minutes=15),
+            triage_start_time=now - timezone.timedelta(minutes=10),
+            triaged_by=test_user,
+        )
+        WaitingQueue.objects.create(
+            patient=sample_patient,
+            encounter=waiting_encounter,
+            priority_hint="EMERGENCY",
+            checked_in_by=test_user,
         )
         TriageAssessment.objects.create(
             encounter=seen_encounter,

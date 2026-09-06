@@ -541,9 +541,9 @@ export const AICarePlanConditionsResponseSchema = z
   .object({
     conditions: z.array(
       z.object({
-        key: z.string(),
-        name: z.string(),
-        description: z.string().optional(),
+        condition_key: z.string(),
+        display_name: z.string(),
+        aliases: z.array(z.string()).optional(),
       })
     ),
     count: z.number(),

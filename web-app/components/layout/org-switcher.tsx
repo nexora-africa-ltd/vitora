@@ -56,6 +56,7 @@ export function OrgSwitcher() {
         level: '',
         modules: {} as import('@/lib/auth/context').FacilityModules,
         sha_contracted: false,
+        shr_enabled: false,
       });
     }
     setOpen(false);

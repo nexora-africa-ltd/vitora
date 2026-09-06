@@ -10,6 +10,7 @@ from .views import (
     AdmissionRecommendationViewSet,
     AdmissionViewSet,
     AdverseTransfusionReactionViewSet,
+    BedAssignmentRequestViewSet,
     BedViewSet,
     BloodTransfusionViewSet,
     BPMonitoringViewSet,
@@ -28,6 +29,7 @@ from .views import (
     WardRoundViewSet,
     WardViewSet,
 )
+from .views_discharge_readiness import DischargeReadinessSummaryView
 
 app_name = "inpatient"
 
@@ -35,6 +37,11 @@ app_name = "inpatient"
 router = DefaultRouter()
 router.register(r"wards", WardViewSet, basename="ward")
 router.register(r"beds", BedViewSet, basename="bed")
+router.register(
+    r"bed-assignment-requests",
+    BedAssignmentRequestViewSet,
+    basename="bed-assignment-request",
+)
 router.register(
     r"admission-recommendations",
     AdmissionRecommendationViewSet,
@@ -70,6 +77,11 @@ router.register(
 )
 
 urlpatterns = [
+    path(
+        "discharge-readiness-summary/",
+        DischargeReadinessSummaryView.as_view(),
+        name="discharge-readiness-summary",
+    ),
     path("", include(router.urls)),
     # Supervisor alerts - explicit paths since it's not a typical resource
     path(

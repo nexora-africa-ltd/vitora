@@ -307,6 +307,12 @@ const _allNavItems: NavItemType[] = [
         icon: ArrowLeftRight,
         actionKey: 'scheduling.view_appointments',
       },
+      {
+        label: 'Vacancies',
+        href: '/scheduling/vacancies',
+        icon: AlertTriangle,
+        actionKey: 'scheduling.manage_schedules',
+      },
     ],
   },
   {
@@ -569,6 +575,12 @@ const _allNavItems: NavItemType[] = [
         href: '/inpatient/bed-board',
         icon: BedDouble,
         actionKey: 'inpatient.view_ward',
+      },
+      {
+        label: 'Bed Requests',
+        href: '/inpatient/bed-assignment-requests',
+        icon: ClipboardList,
+        actionKey: 'inpatient.view_admissions',
       },
       { label: 'Wards', href: '/wards', icon: Building2, actionKey: 'inpatient.view_ward' },
       {

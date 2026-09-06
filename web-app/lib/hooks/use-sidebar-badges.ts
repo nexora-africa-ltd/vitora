@@ -3,6 +3,8 @@
 import { useMemo } from 'react';
 import { useDashboardStats } from '@/lib/hooks/use-dashboard-stats';
 import { useUnreadCount } from '@/lib/hooks/use-notifications';
+import { useWaitingQueue } from '@/lib/hooks/use-triage';
+import { useActionableBadgeCounts } from '@/lib/hooks/use-actionable-badge-counts';
 import { useAuth } from '@/lib/auth/context';
 
 /**
@@ -22,6 +24,11 @@ export function useSidebarBadges(): SidebarBadges {
   const canQuery = isAuthenticated && !isLoading;
   const { data: stats } = useDashboardStats({ enabled: canQuery });
   const { data: unreadCount } = useUnreadCount({ enabled: canQuery });
+  const { data: waitingTriageQueue } = useWaitingQueue(
+    { status: 'WAITING_TRIAGE' },
+    { enabled: canQuery }
+  );
+  const { data: actionableCounts } = useActionableBadgeCounts(canQuery);
 
   return useMemo(() => {
     const badges: SidebarBadges = {};
@@ -32,9 +39,9 @@ export function useSidebarBadges(): SidebarBadges {
       badges['/patients/checkin'] = stats.checkin.waiting;
     }
 
-    // Triage: patients waiting for triage
-    if (stats.triage.waiting > 0) {
-      badges['/triage'] = stats.triage.waiting;
+    // Triage: patients still awaiting their initial assessment, not past assessments.
+    if ((waitingTriageQueue?.count ?? 0) > 0) {
+      badges['/triage'] = waitingTriageQueue?.count ?? 0;
     }
 
     // Encounters: in-progress encounters
@@ -47,24 +54,35 @@ export function useSidebarBadges(): SidebarBadges {
       badges['/pharmacy/dispensing'] = stats.pharmacy.pending_dispensing;
     }
 
+    if ((actionableCounts?.pharmacyAlerts ?? 0) > 0) {
+      badges['/pharmacy'] = actionableCounts?.pharmacyAlerts ?? 0;
+    }
+
+    if ((actionableCounts?.inventoryExceptions ?? 0) > 0) {
+      badges['/inventory'] = actionableCounts?.inventoryExceptions ?? 0;
+    }
+
     // Laboratory: pending tests
     if (stats.laboratory.pending_tests > 0) {
       badges['/laboratory/orders'] = stats.laboratory.pending_tests;
     }
 
-    // Laboratory: critical results
-    if (stats.laboratory.critical_results > 0) {
-      badges['/laboratory/validations'] = stats.laboratory.critical_results;
+    // Laboratory: results awaiting verification.
+    if ((actionableCounts?.pendingVerification ?? 0) > 0) {
+      badges['/laboratory/validations'] = actionableCounts?.pendingVerification ?? 0;
     }
 
-    // Imaging: pending orders
-    if (stats.imaging.pending_orders > 0) {
-      badges['/imaging/worklist'] = stats.imaging.pending_orders;
+    // Imaging: urgent orders take precedence over the broad worklist count.
+    if (stats.imaging.urgent_orders > 0) {
+      badges['/imaging/worklist'] = stats.imaging.urgent_orders;
     }
 
-    // Inpatient: current admissions
-    if (stats.inpatient.current_admissions > 0) {
-      badges['/admissions'] = stats.inpatient.current_admissions;
+    if ((actionableCounts?.pendingBedRequests ?? 0) > 0) {
+      badges['/inpatient/bed-assignment-requests'] = actionableCounts?.pendingBedRequests ?? 0;
+    }
+
+    if ((actionableCounts?.dischargeReadiness ?? 0) > 0) {
+      badges['/admissions'] = actionableCounts?.dischargeReadiness ?? 0;
     }
 
     // Emergency: pending review
@@ -80,6 +98,18 @@ export function useSidebarBadges(): SidebarBadges {
     // Billing: pending SHA claims
     if (stats.billing.sha_claims_pending > 0) {
       badges['/transactions/sha-claims'] = stats.billing.sha_claims_pending;
+    }
+
+    if ((actionableCounts?.insuranceAction ?? 0) > 0) {
+      badges['/insurance/claims'] = actionableCounts?.insuranceAction ?? 0;
+    }
+
+    if ((actionableCounts?.pendingSwaps ?? 0) > 0) {
+      badges['/scheduling/shift-swaps'] = actionableCounts?.pendingSwaps ?? 0;
+    }
+
+    if ((actionableCounts?.openVacancies ?? 0) > 0) {
+      badges['/scheduling/roster'] = actionableCounts?.openVacancies ?? 0;
     }
 
     // Allied Health: pending referrals
@@ -114,5 +144,5 @@ export function useSidebarBadges(): SidebarBadges {
     }
 
     return badges;
-  }, [stats, unreadCount]);
+  }, [actionableCounts, stats, unreadCount, waitingTriageQueue?.count]);
 }

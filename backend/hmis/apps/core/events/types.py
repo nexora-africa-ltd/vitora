@@ -300,6 +300,11 @@ class SchedulingEvents:
     SHIFT_BREAK_RESUMED = "scheduling.shift.break_resumed"
     SHIFT_EMERGENCY_CREATED = "scheduling.shift.emergency_created"
 
+    # Explicit shift vacancy lifecycle
+    SHIFT_VACANCY_CREATED = "scheduling.shift_vacancy.created"
+    SHIFT_VACANCY_FILLED = "scheduling.shift_vacancy.filled"
+    SHIFT_VACANCY_CANCELLED = "scheduling.shift_vacancy.cancelled"
+
     # Shift notifications
     SHIFT_REMINDER_SENT = "scheduling.shift.reminder_sent"
 

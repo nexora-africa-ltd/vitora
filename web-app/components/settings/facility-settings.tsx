@@ -413,7 +413,9 @@ function NoFacilityState() {
       name: fac.name,
       mfl_code: fac.mfl_code,
       level: fac.level,
-      sha_contracted: fac.sha_contracted,
+        sha_contracted: fac.sha_contracted,
+        // The facilities list omits the auth-session SHR entitlement.
+        shr_enabled: false,
       modules: {
         outpatient: true,
         inpatient: false,

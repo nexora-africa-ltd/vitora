@@ -1110,6 +1110,85 @@ class ShiftCancelSerializer(serializers.Serializer):
     reason = serializers.CharField(required=False, allow_blank=True)
 
 
+class ShiftVacancySerializer(serializers.ModelSerializer):
+    """Serializer for explicit shift vacancies."""
+
+    shift_type_display = serializers.CharField(source="get_shift_type_display", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    department_name = serializers.CharField(source="department.name", read_only=True, default=None)
+    created_by_name = serializers.SerializerMethodField()
+    filled_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        """Meta options for ShiftVacancySerializer."""
+
+        from hmis.apps.scheduling.models import ShiftVacancy
+
+        model = ShiftVacancy
+        fields = [
+            "id",
+            "shift_date",
+            "start_time",
+            "end_time",
+            "shift_type",
+            "shift_type_display",
+            "status",
+            "status_display",
+            "department",
+            "department_name",
+            "notes",
+            "created_by",
+            "created_by_name",
+            "filled_by",
+            "filled_by_name",
+            "filled_at",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "status",
+            "shift_type_display",
+            "status_display",
+            "department_name",
+            "created_by",
+            "created_by_name",
+            "filled_by",
+            "filled_by_name",
+            "filled_at",
+            "created_at",
+            "updated_at",
+        ]
+
+    def validate(self, attrs):
+        """Ensure times and the optional department match the request facility."""
+        start_time = attrs.get("start_time", getattr(self.instance, "start_time", None))
+        end_time = attrs.get("end_time", getattr(self.instance, "end_time", None))
+        if start_time and end_time and end_time <= start_time:
+            raise serializers.ValidationError({"end_time": "End time must be after start time."})
+
+        department = attrs.get("department")
+        request = self.context.get("request")
+        facility = getattr(request, "facility", None) if request else None
+        if department and facility and department.facility_id != facility.id:
+            raise serializers.ValidationError(
+                {"department": "Department must belong to the current facility."}
+            )
+        return attrs
+
+    def get_created_by_name(self, obj) -> str | None:
+        """Return the creator's display name when available."""
+        if obj.created_by:
+            return obj.created_by.get_full_name() or obj.created_by.username
+        return None
+
+    def get_filled_by_name(self, obj) -> str | None:
+        """Return the filling user's display name when available."""
+        if obj.filled_by:
+            return obj.filled_by.get_full_name() or obj.filled_by.username
+        return None
+
+
 class ShiftStartSerializer(serializers.Serializer):
     """Serializer for clock-in (start shift) with optional room, clinic, and method."""
 

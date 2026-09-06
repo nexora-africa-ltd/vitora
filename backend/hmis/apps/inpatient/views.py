@@ -8,6 +8,7 @@ Supported inputs/args: N/A (module-level re-exports).
 from .viewsets.admission import AdmissionViewSet
 from .viewsets.admission_recommendation import AdmissionRecommendationViewSet
 from .viewsets.atr import AdverseTransfusionReactionViewSet
+from .viewsets.bed_assignment_request import BedAssignmentRequestViewSet
 from .viewsets.discharge import DischargeViewSet
 from .viewsets.discharge_template import DischargeTemplateViewSet
 from .viewsets.interfacility_transfer import InterFacilityTransferViewSet
@@ -32,6 +33,7 @@ __all__ = [
     "AdverseTransfusionReactionViewSet",
     "BPMonitoringViewSet",
     "BedViewSet",
+    "BedAssignmentRequestViewSet",
     "BloodTransfusionViewSet",
     "DischargeTemplateViewSet",
     "DischargeViewSet",

@@ -12,6 +12,7 @@ from hmis.apps.inventory.views import (
     ETIMSInvoiceViewSet,
     GoodsReceiptNoteViewSet,
     InventoryBootstrapView,
+    InventoryExceptionSummaryView,
     PaymentTermViewSet,
     PurchaseOrderViewSet,
     ReorderSuggestionViewSet,
@@ -44,5 +45,10 @@ app_name = "inventory"
 
 urlpatterns = [
     path("bootstrap/", InventoryBootstrapView.as_view(), name="inventory-bootstrap"),
+    path(
+        "exceptions-summary/",
+        InventoryExceptionSummaryView.as_view(),
+        name="inventory-exception-summary",
+    ),
     path("", include(router.urls)),
 ]

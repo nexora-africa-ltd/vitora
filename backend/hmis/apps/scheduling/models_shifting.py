@@ -404,6 +404,91 @@ class Shift(FacilityScopedModel, TimeStampedModel):
         return round(max(0, total), 2)
 
 
+class ShiftVacancy(FacilityScopedModel, TimeStampedModel):
+    """An explicitly published, unassigned shift vacancy at a facility."""
+
+    class Status(models.TextChoices):
+        """Lifecycle states for a shift vacancy."""
+
+        OPEN = "OPEN", "Open"
+        FILLED = "FILLED", "Filled"
+        CANCELLED = "CANCELLED", "Cancelled"
+
+    shift_date = models.DateField(db_index=True, help_text="Date requiring cover")
+    start_time = models.TimeField(help_text="Vacancy start time")
+    end_time = models.TimeField(help_text="Vacancy end time")
+    shift_type = models.CharField(
+        max_length=30,
+        choices=Shift.SHIFT_TYPE_CHOICES,
+        default="DAY",
+        db_index=True,
+        help_text="Type of shift requiring cover",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.OPEN,
+        db_index=True,
+        help_text="Current vacancy status",
+    )
+    department = models.ForeignKey(
+        "core.Department",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="shift_vacancies",
+        db_index=True,
+        help_text="Department requiring cover",
+    )
+    notes = models.TextField(blank=True, default="", help_text="Additional vacancy details")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_shift_vacancies",
+    )
+    filled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="filled_shift_vacancies",
+    )
+    filled_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta(TimeStampedModel.Meta):
+        """Meta options for ShiftVacancy."""
+
+        ordering = ["shift_date", "start_time"]
+        verbose_name = "Shift vacancy"
+        verbose_name_plural = "Shift vacancies"
+        indexes = [
+            models.Index(fields=["shift_date", "status"]),
+            models.Index(fields=["department", "shift_date"]),
+        ]
+
+    def __str__(self) -> str:
+        """Return a concise vacancy label."""
+        return f"{self.shift_date} {self.start_time}-{self.end_time} ({self.shift_type})"
+
+    def fill(self, user) -> None:
+        """Mark an open vacancy as filled by ``user``."""
+        if self.status != self.Status.OPEN:
+            raise ValueError(f"Cannot fill a vacancy with status {self.status}.")
+        self.status = self.Status.FILLED
+        self.filled_by = user
+        self.filled_at = timezone.now()
+        self.save(update_fields=["status", "filled_by", "filled_at", "updated_at"])
+
+    def cancel(self) -> None:
+        """Cancel an open vacancy."""
+        if self.status != self.Status.OPEN:
+            raise ValueError(f"Cannot cancel a vacancy with status {self.status}.")
+        self.status = self.Status.CANCELLED
+        self.save(update_fields=["status", "updated_at"])
+
+
 # =============================================================================
 # Phase 3b: Scheduling Settings & Staff Constraints
 # =============================================================================
