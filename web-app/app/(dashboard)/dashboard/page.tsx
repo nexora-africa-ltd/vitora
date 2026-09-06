@@ -544,12 +544,12 @@ export default function DashboardPage() {
       ? [
           {
             title: 'Staff Licenses',
-            value: formatNumber(licenseSummary.valid),
+            value: formatNumber(licenseSummary.total),
             meta: `${formatNumber(licenseSummary.expired)} expired · ${formatNumber(licenseSummary.expiring_soon)} expiring`,
             description: `${formatNumber(licenseSummary.total)} licensed staff total`,
             icon: BadgeCheck,
-            href: '/admin/staff',
-            ariaLabel: 'Open staff management',
+            href: '/admin/licenses',
+            ariaLabel: 'Open license registry',
             variant: (licenseSummary.expired > 0
               ? 'destructive'
               : licenseSummary.expiring_soon > 0

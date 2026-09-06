@@ -5,7 +5,7 @@ Following TDD approach: Write tests FIRST, then implement.
 Sprint 1.1-1.2 Track C: RBAC Foundation - Phase 5
 """
 
-from datetime import date
+from datetime import date, timedelta
 
 import pytest  # type: ignore
 from django.contrib.auth import get_user_model
@@ -542,6 +542,34 @@ class TestStaffProfileAPI:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["employee_id"] == "VH-2026-001"
+
+    def test_license_summary_includes_active_staff_with_expiry_regardless_of_role_requirement(
+        self, authenticated_client, sample_staff
+    ):
+        """Should count active staff with an upcoming expiry even when their role is unlicensed."""
+        sample_staff.license_expiry = date.today() + timedelta(days=14)
+        sample_staff.save(update_fields=["license_expiry"])
+
+        response = authenticated_client.get("/api/staff/license_summary/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["total"] == 1
+        assert response.data["expiring_soon"] == 1
+
+    def test_license_registry_lists_active_staff_with_upcoming_expiry(
+        self, authenticated_client, sample_staff
+    ):
+        """Should list staff by expiry date regardless of their role's license requirement."""
+        sample_staff.license_expiry = date.today() + timedelta(days=14)
+        sample_staff.licensing_body = "KMPDC"
+        sample_staff.save(update_fields=["license_expiry", "licensing_body"])
+
+        response = authenticated_client.get("/api/staff/licenses/?status=expiring_soon")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["count"] == 1
+        assert response.data["results"][0]["id"] == sample_staff.id
+        assert response.data["results"][0]["license_expiry"] == str(sample_staff.license_expiry)
 
     def test_staff_search(self, authenticated_client, sample_staff):
         """Should search staff by name or employee_id."""

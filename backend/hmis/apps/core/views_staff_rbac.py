@@ -865,6 +865,43 @@ class StaffProfileViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
         return Response({"suggestions": suggestions})
 
+    @action(detail=False, methods=["get"], url_path="licenses")
+    def licenses(self, request):
+        """List active staff with a recorded license expiry, optionally by status."""
+        from datetime import date, timedelta
+
+        today = date.today()
+        expiry_threshold = today + timedelta(days=30)
+        queryset = self.filter_queryset(
+            self.get_queryset().filter(
+                employment_status="ACTIVE",
+                license_expiry__isnull=False,
+            )
+        )
+        license_status = request.query_params.get("status")
+
+        if license_status == "expired":
+            queryset = queryset.filter(license_expiry__lt=today)
+        elif license_status == "expiring_soon":
+            queryset = queryset.filter(
+                license_expiry__gte=today,
+                license_expiry__lte=expiry_threshold,
+            )
+        elif license_status == "valid":
+            queryset = queryset.filter(license_expiry__gt=expiry_threshold)
+        elif license_status:
+            return Response(
+                {"detail": "status must be expired, expiring_soon, or valid."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        queryset = queryset.order_by("license_expiry", "user__last_name", "user__first_name")
+        page = self.paginate_queryset(queryset)
+        serializer = self.get_serializer(page if page is not None else queryset, many=True)
+        if page is not None:
+            return self.get_paginated_response(serializer.data)
+        return Response(serializer.data)
+
     @action(detail=False, methods=["get"])
     def license_summary(self, request):
         """Return license status summary for the current org's licensed staff.
@@ -872,7 +909,7 @@ class StaffProfileViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         GET /api/staff/license_summary/
 
         Returns counts of valid, expired, expiring-soon, and unverified
-        licenses for staff whose role requires a license.
+        licenses for active staff with a license expiry date.
 
         For non-admin users, returns only the caller's own license status.
         """
@@ -882,8 +919,8 @@ class StaffProfileViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         expiry_threshold = today + timedelta(days=30)
 
         base_qs = self.get_queryset().filter(
-            primary_role__requires_license=True,
             employment_status="ACTIVE",
+            license_expiry__isnull=False,
         )
 
         # Non-admin users get only their own license status
@@ -907,15 +944,11 @@ class StaffProfileViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             license_expiry__lte=expiry_threshold,
         ).count()
         valid = base_qs.filter(license_expiry__gt=expiry_threshold).count()
-        no_expiry = base_qs.filter(license_expiry__isnull=True).count()
+        no_expiry = 0
 
         # For individual staff, include their own status
         my_status = None
-        if (
-            staff_profile
-            and staff_profile.primary_role
-            and staff_profile.primary_role.requires_license
-        ):
+        if staff_profile and staff_profile.license_expiry:
             my_license = {
                 "license_number": staff_profile.license_number,
                 "license_expiry": str(staff_profile.license_expiry)

@@ -46,6 +46,7 @@ import type {
   OrgMembershipUpdateData,
   OrgMembershipListParams,
   StaffListParams,
+  LicenseListParams,
   UserPermissions,
   AuditLogEntry,
   AuditLogListParams,
@@ -182,6 +183,15 @@ export const staffApi = {
       params,
     });
     return parseResponse(PaginatedStaffProfileSchema, response.data, { context: 'staffApi.list' });
+  },
+
+  licenses: async (params?: LicenseListParams): Promise<PaginatedResponse<StaffProfile>> => {
+    const response = await apiClient.get<PaginatedResponse<StaffProfile>>('/api/staff/licenses/', {
+      params,
+    });
+    return parseResponse(PaginatedStaffProfileSchema, response.data, {
+      context: 'staffApi.licenses',
+    });
   },
 
   getMe: async (): Promise<StaffProfile | null> => {

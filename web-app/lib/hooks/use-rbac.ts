@@ -29,6 +29,7 @@ import type {
   StaffProfileUpdateData,
   StaffPasswordResetData,
   StaffListParams,
+  LicenseListParams,
   AuditLogListParams,
   AuditAction,
 } from '@/lib/types/rbac';
@@ -175,6 +176,13 @@ export function useStaffList(params?: StaffListParams) {
   });
 }
 
+export function useLicenseList(params?: LicenseListParams) {
+  return useQuery({
+    queryKey: ['staff', 'licenses', params],
+    queryFn: () => staffApi.licenses(params),
+  });
+}
+
 export function useMyStaffProfile() {
   return useQuery({
     queryKey: ['staff-profile', 'me'],
@@ -197,6 +205,7 @@ export function useCreateStaffProfile() {
     mutationFn: (data: StaffProfileCreateData) => staffApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['staff'] });
+      queryClient.invalidateQueries({ queryKey: ['staff', 'license-summary'] });
     },
   });
 }
@@ -208,6 +217,7 @@ export function useUpdateStaffProfile() {
       staffApi.update(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['staff'] });
+      queryClient.invalidateQueries({ queryKey: ['staff', 'license-summary'] });
       queryClient.invalidateQueries({ queryKey: ['staff-profile', id] });
     },
   });
@@ -220,6 +230,7 @@ export function useResetStaffPassword() {
       staffApi.resetPassword(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['staff'] });
+      queryClient.invalidateQueries({ queryKey: ['staff', 'license-summary'] });
       queryClient.invalidateQueries({ queryKey: ['staff-profile', id] });
     },
   });
@@ -231,6 +242,7 @@ export function useDeactivateStaffProfile() {
     mutationFn: (id: number) => staffApi.deactivate(id),
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ['staff'] });
+      queryClient.invalidateQueries({ queryKey: ['staff', 'license-summary'] });
       queryClient.invalidateQueries({ queryKey: ['staff-profile', id] });
     },
   });
@@ -246,6 +258,7 @@ export function useDeleteStaffProfile() {
     mutationFn: (id: number) => staffApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['staff'] });
+      queryClient.invalidateQueries({ queryKey: ['staff', 'license-summary'] });
     },
   });
 }
@@ -254,7 +267,7 @@ export function useLicenseSummary() {
   return useQuery({
     queryKey: ['staff', 'license-summary'],
     queryFn: () => staffApi.licenseSummary(),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0,
   });
 }
 

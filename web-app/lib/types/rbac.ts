@@ -413,6 +413,15 @@ export interface StaffListParams {
   employment_status?: EmploymentStatus;
 }
 
+export type LicenseStatus = 'expired' | 'expiring_soon' | 'valid';
+
+export interface LicenseListParams {
+  page?: number;
+  page_size?: number;
+  search?: string;
+  status?: LicenseStatus;
+}
+
 export interface AuditLogListParams {
   page?: number;
   page_size?: number;
