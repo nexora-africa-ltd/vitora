@@ -89,7 +89,7 @@ jobs:
           else
             echo "⏭️  Skipping: No tests yet"
           fi
-        continue-on-error: true
+        continue-on-error: false
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -211,7 +211,7 @@ jobs:
         working-directory: ./web-app
         run: npm test -- --coverage --watchAll=false
         if: hashFiles('web-app/package.json') != ''
-        continue-on-error: true
+        continue-on-error: false
 
   # Job 4: Desktop Rust Smoke Tests
   desktop-tests:
@@ -249,6 +249,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes libglib2.0-dev libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+        if: hashFiles('desktop-app/src-tauri/Cargo.toml') != ''
+
+      - name: Provide desktop bundle placeholder for Rust tests
+        run: touch desktop-app/src-tauri/standalone.tar.gz
         if: hashFiles('desktop-app/src-tauri/Cargo.toml') != ''
 
       - name: Run desktop sidecar smoke tests

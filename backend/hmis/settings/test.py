@@ -30,6 +30,14 @@ ONBOARDING_ENFORCEMENT = os.getenv("ONBOARDING_ENFORCEMENT", "false").lower() ==
 
 # LIS standalone onboarding enforcement — disabled in tests by default
 LIS_STANDALONE_ONBOARDING_ENFORCEMENT = False
+LIS_STANDALONE_MODE = True
+
+# Keep SHA tests hermetic and exercise the ILM client paths that they mock.
+SHA_AUTH_MODE = "ilm"
+SHA_AUTH_BASE_URL = "https://ilm.test.invalid/uat-middleware"
+SHA_AUTH_TOKEN_ENDPOINT = "/api/v1/tenants/token"  # noqa: S105 - test endpoint path, not a credential
+ILM_BASE_URL = SHA_AUTH_BASE_URL
+os.environ["DHA_HIE_IS_UAT"] = "false"
 
 # Active-shift enforcement — disabled in tests by default
 ACTIVE_SHIFT_ENFORCEMENT = os.getenv("ACTIVE_SHIFT_ENFORCEMENT", "false").lower() == "true"

@@ -59,9 +59,9 @@ jobs:
           hapi.fhir.expunge_enabled: 'true'
           hapi.fhir.validation.enabled: 'true'
           hapi.fhir.validation.requests_enabled: 'true'
-          spring.datasource.url: jdbc:h2:mem:hapi_fhir;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-          spring.datasource.driver-class-name: org.h2.Driver
-          spring.jpa.properties.hibernate.dialect: ca.uhn.fhir.jpa.model.dialect.HapiFhirH2Dialect
+          spring.datasource.url: jdbc:h2:mem:hapi;DB_CLOSE_DELAY=-1
+          spring.datasource.username: sa
+          spring.datasource.password: ''
         options: >-
           --health-cmd "wget -q --spider http://localhost:8080/fhir/metadata || exit 1"
           --health-interval 15s
@@ -219,9 +219,9 @@ jobs:
         env:
           hapi.fhir.fhir_version: R4
           hapi.fhir.allow_external_references: 'true'
-          spring.datasource.url: jdbc:h2:mem:hapi_fhir;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-          spring.datasource.driver-class-name: org.h2.Driver
-          spring.jpa.properties.hibernate.dialect: ca.uhn.fhir.jpa.model.dialect.HapiFhirH2Dialect
+          spring.datasource.url: jdbc:h2:mem:hapi;DB_CLOSE_DELAY=-1
+          spring.datasource.username: sa
+          spring.datasource.password: ''
         options: >-
           --health-cmd "wget -q --spider http://localhost:8080/fhir/metadata || exit 1"
           --health-interval 15s

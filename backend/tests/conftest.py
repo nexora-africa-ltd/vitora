@@ -5,11 +5,44 @@ This file contains shared fixtures and configuration for all tests.
 """
 
 import os
+import tempfile
 from collections.abc import Generator
 from datetime import date
+from pathlib import Path
 
 import django
 import pytest  # type: ignore
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+
+
+def _configure_test_license_keys() -> tempfile.TemporaryDirectory[str]:
+    """Generate an ephemeral RSA pair so licensing tests never need production keys."""
+    key_directory = tempfile.TemporaryDirectory(prefix="vitora-test-license-")
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    private_key_path = Path(key_directory.name) / "license_private.pem"
+    public_key_path = Path(key_directory.name) / "license_public.pem"
+
+    private_key_path.write_bytes(
+        private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+    )
+    public_key_path.write_bytes(
+        private_key.public_key().public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+    )
+    os.environ.pop("LICENSE_SIGNING_KEY", None)
+    os.environ["LICENSE_PRIVATE_KEY_PATH"] = str(private_key_path)
+    os.environ["LICENSE_PUBLIC_KEY_PATH"] = str(public_key_path)
+    return key_directory
+
+
+_TEST_LICENSE_KEYS = _configure_test_license_keys()
 
 # Set Django settings module for tests
 os.environ.setdefault("DJANGO_ENV", "test")
@@ -52,6 +85,11 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "integration: Mark test as an integration test")
     config.addinivalue_line("markers", "e2e: Mark test as an end-to-end test")
     config.addinivalue_line("markers", "slow: Mark test as slow running")
+
+
+def pytest_unconfigure(config):
+    """Remove the ephemeral signing keys after the test session finishes."""
+    _TEST_LICENSE_KEYS.cleanup()
 
 
 def pytest_pycollect_makeitem(collector, name, obj):
