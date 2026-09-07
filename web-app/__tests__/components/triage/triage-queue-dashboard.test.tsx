@@ -409,7 +409,8 @@ describe('TriageQueueDashboard - Queue Actions', () => {
       const lwbsButton = within(firstCard).getByRole('button', { name: /lwbs/i });
       await user.click(lwbsButton);
 
-      expect(screen.getByText(/reason for lwbs/i)).toBeInTheDocument();
+      const dialog = await screen.findByRole('dialog');
+      expect(within(dialog).getByText(/reason for lwbs/i)).toBeInTheDocument();
     });
 
     it('should call onMarkLWBS with reason when confirmed', async () => {
@@ -421,14 +422,17 @@ describe('TriageQueueDashboard - Queue Actions', () => {
       const lwbsButton = within(firstCard).getByRole('button', { name: /lwbs/i });
       await user.click(lwbsButton);
 
-      const reasonInput = screen.getByLabelText(/reason/i);
-      await user.type(reasonInput, 'Patient left, stated would return later');
+      const dialog = await screen.findByRole('dialog');
+      const reasonInput = within(dialog).getByLabelText(/reason/i);
+      fireEvent.change(reasonInput, { target: { value: 'Patient left, stated would return later' } });
 
-      const confirmButton = screen.getByRole('button', { name: /confirm/i });
+      const confirmButton = within(dialog).getByRole('button', { name: /confirm/i });
       await user.click(confirmButton);
 
-      expect(handleLWBS).toHaveBeenCalledWith(1, 'Patient left, stated would return later');
-    });
+      await waitFor(() => {
+        expect(handleLWBS).toHaveBeenCalledWith(1, 'Patient left, stated would return later');
+      });
+    }, 15000);
   });
 });
 

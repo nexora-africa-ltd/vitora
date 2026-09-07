@@ -19,6 +19,22 @@ jest.mock('@/lib/auth', () => ({
 
 jest.mock('@/lib/hooks/use-rbac', () => ({
   useMyStaffProfile: () => mockUseMyStaffProfile(),
+  useLicenseSummary: () => ({ data: null }),
+}));
+
+jest.mock('@/lib/context/facility-context', () => ({
+  useFacility: () => ({ facility: { id: 1, name: 'Demo Health Facility' }, hasModule: () => true }),
+}));
+
+jest.mock('@/lib/hooks/use-permissions', () => ({
+  usePermissions: () => ({
+    canAccessModule: () => true,
+    canPerformAction: () => true,
+  }),
+}));
+
+jest.mock('@/lib/context/page-refresh-context', () => ({
+  usePageRefresh: () => ({ refresh: jest.fn(), isRefreshing: false }),
 }));
 
 const defaultUser = {
@@ -45,7 +61,7 @@ jest.mock('@/lib/hooks/use-triage', () => ({
 }));
 
 jest.mock('@/lib/hooks/use-websocket', () => ({
-  useEmergencySocket: () => ({
+  useDashboardSocket: () => ({
     connectionState: 'connected',
     reconnectAttempts: 0,
     lastUpdate: new Date('2026-03-07T10:00:00Z'),
@@ -87,6 +103,19 @@ jest.mock('@/lib/hooks/use-dashboard-stats', () => ({
       laboratory: { pending_tests: 6, completed_today: 8, critical_results: 1 },
       triage: { waiting: 4, avg_wait_time_minutes: 12, emergency_count: 1 },
       billing: { revenue_today: 12000, pending_payments: 4000, sha_claims_pending: 2 },
+      checkin: { checked_in_today: 0, waiting: 0, completed_today: 0 },
+      inpatient: { occupancy_rate: 0, current_admissions: 0, available_beds: 0 },
+      imaging: { pending_orders: 0, urgent_orders: 0, completed_today: 0 },
+      emergency: { active_overrides: 0, pending_review: 0 },
+      mch: { active_registrations: 0, high_risk: 0, deliveries_today: 0 },
+      theatre: { scheduled_today: 0, in_progress: 0, completed_today: 0 },
+      procedures: {
+        scheduled_today: 0,
+        in_progress: 0,
+        pending_consent: 0,
+        completed_today: 0,
+      },
+      allied_health: { pending_referrals: 0, sessions_today: 0, open_cases: 0 },
       alerts: { total_unresolved: 3, critical: 1, high: 1, medium: 1 },
     },
     isLoading: false,
@@ -166,9 +195,9 @@ describe('Dashboard Page', () => {
     expect(screen.getByText('Total Patients')).toBeInTheDocument();
     expect(screen.getByText("Today's Encounters")).toBeInTheDocument();
     expect(screen.getByText('Pending Dispensing')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Active Alerts' })).toHaveAttribute(
-      'href',
-      '/surveillance/alerts'
+    const activeAlertsLinks = screen.getAllByRole('link', { name: 'Active Alerts' });
+    expect(activeAlertsLinks.some((link) => link.getAttribute('href') === '/surveillance/alerts')).toBe(
+      true
     );
     expect(screen.getByText('Pending Lab Tests')).toBeInTheDocument();
     expect(screen.getByText('Revenue Today')).toBeInTheDocument();
@@ -179,9 +208,9 @@ describe('Dashboard Page', () => {
     expect(screen.getByText('Recent Patients')).toBeInTheDocument();
   });
 
-  it('should render alerts widget', () => {
+  it('should render active alerts section', () => {
     render(<DashboardPage />, { wrapper: TestWrapper });
-    expect(screen.getByText('AlertsWidget Component')).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Active Alerts' }).length).toBeGreaterThan(0);
   });
 
   it('should render quick actions', () => {

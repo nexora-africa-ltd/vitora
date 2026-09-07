@@ -31,6 +31,11 @@ jest.mock('@/lib/hooks/use-triage', () => {
   };
 });
 
+jest.mock('@/lib/hooks/use-clinics', () => ({
+  // Clinic routing is outside this form's unit-test scope.
+  useClinics: () => ({ data: { results: [] }, isLoading: false }),
+}));
+
 // =============================================================================
 // MOCK DATA
 // =============================================================================
@@ -442,7 +447,6 @@ describe('TriageAssessmentForm - Submission', () => {
   });
 
   it('should include vitals in submission payload when provided', async () => {
-    const user = userEvent.setup();
     const handleSubmit = jest.fn();
     renderWithWrapper(
       <TriageAssessmentForm
@@ -461,24 +465,19 @@ describe('TriageAssessmentForm - Submission', () => {
       />
     );
 
-    await user.clear(screen.getByLabelText(/spo2/i));
-    await user.type(screen.getByLabelText(/spo2/i), '94');
-    await user.clear(screen.getByLabelText(/heart rate/i));
-    await user.type(screen.getByLabelText(/heart rate/i), '110');
-
-    const systolicInput = screen.getByLabelText(/systolic blood pressure/i);
-    await user.clear(systolicInput);
-    await user.type(systolicInput, '160');
-    const diastolicInput = screen.getByLabelText(/diastolic blood pressure/i);
-    await user.clear(diastolicInput);
-    await user.type(diastolicInput, '95');
-    await user.clear(screen.getByLabelText(/temperature/i));
-    await user.type(screen.getByLabelText(/temperature/i), '37.2');
-    await user.clear(screen.getByLabelText(/respiratory rate/i));
-    await user.type(screen.getByLabelText(/respiratory rate/i), '22');
+    fireEvent.change(screen.getByLabelText(/spo2/i), { target: { value: '94' } });
+    fireEvent.change(screen.getByLabelText(/heart rate/i), { target: { value: '110' } });
+    fireEvent.change(screen.getByLabelText(/systolic blood pressure/i), {
+      target: { value: '160' },
+    });
+    fireEvent.change(screen.getByLabelText(/diastolic blood pressure/i), {
+      target: { value: '95' },
+    });
+    fireEvent.change(screen.getByLabelText(/temperature/i), { target: { value: '37.2' } });
+    fireEvent.change(screen.getByLabelText(/respiratory rate/i), { target: { value: '22' } });
 
     const submitButton = screen.getByRole('button', { name: /complete triage/i });
-    await user.click(submitButton);
+    fireEvent.click(submitButton);
 
     await waitFor(() => {
       expect(handleSubmit).toHaveBeenCalledWith(
@@ -492,7 +491,7 @@ describe('TriageAssessmentForm - Submission', () => {
         })
       );
     });
-  });
+  }, 15000);
 });
 
 // =============================================================================

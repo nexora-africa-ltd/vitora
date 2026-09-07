@@ -61,8 +61,14 @@ jest.mock('@/lib/hooks/use-inpatient', () => ({
   useUpdateKardex: jest.fn(),
   useAddKardexShiftNote: jest.fn(),
   useAddKardexHandoverNote: jest.fn(),
+  useAddKardexScheduleItem: jest.fn(),
+  useUpdateKardexScheduleItem: jest.fn(),
+  useDeleteKardexScheduleItem: jest.fn(),
   useAddCarePlanEntry: jest.fn(),
   useUpdateCarePlanEntry: jest.fn(),
+  useResolveAllCarePlans: jest.fn(),
+  useDiscontinueCarePlanEntry: jest.fn(),
+  useCarePlanEntryHistory: jest.fn(),
 }));
 
 jest.mock('@/lib/hooks/use-ai', () => ({
@@ -76,8 +82,14 @@ import {
   useUpdateKardex,
   useAddKardexShiftNote,
   useAddKardexHandoverNote,
+  useAddKardexScheduleItem,
+  useUpdateKardexScheduleItem,
+  useDeleteKardexScheduleItem,
   useAddCarePlanEntry,
   useUpdateCarePlanEntry,
+  useResolveAllCarePlans,
+  useDiscontinueCarePlanEntry,
+  useCarePlanEntryHistory,
 } from '@/lib/hooks/use-inpatient';
 import { useAIEnabled, useAIStatus } from '@/lib/hooks/use-ai';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
@@ -92,6 +104,9 @@ describe('KardexPage', () => {
       activePanelAction: null,
       clearPanelAction: mockClearPanelAction,
     });
+    (useResolveAllCarePlans as jest.Mock).mockReturnValue({ mutateAsync: jest.fn() });
+    (useDiscontinueCarePlanEntry as jest.Mock).mockReturnValue({ mutateAsync: jest.fn() });
+    (useCarePlanEntryHistory as jest.Mock).mockReturnValue({ data: [], isLoading: false });
 
     (useAdmission as jest.Mock).mockReturnValue({
       data: {
@@ -143,6 +158,9 @@ describe('KardexPage', () => {
       mutateAsync: jest.fn(),
       isPending: false,
     });
+    (useAddKardexScheduleItem as jest.Mock).mockReturnValue({ mutateAsync: jest.fn(), isPending: false });
+    (useUpdateKardexScheduleItem as jest.Mock).mockReturnValue({ mutateAsync: jest.fn(), isPending: false });
+    (useDeleteKardexScheduleItem as jest.Mock).mockReturnValue({ mutateAsync: jest.fn(), isPending: false });
     (useAddCarePlanEntry as jest.Mock).mockReturnValue({
       mutateAsync: jest.fn(),
       isPending: false,
@@ -185,7 +203,7 @@ describe('KardexPage', () => {
     expect(screen.queryByTestId('ai-care-plan-panel')).not.toBeInTheDocument();
   });
 
-  it('does not render the AI care plan panel when a nursing care plan entry already exists', () => {
+  it('keeps rendering the AI care plan panel when a nursing care plan entry already exists', () => {
     (useKardexByAdmission as jest.Mock).mockReturnValue({
       data: {
         id: 5,
@@ -226,7 +244,7 @@ describe('KardexPage', () => {
 
     render(<KardexPage />);
 
-    expect(screen.queryByTestId('ai-care-plan-panel')).not.toBeInTheDocument();
+    expect(screen.getByTestId('ai-care-plan-panel')).toBeInTheDocument();
   });
 
   it('registers encounter-aware AI context and quick actions for the kardex route', () => {
@@ -243,7 +261,8 @@ describe('KardexPage', () => {
         ward_name: 'Medical Ward',
         bed_number: 'MW-03',
         admission_status: 'ACTIVE',
-        diet: 'Regular',
+        diet: undefined,
+        special_instructions: 'Oral intake: Regular',
       })
     );
 

@@ -1,4 +1,140 @@
 import '@testing-library/jest-dom';
+import { TextDecoder, TextEncoder } from 'node:util';
+import { ReadableStream, TransformStream, WritableStream } from 'node:stream/web';
+
+// MSW must see these platform APIs before its server modules are evaluated.
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
+global.ReadableStream = ReadableStream;
+global.TransformStream = TransformStream;
+global.WritableStream = WritableStream;
+class MockMessagePort {
+  constructor() {
+    this.onmessage = null;
+  }
+  postMessage(message) {
+    queueMicrotask(() => this.onmessage?.({ data: message }));
+  }
+  start() {}
+  close() {}
+  addEventListener() {}
+  removeEventListener() {}
+}
+
+class MockMessageChannel {
+  constructor() {
+    this.port1 = new MockMessagePort();
+    this.port2 = new MockMessagePort();
+    this.port2.postMessage = (message) =>
+      queueMicrotask(() => this.port1.onmessage?.({ data: message }));
+  }
+}
+
+global.MessagePort = MockMessagePort;
+global.MessageChannel = MockMessageChannel;
+// MSW initializes WebSocket support even when tests only use HTTP. A no-op
+// channel avoids retaining Node worker handles after the MSW server closes.
+global.BroadcastChannel = class MockBroadcastChannel {
+  constructor() {
+    this.onmessage = null;
+  }
+  postMessage() {}
+  addEventListener() {}
+  removeEventListener() {}
+  close() {}
+};
+
+// Prevent real socket creation during unit tests. Some components initialize
+// websocket hooks on mount; using JSDOM/Node WebSocket implementations can
+// leave libuv stream watchers active at process teardown.
+class JestMockWebSocket {
+  static CONNECTING = 0;
+  static OPEN = 1;
+  static CLOSING = 2;
+  static CLOSED = 3;
+
+  constructor(url) {
+    this.url = url;
+    this.readyState = JestMockWebSocket.CONNECTING;
+    this.onopen = null;
+    this.onclose = null;
+    this.onmessage = null;
+    this.onerror = null;
+  }
+
+  send() {}
+
+  close() {
+    this.readyState = JestMockWebSocket.CLOSED;
+    if (typeof this.onclose === 'function') {
+      this.onclose({ type: 'close' });
+    }
+  }
+}
+
+global.WebSocket = JestMockWebSocket;
+if (typeof window !== 'undefined') {
+  window.WebSocket = JestMockWebSocket;
+}
+
+if (typeof global.Response === 'undefined') {
+  const { fetch, Headers, Request, Response } = require('undici');
+  global.fetch = fetch;
+  global.Headers = Headers;
+  global.Request = Request;
+  global.Response = Response;
+}
+
+// PowerSync uses browser SQLite/WASM and is ESM-only. Unit tests exercise the
+// API fallback; browser sync behavior belongs to integration and E2E coverage.
+jest.mock('@powersync/web', () => {
+  const column = {
+    integer: 'integer',
+    real: 'real',
+    text: 'text',
+  };
+
+  class Table {
+    constructor(columns, options) {
+      this.columns = columns;
+      this.options = options;
+    }
+  }
+
+  class Schema {
+    constructor(tables) {
+      this.tables = tables;
+    }
+  }
+
+  class PowerSyncDatabase {
+    async init() {}
+    async connect() {}
+    async disconnect() {}
+    async getAll() {
+      return [];
+    }
+    async execute() {}
+    registerListener() {
+      return () => {};
+    }
+    onChange() {
+      return () => {};
+    }
+  }
+
+  return {
+    column,
+    Table,
+    Schema,
+    PowerSyncDatabase,
+    UpdateType: {
+      PUT: 'PUT',
+      PATCH: 'PATCH',
+      DELETE: 'DELETE',
+    },
+  };
+});
 
 // Provide a safe default mock for Next.js App Router APIs.
 // Individual tests can override this with their own `jest.mock('next/navigation', ...)`.
@@ -17,55 +153,34 @@ jest.mock('next/navigation', () => ({
   redirect: jest.fn(),
 }));
 
-// Polyfill fetch API for Node.js (required for MSW)
-import { TextEncoder, TextDecoder } from 'util';
-global.TextEncoder = TextEncoder;
-global.TextDecoder = TextDecoder;
+// Markdown's unified ecosystem is ESM-only. Markdown parsing is covered outside
+// component unit tests; this preserves content while avoiding a large ESM graph.
+jest.mock('react-markdown', () => {
+  const React = require('react');
+  return ({ children }) => React.createElement(React.Fragment, null, children);
+});
+jest.mock('remark-gfm', () => () => undefined);
 
-// MSW setup - Use dynamic import for ES modules
-let server;
-
-beforeAll(async () => {
-  try {
-    const testPath =
-      (global.expect && global.expect.getState && global.expect.getState().testPath) || '';
-    if (typeof testPath === 'string' && testPath.includes('__tests__/contracts/')) {
-      return;
+// Next/Jest prepends its own node_modules ignore rule, so MSW's ESM-only
+// `until-async` cannot reliably be transformed through configuration alone.
+jest.mock('until-async', () => ({
+  until: async (callback) => {
+    try {
+      return [null, await callback()];
+    } catch (error) {
+      return [error, null];
     }
+  },
+}));
 
-    // Polyfill Web Streams (needed by MSW/undici in some Node/jsdom environments)
-    if (
-      typeof ReadableStream === 'undefined' ||
-      typeof TransformStream === 'undefined' ||
-      typeof WritableStream === 'undefined'
-    ) {
-      const { ReadableStream, TransformStream, WritableStream } = await import('node:stream/web');
-      global.ReadableStream = ReadableStream;
-      global.TransformStream = TransformStream;
-      global.WritableStream = WritableStream;
-    }
+const testPath =
+  (global.expect && global.expect.getState && global.expect.getState().testPath) || '';
+const isContractTest = typeof testPath === 'string' && testPath.includes('__tests__/contracts/');
+const { server } = isContractTest ? { server: null } : require('./__tests__/mocks/server');
 
-    // Polyfill MessagePort/MessageChannel (used by MSW for request interception)
-    if (typeof MessagePort === 'undefined' || typeof MessageChannel === 'undefined') {
-      const { MessagePort, MessageChannel } = await import('node:worker_threads');
-      global.MessagePort = MessagePort;
-      global.MessageChannel = MessageChannel;
-    }
-
-    // Polyfill Response/Request if not available
-    if (typeof Response === 'undefined') {
-      const { Response, Request, Headers, fetch } = await import('undici');
-      global.Response = Response;
-      global.Request = Request;
-      global.Headers = Headers;
-      global.fetch = fetch;
-    }
-
-    const serverModule = await import('./__tests__/mocks/server');
-    server = serverModule.server;
+beforeAll(() => {
+  if (server) {
     server.listen({ onUnhandledRequest: 'warn' });
-  } catch (e) {
-    console.warn('MSW server setup failed:', e.message);
   }
 });
 
@@ -99,13 +214,19 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // Mock localStorage
+const storage = new Map();
 const localStorageMock = {
-  getItem: jest.fn(),
-  setItem: jest.fn(),
-  removeItem: jest.fn(),
-  clear: jest.fn(),
+  getItem: jest.fn((key) => storage.get(key) ?? null),
+  setItem: jest.fn((key, value) => storage.set(key, String(value))),
+  removeItem: jest.fn((key) => storage.delete(key)),
+  clear: jest.fn(() => storage.clear()),
 };
 global.localStorage = localStorageMock;
+
+afterEach(() => {
+  storage.clear();
+  jest.clearAllMocks();
+});
 
 // Mock navigator.onLine
 Object.defineProperty(window.navigator, 'onLine', {

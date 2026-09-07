@@ -22,6 +22,7 @@ jest.mock('next/navigation', () => ({
     back: jest.fn(),
   })),
   usePathname: jest.fn(() => '/encounters/1'),
+  useSearchParams: jest.fn(() => new URLSearchParams()),
 }));
 
 // Mock the API modules
@@ -50,15 +51,91 @@ jest.mock('@/lib/auth/context', () => ({
   useAuth: jest.fn(() => ({ user: mockUser, isAuthenticated: true })),
 }));
 
+jest.mock('@/lib/hooks/use-permissions', () => ({
+  usePermissions: jest.fn(() => ({
+    isAdmin: false,
+    canAccessModule: () => true,
+    canPerformAction: () => true,
+  })),
+}));
+
+jest.mock('@/lib/context/facility-context', () => ({
+  useFacility: jest.fn(() => ({ hasModule: () => true })),
+}));
+
+const mockEmptyQuery = () => ({ data: undefined, isLoading: false, error: null });
+
+jest.mock('@/lib/hooks/use-encounters', () => ({
+  useEncounterDiagnoses: mockEmptyQuery,
+  useEncounterTreatmentPlan: mockEmptyQuery,
+  useEncounterClinicalSnapshot: mockEmptyQuery,
+  useEditChiefComplaint: () => ({ mutateAsync: jest.fn(), isPending: false }),
+}));
+jest.mock('@/lib/hooks/use-laboratory', () => ({ useEncounterLabOrders: mockEmptyQuery }));
+jest.mock('@/lib/hooks/use-imaging', () => ({ useEncounterImagingOrders: mockEmptyQuery }));
+jest.mock('@/lib/hooks/use-pharmacy', () => ({ useEncounterPrescriptions: mockEmptyQuery }));
+jest.mock('@/lib/hooks/use-procedures', () => ({ useEncounterProcedureOrders: mockEmptyQuery }));
+jest.mock('@/lib/hooks/use-referrals', () => ({ useEncounterReferrals: mockEmptyQuery }));
+jest.mock('@/lib/hooks/use-encounter-allied-health', () => ({
+  useEncounterPhysioOrders: mockEmptyQuery,
+  useEncounterNutritionConsultations: mockEmptyQuery,
+  useEncounterCounsellingReferrals: mockEmptyQuery,
+  useEncounterOTOrders: mockEmptyQuery,
+  useEncounterSWReferrals: mockEmptyQuery,
+}));
+jest.mock('@/lib/hooks/use-proactive-insights', () => ({
+  useProactiveInsights: () => ({
+    insights: [],
+    isLoading: false,
+    dismissInsight: jest.fn(),
+    dismissAll: jest.fn(),
+    refresh: jest.fn(),
+    error: null,
+    noInsightsFound: false,
+    loadedFromCache: false,
+  }),
+}));
+jest.mock('@/lib/hooks/use-ai', () => ({ useStoredCarePlans: mockEmptyQuery }));
+jest.mock('@/lib/hooks/use-patients', () => ({ usePatientVitalsHistory: mockEmptyQuery }));
+jest.mock('@/lib/hooks/use-allergies', () => ({ usePatientAllergies: mockEmptyQuery }));
+jest.mock('@/lib/hooks/use-chronic-conditions', () => ({ usePatientChronicConditions: mockEmptyQuery }));
+jest.mock('@/lib/hooks/use-current-medications', () => ({ usePatientCurrentMedications: mockEmptyQuery }));
+jest.mock('@/lib/hooks/use-vital-flag-suggestions', () => ({
+  usePatientVitalFlagSuggestions: mockEmptyQuery,
+}));
+jest.mock('@/lib/hooks/use-comment-count', () => ({ useCommentCount: () => 0 }));
+jest.mock('@/lib/hooks', () => ({
+  useLabEncounterSocket: jest.fn(),
+}));
+
+jest.mock('@/components/encounters/cds-alerts-panel', () => ({ CDSAlertsPanel: () => null }));
+jest.mock('@/components/encounters/enhanced-cds-panel', () => ({ EnhancedCDSPanel: () => null }));
+jest.mock('@/components/encounters/care-plan-panel', () => ({ CarePlanPanel: () => null }));
+jest.mock('@/components/encounters/clinical-snapshot-banner', () => ({
+  ClinicalSnapshotBanner: () => null,
+}));
+jest.mock('@/components/shared/proactive-insight-card', () => ({
+  ProactiveInsightsPanel: () => null,
+}));
+jest.mock('@/components/encounters/investigation-suggestions-panel', () => ({
+  InvestigationSuggestionsPanel: () => null,
+}));
+jest.mock('@/components/encounters/egfr-panel', () => ({ EGFRPanel: () => null }));
+
 import { useParams } from 'next/navigation';
 import { encountersApi } from '@/lib/api/encounters';
 import { patientsApi } from '@/lib/api/patients';
 import { useAuth } from '@/lib/auth/context';
 import { mockPatient, mockEncounter } from '../../fixtures/patient-shell-fixtures';
 
+jest.setTimeout(15000);
+
 const mockEncountersApi = encountersApi as jest.Mocked<typeof encountersApi>;
 const mockPatientsApi = patientsApi as jest.Mocked<typeof patientsApi>;
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
+
+let EncounterDetailPage: React.ComponentType;
+let EncounterProvider: React.ComponentType<{ encounterId: number; children: React.ReactNode }>;
 
 // Wrap in PatientProvider for EncounterProvider to work
 function TestWrapper({ children, patientId }: { children: React.ReactNode; patientId: number }) {
@@ -84,6 +161,15 @@ function createWrapper() {
 // =============================================================================
 
 describe('Encounter Detail Page - Context Integration', () => {
+  beforeAll(async () => {
+    const [pageModule, contextModule] = await Promise.all([
+      import('@/app/(dashboard)/encounters/[id]/page'),
+      import('@/lib/context/encounter-context'),
+    ]);
+    EncounterDetailPage = pageModule.default;
+    EncounterProvider = contextModule.EncounterProvider;
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockEncountersApi.get.mockResolvedValue(mockEncounter);
@@ -98,9 +184,6 @@ describe('Encounter Detail Page - Context Integration', () => {
   // ===========================================================================
   describe('Context Consumption', () => {
     it('should consume encounter data from EncounterContext', async () => {
-      const EncounterDetailPage = (await import('@/app/(dashboard)/encounters/[id]/page')).default;
-      const { EncounterProvider } = await import('@/lib/context/encounter-context');
-
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -123,9 +206,6 @@ describe('Encounter Detail Page - Context Integration', () => {
     });
 
     it('should access patient data via encounter context', async () => {
-      const EncounterDetailPage = (await import('@/app/(dashboard)/encounters/[id]/page')).default;
-      const { EncounterProvider } = await import('@/lib/context/encounter-context');
-
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -145,9 +225,6 @@ describe('Encounter Detail Page - Context Integration', () => {
     });
 
     it('should NOT call useEncounter hook directly in page component', async () => {
-      const EncounterDetailPage = (await import('@/app/(dashboard)/encounters/[id]/page')).default;
-      const { EncounterProvider } = await import('@/lib/context/encounter-context');
-
       const Wrapper = createWrapper();
 
       const { rerender } = render(

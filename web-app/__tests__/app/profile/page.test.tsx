@@ -171,7 +171,7 @@ describe('ProfilePage', () => {
     expect(await screen.findByText('HWR-12345')).toBeInTheDocument();
   });
 
-  it('shows settings actions and paginates formatted permissions', async () => {
+  it('shows settings actions and grouped permissions', async () => {
     render(<ProfilePage />);
 
     await screen.findByText('HWR-12345');
@@ -184,16 +184,21 @@ describe('ProfilePage', () => {
       'href',
       '/settings'
     );
-    expect(screen.getByText('Patients / View Patient')).toBeInTheDocument();
-    expect(screen.getByText('Encounters / Add Encounter')).toBeInTheDocument();
-    expect(screen.getByText('Showing 1-8 of 10')).toBeInTheDocument();
-    expect(screen.queryByText('Pharmacy / View Prescription')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /patients/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /encounters/i })).toBeInTheDocument();
+    expect(screen.queryByText('View Patient')).not.toBeInTheDocument();
+    expect(screen.queryByText('View Prescription')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /next/i }));
+    fireEvent.click(screen.getByRole('button', { name: /patients/i }));
+    fireEvent.click(screen.getByRole('button', { name: /encounters/i }));
 
-    expect(screen.getByText('Showing 9-10 of 10')).toBeInTheDocument();
-    expect(screen.getByText('Pharmacy / View Prescription')).toBeInTheDocument();
-    expect(screen.getByText('Pharmacy / Change Prescription')).toBeInTheDocument();
+    expect(screen.getByText('View Patient')).toBeInTheDocument();
+    expect(screen.getByText('Add Encounter')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /pharmacy/i }));
+
+    expect(screen.getByText('View Prescription')).toBeInTheDocument();
+    expect(screen.getByText('Change Prescription')).toBeInTheDocument();
   });
 
   it('renders HWR compliance cards after practitioner verification', async () => {

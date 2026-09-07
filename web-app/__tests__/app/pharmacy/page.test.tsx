@@ -20,6 +20,11 @@ jest.mock('@/lib/hooks/use-pharmacy', () => ({
   useLowStockAlerts: jest.fn(),
   useExpiringAlerts: jest.fn(),
   usePendingPrescriptions: jest.fn(),
+  useAlertSeveritySummary: jest.fn(() => ({
+    data: { critical: 0, high: 0, medium: 0, low: 0, total: 0 },
+    isLoading: false,
+    error: null,
+  })),
   useBatchesForDrug: jest.fn(() => ({
     data: [],
     isLoading: false,
@@ -60,6 +65,33 @@ jest.mock('next/navigation', () => ({
     back: jest.fn(),
   }),
   usePathname: () => '/pharmacy',
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+jest.mock('@/lib/hooks/use-permissions', () => ({
+  usePermissions: () => ({ hasPermission: () => true }),
+}));
+
+jest.mock('@/lib/context/facility-context', () => ({
+  useFacility: () => ({ facility: { id: 1, name: 'Demo Health Facility' } }),
+}));
+
+jest.mock('@/lib/hooks/use-websocket', () => ({
+  usePharmacySocket: jest.fn(),
+}));
+
+jest.mock('@/lib/api/pharmacy', () => ({
+  pharmacyApi: {
+    getBootstrap: jest.fn().mockResolvedValue({
+      pharmacy_enabled: true,
+      modules: { inventory: true },
+      permissions: {
+        can_create_prescription: true,
+        can_dispense: true,
+        can_view_alerts: true,
+      },
+    }),
+  },
 }));
 
 import {
@@ -153,7 +185,7 @@ describe('PharmacyPage', () => {
     it('should render navigation tabs', () => {
       renderWithProviders(<PharmacyPage />);
 
-      expect(screen.getByText('Drugs')).toBeInTheDocument();
+      expect(screen.getByText('Catalog')).toBeInTheDocument();
       expect(screen.getByText('Inventory')).toBeInTheDocument();
       expect(screen.getByText('Prescriptions')).toBeInTheDocument();
       expect(screen.getByText('Alerts')).toBeInTheDocument();
@@ -193,13 +225,13 @@ describe('PharmacyPage', () => {
     it('should show add drug button', () => {
       renderWithProviders(<PharmacyPage />);
 
-      expect(screen.getByRole('button', { name: /add drug/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /add item/i })).toBeInTheDocument();
     });
 
     it('should have search input for drugs', () => {
       renderWithProviders(<PharmacyPage />);
 
-      expect(screen.getByPlaceholderText(/search drugs/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/search items/i)).toBeInTheDocument();
     });
   });
 
@@ -211,7 +243,7 @@ describe('PharmacyPage', () => {
       await user.click(screen.getByText('Inventory'));
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /receive stock/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /quick receive/i })).toBeInTheDocument();
       });
     });
 
@@ -288,11 +320,11 @@ describe('PharmacyPage', () => {
       const user = userEvent.setup();
       renderWithProviders(<PharmacyPage />);
 
-      await user.click(screen.getByText('Alerts'));
+      await user.click(screen.getByRole('tab', { name: /alerts/i }));
 
       // Should show filter tabs in alerts panel
       await waitFor(() => {
-        expect(screen.getByText('All')).toBeInTheDocument();
+        expect(screen.getByRole('tab', { name: /all \(/i })).toBeInTheDocument();
       });
     });
 
@@ -322,7 +354,7 @@ describe('PharmacyPage', () => {
 
       renderWithProviders(<PharmacyPage />);
 
-      expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
+      expect(document.querySelector('.animate-spin')).toBeInTheDocument();
     });
   });
 
@@ -350,7 +382,7 @@ describe('PharmacyPage', () => {
 
       renderWithProviders(<PharmacyPage />);
 
-      expect(screen.getByText(/no drugs found/i)).toBeInTheDocument();
+      expect(screen.getByText(/no items found/i)).toBeInTheDocument();
     });
   });
 });
