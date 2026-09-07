@@ -28,6 +28,10 @@ jest.mock('@/lib/hooks/use-permissions', () => ({
   }),
 }));
 
+jest.mock('@/lib/hooks/billing', () => ({
+  useInvoice: () => ({ data: undefined, isLoading: false }),
+}));
+
 jest.mock('@/lib/hooks/use-insurance', () => {
   const claim = {
     id: 1,
@@ -53,7 +57,7 @@ jest.mock('@/lib/hooks/use-insurance', () => {
     approved_amount: '0.00',
     copay_amount: '0.00',
     paid_amount: '0.00',
-    external_claim_id: '',
+    external_claim_id: 'HC-CLAIM-001',
     external_preauth_id: '',
     rejection_reason: '',
     query_details: '',
@@ -89,6 +93,7 @@ jest.mock('@/lib/hooks/use-insurance', () => {
 
   return {
     useInsuranceClaim: () => ({ data: claim, isLoading: false, refetch: jest.fn() }),
+    useVisitAuthorizations: () => ({ data: { results: [] }, isLoading: false }),
     useSubmitClaim: () => ({ mutateAsync: jest.fn(), isPending: false }),
     useCancelClaim: () => ({ mutateAsync: jest.fn(), isPending: false }),
     useApproveClaim: () => ({ mutateAsync: jest.fn(), isPending: false }),
@@ -202,9 +207,10 @@ jest.mock('@/lib/hooks/use-insurance', () => {
     useValidateVisitAuthorization: () => ({ mutateAsync: jest.fn(), isPending: false }),
     useReserveClaimBalance: () => ({ mutateAsync: jest.fn(), isPending: false }),
     useSubmitClaimToHealthcloud: () => ({ mutateAsync: jest.fn(), isPending: false }),
+    useRefreshClaimExternalStatus: () => ({ mutateAsync: jest.fn(), isPending: false }),
     useSubmitClaimInvoice: () => ({ mutateAsync: jest.fn(), isPending: false }),
     useSubmitClaimCreditNote: () => ({ mutateAsync: jest.fn(), isPending: false }),
-    useUploadClaimAttachment: () => ({ mutateAsync: jest.fn(), isPending: false }),
+    useUploadClaimAttachmentFile: () => ({ mutateAsync: jest.fn(), isPending: false }),
     useCheckClaimRemittance: () => ({ mutateAsync: jest.fn(), isPending: false }),
   };
 });
@@ -218,9 +224,8 @@ describe('Claim HealthCloud Workflow UI', () => {
     render(<ClaimDetailPage />);
 
     expect(screen.getByText('HealthCloud Workflow')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /request otp/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /start visit/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /submit claim/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /run eligibility/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /submit claim to healthcloud/i })).toBeInTheDocument();
   });
 
   it('can trigger OTP request from workflow panel', async () => {
@@ -238,6 +243,6 @@ describe('Claim HealthCloud Workflow UI', () => {
   it('shows credit-note action in workflow panel', () => {
     render(<ClaimDetailPage />);
 
-    expect(screen.getByRole('button', { name: /submit credit note/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /create credit note/i })).toBeInTheDocument();
   });
 });

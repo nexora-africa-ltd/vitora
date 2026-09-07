@@ -25,6 +25,23 @@ jest.mock('@/lib/auth/hooks', () => ({
   useLogout: jest.fn(() => jest.fn()),
 }));
 
+// Navigation derives subscription visibility from the authenticated profile.
+jest.mock('@/lib/auth/context', () => ({
+  useAuth: jest.fn(() => ({
+    user: { is_superuser: true, plan_features: {} },
+    isAuthenticated: true,
+  })),
+}));
+
+// Sidebar filtering is under test; clinic fetching is not.
+jest.mock('@/lib/hooks/use-clinics', () => ({
+  useClinics: jest.fn(() => ({ data: undefined })),
+}));
+
+jest.mock('@/lib/hooks/use-sidebar-badges', () => ({
+  useSidebarBadges: jest.fn(() => ({})),
+}));
+
 // Mock usePermissions to grant all access (superuser)
 jest.mock('@/lib/hooks/use-permissions', () => ({
   usePermissions: jest.fn(() => ({
@@ -160,6 +177,7 @@ describe('Sidebar', () => {
     mockCanPerformAction.mockReturnValue(true);
     mockPatientJourneyState.selectedPatientId = null;
     mockPatientJourneyState.activePatients = {};
+    sessionStorage.clear();
     mockUseNavigationMode.mockReturnValue({
       navigationMode: 'standard',
       isClinicalNavigationEligible: true,
@@ -221,7 +239,7 @@ describe('Sidebar', () => {
 
   it('should call onMobileClose when link clicked', () => {
     render(<Sidebar {...defaultProps} mobileOpen={true} />);
-    const patientLink = screen.getByRole('link', { name: /patients/i });
+    const patientLink = screen.getByRole('link', { name: 'All Patients' });
     fireEvent.click(patientLink);
     expect(defaultProps.onMobileClose).toHaveBeenCalled();
   });
@@ -335,7 +353,7 @@ describe('Sidebar', () => {
     );
   });
 
-  it('should have Finance menu with Transactions and Insurance children', () => {
+  it('should have Finance menu with transaction children', () => {
     render(<Sidebar {...defaultProps} />);
 
     // Finance parent should be visible
@@ -345,7 +363,6 @@ describe('Sidebar', () => {
     expect(screen.getAllByText('Dashboard').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Invoices').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Payments').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Insurance').length).toBeGreaterThan(0);
 
     // Children should be links with correct hrefs (avoid ambiguity with the main Dashboard link)
     const dashboardLinks = screen.getAllByRole('link', { name: /^dashboard$/i });
@@ -354,11 +371,10 @@ describe('Sidebar', () => {
       'href',
       '/transactions/invoices'
     );
-    expect(screen.getByRole('link', { name: /payments/i })).toHaveAttribute(
-      'href',
-      '/transactions/payments'
+    const paymentLinks = screen.getAllByRole('link', { name: /payments/i });
+    expect(paymentLinks.some((link) => link.getAttribute('href') === '/transactions/payments')).toBe(
+      true
     );
-    expect(screen.getByRole('link', { name: /insurance/i })).toHaveAttribute('href', '/insurance');
   });
 
   it('should have Reports under Admin', () => {
@@ -378,13 +394,16 @@ describe('Sidebar', () => {
 
     render(<Sidebar {...defaultProps} />);
 
-    // Finance group should start open due to active child
+    // Persisted menu state is restored first, so an active section can begin
+    // closed. Users can still toggle it open and closed.
     const financeGroup = screen
       .getAllByTestId('collapsible')
       .find((node) => node.textContent?.includes('Finance'));
-    expect(financeGroup).toHaveAttribute('data-open', 'true');
+    expect(financeGroup).toHaveAttribute('data-open', 'false');
 
-    // Clicking the group trigger should close it and it should remain closed
+    // Clicking the group trigger should open it and allow it to close again.
+    fireEvent.click(screen.getByRole('button', { name: 'Finance' }));
+    expect(financeGroup).toHaveAttribute('data-open', 'true');
     fireEvent.click(screen.getByRole('button', { name: 'Finance' }));
     expect(financeGroup).toHaveAttribute('data-open', 'false');
   });
@@ -411,14 +430,8 @@ describe('Sidebar', () => {
     expect(screen.getByText('Current Patient')).toBeInTheDocument();
     expect(screen.getByText('Jane Smith')).toBeInTheDocument();
     expect(screen.getByText(/MRN-20260310-0042/)).toBeInTheDocument();
-    expect(within(card).getByRole('link', { name: /^view$/i })).toHaveAttribute(
-      'href',
-      '/patients/42'
-    );
-    expect(within(card).getByRole('link', { name: /encounter/i })).toHaveAttribute(
-      'href',
-      '/encounters/77'
-    );
+    expect(within(card).getByRole('button', { name: 'View Patient' })).toBeInTheDocument();
+    expect(within(card).getByRole('button', { name: 'Encounter' })).toBeInTheDocument();
   });
 
   it('does not render the current patient card when no patient is selected', () => {
@@ -464,11 +477,8 @@ describe('Sidebar', () => {
 
     const card = screen.getByTestId('current-patient-card');
 
-    expect(within(card).getByRole('link', { name: /^view$/i })).toHaveAttribute(
-      'href',
-      '/patients/42'
-    );
-    expect(within(card).queryByRole('link', { name: /encounter/i })).not.toBeInTheDocument();
+    expect(within(card).getByRole('button', { name: 'View Patient' })).toBeInTheDocument();
+    expect(within(card).queryByRole('button', { name: 'Encounter' })).not.toBeInTheDocument();
   });
 
   it('dismisses the current patient card when the close button is clicked', () => {

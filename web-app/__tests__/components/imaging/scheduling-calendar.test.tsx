@@ -196,11 +196,11 @@ describe('SchedulingCalendar', () => {
       });
     });
 
-    it('shows refresh button', async () => {
+    it('does not render a refresh button', async () => {
       render(<SchedulingCalendar />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /refresh calendar/i })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /refresh calendar/i })).not.toBeInTheDocument();
       });
     });
 
@@ -430,8 +430,9 @@ describe('SchedulingCalendar', () => {
 
       // Tooltip content should appear
       await waitFor(() => {
-        expect(screen.getByText('John Doe')).toBeInTheDocument();
-        expect(screen.getByText('APT-2026-001')).toBeInTheDocument();
+        expect(screen.getAllByText('John Doe').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('APT-2026-001').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('CONFIRMED').length).toBeGreaterThan(0);
       });
     });
   });
@@ -469,26 +470,6 @@ describe('SchedulingCalendar', () => {
             modality: 'XR',
           })
         );
-      });
-    });
-  });
-
-  describe('Refresh', () => {
-    it('refreshes calendar when clicking refresh button', async () => {
-      render(<SchedulingCalendar />, { wrapper: createWrapper() });
-
-      await waitFor(() => {
-        expect(screen.getByText('X-Ray Room 1')).toBeInTheDocument();
-      });
-
-      // Initial call
-      expect(mockImagingApi.getCalendar).toHaveBeenCalledTimes(1);
-
-      const refreshButton = screen.getByRole('button', { name: /refresh calendar/i });
-      await user.click(refreshButton);
-
-      await waitFor(() => {
-        expect(mockImagingApi.getCalendar).toHaveBeenCalledTimes(2);
       });
     });
   });

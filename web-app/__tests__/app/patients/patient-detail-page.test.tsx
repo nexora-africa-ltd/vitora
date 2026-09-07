@@ -54,6 +54,8 @@ jest.mock('@/lib/hooks/use-patients', () => ({
   },
   usePatientEmergencyContacts: jest.fn(() => ({ data: [], isLoading: false })),
   usePatientEncounters: jest.fn(() => ({ data: [], isLoading: false })),
+  usePatientVitalsHistory: jest.fn(() => ({ data: [], isLoading: false })),
+  useContactPatientSms: jest.fn(() => ({ mutateAsync: jest.fn(), isPending: false })),
 }));
 
 // Mock auth context
@@ -73,6 +75,40 @@ const mockAdminUser = {
 
 jest.mock('@/lib/auth/context', () => ({
   useAuth: jest.fn(() => ({ user: mockUser, isAuthenticated: true })),
+}));
+
+jest.mock('@/lib/context/facility-context', () => ({
+  useFacility: () => ({ hasModule: () => false, facility: null }),
+}));
+
+jest.mock('@/lib/context/page-refresh-context', () => ({
+  usePageRefresh: () => ({ refresh: jest.fn(), isRefreshing: false }),
+}));
+
+jest.mock('@/lib/hooks/use-pharmacy', () => ({
+  usePatientPrescriptions: () => ({ data: { results: [] }, isLoading: false }),
+}));
+
+jest.mock('@/lib/hooks/use-laboratory', () => ({
+  usePatientLabOrders: () => ({ data: { results: [] }, isLoading: false }),
+}));
+
+jest.mock('@/lib/hooks/use-procedures', () => ({
+  usePatientProcedureOrders: () => ({ data: { results: [] }, isLoading: false }),
+}));
+
+jest.mock('@/lib/hooks/use-blood-bank', () => ({
+  useBloodRequests: () => ({ data: { results: [] }, isLoading: false }),
+}));
+
+jest.mock('@/lib/hooks/use-dialysis', () => ({
+  useDialysisOrders: () => ({ data: { results: [] }, isLoading: false }),
+}));
+
+// Patient detail child components request the clinic list for workflow actions.
+// Keep this context-integration suite isolated from the clinic API.
+jest.mock('@/lib/hooks/use-clinics', () => ({
+  useClinics: () => ({ data: { results: [] }, isLoading: false }),
 }));
 
 import { useParams } from 'next/navigation';

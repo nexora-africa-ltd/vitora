@@ -34,7 +34,7 @@ jest.mock('@/lib/context/facility-context', () => ({
 const mockFacilitiesList = jest.fn();
 jest.mock('@/lib/api/facilities', () => ({
   facilitiesApi: {
-    list: (...args: unknown[]) => mockFacilitiesList(...args),
+    myFacilities: (...args: unknown[]) => mockFacilitiesList(...args),
     get: jest.fn().mockResolvedValue({
       id: 2,
       name: 'Branch Clinic',
@@ -86,7 +86,7 @@ describe('FacilitySwitcher', () => {
       switchFacility: mockSwitchFacility,
       organization: null,
     });
-    mockFacilitiesList.mockResolvedValue({ results: [] });
+    mockFacilitiesList.mockResolvedValue([]);
 
     const { container } = render(<FacilitySwitcher />, {
       wrapper: createWrapper(),
@@ -100,9 +100,9 @@ describe('FacilitySwitcher', () => {
       switchFacility: mockSwitchFacility,
       organization: mockOrganization,
     });
-    mockFacilitiesList.mockResolvedValue({
-      results: [{ id: 1, name: 'Main Clinic', mfl_code: '12345', level: 4, is_headquarters: true }],
-    });
+    mockFacilitiesList.mockResolvedValue([
+      { id: 1, name: 'Main Clinic', mfl_code: '12345', level: 4, is_headquarters: true },
+    ]);
 
     render(<FacilitySwitcher />, { wrapper: createWrapper() });
 
@@ -120,13 +120,11 @@ describe('FacilitySwitcher', () => {
       switchFacility: mockSwitchFacility,
       organization: mockOrganization,
     });
-    mockFacilitiesList.mockResolvedValue({
-      results: [
-        { id: 1, name: 'Main Clinic', mfl_code: '12345', level: 4, is_headquarters: true },
-        { id: 2, name: 'Branch Clinic', mfl_code: '12346', level: 3, is_headquarters: false },
-        { id: 3, name: 'Mobile Unit', mfl_code: '12347', level: 2, is_headquarters: false },
-      ],
-    });
+    mockFacilitiesList.mockResolvedValue([
+      { id: 1, name: 'Main Clinic', mfl_code: '12345', level: 4, is_headquarters: true },
+      { id: 2, name: 'Branch Clinic', mfl_code: '12346', level: 3, is_headquarters: false },
+      { id: 3, name: 'Mobile Unit', mfl_code: '12347', level: 2, is_headquarters: false },
+    ]);
 
     render(<FacilitySwitcher />, { wrapper: createWrapper() });
 
@@ -156,12 +154,10 @@ describe('FacilitySwitcher', () => {
       switchFacility: mockSwitchFacility,
       organization: mockOrganization,
     });
-    mockFacilitiesList.mockResolvedValue({
-      results: [
-        { id: 1, name: 'Main Clinic', mfl_code: '12345', level: 4, is_headquarters: true },
-        { id: 2, name: 'Branch Clinic', mfl_code: '12346', level: 3, is_headquarters: false },
-      ],
-    });
+    mockFacilitiesList.mockResolvedValue([
+      { id: 1, name: 'Main Clinic', mfl_code: '12345', level: 4, is_headquarters: true },
+      { id: 2, name: 'Branch Clinic', mfl_code: '12346', level: 3, is_headquarters: false },
+    ]);
 
     render(<FacilitySwitcher />, { wrapper: createWrapper() });
 
@@ -182,12 +178,10 @@ describe('FacilitySwitcher', () => {
       switchFacility: mockSwitchFacility,
       organization: mockOrganization,
     });
-    mockFacilitiesList.mockResolvedValue({
-      results: [
-        { id: 1, name: 'Main Clinic', mfl_code: '12345', level: 4, is_headquarters: true },
-        { id: 2, name: 'Branch Clinic', mfl_code: '12346', level: 3, is_headquarters: false },
-      ],
-    });
+    mockFacilitiesList.mockResolvedValue([
+      { id: 1, name: 'Main Clinic', mfl_code: '12345', level: 4, is_headquarters: true },
+      { id: 2, name: 'Branch Clinic', mfl_code: '12346', level: 3, is_headquarters: false },
+    ]);
 
     render(<FacilitySwitcher />, { wrapper: createWrapper() });
 
@@ -216,12 +210,10 @@ describe('FacilitySwitcher', () => {
       switchFacility: mockSwitchFacility,
       organization: mockOrganization,
     });
-    mockFacilitiesList.mockResolvedValue({
-      results: [
-        { id: 1, name: 'Main Clinic', mfl_code: '12345', level: 4, is_headquarters: true },
-        { id: 2, name: 'Branch Clinic', mfl_code: '12346', level: 3, is_headquarters: false },
-      ],
-    });
+    mockFacilitiesList.mockResolvedValue([
+      { id: 1, name: 'Main Clinic', mfl_code: '12345', level: 4, is_headquarters: true },
+      { id: 2, name: 'Branch Clinic', mfl_code: '12346', level: 3, is_headquarters: false },
+    ]);
 
     render(<FacilitySwitcher />, { wrapper: createWrapper() });
 

@@ -90,10 +90,12 @@ describe('VisitReasonSelect', () => {
       'NEW_COMPLAINT',
       'FOLLOW_UP',
       'CHRONIC_CARE',
+      'SCHEDULED_PROCEDURE',
       'PROCEDURE_REVIEW',
       'REFILL_ONLY',
       'LAB_REVIEW',
       'REFERRAL_VISIT',
+      'EMERGENCY',
       'OTHER',
     ];
 
@@ -101,12 +103,13 @@ describe('VisitReasonSelect', () => {
       expect(VISIT_REASON_DISPLAY[reason]).toBeDefined();
     });
 
-    expect(Object.keys(VISIT_REASON_DISPLAY)).toHaveLength(8);
+    expect(Object.keys(VISIT_REASON_DISPLAY)).toHaveLength(10);
   });
 
   it('correctly identifies skip-triage reasons', () => {
     expect(SKIP_TRIAGE_REASONS).toContain('LAB_REVIEW');
     expect(SKIP_TRIAGE_REASONS).toContain('REFILL_ONLY');
+    expect(SKIP_TRIAGE_REASONS).toContain('SCHEDULED_PROCEDURE');
     expect(SKIP_TRIAGE_REASONS).not.toContain('NEW_COMPLAINT');
     expect(SKIP_TRIAGE_REASONS).not.toContain('FOLLOW_UP');
     expect(SKIP_TRIAGE_REASONS).not.toContain('CHRONIC_CARE');

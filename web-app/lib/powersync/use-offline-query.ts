@@ -53,6 +53,12 @@ export interface UseOfflineQueryResult<TResult> {
   isError: boolean;
   /** Whether a fetch is in-flight (background refetch or initial) */
   isFetching: boolean;
+  /** Whether the active query completed successfully */
+  isSuccess: boolean;
+  /** Whether the active query has completed at least once */
+  isFetched: boolean;
+  /** React Query-compatible fetch state for consumers of dual-mode hooks */
+  fetchStatus: 'fetching' | 'idle' | 'paused';
   /** Error from the active query path */
   error: Error | null;
   /** Trigger a manual refresh */
@@ -137,6 +143,9 @@ export function useOfflineQuery<
       isLoading: false,
       isError: false,
       isFetching: false,
+      isSuccess: false,
+      isFetched: false,
+      fetchStatus: 'idle',
       error: null,
       refetch: () => {},
       source: 'api',
@@ -151,6 +160,9 @@ export function useOfflineQuery<
         isLoading: false,
         isError: true,
         isFetching: false,
+        isSuccess: false,
+        isFetched: true,
+        fetchStatus: 'idle',
         error: localTransformed.error,
         refetch: localResult.refresh,
         source: 'local',
@@ -162,6 +174,9 @@ export function useOfflineQuery<
       isLoading: localResult.isLoading,
       isError: !!localResult.error,
       isFetching: localResult.isLoading,
+      isSuccess: !localResult.isLoading && !localResult.error,
+      isFetched: !localResult.isLoading,
+      fetchStatus: localResult.isLoading ? 'fetching' : 'idle',
       error: localResult.error,
       refetch: localResult.refresh,
       source: 'local',
@@ -173,6 +188,9 @@ export function useOfflineQuery<
     isLoading: apiResult.isLoading,
     isError: apiResult.isError,
     isFetching: apiResult.isFetching,
+    isSuccess: apiResult.isSuccess,
+    isFetched: apiResult.isFetched,
+    fetchStatus: apiResult.fetchStatus,
     error: apiResult.error ?? null,
     refetch: () => {
       apiResult.refetch();

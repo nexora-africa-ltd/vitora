@@ -209,14 +209,14 @@ describe('EncounterLabResultsView', () => {
     expect(call.labResults).toHaveLength(2);
     expect(call.labResults[0]).toEqual(
       expect.objectContaining({
-        test_name: 'Complete Blood Count',
+        test_name: 'complete_blood_count',
         value: 12.5,
         unit: 'g/dL',
       })
     );
     expect(call.labResults[1]).toEqual(
       expect.objectContaining({
-        test_name: 'White Blood Cells',
+        test_name: 'white_blood_cells',
         value: 15.2,
         unit: '10^3/uL',
       })

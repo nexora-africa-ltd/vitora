@@ -54,7 +54,10 @@ async function fetchDashboardStats(refresh = false): Promise<DashboardStats> {
   const response = await apiClient.get<DashboardStats>('/api/core/dashboard/stats/', {
     params,
   });
-  return parseResponse(DashboardStatsSchema, response.data, {
+  // Module-specific sections can be absent when the corresponding facility module
+  // is disabled or an older backend is in use. Keep the dashboard usable while
+  // still validating the complete normalized response.
+  return parseResponse(DashboardStatsSchema, { ...DEFAULT_STATS, ...response.data }, {
     context: 'useDashboardStats.fetchDashboardStats',
   });
 }

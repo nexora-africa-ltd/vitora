@@ -24,6 +24,14 @@ jest.mock('@/lib/hooks/use-permissions', () => ({
   }),
 }));
 
+jest.mock('@/lib/hooks/use-subscription', () => ({
+  useSubscription: () => ({ hasFeature: jest.fn(() => true) }),
+}));
+
+jest.mock('@/lib/context/facility-context', () => ({
+  useFacility: () => ({ hasModule: jest.fn(() => true) }),
+}));
+
 jest.mock('@/lib/context/ai-chat-context', () => ({
   useAIChatContext: () => ({
     widgetState: 'minimized',

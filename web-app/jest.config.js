@@ -16,8 +16,9 @@ const customJestConfig = {
     '^@mswjs/interceptors/ClientRequest$':
       '<rootDir>/node_modules/@mswjs/interceptors/lib/node/interceptors/ClientRequest/index.js',
   },
-  // Handle ESM modules that need to be transformed
-  transformIgnorePatterns: ['/node_modules/(?!(msw|@mswjs)/)/'],
+  // MSW v2 delegates to ESM-only bundled modules. Markdown is mocked in setup
+  // because transforming its complete unified dependency graph is unnecessary.
+  transformIgnorePatterns: ['/node_modules/(?!(msw|@mswjs|@bundled-es-modules|until-async)/)'],
   collectCoverageFrom: [
     'lib/**/*.{js,jsx,ts,tsx}',
     'components/**/*.{js,jsx,ts,tsx}',

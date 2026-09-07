@@ -4,6 +4,7 @@
  */
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { PatientEncounters } from '@/components/patients/patient-encounters';
 
 // Mock the hook
@@ -28,6 +29,10 @@ jest.mock('@/components/shared/empty-state', () => ({
       {description && <span data-testid="empty-description">{description}</span>}
     </div>
   ),
+}));
+
+jest.mock('@/components/encounters/encounter-peek-content', () => ({
+  EncounterPeekContent: () => <div>Encounter preview</div>,
 }));
 
 // Mock format utilities
@@ -178,7 +183,8 @@ describe('PatientEncounters Component', () => {
     expect(screen.getByText('Active')).toBeInTheDocument();
   });
 
-  it('should link to encounter detail page', () => {
+  it('should open the encounter preview when an encounter is selected', async () => {
+    const user = userEvent.setup();
     const mockEncounters = [
       {
         id: 123,
@@ -198,8 +204,9 @@ describe('PatientEncounters Component', () => {
 
     render(<PatientEncounters patientId={1} />);
 
-    const link = screen.getByRole('link');
-    expect(link).toHaveAttribute('href', '/encounters/123');
+    await user.click(screen.getByRole('button', { name: /outpatient active test/i }));
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
   });
 
   it('should display encounter date', () => {

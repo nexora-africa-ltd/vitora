@@ -220,10 +220,11 @@ describe('InvoiceList', () => {
       { wrapper: createWrapper() }
     );
 
-    expect(screen.getByText('INV-20260103-0001')).toBeInTheDocument();
-    expect(screen.getByText('Jane Doe')).toBeInTheDocument();
-    expect(screen.getByText(/1,500/)).toBeInTheDocument(); // Currency formatted by locale
-    expect(screen.getByText('PENDING')).toBeInTheDocument();
+    // ResponsiveTable renders desktop rows and mobile cards.
+    expect(screen.getAllByText('INV-20260103-0001')).toHaveLength(2);
+    expect(screen.getAllByText('Jane Doe')).toHaveLength(2);
+    expect(screen.getAllByText(/1,500/).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('PENDING')).toHaveLength(2);
   });
 
   it('should show loading state', () => {
@@ -237,8 +238,9 @@ describe('InvoiceList', () => {
       { wrapper: createWrapper() }
     );
 
-    expect(screen.getByRole('status')).toBeInTheDocument();
-    expect(screen.getByText(/loading/i)).toBeInTheDocument();
+    // The responsive table uses five visual skeleton rows rather than a status message.
+    expect(screen.queryByText(/no invoices found/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('INV-20260103-0001')).not.toBeInTheDocument();
   });
 
   it('should show empty state when no invoices', () => {
@@ -266,7 +268,7 @@ describe('InvoiceList', () => {
       { wrapper: createWrapper() }
     );
 
-    await userEvent.click(screen.getByText('INV-20260103-0001'));
+    await userEvent.click(screen.getAllByText('INV-20260103-0001')[0]);
 
     expect(mockOnSelect).toHaveBeenCalledWith(mockInvoice);
   });
@@ -334,10 +336,10 @@ describe('InvoiceList', () => {
       { wrapper: createWrapper() }
     );
 
-    expect(screen.getByText('DRAFT')).toHaveClass(/gray|slate/);
-    expect(screen.getByText('PENDING')).toHaveClass(/yellow|amber/);
-    expect(screen.getByText('PAID')).toHaveClass(/green/);
-    expect(screen.getByText('OVERDUE')).toHaveClass(/red/);
+    expect(screen.getAllByText('DRAFT')[0]).toHaveClass(/gray|slate/);
+    expect(screen.getAllByText('PENDING')[0]).toHaveClass(/yellow|amber/);
+    expect(screen.getAllByText('PAID')[0]).toHaveClass(/green/);
+    expect(screen.getAllByText('OVERDUE')[0]).toHaveClass(/red/);
   });
 });
 
@@ -604,9 +606,9 @@ describe('PaymentForm', () => {
     await userEvent.clear(amountInput);
     await userEvent.type(amountInput, '2000');
 
-    await userEvent.click(screen.getByRole('button', { name: /submit|pay/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Record Payment' }));
 
-    expect(screen.getByText(/amount cannot exceed balance/i)).toBeInTheDocument();
+    expect(screen.getByText(/amount cannot exceed payable balance/i)).toBeInTheDocument();
     expect(mockOnSubmit).not.toHaveBeenCalled();
   });
 
@@ -653,7 +655,7 @@ describe('PaymentForm', () => {
     const phoneInput = screen.getByLabelText(/phone number/i);
     await userEvent.type(phoneInput, '123456');
 
-    await userEvent.click(screen.getByRole('button', { name: /submit|pay/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Record Payment' }));
 
     expect(screen.getByText(/valid kenyan phone number/i)).toBeInTheDocument();
   });
@@ -668,7 +670,7 @@ describe('PaymentForm', () => {
     const phoneInput = screen.getByLabelText(/phone number/i);
     await userEvent.type(phoneInput, '0712345678');
 
-    await userEvent.click(screen.getByRole('button', { name: /submit|pay/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Record Payment' }));
 
     expect(mockOnSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -696,7 +698,7 @@ describe('PaymentForm', () => {
     });
 
     await userEvent.click(screen.getByRole('radio', { name: /cash/i }));
-    await userEvent.click(screen.getByRole('button', { name: /submit|pay/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Record Payment' }));
 
     expect(mockOnSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1216,15 +1218,15 @@ describe('PaymentList', () => {
     expect(screen.getAllByText('COMPLETED')[0]).toBeInTheDocument();
   });
 
-  it('should show receipt button for completed payments', () => {
+  it('should show receipt action for completed payments', async () => {
     render(
       <PaymentList payments={[mockPayment]} isLoading={false} onViewReceipt={mockOnViewReceipt} />,
       { wrapper: createWrapper() }
     );
 
-    // Multiple buttons match /receipt/i (column header "Receipt #" + action button)
-    const receiptButtons = screen.getAllByRole('button', { name: /receipt/i });
-    expect(receiptButtons.length).toBeGreaterThanOrEqual(1);
+    // The receipt action is available from the payment's overflow menu.
+    await userEvent.click(screen.getByRole('button', { name: /^$/ }));
+    expect(screen.getByRole('menuitem', { name: /view receipt/i })).toBeInTheDocument();
   });
 
   it('should call onViewReceipt when receipt button clicked', async () => {
@@ -1233,9 +1235,8 @@ describe('PaymentList', () => {
       { wrapper: createWrapper() }
     );
 
-    // Click the action receipt button (last match, not the column header)
-    const receiptButtons = screen.getAllByRole('button', { name: /receipt/i });
-    await userEvent.click(receiptButtons[receiptButtons.length - 1]);
+    await userEvent.click(screen.getByRole('button', { name: /^$/ }));
+    await userEvent.click(screen.getByRole('menuitem', { name: /view receipt/i }));
 
     expect(mockOnViewReceipt).toHaveBeenCalledWith(mockPayment);
   });

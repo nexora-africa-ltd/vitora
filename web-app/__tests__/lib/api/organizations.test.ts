@@ -24,6 +24,8 @@ const mockOrg = {
   name: 'Demo Health Group',
   slug: 'demo-health-group',
   subscription_tier: 'PROFESSIONAL' as const,
+  subscription_plan: null,
+  plan_name: null,
   is_active: true,
   county_name: 'Nairobi',
   facility_count: 2,
@@ -39,8 +41,20 @@ const mockOrgDetail = {
   county: 1,
   sub_county: 1,
   sub_county_name: 'Westlands',
+  plan_features: {},
   max_facilities: 10,
   max_users: 50,
+  max_patients: null,
+  can_add_facility: true,
+  can_add_user: true,
+  can_add_patient: true,
+  subscription_status: 'ACTIVE' as const,
+  subscription_valid_until: null,
+  is_subscription_expired: false,
+  monthly_ai_tokens: null,
+  ai_tokens_used: 0,
+  ai_tokens_remaining: null,
+  ai_tokens_reset_at: null,
   data_retention_years: 7,
   settings: {},
   created_at: '2026-01-01T00:00:00Z',
@@ -144,11 +158,7 @@ describe('organizationsApi', () => {
 
   describe('listFacilities', () => {
     it('fetches facilities for an organization', async () => {
-      const mockFacilities = {
-        count: 2,
-        next: null,
-        previous: null,
-        results: [
+      const mockFacilities = [
           {
             id: 1,
             name: 'Main Clinic',
@@ -179,8 +189,7 @@ describe('organizationsApi', () => {
             sub_county_name: 'Westlands',
             sha_contracted: false,
           },
-        ],
-      };
+      ];
 
       mockClient.get.mockResolvedValueOnce({ data: mockFacilities });
 
@@ -189,8 +198,8 @@ describe('organizationsApi', () => {
       expect(mockClient.get).toHaveBeenCalledWith('/api/organizations/1/facilities/', {
         params: undefined,
       });
-      expect(result.results).toHaveLength(2);
-      expect(result.results[0].name).toBe('Main Clinic');
+      expect(result).toHaveLength(2);
+      expect(result[0].name).toBe('Main Clinic');
     });
   });
 });

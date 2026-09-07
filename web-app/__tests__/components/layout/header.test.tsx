@@ -4,6 +4,14 @@ import { Header } from '@/components/layout/header';
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
+  useRouter: jest.fn(() => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+    back: jest.fn(),
+    forward: jest.fn(),
+    refresh: jest.fn(),
+  })),
   usePathname: jest.fn(() => '/'),
 }));
 
@@ -67,8 +75,31 @@ jest.mock('@/lib/context/sync-context', () => ({
     pendingChanges: 0,
     lastError: null,
     triggerSync: jest.fn(),
+    powerSyncHealth: {
+      configured: false,
+      connected: false,
+      hasSynced: false,
+    },
   })),
   formatLastSync: jest.fn(() => 'Just now'),
+}));
+
+jest.mock('@/lib/context/page-refresh-context', () => ({
+  usePageRefresh: jest.fn(() => ({
+    lastFetchTime: new Date(),
+    isRefreshing: false,
+    refresh: jest.fn(),
+  })),
+  formatLastFetch: jest.fn(() => 'Just now'),
+  formatLastFetchShort: jest.fn(() => 'now'),
+}));
+
+jest.mock('@/lib/context/navigation-mode-context', () => ({
+  useNavigationMode: jest.fn(() => ({
+    navigationMode: 'standard',
+    setNavigationMode: jest.fn(),
+    isClinicalNavigationEligible: false,
+  })),
 }));
 
 // Mock NotificationPanel component
@@ -80,6 +111,14 @@ jest.mock('@/components/notifications/notification-panel', () => ({
 // Mock Breadcrumb component
 jest.mock('@/components/layout/breadcrumb', () => ({
   Breadcrumb: () => React.createElement('div', { 'data-testid': 'breadcrumb' }, 'Dashboard'),
+}));
+
+jest.mock('@/components/layout/org-switcher', () => ({
+  OrgSwitcher: () => React.createElement('div', { 'data-testid': 'org-switcher' }),
+}));
+
+jest.mock('@/components/layout/facility-switcher', () => ({
+  FacilitySwitcher: () => React.createElement('div', { 'data-testid': 'facility-switcher' }),
 }));
 
 // Mock Tooltip components to avoid Radix issues
@@ -114,9 +153,9 @@ describe('Header', () => {
     expect(defaultProps.onMenuClick).toHaveBeenCalled();
   });
 
-  it('should render search input on desktop', () => {
+  it('should render desktop search trigger', () => {
     render(<Header {...defaultProps} />);
-    expect(screen.getByPlaceholderText(/search patients/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
   });
 
   it('should render notification panel', () => {

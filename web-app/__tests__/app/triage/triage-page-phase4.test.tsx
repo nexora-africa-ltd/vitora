@@ -30,9 +30,15 @@ jest.mock('@/lib/hooks/use-triage', () => ({
   useTriageHistory: jest.fn(),
   useTriageVolumeReport: jest.fn(),
   useBreachSummary: jest.fn(),
+  useAvailableTriageRooms: jest.fn(),
+  useAssignTriageRoom: jest.fn(),
   // These should no longer be used after removal
   useTriageQueue: jest.fn(),
   useTriageQueueActions: jest.fn(),
+}));
+
+jest.mock('@/lib/hooks/use-permissions', () => ({
+  usePermissions: jest.fn(() => ({ hasPermission: () => true })),
 }));
 
 const mockPush = jest.fn();
@@ -47,6 +53,8 @@ import {
   useTriageHistory,
   useTriageVolumeReport,
   useBreachSummary,
+  useAvailableTriageRooms,
+  useAssignTriageRoom,
   useTriageQueue,
   useTriageQueueActions,
 } from '@/lib/hooks/use-triage';
@@ -58,6 +66,8 @@ const mockedUseTriageWaitTimeStats = useTriageWaitTimeStats as jest.Mock;
 const mockedUseTriageHistory = useTriageHistory as jest.Mock;
 const mockedUseTriageVolumeReport = useTriageVolumeReport as jest.Mock;
 const mockedUseBreachSummary = useBreachSummary as jest.Mock;
+const mockedUseAvailableTriageRooms = useAvailableTriageRooms as jest.Mock;
+const mockedUseAssignTriageRoom = useAssignTriageRoom as jest.Mock;
 const mockedUseTriageQueue = useTriageQueue as jest.Mock;
 const mockedUseTriageQueueActions = useTriageQueueActions as jest.Mock;
 
@@ -134,6 +144,8 @@ describe('Triage Page - Phase 4.1 Updates', () => {
       data: null,
       isLoading: false,
     });
+    mockedUseAvailableTriageRooms.mockReturnValue({ data: [] });
+    mockedUseAssignTriageRoom.mockReturnValue({ mutateAsync: jest.fn() });
     mockedUseTriageQueue.mockReturnValue({
       data: { results: [], count: 0 },
       isLoading: false,

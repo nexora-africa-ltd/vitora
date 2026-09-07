@@ -7,9 +7,11 @@ describe('PreOpReadinessCard', () => {
       <PreOpReadinessCard
         consentReady={true}
         labsReady={true}
+        imagingReady={true}
         whoReady={true}
         anesthesiaReady={true}
         labOrders={[]}
+        imagingOrders={[]}
       />
     );
 
@@ -22,6 +24,7 @@ describe('PreOpReadinessCard', () => {
       <PreOpReadinessCard
         consentReady={false}
         labsReady={false}
+        imagingReady={false}
         whoReady={true}
         anesthesiaReady={false}
         labOrders={[
@@ -42,6 +45,7 @@ describe('PreOpReadinessCard', () => {
             updated_at: '2026-04-20T08:00:00Z',
           },
         ]}
+        imagingOrders={[]}
       />
     );
 

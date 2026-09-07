@@ -7,6 +7,7 @@ describe('TimelineFilters', () => {
   const defaultFilters: FilterType = {
     eventTypes: [
       'encounter',
+      'surgery',
       'lab_result',
       'prescription',
       'vital_alert',

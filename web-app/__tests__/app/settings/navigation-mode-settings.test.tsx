@@ -7,6 +7,14 @@ jest.mock('@/lib/context/navigation-mode-context', () => ({
   useNavigationMode: () => mockUseNavigationMode(),
 }));
 
+jest.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+jest.mock('@/lib/hooks/use-permissions', () => ({
+  usePermissions: () => ({ isAdmin: false }),
+}));
+
 jest.mock('@/components/settings/sha-settings', () => ({
   SHASettingsTab: () => <div>SHA Settings</div>,
 }));

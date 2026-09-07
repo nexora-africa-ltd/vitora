@@ -23,6 +23,9 @@ import {
 import { patientsApi } from '@/lib/api/patients';
 
 jest.mock('@/lib/api/patients');
+jest.mock('@/lib/context', () => ({
+  useFacility: () => ({ facility: null }),
+}));
 
 const mockPatientsApi = patientsApi as jest.Mocked<typeof patientsApi>;
 
@@ -107,9 +110,10 @@ describe('Patient Hooks', () => {
 
       const { result } = renderHook(() => usePatients(), { wrapper: createWrapper() });
 
-      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      await waitFor(() => expect(result.current.data).toEqual(mockPatients));
 
       expect(result.current.data?.results).toHaveLength(2);
+      expect(result.current.source).toBe('api');
     });
 
     it('should pass filter params to API', async () => {
@@ -144,7 +148,7 @@ describe('Patient Hooks', () => {
 
       const { result } = renderHook(() => usePatient(1), { wrapper: createWrapper() });
 
-      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      await waitFor(() => expect(result.current.data).toEqual(mockPatient));
 
       expect(result.current.data).toEqual(mockPatient);
     });
@@ -155,14 +159,15 @@ describe('Patient Hooks', () => {
 
       const { result } = renderHook(() => usePatient('1'), { wrapper: createWrapper() });
 
-      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      await waitFor(() => expect(result.current.data).toEqual(mockPatient));
       expect(mockPatientsApi.getPatient).toHaveBeenCalledWith(1);
     });
 
     it('should not fetch when id is falsy', async () => {
       const { result } = renderHook(() => usePatient(0), { wrapper: createWrapper() });
 
-      expect(result.current.fetchStatus).toBe('idle');
+      expect(result.current.isLoading).toBe(false);
+      expect(mockPatientsApi.getPatient).not.toHaveBeenCalled();
     });
   });
 
@@ -180,7 +185,7 @@ describe('Patient Hooks', () => {
         wrapper: createWrapper(),
       });
 
-      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      await waitFor(() => expect(result.current.data).toEqual(mockContacts));
 
       expect(result.current.data).toEqual(mockContacts);
     });
@@ -189,7 +194,8 @@ describe('Patient Hooks', () => {
       const { result } = renderHook(() => usePatientEmergencyContacts(0), {
         wrapper: createWrapper(),
       });
-      expect(result.current.fetchStatus).toBe('idle');
+      expect(result.current.isLoading).toBe(false);
+      expect(mockPatientsApi.getEmergencyContacts).not.toHaveBeenCalled();
     });
   });
 
@@ -206,14 +212,15 @@ describe('Patient Hooks', () => {
 
       const { result } = renderHook(() => usePatientEncounters(1), { wrapper: createWrapper() });
 
-      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      await waitFor(() => expect(result.current.data).toEqual(mockEncounters));
 
       expect(result.current.data).toHaveLength(2);
     });
 
     it('should not fetch when patientId is falsy', () => {
       const { result } = renderHook(() => usePatientEncounters(0), { wrapper: createWrapper() });
-      expect(result.current.fetchStatus).toBe('idle');
+      expect(result.current.isLoading).toBe(false);
+      expect(mockPatientsApi.getEncounters).not.toHaveBeenCalled();
     });
   });
 
@@ -234,10 +241,10 @@ describe('Patient Hooks', () => {
       const { result } = renderHook(() => useCreatePatient(), { wrapper: createWrapper() });
 
       await act(async () => {
-        result.current.mutate({ data: newPatient as unknown });
+        await expect(result.current.mutateAsync({ data: newPatient as unknown })).resolves.toEqual(
+          createdPatient
+        );
       });
-
-      await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
       expect(mockPatientsApi.createPatient).toHaveBeenCalledWith(newPatient, undefined);
     });
@@ -249,10 +256,8 @@ describe('Patient Hooks', () => {
       const { result } = renderHook(() => useCreatePatient(), { wrapper: createWrapper() });
 
       await act(async () => {
-        result.current.mutate({ data: newPatient as unknown, idempotencyKey: 'test-key-123' });
+        await result.current.mutateAsync({ data: newPatient as unknown, idempotencyKey: 'test-key-123' });
       });
-
-      await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
       expect(mockPatientsApi.createPatient).toHaveBeenCalledWith(newPatient, 'test-key-123');
     });
@@ -264,10 +269,10 @@ describe('Patient Hooks', () => {
       const { result } = renderHook(() => useCreatePatient(), { wrapper: createWrapper() });
 
       await act(async () => {
-        result.current.mutate({ data: { first_name: '' } as unknown });
+        await expect(
+          result.current.mutateAsync({ data: { first_name: '' } as unknown })
+        ).rejects.toThrow(error);
       });
-
-      await waitFor(() => expect(result.current.isError).toBe(true));
     });
   });
 
@@ -283,10 +288,8 @@ describe('Patient Hooks', () => {
       const { result } = renderHook(() => useUpdatePatient(), { wrapper: createWrapper() });
 
       await act(async () => {
-        result.current.mutate({ id: 1, data: updateData });
+        await result.current.mutateAsync({ id: 1, data: updateData });
       });
-
-      await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
       expect(mockPatientsApi.updatePatient).toHaveBeenCalledWith(1, updateData);
     });
@@ -302,10 +305,8 @@ describe('Patient Hooks', () => {
       const { result } = renderHook(() => useDeletePatient(), { wrapper: createWrapper() });
 
       await act(async () => {
-        result.current.mutate(1);
+        await result.current.mutateAsync(1);
       });
-
-      await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
       expect(mockPatientsApi.deletePatient).toHaveBeenCalledWith(1);
     });

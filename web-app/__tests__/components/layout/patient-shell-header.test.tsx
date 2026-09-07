@@ -144,6 +144,12 @@ describe('PatientShellHeader', () => {
 
     it('should display calculated age', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
+      const birthDate = new Date('1985-05-20T00:00:00');
+      const today = new Date();
+      const age =
+        today.getFullYear() -
+        birthDate.getFullYear() -
+        (today < new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate()) ? 1 : 0);
 
       const Wrapper = createWrapper();
       render(
@@ -155,8 +161,7 @@ describe('PatientShellHeader', () => {
       );
 
       await waitFor(() => {
-        // Patient born 1985-05-20, current date is 2026-01-15 → 40 years old
-        expect(screen.getAllByText(/40\s*(y|yr|yrs|years)/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(new RegExp(`${age}\\s*(y|yr|yrs|years)`, 'i')).length).toBeGreaterThan(0);
       });
     });
   });

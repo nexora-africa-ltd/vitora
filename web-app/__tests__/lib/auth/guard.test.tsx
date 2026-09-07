@@ -21,8 +21,10 @@ jest.mock('@/lib/context/facility-context', () => ({
 
 // Mock next/navigation
 const mockPathname = jest.fn(() => '/');
+const mockReplace = jest.fn();
 jest.mock('next/navigation', () => ({
   usePathname: () => mockPathname(),
+  useRouter: () => ({ replace: mockReplace }),
 }));
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
@@ -137,12 +139,12 @@ describe('PermissionGuard', () => {
   });
 });
 
-describe('AuthGuard (deprecated)', () => {
+describe('AuthGuard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should be a passthrough component (no-op)', () => {
+  it('renders children for an authenticated user', () => {
     mockUseAuth.mockReturnValue(createMockAuthState());
 
     render(
@@ -151,7 +153,6 @@ describe('AuthGuard (deprecated)', () => {
       </AuthGuard>
     );
 
-    // AuthGuard is now a no-op - auth is handled by middleware
     expect(screen.getByText('Protected Content')).toBeInTheDocument();
   });
 });
@@ -346,7 +347,7 @@ describe('RouteGuard', () => {
     mockUseAuth.mockReturnValue(
       createMockAuthState({
         user: createMockUser({
-          permissions: ['billing.submit_sha_claim'],
+          permissions: ['billing.view_invoice', 'billing.submit_sha_claim'],
           role: 'BILLING_CLERK',
         }),
       })
@@ -388,7 +389,7 @@ describe('RouteGuard', () => {
     mockUseAuth.mockReturnValue(
       createMockAuthState({
         user: createMockUser({
-          permissions: ['surveillance.notify_ihr_to_who'],
+          permissions: ['surveillance.view_notifiablecase', 'surveillance.notify_ihr_to_who'],
           role: 'SURVEILLANCE_OFFICER',
         }),
       })
@@ -410,7 +411,7 @@ describe('RouteGuard', () => {
       createMockAuthState({
         user: createMockUser({
           permissions: [],
-          role: 'NURSE',
+          role: 'RECEPTIONIST',
         }),
       })
     );

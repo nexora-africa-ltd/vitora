@@ -230,6 +230,7 @@ export function useTriageAssessment(id: number | undefined) {
       return response.data;
     },
     forceApi: !id,
+    enabled: !!id,
   });
 }
 
@@ -262,6 +263,7 @@ export function useTriageAssessmentByEncounter(encounterId: number | undefined) 
       }
     },
     forceApi: !encounterId,
+    enabled: !!encounterId,
   });
 }
 

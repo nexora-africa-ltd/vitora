@@ -178,7 +178,7 @@ describe('Encounter Shell Layout', () => {
       });
 
       // Should have fetched encounter first, then patient
-      expect(mockEncountersApi.get).toHaveBeenCalledWith(100);
+      expect(mockEncountersApi.get).toHaveBeenCalledWith('100');
       expect(mockPatientsApi.getPatient).toHaveBeenCalledWith(1); // patientId from encounter.patient
     });
   });

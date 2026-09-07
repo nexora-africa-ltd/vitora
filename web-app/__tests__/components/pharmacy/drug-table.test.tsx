@@ -37,7 +37,7 @@ describe('DrugTable', () => {
       render(<DrugTable {...defaultProps} />);
 
       expect(screen.getByText('Code')).toBeInTheDocument();
-      expect(screen.getByText('Drug Name')).toBeInTheDocument();
+      expect(screen.getByText('Item Name')).toBeInTheDocument();
       expect(screen.getByText('Form')).toBeInTheDocument();
       expect(screen.getByText('Strength')).toBeInTheDocument();
       expect(screen.getByText('Category')).toBeInTheDocument();
@@ -130,7 +130,7 @@ describe('DrugTable', () => {
     it('should render search input', () => {
       render(<DrugTable {...defaultProps} />);
 
-      expect(screen.getByPlaceholderText(/search drugs/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/search items/i)).toBeInTheDocument();
     });
   });
 
@@ -185,7 +185,7 @@ describe('DrugTable', () => {
     it('should show empty message when no drugs', () => {
       render(<DrugTable {...defaultProps} drugs={[]} />);
 
-      expect(screen.getByText(/no drugs found/i)).toBeInTheDocument();
+      expect(screen.getByText(/no items found/i)).toBeInTheDocument();
     });
   });
 

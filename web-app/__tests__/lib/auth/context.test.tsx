@@ -3,9 +3,17 @@
  * Following TDD approach: Write tests FIRST before implementation
  */
 import React, { useState } from 'react';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AuthProvider, useAuth } from '@/lib/auth/context';
+
+// Auth restoration verifies the cached profile against this client. Keep this
+// unit test independent of the API client's interceptors and MSW handlers.
+jest.mock('@/lib/api/client', () => ({
+  apiClient: {
+    get: jest.fn().mockResolvedValue({ data: {} }),
+  },
+}));
 
 // Polyfill clearImmediate and setImmediate for JSDOM environment
 if (typeof global.clearImmediate === 'undefined') {
@@ -105,8 +113,6 @@ describe('AuthProvider', () => {
       };
 
       // Set up localStorage store directly
-      localStorageStore['vitora_access_token'] = 'mock_access_token';
-      localStorageStore['vitora_refresh_token'] = 'mock_refresh_token';
       localStorageStore['vitora_user'] = JSON.stringify(mockUser);
 
       render(
@@ -136,7 +142,8 @@ describe('AuthProvider', () => {
         permissions: [],
       };
 
-      // Login response includes user data in the token response
+      // Web sessions store credentials in httpOnly cookies; only the profile
+      // is persisted in localStorage.
       mockFetch.mockImplementationOnce(() =>
         Promise.resolve({
           ok: true,
@@ -165,7 +172,7 @@ describe('AuthProvider', () => {
         expect(screen.getByTestId('authenticated')).toHaveTextContent('true');
       });
       expect(screen.getByTestId('user')).toHaveTextContent('testuser');
-      expect(localStorageMock.setItem).toHaveBeenCalledWith('vitora_access_token', 'access_token');
+      expect(localStorageMock.setItem).toHaveBeenCalledWith('vitora_user', JSON.stringify(mockUser));
     });
 
     it('should throw error on failed login', async () => {
@@ -174,7 +181,9 @@ describe('AuthProvider', () => {
       mockFetch.mockImplementationOnce(() =>
         Promise.resolve({
           ok: false,
+          headers: new Headers({ 'content-type': 'application/json' }),
           json: () => Promise.resolve({ detail: 'Invalid credentials' }),
+          text: () => Promise.resolve(''),
         })
       );
 
@@ -204,9 +213,7 @@ describe('AuthProvider', () => {
         </AuthProvider>
       );
 
-      await act(async () => {
-        await user.click(screen.getByText('Login'));
-      });
+      await user.click(screen.getByText('Login'));
 
       // Allow time for the async error handling flow
       await waitFor(
@@ -235,8 +242,6 @@ describe('AuthProvider', () => {
       };
 
       // Set up localStorage store directly
-      localStorageStore['vitora_access_token'] = 'mock_access_token';
-      localStorageStore['vitora_refresh_token'] = 'mock_refresh_token';
       localStorageStore['vitora_user'] = JSON.stringify(mockUser);
 
       render(
@@ -255,8 +260,6 @@ describe('AuthProvider', () => {
         expect(screen.getByTestId('authenticated')).toHaveTextContent('false');
       });
       expect(screen.getByTestId('user')).toHaveTextContent('null');
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith('vitora_access_token');
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith('vitora_refresh_token');
       expect(localStorageMock.removeItem).toHaveBeenCalledWith('vitora_user');
     });
   });

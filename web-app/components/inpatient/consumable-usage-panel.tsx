@@ -240,6 +240,7 @@ export function ConsumableUsagePanel({ admissionId, isActive }: ConsumableUsageP
                     <Button
                       variant="outline"
                       role="combobox"
+                      aria-label="Consumable item"
                       aria-expanded={itemOpen}
                       className="w-full justify-between font-normal"
                     >

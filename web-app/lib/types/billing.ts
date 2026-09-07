@@ -309,7 +309,7 @@ export interface ServiceListParams {
 export interface CreditNoteListParams {
   page?: number;
   page_size?: number;
-  status?: 'PENDING' | 'DRAFT' | 'APPROVED' | 'REJECTED' | 'REFUNDED';
+  status?: 'DRAFT' | 'APPROVED' | 'REJECTED' | 'REFUNDED';
   invoice?: number;
   ordering?: string;
 }

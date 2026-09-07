@@ -62,6 +62,28 @@ jest.mock('@/lib/auth/context', () => ({
   useAuth: jest.fn(() => ({ user: mockUser, isAuthenticated: true })),
 }));
 
+jest.mock('@/lib/context/facility-context', () => ({
+  useFacility: jest.fn(() => ({ hasModule: () => true })),
+}));
+
+jest.mock('@/lib/hooks/use-laboratory', () => ({
+  useCreateLabOrder: jest.fn(() => ({ mutateAsync: jest.fn(), isPending: false })),
+  useSubmitLabOrder: jest.fn(() => ({ mutateAsync: jest.fn(), isPending: false })),
+  useTestCatalog: jest.fn(() => ({ data: { results: [] }, isLoading: false })),
+}));
+
+jest.mock('@/lib/hooks/use-blood-bank', () => ({
+  useBloodUnits: jest.fn(() => ({ data: { results: [] }, isLoading: false })),
+}));
+
+jest.mock('@/components/laboratory/test-selector', () => ({
+  TestSelector: () => null,
+}));
+
+jest.mock('@/components/shared/shift-gate', () => ({
+  ShiftGate: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 import { patientsApi } from '@/lib/api/patients';
 import { encountersApi } from '@/lib/api/encounters';
 import { mockPatient, mockEncounter } from '../../fixtures/patient-shell-fixtures';
@@ -146,7 +168,7 @@ describe('Lab Order Form - Context Integration', () => {
       });
     });
 
-    it('should use context data over props when both provided', async () => {
+    it('should retain context display data when only explicit IDs are provided', async () => {
       const { PatientProvider } = await import('@/lib/context/patient-context');
       const { EncounterProvider } = await import('@/lib/context/encounter-context');
       const { LabOrderForm } = await import('@/components/laboratory/lab-order-form');
@@ -165,7 +187,7 @@ describe('Lab Order Form - Context Integration', () => {
       );
 
       await waitFor(() => {
-        // Should show context patient name, not prop patient
+        // Display metadata comes from context when the explicit props only supply IDs.
         const patientDisplay = screen.queryByText(/Jane/);
         expect(patientDisplay).toBeTruthy();
       });

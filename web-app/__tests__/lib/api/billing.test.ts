@@ -161,7 +161,7 @@ const mockCreditNote: CreditNote = {
   amount: '100.00',
   reason: 'OVERCHARGE',
   reason_detail: 'Incorrect consultation fee applied',
-  status: 'PENDING',
+  status: 'DRAFT',
   requested_by: 1,
   requested_by_name: 'Test User',
   created_at: '2026-01-03T11:00:00Z',
@@ -190,7 +190,7 @@ describe('Billing API - Service Categories', () => {
 
       const result = await billingApi.getServiceCategories();
 
-      expect(mockApiClient.get).toHaveBeenCalledWith('/api/billing/categories/');
+      expect(mockApiClient.get).toHaveBeenCalledWith('/api/billing/service-categories/');
       expect(result.results).toHaveLength(1);
       expect(result.results[0]?.code).toBe('CONS');
     });
@@ -211,7 +211,7 @@ describe('Billing API - Service Categories', () => {
 
       const result = await billingApi.getServiceCategory(1);
 
-      expect(mockApiClient.get).toHaveBeenCalledWith('/api/billing/categories/1/');
+      expect(mockApiClient.get).toHaveBeenCalledWith('/api/billing/service-categories/1/');
       expect(result.name).toBe('Consultation');
     });
   });
@@ -503,10 +503,7 @@ describe('Billing API - Invoices', () => {
 
       const result = await billingApi.addInvoiceItem(1, itemData);
 
-      expect(mockApiClient.post).toHaveBeenCalledWith(
-        '/api/billing/invoices/1/add_item/',
-        itemData
-      );
+      expect(mockApiClient.post).toHaveBeenCalledWith('/api/billing/invoices/1/items/', itemData);
       expect(result.description).toBe('Lab Test - CBC');
     });
   });
@@ -517,7 +514,7 @@ describe('Billing API - Invoices', () => {
 
       await billingApi.removeInvoiceItem(1, 2);
 
-      expect(mockApiClient.delete).toHaveBeenCalledWith('/api/billing/invoices/1/remove_item/2/');
+      expect(mockApiClient.delete).toHaveBeenCalledWith('/api/billing/invoices/1/items/2/');
     });
   });
 
@@ -855,9 +852,9 @@ describe('Billing API - Credit Notes', () => {
       const mockResponse = { data: { count: 0, next: null, previous: null, results: [] } };
       mockApiClient.get.mockResolvedValue(mockResponse);
 
-      await billingApi.getCreditNotes({ status: 'PENDING' });
+      await billingApi.getCreditNotes({ status: 'DRAFT' });
 
-      expect(mockApiClient.get.mock.calls[0]?.[0]).toContain('status=PENDING');
+      expect(mockApiClient.get.mock.calls[0]?.[0]).toContain('status=DRAFT');
     });
   });
 
@@ -874,7 +871,7 @@ describe('Billing API - Credit Notes', () => {
       const result = await billingApi.createCreditNote(creditNoteData);
 
       expect(mockApiClient.post).toHaveBeenCalledWith('/api/billing/credit-notes/', creditNoteData);
-      expect(result.status).toBe('PENDING');
+      expect(result.status).toBe('DRAFT');
     });
   });
 
@@ -890,9 +887,7 @@ describe('Billing API - Credit Notes', () => {
 
       const result = await billingApi.approveCreditNote(1);
 
-      expect(mockApiClient.post).toHaveBeenCalledWith('/api/billing/credit-notes/1/approve/', {
-        approved: true,
-      });
+      expect(mockApiClient.post).toHaveBeenCalledWith('/api/billing/credit-notes/1/approve/');
       expect(result.status).toBe('APPROVED');
     });
 
@@ -908,9 +903,8 @@ describe('Billing API - Credit Notes', () => {
 
       const result = await billingApi.rejectCreditNote(1, 'Insufficient documentation');
 
-      expect(mockApiClient.post).toHaveBeenCalledWith('/api/billing/credit-notes/1/approve/', {
-        approved: false,
-        rejection_reason: 'Insufficient documentation',
+      expect(mockApiClient.post).toHaveBeenCalledWith('/api/billing/credit-notes/1/reject/', {
+        reason: 'Insufficient documentation',
       });
       expect(result.status).toBe('REJECTED');
     });
@@ -933,7 +927,7 @@ describe('Billing API - Credit Notes', () => {
       });
 
       expect(mockApiClient.post).toHaveBeenCalledWith(
-        '/api/billing/credit-notes/1/process-refund/',
+        '/api/billing/credit-notes/1/refund/',
         {
           refund_method: 'CASH',
           refund_reference: 'REF-001',

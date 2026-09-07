@@ -91,8 +91,8 @@ describe('Encounter Status Types (Sprint 2)', () => {
 
 describe('Visit Reason Types (Sprint 2)', () => {
   describe('VISIT_REASON_DISPLAY', () => {
-    it('has display text for all 8 visit reasons', () => {
-      expect(Object.keys(VISIT_REASON_DISPLAY)).toHaveLength(8);
+    it('has display text for all 10 visit reasons', () => {
+      expect(Object.keys(VISIT_REASON_DISPLAY)).toHaveLength(10);
     });
 
     it('includes all expected reasons', () => {
@@ -100,10 +100,12 @@ describe('Visit Reason Types (Sprint 2)', () => {
         'NEW_COMPLAINT',
         'FOLLOW_UP',
         'CHRONIC_CARE',
+        'SCHEDULED_PROCEDURE',
         'PROCEDURE_REVIEW',
         'REFILL_ONLY',
         'LAB_REVIEW',
         'REFERRAL_VISIT',
+        'EMERGENCY',
         'OTHER',
       ];
       expected.forEach((reason) => {
@@ -121,6 +123,10 @@ describe('Visit Reason Types (Sprint 2)', () => {
       expect(SKIP_TRIAGE_REASONS).toContain('REFILL_ONLY');
     });
 
+    it('includes SCHEDULED_PROCEDURE', () => {
+      expect(SKIP_TRIAGE_REASONS).toContain('SCHEDULED_PROCEDURE');
+    });
+
     it('does not include NEW_COMPLAINT', () => {
       expect(SKIP_TRIAGE_REASONS).not.toContain('NEW_COMPLAINT');
     });
@@ -129,8 +135,8 @@ describe('Visit Reason Types (Sprint 2)', () => {
       expect(SKIP_TRIAGE_REASONS).not.toContain('FOLLOW_UP');
     });
 
-    it('has exactly 2 skip-triage reasons', () => {
-      expect(SKIP_TRIAGE_REASONS).toHaveLength(2);
+    it('has exactly 3 skip-triage reasons', () => {
+      expect(SKIP_TRIAGE_REASONS).toHaveLength(3);
     });
   });
 });

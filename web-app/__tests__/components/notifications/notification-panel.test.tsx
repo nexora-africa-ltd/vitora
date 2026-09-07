@@ -30,6 +30,10 @@ jest.mock('next/navigation', () => ({
   }),
 }));
 
+jest.mock('@/lib/auth/context', () => ({
+  useAuth: () => ({ user: { id: 1 } }),
+}));
+
 // Mock the ScrollArea to avoid Radix React 19 issues
 jest.mock('@/components/ui/scroll-area', () => ({
   ScrollArea: ({ children }: { children: React.ReactNode }) =>

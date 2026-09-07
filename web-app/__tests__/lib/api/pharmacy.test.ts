@@ -170,7 +170,7 @@ describe('pharmacyApi', () => {
         fn: () => pharmacyApi.getStockMovementReport({ date_to: '2026-03-15' }),
         args: ['/api/pharmacy/reports/movement/', { params: { date_to: '2026-03-15' } }],
         input: { results: [{ id: 10 }] },
-        output: { results: [{ id: 10 }] },
+        output: { results: [{ id: 10, user: '' }] },
       },
       {
         fn: () => pharmacyApi.getAlertSettings(),

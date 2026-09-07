@@ -303,7 +303,7 @@ describe('MFAVerification', () => {
     });
 
     it('should redirect to home on successful backup code verification', async () => {
-      mockVerifyMFA.mockResolvedValueOnce(undefined);
+      mockVerifyMFA.mockResolvedValueOnce({ mustChangePassword: false });
       render(<MFAVerification mfaToken={mockMfaToken} onCancel={mockOnCancel} />);
 
       // Switch to backup tab and enter code

@@ -113,7 +113,7 @@ describe('VitalsForm', () => {
   it('displays normal ranges for each vital sign', () => {
     render(<VitalsForm data={mockFormData} onChange={mockOnChange} />);
 
-    expect(screen.getByText(/36\.5-37\.5°C/)).toBeInTheDocument();
+    expect(screen.getByText(/36-37\.5°C/)).toBeInTheDocument();
     expect(screen.getByText(/60-100 bpm/)).toBeInTheDocument();
     expect(screen.getByText(/12-20\/min/)).toBeInTheDocument();
   });

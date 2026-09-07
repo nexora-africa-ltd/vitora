@@ -144,6 +144,10 @@ describe('parseStrength', () => {
       expect(result).toEqual({
         value: 250,
         unit: 'mg',
+        components: [
+          { value: 250, unit: 'mg' },
+          { value: 125, unit: 'mg' },
+        ],
         raw: '250/125mg',
       });
     });

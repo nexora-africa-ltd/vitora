@@ -43,25 +43,34 @@ describe('laboratoryApi', () => {
       {
         fn: () => laboratoryApi.getCriticalAlerts('LAB-1'),
         args: ['/api/lab/orders/LAB-1/alerts/'],
+        response: [{ id: 1 }],
       },
       { fn: () => laboratoryApi.getResult(1), args: ['/api/lab/results/1/'] },
       {
         fn: () => laboratoryApi.getOrderResults('LAB-1'),
         args: ['/api/lab/orders/LAB-1/results/'],
+        response: [{ id: 1 }],
       },
-      { fn: () => laboratoryApi.getPatientResults(1), args: ['/api/patients/1/lab-results/'] },
+      {
+        fn: () => laboratoryApi.getPatientResults(1),
+        args: ['/api/patients/1/lab-results/'],
+        resultFromResults: true,
+      },
       {
         fn: () => laboratoryApi.getPendingVerification(),
         args: ['/api/lab/results/pending-verification/'],
+        response: [{ id: 1 }],
       },
       { fn: () => laboratoryApi.getSpecimen('BC1'), args: ['/api/lab/specimens/BC1/'] },
       {
         fn: () => laboratoryApi.listOrderSpecimens('LAB-1'),
         args: ['/api/lab/orders/LAB-1/specimens/'],
+        response: [{ id: 1 }],
       },
       {
         fn: () => laboratoryApi.getResultValidations(1),
         args: ['/api/lab/results/1/validations/'],
+        response: [{ id: 1 }],
       },
       { fn: () => laboratoryApi.getInstrument(1), args: ['/api/lab/instruments/1/'] },
       { fn: () => laboratoryApi.getAnalyzerRun(1), args: ['/api/lab/analyzer-runs/1/'] },
@@ -103,9 +112,9 @@ describe('laboratoryApi', () => {
     ];
 
     for (const testCase of getCases) {
-      const data = testCase.resultFromResults
+      const data = testCase.response ?? (testCase.resultFromResults
         ? { results: [{ id: 1 }] }
-        : { id: 1, results: [{ id: 1 }] };
+        : { id: 1, results: [{ id: 1 }] });
       mockApiClient.get.mockResolvedValueOnce({ data });
       const result = await testCase.fn();
       expect(mockApiClient.get).toHaveBeenCalledWith(...testCase.args);
@@ -183,7 +192,10 @@ describe('laboratoryApi', () => {
       {
         fn: () => laboratoryApi.verifyResult(1, true, 'ok'),
         method: 'post',
-        args: ['/api/lab/results/1/verify/', { approved: true, comments: 'ok' }],
+        args: [
+          '/api/lab/results/1/verify/',
+          { approved: true, comments: 'ok', validation_type: 'TECHNICAL' },
+        ],
       },
       {
         fn: () =>

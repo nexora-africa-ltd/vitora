@@ -17,12 +17,17 @@ const customJestConfig = {
   testEnvironment: 'jest-environment-jsdom',
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
+    '^yaml$': '<rootDir>/node_modules/yaml/dist/index.js',
     '^msw/node$': '<rootDir>/node_modules/msw/lib/node/index.js',
     '^msw$': '<rootDir>/node_modules/msw/lib/core/index.js',
     '^@mswjs/interceptors/ClientRequest$':
       '<rootDir>/node_modules/@mswjs/interceptors/lib/node/interceptors/ClientRequest/index.js',
   },
-  transformIgnorePatterns: ['/node_modules/(?!(msw|@mswjs)/)/'],
+  // Cucumber resolves YAML's browser ESM entry under jsdom; MSW has the same
+  // ESM-only bundled dependencies as the unit-test configuration.
+  transformIgnorePatterns: [
+    '/node_modules/(?!(msw|@mswjs|@bundled-es-modules|until-async|@cucumber|yaml)/)',
+  ],
   // Only run jest-cucumber step definition tests
   testMatch: ['<rootDir>/features/**/*.steps.ts', '<rootDir>/features/**/*.steps.tsx'],
   testPathIgnorePatterns: ['/node_modules/', '/e2e/', '/.next/'],

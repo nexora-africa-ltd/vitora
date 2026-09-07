@@ -4,6 +4,7 @@
  */
 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { EncounterImagingOrders } from '@/components/encounters/encounter-imaging-orders';
 import { useEncounterImagingOrders } from '@/lib/hooks/use-imaging';
 import { useRouter } from 'next/navigation';
@@ -15,12 +16,26 @@ jest.mock('next/navigation', () => ({
 
 jest.mock('@/lib/hooks/use-imaging', () => ({
   useEncounterImagingOrders: jest.fn(),
+  useEncounterExternalImagingRequests: jest.fn(() => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  })),
+}));
+
+jest.mock('@/components/imaging/imaging-order-form', () => ({
+  ImagingOrderForm: () => <div>New Imaging Order</div>,
 }));
 
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
 const mockUseEncounterImagingOrders = useEncounterImagingOrders as jest.MockedFunction<
   typeof useEncounterImagingOrders
 >;
+
+function TestWrapper({ children }: { children: React.ReactNode }) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+}
 
 describe('EncounterImagingOrders', () => {
   const mockPush = jest.fn();
@@ -44,7 +59,7 @@ describe('EncounterImagingOrders', () => {
       error: null,
     } as ReturnType<typeof useEncounterImagingOrders>);
 
-    render(<EncounterImagingOrders encounterId={1} patientId={1} />);
+    render(<EncounterImagingOrders encounterId={1} patientId={1} />, { wrapper: TestWrapper });
 
     expect(screen.getByText('Imaging Orders')).toBeInTheDocument();
     // Should show skeletons during loading
@@ -57,7 +72,7 @@ describe('EncounterImagingOrders', () => {
       error: new Error('Failed to load'),
     } as ReturnType<typeof useEncounterImagingOrders>);
 
-    render(<EncounterImagingOrders encounterId={1} patientId={1} />);
+    render(<EncounterImagingOrders encounterId={1} patientId={1} />, { wrapper: TestWrapper });
 
     expect(screen.getByText('Failed to load imaging orders.')).toBeInTheDocument();
   });
@@ -69,7 +84,7 @@ describe('EncounterImagingOrders', () => {
       error: null,
     } as unknown as ReturnType<typeof useEncounterImagingOrders>);
 
-    render(<EncounterImagingOrders encounterId={1} patientId={1} />);
+    render(<EncounterImagingOrders encounterId={1} patientId={1} />, { wrapper: TestWrapper });
 
     expect(screen.getByText(/No imaging orders for this encounter/)).toBeInTheDocument();
   });
@@ -109,7 +124,7 @@ describe('EncounterImagingOrders', () => {
       error: null,
     } as unknown as ReturnType<typeof useEncounterImagingOrders>);
 
-    render(<EncounterImagingOrders encounterId={1} patientId={1} />);
+    render(<EncounterImagingOrders encounterId={1} patientId={1} />, { wrapper: TestWrapper });
 
     expect(screen.getByText('IMG-2026-0001')).toBeInTheDocument();
     // Clinical indication is displayed
@@ -123,17 +138,15 @@ describe('EncounterImagingOrders', () => {
       error: null,
     } as unknown as ReturnType<typeof useEncounterImagingOrders>);
 
-    render(<EncounterImagingOrders encounterId={123} patientId={456} />);
+    render(<EncounterImagingOrders encounterId={123} patientId={456} />, { wrapper: TestWrapper });
 
     const button = screen.getByRole('button', { name: /Order Imaging/i });
     fireEvent.click(button);
 
-    expect(mockPush).toHaveBeenCalledWith('/imaging/orders/new?encounter=123&patient=456');
+    expect(screen.getByRole('dialog', { name: 'New Imaging Order' })).toBeInTheDocument();
   });
 
-  it('calls onBeforeNavigate before navigating', async () => {
-    const onBeforeNavigate = jest.fn().mockResolvedValue(undefined);
-
+  it('opens the embedded order form', async () => {
     mockUseEncounterImagingOrders.mockReturnValue({
       data: [],
       isLoading: false,
@@ -141,21 +154,14 @@ describe('EncounterImagingOrders', () => {
     } as unknown as ReturnType<typeof useEncounterImagingOrders>);
 
     render(
-      <EncounterImagingOrders
-        encounterId={123}
-        patientId={456}
-        onBeforeNavigate={onBeforeNavigate}
-      />
+      <EncounterImagingOrders encounterId={123} patientId={456} />,
+      { wrapper: TestWrapper }
     );
 
     const button = screen.getByRole('button', { name: /Order Imaging/i });
     fireEvent.click(button);
 
-    await waitFor(() => {
-      expect(onBeforeNavigate).toHaveBeenCalled();
-    });
-
-    expect(mockPush).toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: 'New Imaging Order' })).toBeInTheDocument();
   });
 
   it('disables order button when disabled prop is true', () => {
@@ -165,7 +171,7 @@ describe('EncounterImagingOrders', () => {
       error: null,
     } as unknown as ReturnType<typeof useEncounterImagingOrders>);
 
-    render(<EncounterImagingOrders encounterId={1} patientId={1} disabled={true} />);
+    render(<EncounterImagingOrders encounterId={1} patientId={1} disabled={true} />, { wrapper: TestWrapper });
 
     const button = screen.getByRole('button', { name: /Order Imaging/i });
     expect(button).toBeDisabled();
@@ -206,7 +212,7 @@ describe('EncounterImagingOrders', () => {
       error: null,
     } as unknown as ReturnType<typeof useEncounterImagingOrders>);
 
-    render(<EncounterImagingOrders encounterId={1} patientId={1} />);
+    render(<EncounterImagingOrders encounterId={1} patientId={1} />, { wrapper: TestWrapper });
 
     // The order card should be a link to the detail page
     const orderLink = screen.getByRole('link', { name: /IMG-2026-0001/i });
@@ -251,7 +257,7 @@ describe('EncounterImagingOrders', () => {
       error: null,
     } as unknown as ReturnType<typeof useEncounterImagingOrders>);
 
-    render(<EncounterImagingOrders encounterId={1} patientId={1} />);
+    render(<EncounterImagingOrders encounterId={1} patientId={1} />, { wrapper: TestWrapper });
 
     expect(screen.getByText('Pending (1)')).toBeInTheDocument();
     expect(screen.getByText('Completed (1)')).toBeInTheDocument();
@@ -281,7 +287,7 @@ describe('EncounterImagingOrders', () => {
       error: null,
     } as unknown as ReturnType<typeof useEncounterImagingOrders>);
 
-    render(<EncounterImagingOrders encounterId={1} patientId={1} />);
+    render(<EncounterImagingOrders encounterId={1} patientId={1} />, { wrapper: TestWrapper });
 
     // Check for STAT priority badge - uses the full label
     expect(screen.getByText(/STAT/i)).toBeInTheDocument();

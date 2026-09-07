@@ -46,6 +46,8 @@ describe('useNewEncounterStore', () => {
       encounter_type: 'EMERGENCY',
       encounter_date: '2026-03-15',
       chief_complaint: 'Severe headache',
+      chief_complaint_category: '',
+      admission_urgency: '',
     });
     expect(useNewEncounterStore.getState().getRecordVitalsNow()).toBe(true);
     expect(useNewEncounterStore.getState().getVitals().pulse).toBe(120);
@@ -82,6 +84,7 @@ describe('useNewEncounterStore', () => {
       history: false,
       notes: false,
       diagnosis: false,
+      admission: false,
     });
     expect(useNewEncounterStore.getState().isDirtyState()).toBe(false);
   });

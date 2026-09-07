@@ -34,6 +34,23 @@ jest.mock('@/lib/auth/hooks', () => ({
   useLogout: jest.fn(() => jest.fn()),
 }));
 
+// Navigation derives subscription visibility from the authenticated profile.
+jest.mock('@/lib/auth/context', () => ({
+  useAuth: jest.fn(() => ({
+    user: { is_superuser: false },
+    isAuthenticated: true,
+  })),
+}));
+
+// Sidebar filtering is under test; clinic fetching is not.
+jest.mock('@/lib/hooks/use-clinics', () => ({
+  useClinics: jest.fn(() => ({ data: undefined })),
+}));
+
+jest.mock('@/lib/hooks/use-sidebar-badges', () => ({
+  useSidebarBadges: jest.fn(() => ({})),
+}));
+
 jest.mock('@/lib/hooks/use-permissions', () => ({
   usePermissions: jest.fn(() => ({
     canAccessModule: mockCanAccessModule,
@@ -130,6 +147,7 @@ beforeEach(() => {
   mockHasModule.mockReturnValue(true);
   mockPatientJourneyState.selectedPatientId = null;
   mockPatientJourneyState.activePatients = {};
+  sessionStorage.clear();
   mockUseNavigationMode.mockReturnValue({
     navigationMode: 'standard',
     isClinicalNavigationEligible: true,

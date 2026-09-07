@@ -54,6 +54,10 @@ describe('AlertsPanel', () => {
     alerts: mockStockAlerts,
     isLoading: false,
     error: null,
+    page: 1,
+    totalPages: 1,
+    totalCount: mockStockAlerts.length,
+    onPageChange: jest.fn(),
   };
 
   beforeEach(() => {
@@ -127,10 +131,10 @@ describe('AlertsPanel', () => {
 
   describe('Empty state', () => {
     it('should show message when no alerts', () => {
-      render(<AlertsPanel {...defaultProps} alerts={[]} />);
+      render(<AlertsPanel {...defaultProps} alerts={[]} totalCount={0} />);
 
-      // Empty state message
-      expect(screen.getByText(/no.*alert/i)).toBeInTheDocument();
+      expect(screen.getByText('No active alerts')).toBeInTheDocument();
+      expect(screen.getByText('All stock levels are within normal range')).toBeInTheDocument();
     });
   });
 

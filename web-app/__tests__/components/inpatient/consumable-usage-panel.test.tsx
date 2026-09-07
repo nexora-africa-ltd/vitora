@@ -20,6 +20,8 @@ jest.mock('@/lib/hooks/use-inpatient', () => ({
 
 jest.mock('@/lib/hooks/use-pharmacy', () => ({
   useStockBatches: jest.fn(),
+  useDrugs: jest.fn(),
+  useBatchesForDrug: jest.fn(),
 }));
 
 const mockUseAdmissionConsumableUsage = useAdmissionConsumableUsage as jest.MockedFunction<
@@ -34,6 +36,10 @@ const mockUseReverseAdmissionConsumableUsage =
     typeof useReverseAdmissionConsumableUsage
   >;
 const mockUseStockBatches = useStockBatches as jest.MockedFunction<typeof useStockBatches>;
+const { useDrugs, useBatchesForDrug } = jest.requireMock('@/lib/hooks/use-pharmacy') as {
+  useDrugs: jest.Mock;
+  useBatchesForDrug: jest.Mock;
+};
 
 describe('ConsumableUsagePanel', () => {
   const mutateAsyncRecord = jest.fn();
@@ -97,6 +103,32 @@ describe('ConsumableUsagePanel', () => {
       error: null,
     } as unknown as ReturnType<typeof useStockBatches>);
 
+    useDrugs.mockReturnValue({
+      data: {
+        results: [
+          {
+            id: 5,
+            generic_name: 'Sterile Dressing Pack',
+            code: 'DRESS-001',
+            strength: null,
+            current_stock: 40,
+          },
+        ],
+      },
+      isLoading: false,
+    });
+    useBatchesForDrug.mockReturnValue({
+      data: [
+        {
+          id: 2,
+          batch_number: 'DRESS-001',
+          quantity_available: 40,
+          expiry_date: '2026-12-31',
+        },
+      ],
+      isLoading: false,
+    });
+
     mockUseRecordAdmissionConsumableUsage.mockReturnValue({
       mutateAsync: mutateAsyncRecord,
       isPending: false,
@@ -113,10 +145,12 @@ describe('ConsumableUsagePanel', () => {
     render(<ConsumableUsagePanel admissionId={1} isActive={true} />);
 
     await user.click(screen.getByRole('button', { name: /record usage/i }));
-    await user.click(screen.getByRole('combobox', { name: /stock batch/i }));
+    await user.click(screen.getByRole('combobox', { name: /consumable item/i }));
+    await user.click(screen.getAllByText('Sterile Dressing Pack').at(-1)!);
+    await user.click(screen.getAllByRole('combobox')[1]!);
     await user.click(
       screen.getByRole('option', {
-        name: /Sterile Dressing Pack .* DRESS-001 .* 40 left/i,
+        name: /DRESS-001 .* 40 avail/i,
       })
     );
     await user.clear(screen.getByLabelText(/quantity used/i));

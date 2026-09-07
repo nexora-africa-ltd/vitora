@@ -161,7 +161,7 @@ function EncounterLayoutContent({ children }: { children: React.ReactNode }) {
 export default function EncounterLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
   const encounterId = typeof params.id === 'string' ? params.id : null;
-  const isValidId = !!encounterId;
+  const isValidId = !!encounterId && /^\d+$/.test(encounterId);
 
   // Fetch encounter to get patientId (lightweight query just for routing)
   const {

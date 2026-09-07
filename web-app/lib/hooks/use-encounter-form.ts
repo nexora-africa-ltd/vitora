@@ -42,6 +42,7 @@ export function useICD10Search(query: string) {
       return response.data.results || [];
     },
     forceApi: !debouncedQuery || debouncedQuery.length < 2,
+    enabled: debouncedQuery.length >= 2,
     queryOptions: {
       staleTime: 60000,
     },

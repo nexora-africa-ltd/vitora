@@ -159,7 +159,7 @@ describe('PatientTable', () => {
     const patientWithoutPhone: Patient = { ...mockPatient, phone_number: undefined };
     render(<PatientTable {...defaultProps} patients={[patientWithoutPhone]} />);
 
-    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0);
   });
 
   it('should render multiple patients', () => {

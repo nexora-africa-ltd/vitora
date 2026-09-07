@@ -27,6 +27,16 @@ jest.mock('@/lib/hooks/use-debounce', () => ({
 
 const mockApiClient = apiClient as jest.Mocked<typeof apiClient>;
 
+const autoSaveData = {
+  patient: 1,
+  encounter_type: 'OPD',
+  encounter_date: '2026-03-15',
+  chief_complaint: 'Cough',
+  blood_pressure_systolic: 110,
+  blood_pressure_diastolic: 70,
+  status: 'CREATED',
+} as never;
+
 function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
@@ -183,15 +193,7 @@ describe('use-encounter-form hooks', () => {
     const { result } = renderHook(
       () =>
         useAutoSave(
-          {
-            patient: 1,
-            encounter_type: 'OPD',
-            encounter_date: '2026-03-15',
-            chief_complaint: 'Cough',
-            blood_pressure_systolic: 110,
-            blood_pressure_diastolic: 70,
-            status: 'CREATED',
-          } as never,
+          autoSaveData,
           1,
           true
         ),
@@ -214,13 +216,7 @@ describe('use-encounter-form hooks', () => {
     renderHook(
       () =>
         useAutoSave(
-          {
-            patient: 1,
-            encounter_type: 'OPD',
-            encounter_date: '2026-03-15',
-            chief_complaint: 'Cough',
-            status: 'CREATED',
-          } as never,
+          autoSaveData,
           null,
           true
         ),
@@ -230,13 +226,7 @@ describe('use-encounter-form hooks', () => {
     renderHook(
       () =>
         useAutoSave(
-          {
-            patient: 1,
-            encounter_type: 'OPD',
-            encounter_date: '2026-03-15',
-            chief_complaint: 'Cough',
-            status: 'CREATED',
-          } as never,
+          autoSaveData,
           1,
           false
         ),
@@ -249,13 +239,7 @@ describe('use-encounter-form hooks', () => {
     const { result } = renderHook(
       () =>
         useAutoSave(
-          {
-            patient: 1,
-            encounter_type: 'OPD',
-            encounter_date: '2026-03-15',
-            chief_complaint: 'Cough',
-            status: 'CREATED',
-          } as never,
+          autoSaveData,
           2,
           true
         ),

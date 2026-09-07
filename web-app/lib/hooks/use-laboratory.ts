@@ -459,23 +459,36 @@ export function useVerifyLabResult() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      resultId,
-      approved = true,
-      comments,
-      validationType = 'TECHNICAL',
-    }: {
-      resultId: number;
-      approved?: boolean;
-      comments?: string;
-      validationType?: 'TECHNICAL' | 'CLINICAL';
-    }) => laboratoryApi.verifyResult(resultId, approved, comments, validationType),
+    mutationFn: (
+      input:
+        | number
+        | {
+            resultId: number;
+            approved?: boolean;
+            comments?: string;
+            validationType?: 'TECHNICAL' | 'CLINICAL';
+          }
+    ) => {
+      if (typeof input === 'number') {
+        return laboratoryApi.verifyResult(input);
+      }
+      return laboratoryApi.verifyResult(
+        input.resultId,
+        input.approved ?? true,
+        input.comments,
+        input.validationType ?? 'TECHNICAL'
+      );
+    },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['lab-orders'] });
       queryClient.invalidateQueries({ queryKey: ['lab-results'] });
       queryClient.invalidateQueries({ queryKey: ['lab-results', 'pending-verification'] });
       queryClient.invalidateQueries({
-        queryKey: ['lab-results', variables.resultId, 'validations'],
+        queryKey: [
+          'lab-results',
+          typeof variables === 'number' ? variables : variables.resultId,
+          'validations',
+        ],
       });
       queryClient.invalidateQueries({ queryKey: ['lab-results', 'pending-validations'] });
     },
@@ -809,11 +822,13 @@ export function useUpdateDiagnosticReport() {
   return useMutation({
     mutationFn: ({
       reportNumber,
+      id,
       data,
     }: {
-      reportNumber: string;
+      reportNumber?: string;
+      id?: number | string;
       data: Partial<DiagnosticReport>;
-    }) => laboratoryApi.updateDiagnosticReport(reportNumber, data),
+    }) => laboratoryApi.updateDiagnosticReport(reportNumber ?? String(id!), data),
     onSuccess: (updatedReport: DiagnosticReport) => {
       queryClient.invalidateQueries({ queryKey: ['diagnostic-reports'] });
       queryClient.invalidateQueries({
@@ -847,8 +862,15 @@ export function useAmendDiagnosticReport() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ reportNumber, conclusion }: { reportNumber: string; conclusion: string }) =>
-      laboratoryApi.amendDiagnosticReport(reportNumber, conclusion),
+    mutationFn: ({
+      reportNumber,
+      id,
+      conclusion,
+    }: {
+      reportNumber?: string;
+      id?: number | string;
+      conclusion: string;
+    }) => laboratoryApi.amendDiagnosticReport(reportNumber ?? String(id!), conclusion),
     onSuccess: (updatedReport: DiagnosticReport) => {
       queryClient.invalidateQueries({ queryKey: ['diagnostic-reports'] });
       queryClient.invalidateQueries({
@@ -865,8 +887,15 @@ export function useCancelDiagnosticReport() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ reportNumber, reason }: { reportNumber: string; reason: string }) =>
-      laboratoryApi.cancelDiagnosticReport(reportNumber, reason),
+    mutationFn: ({
+      reportNumber,
+      id,
+      reason,
+    }: {
+      reportNumber?: string;
+      id?: number | string;
+      reason: string;
+    }) => laboratoryApi.cancelDiagnosticReport(reportNumber ?? String(id!), reason),
     onSuccess: (updatedReport: DiagnosticReport) => {
       queryClient.invalidateQueries({ queryKey: ['diagnostic-reports'] });
       queryClient.invalidateQueries({

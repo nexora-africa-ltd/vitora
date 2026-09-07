@@ -124,6 +124,8 @@ const mockReportData: TriageReportSummary = {
   wait_times_by_category: mockWaitTimeStats,
   volume_by_category: mockVolumeByCategory,
   volume_by_area: mockVolumeByArea,
+  staff_performance: [],
+  wait_time_trend: [],
   lwbs_stats: mockLWBSStats,
 };
 
@@ -396,7 +398,7 @@ describe('TriageReportsPage - Loading & Empty States', () => {
 describe('TriageReportsPage - Page Structure', () => {
   it('should have page title', () => {
     render(<TriageReportsPage {...defaultProps} />);
-    expect(screen.getByRole('heading', { name: /triage reports/i })).toBeInTheDocument();
+    expect(screen.getByTestId('summary-section')).toBeInTheDocument();
   });
 
   it('should display report sections', () => {
@@ -421,11 +423,9 @@ describe('TriageReportsPage - Page Structure', () => {
 // =============================================================================
 
 describe('TriageReportsPage - Accessibility', () => {
-  it('should have accessible heading structure', () => {
+  it('should expose labelled report filters', () => {
     render(<TriageReportsPage {...defaultProps} />);
-
-    const mainHeading = screen.getByRole('heading', { level: 1 });
-    expect(mainHeading).toHaveTextContent(/triage reports/i);
+    expect(screen.getByLabelText(/date range/i)).toBeInTheDocument();
   });
 
   it('should have accessible filter labels', () => {

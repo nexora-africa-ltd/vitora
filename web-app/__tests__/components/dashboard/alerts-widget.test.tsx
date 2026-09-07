@@ -5,37 +5,15 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { AlertsWidget } from '@/components/dashboard/alerts-widget';
 
-// Mock the pharmacy hooks
+// Mock the aggregate alert hook consumed by the dashboard widget.
 jest.mock('@/lib/hooks/use-pharmacy', () => ({
-  useStockAlerts: jest.fn(() => ({
+  useAlertSeveritySummary: jest.fn(() => ({
     data: {
-      results: [
-        {
-          id: 1,
-          drug_name: 'Paracetamol 500mg',
-          alert_type: 'LOW_STOCK',
-          severity: 'HIGH',
-          message: 'Low Stock Alert - Paracetamol 500mg is below reorder level',
-          resolved: false,
-        },
-        {
-          id: 2,
-          drug_name: 'Amoxicillin',
-          alert_type: 'EXPIRING_SOON',
-          severity: 'MEDIUM',
-          message: 'Expiring Soon - Amoxicillin Batch B001 expires in 30 days',
-          resolved: false,
-        },
-        {
-          id: 3,
-          drug_name: 'Metformin',
-          alert_type: 'OUT_OF_STOCK',
-          severity: 'CRITICAL',
-          message: 'Critical - Metformin is out of stock',
-          resolved: false,
-        },
-      ],
-      count: 3,
+      total: 3,
+      critical: 1,
+      high: 1,
+      medium: 1,
+      low: 0,
     },
     isLoading: false,
     error: null,

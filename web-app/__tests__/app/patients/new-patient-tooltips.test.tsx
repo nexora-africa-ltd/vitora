@@ -38,6 +38,19 @@ jest.mock('@/lib/hooks/use-patients', () => ({
   }),
 }));
 
+jest.mock('@/lib/hooks/use-permissions', () => ({
+  usePermissions: () => ({ hasPermission: () => true }),
+}));
+
+jest.mock('@/lib/context/facility-context', () => ({
+  useFacility: () => ({ facility: null, facilityDetail: null }),
+}));
+
+jest.mock('@/lib/hooks/use-insurance', () => ({
+  useCreateEnrollment: () => ({ mutateAsync: jest.fn(), isPending: false }),
+  useInsurancePlans: () => ({ data: { results: [] }, isLoading: false }),
+}));
+
 const mockCheckInMutateAsync = jest.fn();
 jest.mock('@/lib/hooks/use-triage', () => ({
   useCheckInPatient: () => ({

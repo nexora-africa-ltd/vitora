@@ -9,6 +9,12 @@ jest.mock('@tanstack/react-query-devtools', () => ({
   ReactQueryDevtools: () => null,
 }));
 
+// The production toast polls the server for a new build; provider rendering is
+// not responsible for testing that network behavior.
+jest.mock('@/components/shared/new-version-toast', () => ({
+  NewVersionToast: () => null,
+}));
+
 describe('Providers', () => {
   it('should render children', () => {
     render(

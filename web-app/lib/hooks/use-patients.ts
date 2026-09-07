@@ -154,7 +154,7 @@ export function usePatient(id: number | string) {
       return transformPatientRow(rows[0]!) as unknown as Patient;
     },
     queryKey: patientKeys.detail(id),
-    queryFn: () => patientsApi.getPatient(id),
+    queryFn: () => patientsApi.getPatient(numericId ?? id),
     forceApi: numericId === null,
     enabled: !!id,
   });
@@ -209,8 +209,8 @@ export function usePatientEmergencyContacts(patientId: string | number) {
           }) as EmergencyContact
       ),
     queryKey: patientKeys.emergencyContacts(patientId),
-    queryFn: () => patientsApi.getEmergencyContacts(patientId),
-    forceApi: localPatientId === null,
+    queryFn: () => patientsApi.getEmergencyContacts(localPatientId ?? 0),
+    enabled: localPatientId !== null,
   });
 }
 
@@ -240,8 +240,8 @@ export function usePatientEncounters(patientId: string | number) {
         created_at: (row.created_at as string) || '',
       })),
     queryKey: patientKeys.encounters(patientId),
-    queryFn: () => patientsApi.getEncounters(patientId),
-    forceApi: localPatientId === null,
+    queryFn: () => patientsApi.getEncounters(localPatientId ?? 0),
+    enabled: localPatientId !== null,
   });
 }
 

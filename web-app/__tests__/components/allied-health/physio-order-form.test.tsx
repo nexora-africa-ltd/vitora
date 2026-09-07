@@ -408,7 +408,7 @@ describe('PhysioOrderForm - Treatment Type Selection', () => {
     });
   });
 
-  it('should show SHA claimable indicator for covered treatments', async () => {
+  it('should show cost per session for selected treatment', async () => {
     const user = userEvent.setup();
     renderWithWrapper(<PhysioOrderForm patientId={1} />);
 
@@ -420,7 +420,7 @@ describe('PhysioOrderForm - Treatment Type Selection', () => {
     await user.click(option);
 
     await waitFor(() => {
-      expect(screen.getByText(/sha claimable/i)).toBeInTheDocument();
+      expect(screen.getByText(/KES 2,000\/session/i)).toBeInTheDocument();
     });
   });
 });

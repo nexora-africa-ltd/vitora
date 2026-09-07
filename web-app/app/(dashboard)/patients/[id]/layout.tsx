@@ -71,7 +71,7 @@ export default function PatientLayout({ children }: { children: React.ReactNode 
   const params = useParams();
   const patientId = typeof params.id === 'string' ? params.id : null;
 
-  if (!patientId) {
+  if (!patientId || !/^\d+$/.test(patientId)) {
     return <PatientLayoutError message="Invalid patient ID. Please select a valid patient." />;
   }
 

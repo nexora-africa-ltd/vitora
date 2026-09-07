@@ -38,6 +38,7 @@ export function useSubCounties(countyId: number | undefined) {
     queryFn: () => locationsApi.getSubCounties(countyId!),
     queryOptions: { staleTime: Infinity },
     forceApi: !countyId,
+    enabled: !!countyId,
   });
 }
 
@@ -56,6 +57,7 @@ export function useWards(subCountyId: number | undefined) {
     queryFn: () => locationsApi.getWards(subCountyId!),
     queryOptions: { staleTime: Infinity },
     forceApi: !subCountyId,
+    enabled: !!subCountyId,
   });
 }
 

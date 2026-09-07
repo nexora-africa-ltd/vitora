@@ -108,15 +108,16 @@ export function CommandMenu() {
   }, [utilityItems]);
 
   const firstCommandValue = useMemo(() => {
-    if (patients.length > 0) {
-      return `patient-${patients[0].id}-${patients[0].first_name}-${patients[0].last_name}-${patients[0].mrn}`;
+    const firstPatient = patients[0];
+    if (firstPatient) {
+      return `patient-${firstPatient.id}-${firstPatient.first_name}-${firstPatient.last_name}-${firstPatient.mrn}`;
     }
-    if (navigationLinks.length > 0) {
-      const firstNav = navigationLinks[0];
+    const firstNav = navigationLinks[0];
+    if (firstNav) {
       return `${firstNav.label} ${firstNav.href}`;
     }
-    if (utilityLinks.length > 0) {
-      const firstUtility = utilityLinks[0];
+    const firstUtility = utilityLinks[0];
+    if (firstUtility) {
       return `${firstUtility.label} ${firstUtility.href}`;
     }
     return '';

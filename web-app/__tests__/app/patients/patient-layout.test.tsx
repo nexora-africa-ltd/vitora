@@ -117,7 +117,7 @@ describe('Patient Shell Layout', () => {
       );
 
       await waitFor(() => {
-        expect(mockPatientsApi.getPatient).toHaveBeenCalledWith(42);
+        expect(mockPatientsApi.getPatient).toHaveBeenCalledWith('42');
       });
     });
   });

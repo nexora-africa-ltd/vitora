@@ -23,6 +23,10 @@ jest.mock('@/lib/hooks/use-encounters', () => ({
   useEncounters: (...args: unknown[]) => mockUseEncounters(...args),
 }));
 
+jest.mock('@/lib/hooks/use-permissions', () => ({
+  usePermissions: () => ({ hasPermission: jest.fn(() => true) }),
+}));
+
 jest.mock('@/lib/hooks/use-consultation-queue', () => ({
   useMyClaimedEncounters: (...args: unknown[]) => mockUseMyClaimedEncounters(...args),
   useAllClaimedEncounters: (...args: unknown[]) => mockUseAllClaimedEncounters(...args),
