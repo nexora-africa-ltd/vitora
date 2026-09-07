@@ -8,7 +8,7 @@
  */
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Save, CheckCircle, Loader2, FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -30,6 +30,98 @@ import { CDSAlertsPanel } from '@/components/encounters/cds-alerts-panel';
 import { CDSCriticalDialog } from '@/components/encounters/cds-critical-dialog';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
 import { AlertTriangle, CheckSquare } from 'lucide-react';
+import {
+  ENCOUNTER_DISPOSITION_DISPLAY,
+  DISPOSITIONS_REQUIRING_NOTES,
+  type EncounterDisposition,
+} from '@/lib/types/encounter';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { getApiErrorMessage } from '@/lib/api/client';
+import { AxiosError } from 'axios';
+
+type FieldErrorMap = Record<string, string[]>;
+
+function toFieldLabel(field: string): string {
+  return field.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
+}
+
+function normalizeFinalizeError(error: unknown): { message: string; fieldErrors: FieldErrorMap } {
+  const message = getApiErrorMessage(error) || 'Failed to finalize encounter.';
+  const fieldErrors: FieldErrorMap = {};
+
+  if (error instanceof AxiosError) {
+    const data = error.response?.data;
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+      for (const [key, value] of Object.entries(data)) {
+        if (['detail', 'error', 'message', 'code'].includes(key)) {
+          continue;
+        }
+
+        if (Array.isArray(value)) {
+          const messages = value.filter((v): v is string => typeof v === 'string');
+          if (messages.length > 0) {
+            fieldErrors[key] = messages;
+          }
+        } else if (typeof value === 'string') {
+          fieldErrors[key] = [value];
+        }
+      }
+    }
+  }
+
+  return { message, fieldErrors };
+}
+
+function mapFieldToSection(field: string): 'vitals' | 'history' | 'notes' | 'diagnosis' | null {
+  const vitalsFields = new Set([
+    'temperature',
+    'pulse',
+    'blood_pressure',
+    'respiratory_rate',
+    'spo2',
+    'weight',
+    'height',
+  ]);
+  const historyFields = new Set([
+    'allergies',
+    'chronic_conditions',
+    'current_medications',
+    'past_surgeries',
+    'family_history',
+    'social_history',
+  ]);
+  const notesFields = new Set(['notes', 'history_of_present_illness', 'physical_examination', 'assessment']);
+  const diagnosisFields = new Set([
+    'icd10_code',
+    'icd11_code',
+    'icd11_display',
+    'snomed_code',
+    'snomed_display',
+    'free_text_diagnosis',
+  ]);
+
+  if (vitalsFields.has(field)) return 'vitals';
+  if (historyFields.has(field)) return 'history';
+  if (notesFields.has(field)) return 'notes';
+  if (diagnosisFields.has(field)) return 'diagnosis';
+  return null;
+}
 
 export default function EncounterEditReviewPage() {
   const params = useParams();
@@ -54,6 +146,12 @@ export default function EncounterEditReviewPage() {
   // CDS alerts — check for unresolved critical/high alerts
   const { data: cdsData } = useEncounterCDSAlerts(encounterStoreId);
   const [showCDSDialog, setShowCDSDialog] = useState(false);
+  const [showFinalizeDialog, setShowFinalizeDialog] = useState(false);
+  const [selectedDisposition, setSelectedDisposition] = useState<EncounterDisposition>('');
+  const [dispositionNotes, setDispositionNotes] = useState('');
+  const [isFinalizing, setIsFinalizing] = useState(false);
+  const [finalizeErrorMessage, setFinalizeErrorMessage] = useState<string | null>(null);
+  const [finalizeFieldErrors, setFinalizeFieldErrors] = useState<FieldErrorMap>({});
   const hasUnresolvedCritical = useMemo(() => {
     const alerts = cdsData?.results || [];
     return alerts.some((a) => {
@@ -130,6 +228,21 @@ export default function EncounterEditReviewPage() {
 
   // Count completed sections
   const completedCount = completion ? Object.values(completion).filter(Boolean).length : 0;
+  const erroredSections = useMemo(() => {
+    const sections = new Set<'vitals' | 'history' | 'notes' | 'diagnosis'>();
+    for (const field of Object.keys(finalizeFieldErrors)) {
+      const section = mapFieldToSection(field);
+      if (section) {
+        sections.add(section);
+      }
+    }
+    return Array.from(sections);
+  }, [finalizeFieldErrors]);
+
+  useEffect(() => {
+    setSelectedDisposition((encounter?.disposition ?? '') as EncounterDisposition);
+    setDispositionNotes(encounter?.disposition_notes ?? '');
+  }, [encounter?.disposition, encounter?.disposition_notes]);
 
   // Navigate to previous step
   const handlePrev = useCallback(() => {
@@ -139,6 +252,9 @@ export default function EncounterEditReviewPage() {
   // Save and stay
   const handleSave = useCallback(async () => {
     if (!formData) return;
+
+    setFinalizeErrorMessage(null);
+    setFinalizeFieldErrors({});
 
     try {
       const bp =
@@ -179,9 +295,13 @@ export default function EncounterEditReviewPage() {
         description: 'All changes have been saved successfully.',
       });
     } catch (err) {
+      const normalized = normalizeFinalizeError(err);
+      setFinalizeErrorMessage(normalized.message);
+      setFinalizeFieldErrors(normalized.fieldErrors);
+
       toast({
-        title: 'Error',
-        description: 'Failed to save encounter.',
+        title: 'Save failed',
+        description: normalized.message,
         variant: 'destructive',
       });
     }
@@ -191,6 +311,10 @@ export default function EncounterEditReviewPage() {
   const handleFinalize = useCallback(async () => {
     if (!formData) return;
     setShowCDSDialog(false);
+    setShowFinalizeDialog(false);
+    setIsFinalizing(true);
+    setFinalizeErrorMessage(null);
+    setFinalizeFieldErrors({});
 
     try {
       // First save all the data
@@ -224,6 +348,8 @@ export default function EncounterEditReviewPage() {
           assessment: formData.assessment,
           clinical_template: formData.clinical_template,
           clinical_template_data: formData.clinical_template_data,
+          disposition: selectedDisposition || null,
+          disposition_notes: dispositionNotes || '',
         },
       });
 
@@ -242,13 +368,29 @@ export default function EncounterEditReviewPage() {
       // Navigate to encounter detail
       router.push(`/encounters/${encounterRouteId}`);
     } catch (err) {
+      const normalized = normalizeFinalizeError(err);
+      setFinalizeErrorMessage(normalized.message);
+      setFinalizeFieldErrors(normalized.fieldErrors);
+
       toast({
-        title: 'Error',
-        description: 'Failed to finalize encounter.',
+        title: 'Finalize failed',
+        description: normalized.message,
         variant: 'destructive',
       });
+    } finally {
+      setIsFinalizing(false);
     }
-  }, [formData, encounterRouteId, encounterStoreId, updateEncounter, clearSession, toast, router]);
+  }, [
+    formData,
+    encounterRouteId,
+    encounterStoreId,
+    updateEncounter,
+    clearSession,
+    toast,
+    router,
+    selectedDisposition,
+    dispositionNotes,
+  ]);
 
   // Finalize encounter — if unresolved critical alerts exist, show dialog first
   const handleFinalizeClick = useCallback(() => {
@@ -256,8 +398,36 @@ export default function EncounterEditReviewPage() {
       setShowCDSDialog(true);
       return;
     }
+    setShowFinalizeDialog(true);
+  }, [hasUnresolvedCritical]);
+
+  const handleConfirmFinalize = useCallback(() => {
+    setFinalizeErrorMessage(null);
+    setFinalizeFieldErrors({});
+
+    if (!selectedDisposition) {
+      toast({
+        title: 'Disposition required',
+        description: 'Select a disposition before finalizing the encounter.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (
+      DISPOSITIONS_REQUIRING_NOTES.includes(selectedDisposition) &&
+      dispositionNotes.trim().length === 0
+    ) {
+      toast({
+        title: 'Disposition notes required',
+        description: `${ENCOUNTER_DISPOSITION_DISPLAY[selectedDisposition]} requires disposition notes.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     handleFinalize();
-  }, [hasUnresolvedCritical, handleFinalize]);
+  }, [selectedDisposition, dispositionNotes, handleFinalize, toast]);
 
   if (isLoading || !session || !formData) {
     return null;
@@ -281,6 +451,40 @@ export default function EncounterEditReviewPage() {
           <AlertTitle>Read-only</AlertTitle>
           <AlertDescription className="text-sm">
             This encounter is {encounter?.status?.toLowerCase()} and cannot be edited.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Finalize Error Summary */}
+      {(finalizeErrorMessage || Object.keys(finalizeFieldErrors).length > 0) && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Finalize blocked by validation errors</AlertTitle>
+          <AlertDescription className="space-y-2 text-sm">
+            {finalizeErrorMessage && <p>{finalizeErrorMessage}</p>}
+            {Object.keys(finalizeFieldErrors).length > 0 && (
+              <div className="space-y-1">
+                {Object.entries(finalizeFieldErrors).map(([field, errors]) => (
+                  <p key={field}>
+                    <span className="font-medium">{toFieldLabel(field)}:</span> {errors.join(' ')}
+                  </p>
+                ))}
+              </div>
+            )}
+            {erroredSections.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {erroredSections.map((section) => (
+                  <Button
+                    key={section}
+                    size="sm"
+                    variant="outline"
+                    onClick={() => router.push(`/encounters/${encounterRouteId}/edit/${section}`)}
+                  >
+                    Fix in {toFieldLabel(section)}
+                  </Button>
+                ))}
+              </div>
+            )}
           </AlertDescription>
         </Alert>
       )}
@@ -316,6 +520,34 @@ export default function EncounterEditReviewPage() {
                 </Badge>
               );
             })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Current Disposition Summary */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Current Disposition</CardTitle>
+          <CardDescription>
+            Read-only snapshot of the saved encounter disposition before finalization.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-muted-foreground">Disposition:</span>
+            <Badge variant={encounter?.disposition ? 'default' : 'secondary'}>
+              {encounter?.disposition
+                ? ENCOUNTER_DISPOSITION_DISPLAY[
+                    encounter.disposition as Exclude<EncounterDisposition, ''>
+                  ]
+                : 'Not set'}
+            </Badge>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">Notes:</span>{' '}
+            {encounter?.disposition_notes?.trim()
+              ? encounter.disposition_notes
+              : 'No disposition notes saved yet.'}
           </div>
         </CardContent>
       </Card>
@@ -371,10 +603,10 @@ export default function EncounterEditReviewPage() {
               {isEditable && encounter?.status !== 'CLOSED' && (
                 <Button
                   onClick={handleFinalizeClick}
-                  disabled={updateEncounter.isPending}
+                  disabled={updateEncounter.isPending || isFinalizing}
                   className="bg-green-600 hover:bg-green-700"
                 >
-                  {updateEncounter.isPending ? (
+                  {updateEncounter.isPending || isFinalizing ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
                     <CheckCircle className="mr-2 h-4 w-4" />
@@ -392,9 +624,100 @@ export default function EncounterEditReviewPage() {
         encounterId={encounterStoreId}
         open={showCDSDialog}
         onOpenChange={setShowCDSDialog}
-        onProceed={handleFinalize}
-        isFinalizePending={updateEncounter.isPending}
+        onProceed={() => setShowFinalizeDialog(true)}
+        isFinalizePending={updateEncounter.isPending || isFinalizing}
       />
+
+      <Dialog open={showFinalizeDialog} onOpenChange={setShowFinalizeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Finalize Encounter</DialogTitle>
+            <DialogDescription>
+              Set disposition before finalizing. This improves handoff clarity and KENHDD compliance.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="encounter-disposition">Disposition</Label>
+              <Select
+                value={selectedDisposition}
+                onValueChange={(value) => setSelectedDisposition(value as EncounterDisposition)}
+              >
+                <SelectTrigger id="encounter-disposition">
+                  <SelectValue placeholder="Select disposition" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(ENCOUNTER_DISPOSITION_DISPLAY)
+                    .filter(([value]) => value !== '')
+                    .map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              {finalizeFieldErrors.disposition?.length ? (
+                <p className="text-xs text-destructive">{finalizeFieldErrors.disposition[0]}</p>
+              ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="encounter-disposition-notes">
+                Disposition Notes
+                {selectedDisposition && DISPOSITIONS_REQUIRING_NOTES.includes(selectedDisposition)
+                  ? ' (Required)'
+                  : ' (Optional)'}
+              </Label>
+              <Textarea
+                id="encounter-disposition-notes"
+                placeholder="Document referral/advice details or relevant discharge instructions."
+                value={dispositionNotes}
+                onChange={(event) => setDispositionNotes(event.target.value)}
+                rows={4}
+              />
+              {finalizeFieldErrors.disposition_notes?.length ? (
+                <p className="text-xs text-destructive">{finalizeFieldErrors.disposition_notes[0]}</p>
+              ) : null}
+            </div>
+
+            {Object.keys(finalizeFieldErrors).length > 0 && (
+              <Alert variant="destructive" className="py-2">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="space-y-1 text-xs">
+                  {Object.entries(finalizeFieldErrors).map(([field, errors]) => (
+                    <p key={`dialog-${field}`}>
+                      <span className="font-medium">{toFieldLabel(field)}:</span> {errors.join(' ')}
+                    </p>
+                  ))}
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowFinalizeDialog(false)}
+              disabled={updateEncounter.isPending || isFinalizing}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmFinalize}
+              disabled={updateEncounter.isPending || isFinalizing}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {updateEncounter.isPending || isFinalizing ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle className="mr-2 h-4 w-4" />
+              )}
+              Confirm & Finalize
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

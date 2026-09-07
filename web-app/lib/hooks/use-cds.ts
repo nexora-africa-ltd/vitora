@@ -28,13 +28,18 @@ export const cdsKeys = {
 // =============================================================================
 
 /**
- * Fetch pending CDS alerts for a specific encounter.
- * Returns alerts sorted by priority (CRITICAL first).
+ * Fetch CDS alerts for a specific encounter (pending + resolved history).
+ * Returns alerts sorted by server ordering (newest first by default).
  */
 export function useEncounterCDSAlerts(encounterId: number | null | undefined) {
   return useQuery({
     queryKey: cdsKeys.encounterAlerts(encounterId!),
-    queryFn: () => cdsApi.getPendingAlerts({ encounter: encounterId! }),
+    queryFn: () =>
+      cdsApi.listAlerts({
+        encounter: encounterId!,
+        ordering: '-created_at',
+        page_size: 200,
+      }),
     enabled: !!encounterId,
     staleTime: 30_000, // 30s — alerts don't change that quickly
     refetchOnWindowFocus: true,

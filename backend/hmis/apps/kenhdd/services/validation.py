@@ -17,6 +17,7 @@ from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from django.core.exceptions import FieldError
 from django.db import models
 
 logger = logging.getLogger(__name__)
@@ -137,6 +138,105 @@ class KENHDDValidationService:
             ):
                 return None
         return obj
+
+    def _apply_tenant_scope_to_queryset(
+        self,
+        queryset: models.QuerySet,
+        *,
+        resource_type: str,
+        facility: Any | None = None,
+        organization: Any | None = None,
+    ) -> models.QuerySet:
+        """Apply facility/organization scoping to a model queryset."""
+        if facility is None and organization is None:
+            return queryset
+
+        if resource_type == "FACILITY":
+            if facility is not None:
+                return queryset.filter(pk=getattr(facility, "pk", facility))
+            if organization is not None:
+                return queryset.filter(organization_id=getattr(organization, "pk", organization))
+            return queryset
+
+        def _try_paths(paths: list[str], value: Any) -> models.QuerySet | None:
+            for path in paths:
+                try:
+                    return queryset.filter(**{path: value})
+                except FieldError:
+                    continue
+            return None
+
+        if facility is not None:
+            facility_id = getattr(facility, "pk", facility)
+            scoped = _try_paths(
+                [
+                    "facility_id",
+                    "encounter__facility_id",
+                    "registration__facility_id",
+                    "lab_order__facility_id",
+                    "order__facility_id",
+                    "patient__registered_at_facility_id",
+                    "clinic__facility_id",
+                    "admission__facility_id",
+                ],
+                facility_id,
+            )
+            if scoped is not None:
+                return scoped
+
+        if organization is not None:
+            organization_id = getattr(organization, "pk", organization)
+            scoped = _try_paths(
+                [
+                    "organization_id",
+                    "facility__organization_id",
+                    "patient__organization_id",
+                    "encounter__organization_id",
+                    "registration__organization_id",
+                    "lab_order__organization_id",
+                    "order__organization_id",
+                ],
+                organization_id,
+            )
+            if scoped is not None:
+                return scoped
+
+        return queryset.none()
+
+    def scope_queryset(
+        self,
+        queryset: models.QuerySet,
+        *,
+        resource_type: str,
+        facility: Any | None = None,
+        organization: Any | None = None,
+    ) -> models.QuerySet:
+        """Public wrapper for applying tenant scope to an existing queryset."""
+        return self._apply_tenant_scope_to_queryset(
+            queryset,
+            resource_type=resource_type,
+            facility=facility,
+            organization=organization,
+        )
+
+    def get_scoped_queryset(
+        self,
+        resource_type: str,
+        *,
+        facility: Any | None = None,
+        organization: Any | None = None,
+    ) -> models.QuerySet | None:
+        """Return resource queryset restricted to the current tenant context."""
+        model_cls = self.get_model_class(resource_type)
+        if model_cls is None:
+            return None
+        queryset = model_cls.objects.all()
+        return self._apply_tenant_scope_to_queryset(
+            queryset,
+            resource_type=resource_type,
+            facility=facility,
+            organization=organization,
+        )
 
     def _validate_element(self, element: Any, value: Any) -> KENHDDElementResult:
         """
@@ -321,6 +421,8 @@ class KENHDDValidationService:
         resource_type: str | None = None,
         sample_size: int = 100,
         user: Any = None,
+        facility: Any | None = None,
+        organization: Any | None = None,
     ) -> list[KENHDDComplianceScore]:
         """
         Generate a compliance report by sampling records.
@@ -349,7 +451,12 @@ class KENHDDValidationService:
                 continue
 
             # Sample records
-            records = model_cls.objects.order_by("?")[:sample_size]
+            records = self._apply_tenant_scope_to_queryset(
+                model_cls.objects.all(),
+                resource_type=rt,
+                facility=facility,
+                organization=organization,
+            ).order_by("?")[:sample_size]
             total = len(records)
             if total == 0:
                 scores.append(
@@ -413,6 +520,8 @@ class KENHDDValidationService:
                 mandatory_pass_rate=Decimal(str(mandatory_rate)),
                 violations=violations,
                 run_by=user,
+                organization=organization,
+                facility=facility,
             )
 
             # Persist per-record failure details for drill-down
@@ -448,6 +557,8 @@ class KENHDDValidationService:
                                 fail_count=record_result.fail_count,
                                 warning_count=record_result.warning_count,
                                 violation_details=violation_details,
+                                organization=organization,
+                                facility=facility,
                             )
                         )
             if failed_objects:
@@ -455,7 +566,12 @@ class KENHDDValidationService:
 
         return scores
 
-    def get_compliance_summary(self) -> list[dict]:
+    def get_compliance_summary(
+        self,
+        *,
+        facility: Any | None = None,
+        organization: Any | None = None,
+    ) -> list[dict]:
         """
         Return the latest compliance score per resource type.
         """
@@ -463,9 +579,13 @@ class KENHDDValidationService:
 
         summary = []
         for rt, _ in RESOURCE_MODEL_MAP.items():
-            latest = (
-                KENHDDValidationRun.objects.filter(resource_type=rt).order_by("-run_at").first()
-            )
+            runs_qs = KENHDDValidationRun.objects.filter(resource_type=rt)
+            if facility is not None:
+                runs_qs = runs_qs.filter(facility=facility)
+            elif organization is not None:
+                runs_qs = runs_qs.filter(organization=organization)
+
+            latest = runs_qs.order_by("-run_at").first()
             if latest:
                 summary.append(
                     {

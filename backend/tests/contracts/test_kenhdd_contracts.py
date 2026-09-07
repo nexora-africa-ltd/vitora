@@ -107,6 +107,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "is_compliant",
                 "pass_count",
                 "record_exists",
+                "record_href",
                 "record_id",
                 "violation_details",
                 "warning_count",

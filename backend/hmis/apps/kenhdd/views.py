@@ -19,6 +19,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from hmis.apps.core.mixins import resolve_request_tenant
 from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
 
 from .models import KENHDDDataElement, KENHDDFailedRecord, KENHDDValidationRun
@@ -35,6 +36,7 @@ from .serializers import (
     KENHDDValidationRunSerializer,
 )
 from .services.report import KENHDDReportService
+from .services.seeding import seed_kenhdd_elements
 from .services.validation import KENHDDValidationService
 
 
@@ -55,6 +57,37 @@ class KENHDDDataElementViewSet(viewsets.ReadOnlyModelViewSet):
             return KENHDDDataElementDetailSerializer
         return KENHDDDataElementSerializer
 
+    @action(detail=False, methods=["post"], url_path="seed")
+    def seed(self, request: Request) -> Response:
+        """Seed KENHDD elements when none exist for the current facility context."""
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        if facility is None:
+            return Response(
+                {
+                    "detail": "Facility context is required to seed KENHDD elements.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        existing_count = KENHDDDataElement.objects.count()
+        if existing_count > 0:
+            return Response(
+                {
+                    "created": 0,
+                    "skipped": existing_count,
+                    "total": existing_count,
+                    "seeded_for_facility_id": facility.id,
+                    "already_seeded": True,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        result = seed_kenhdd_elements()
+        result["seeded_for_facility_id"] = facility.id
+        result["already_seeded"] = False
+        return Response(result, status=status.HTTP_201_CREATED)
+
 
 class KENHDDComplianceViewSet(viewsets.ViewSet):
     """
@@ -67,6 +100,25 @@ class KENHDDComplianceViewSet(viewsets.ViewSet):
     """
 
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
+
+    def _get_tenant_context(self, request: Request) -> tuple[object | None, object | None]:
+        """Resolve and return (facility, organization) tenant context."""
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        organization = getattr(request, "organization", None)
+        return facility, organization
+
+    def _require_tenant_context(self, request: Request) -> tuple[object, object | None] | Response:
+        """Require a facility-scoped context for KENHDD compliance operations."""
+        facility, organization = self._get_tenant_context(request)
+        if facility is None:
+            return Response(
+                {
+                    "detail": "Facility context is required for KENHDD compliance operations.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return facility, organization
 
     def get_serializer_class(self):  # type: ignore[override]
         if self.action == "validate_record":
@@ -86,6 +138,11 @@ class KENHDDComplianceViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["post"], url_path="validate-record")
     def validate_record(self, request: Request) -> Response:
         """Validate a single record against KENHDD elements."""
+        tenant = self._require_tenant_context(request)
+        if isinstance(tenant, Response):
+            return tenant
+        facility, organization = tenant
+
         serializer = KENHDDValidateRecordInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -100,8 +157,19 @@ class KENHDDComplianceViewSet(viewsets.ViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        scoped_qs = service.get_scoped_queryset(
+            resource_type,
+            facility=facility,
+            organization=organization,
+        )
+        if scoped_qs is None:
+            return Response(
+                {"error": f"Unknown resource type: {resource_type}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         try:
-            instance = model_cls.objects.get(pk=record_id)
+            instance = scoped_qs.get(pk=record_id)
         except model_cls.DoesNotExist:
             return Response(
                 {"error": f"{resource_type} with id={record_id} not found"},
@@ -115,6 +183,11 @@ class KENHDDComplianceViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["post"], url_path="compliance-report")
     def compliance_report(self, request: Request) -> Response:
         """Generate a compliance report across resource types."""
+        tenant = self._require_tenant_context(request)
+        if isinstance(tenant, Response):
+            return tenant
+        facility, organization = tenant
+
         serializer = KENHDDComplianceReportInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -126,6 +199,8 @@ class KENHDDComplianceViewSet(viewsets.ViewSet):
             resource_type=resource_type,
             sample_size=sample_size,
             user=request.user,
+            facility=facility,
+            organization=organization,
         )
 
         output = KENHDDComplianceScoreSerializer(scores, many=True).data
@@ -134,15 +209,31 @@ class KENHDDComplianceViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["get"])
     def summary(self, request: Request) -> Response:
         """Get the latest compliance summary per resource type."""
+        tenant = self._require_tenant_context(request)
+        if isinstance(tenant, Response):
+            return tenant
+        facility, organization = tenant
+
         service = KENHDDValidationService()
-        return Response(service.get_compliance_summary())
+        return Response(
+            service.get_compliance_summary(facility=facility, organization=organization)
+        )
 
     @extend_schema(operation_id="api_kenhdd_compliance_runs_list")
     @action(detail=False, methods=["get"])
     def runs(self, request: Request) -> Response:
         """List past validation runs."""
+        tenant = self._require_tenant_context(request)
+        if isinstance(tenant, Response):
+            return tenant
+        facility, organization = tenant
+
         resource_type = request.query_params.get("resource_type")
         qs = KENHDDValidationRun.objects.all()
+        if facility is not None:
+            qs = qs.filter(facility=facility)
+        elif organization is not None:
+            qs = qs.filter(organization=organization)
         if resource_type:
             qs = qs.filter(resource_type=resource_type)
         serializer = KENHDDValidationRunSerializer(qs[:50], many=True)
@@ -157,6 +248,11 @@ class KENHDDComplianceViewSet(viewsets.ViewSet):
             resource_type: Required.
             format: 'json' (default) or 'csv'.
         """
+        tenant = self._require_tenant_context(request)
+        if isinstance(tenant, Response):
+            return tenant
+        facility, organization = tenant
+
         resource_type = request.data.get("resource_type")
         export_format = request.data.get("format", "json")
 
@@ -167,10 +263,19 @@ class KENHDDComplianceViewSet(viewsets.ViewSet):
             )
 
         run = (
-            KENHDDValidationRun.objects.filter(resource_type=resource_type)
+            KENHDDValidationRun.objects.filter(resource_type=resource_type, facility=facility)
             .order_by("-run_at")
             .first()
         )
+        if not run and organization is not None:
+            run = (
+                KENHDDValidationRun.objects.filter(
+                    resource_type=resource_type,
+                    organization=organization,
+                )
+                .order_by("-run_at")
+                .first()
+            )
         if not run:
             return Response(
                 {"error": f"No validation run found for {resource_type}"},
@@ -194,8 +299,18 @@ class KENHDDComplianceViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["get"], url_path=r"runs/(?P<run_id>\d+)")
     def run_detail(self, request: Request, run_id: str = "") -> Response:
         """Get detailed info for a specific validation run including failed records."""
+        tenant = self._require_tenant_context(request)
+        if isinstance(tenant, Response):
+            return tenant
+        facility, organization = tenant
+
         try:
-            run = KENHDDValidationRun.objects.prefetch_related("failed_records").get(pk=run_id)
+            run_qs = KENHDDValidationRun.objects.prefetch_related("failed_records")
+            if facility is not None:
+                run_qs = run_qs.filter(facility=facility)
+            elif organization is not None:
+                run_qs = run_qs.filter(organization=organization)
+            run = run_qs.get(pk=run_id)
         except KENHDDValidationRun.DoesNotExist:
             return Response(
                 {"error": f"Validation run {run_id} not found"},
@@ -211,8 +326,18 @@ class KENHDDComplianceViewSet(viewsets.ViewSet):
     )
     def run_failures(self, request: Request, run_id: str = "") -> Response:
         """List failed records for a specific validation run."""
+        tenant = self._require_tenant_context(request)
+        if isinstance(tenant, Response):
+            return tenant
+        facility, organization = tenant
+
         try:
-            run = KENHDDValidationRun.objects.get(pk=run_id)
+            run_qs = KENHDDValidationRun.objects.all()
+            if facility is not None:
+                run_qs = run_qs.filter(facility=facility)
+            elif organization is not None:
+                run_qs = run_qs.filter(organization=organization)
+            run = run_qs.get(pk=run_id)
         except KENHDDValidationRun.DoesNotExist:
             return Response(
                 {"error": f"Validation run {run_id} not found"},
@@ -234,8 +359,18 @@ class KENHDDComplianceViewSet(viewsets.ViewSet):
         Creates a new validation run targeting only the records that
         previously failed, so admins can check whether fixes took effect.
         """
+        tenant = self._require_tenant_context(request)
+        if isinstance(tenant, Response):
+            return tenant
+        facility, organization = tenant
+
         try:
-            original_run = KENHDDValidationRun.objects.get(pk=run_id)
+            run_qs = KENHDDValidationRun.objects.all()
+            if facility is not None:
+                run_qs = run_qs.filter(facility=facility)
+            elif organization is not None:
+                run_qs = run_qs.filter(organization=organization)
+            original_run = run_qs.get(pk=run_id)
         except KENHDDValidationRun.DoesNotExist:
             return Response(
                 {"error": f"Validation run {run_id} not found"},
@@ -259,7 +394,14 @@ class KENHDDComplianceViewSet(viewsets.ViewSet):
             )
 
         record_ids = list(failed_records.values_list("record_id", flat=True))
-        instances = list(model_cls.objects.filter(pk__in=record_ids))
+        instances = list(
+            service.scope_queryset(
+                model_cls.objects.filter(pk__in=record_ids),
+                resource_type=rt,
+                facility=facility,
+                organization=organization,
+            )
+        )
         deleted_count = len(record_ids) - len(instances)
 
         if not instances:
@@ -316,6 +458,8 @@ class KENHDDComplianceViewSet(viewsets.ViewSet):
                             fail_count=result.fail_count,
                             warning_count=result.warning_count,
                             violation_details=violation_details,
+                            organization=organization,
+                            facility=facility,
                         )
                     )
 
@@ -334,6 +478,8 @@ class KENHDDComplianceViewSet(viewsets.ViewSet):
             mandatory_pass_rate=Decimal(str(mandatory_rate)),
             violations=violations,
             run_by=request.user,
+            organization=organization,
+            facility=facility,
         )
 
         for fr in new_failed:

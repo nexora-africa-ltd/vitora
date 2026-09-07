@@ -30,6 +30,7 @@ import {
   User,
   BarChart3,
   ChevronDown,
+  Database,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/page-header';
@@ -192,9 +193,24 @@ export default function KENHDDCompliancePage() {
     queryFn: () => kenhddApi.listRuns(),
   });
 
-  const { data: elementsResponse } = useQuery({
+  const { data: elementsResponse, isLoading: elementsLoading } = useQuery({
     queryKey: ['kenhdd-elements'],
     queryFn: () => kenhddApi.listElements(),
+  });
+
+  const seedElementsMutation = useMutation({
+    mutationFn: () => kenhddApi.seedElements(),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['kenhdd-elements'] });
+      toast.success(
+        result.already_seeded
+          ? 'KENHDD elements are already seeded.'
+          : `Seeded ${result.created} KENHDD element${result.created === 1 ? '' : 's'}.`
+      );
+    },
+    onError: () => {
+      toast.error('Failed to seed KENHDD elements.');
+    },
   });
 
   const reportMutation = useMutation({
@@ -440,6 +456,7 @@ export default function KENHDDCompliancePage() {
   };
 
   const hasNeverRun = checkedEntries.length === 0 && !summaryLoading;
+  const hasNoElements = !elementsLoading && (elementsResponse?.count ?? 0) === 0;
 
   const handleExport = async (resourceType: KENHDDResourceType, format: 'csv' | 'json') => {
     try {
@@ -466,24 +483,47 @@ export default function KENHDDCompliancePage() {
             title="KENHDD Compliance"
             helpContent="Validates data against Kenya National Health Data Dictionary (KENHDD) standards. Checks that Patient, Encounter, Diagnosis, Facility, Lab, Prescription, and MCH records conform to the national schema. DHA Compliance: Gap #33."
             actions={
-              <Button
-                onClick={() => reportMutation.mutate()}
-                disabled={reportMutation.isPending}
-                size="sm"
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Run Compliance Check</span>
-                <span className="sm:hidden">Run Check</span>
-              </Button>
+              <div className="flex items-center gap-2">
+                {hasNoElements && (
+                  <Button
+                    onClick={() => seedElementsMutation.mutate()}
+                    disabled={seedElementsMutation.isPending}
+                    size="sm"
+                    variant="outline"
+                  >
+                    {seedElementsMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Database className="mr-2 h-4 w-4" />
+                    )}
+                    <span className="hidden sm:inline">Seed KENHDD Elements</span>
+                    <span className="sm:hidden">Seed Elements</span>
+                  </Button>
+                )}
+                <Button
+                  onClick={() => reportMutation.mutate()}
+                  disabled={reportMutation.isPending || hasNoElements}
+                  size="sm"
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">Run Compliance Check</span>
+                  <span className="sm:hidden">Run Check</span>
+                </Button>
+              </div>
             }
           />
           <EmptyState
             icon={ShieldCheck}
-            title="No compliance data yet"
-            description="Run a KENHDD compliance check to validate your data against the Kenya National Health Data Dictionary. Results will show which resource types are compliant, which need attention, and what to fix first."
+            title={hasNoElements ? 'KENHDD elements are not initialized' : 'No compliance data yet'}
+            description={
+              hasNoElements
+                ? 'Seed KENHDD data elements for this facility context before running compliance checks.'
+                : 'Run a KENHDD compliance check to validate your data against the Kenya National Health Data Dictionary. Results will show which resource types are compliant, which need attention, and what to fix first.'
+            }
             action={{
-              label: 'Run Compliance Check',
-              onClick: () => reportMutation.mutate(),
+              label: hasNoElements ? 'Seed KENHDD Elements' : 'Run Compliance Check',
+              onClick: () =>
+                hasNoElements ? seedElementsMutation.mutate() : reportMutation.mutate(),
             }}
           />
         </div>
@@ -498,21 +538,55 @@ export default function KENHDDCompliancePage() {
           title="KENHDD Compliance"
           helpContent="Validates data against Kenya National Health Data Dictionary (KENHDD) standards. Checks that Patient, Encounter, Diagnosis, Facility, Lab, Prescription, and MCH records conform to the national schema. DHA Compliance: Gap #33."
           actions={
-            <Button
-              onClick={() => reportMutation.mutate()}
-              disabled={reportMutation.isPending}
-              size="sm"
-            >
-              {reportMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="mr-2 h-4 w-4" />
+            <div className="flex items-center gap-2">
+              {hasNoElements && (
+                <Button
+                  onClick={() => seedElementsMutation.mutate()}
+                  disabled={seedElementsMutation.isPending}
+                  size="sm"
+                  variant="outline"
+                >
+                  {seedElementsMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Database className="mr-2 h-4 w-4" />
+                  )}
+                  <span className="hidden sm:inline">Seed KENHDD Elements</span>
+                  <span className="sm:hidden">Seed Elements</span>
+                </Button>
               )}
-              <span className="hidden sm:inline">Run Compliance Check</span>
-              <span className="sm:hidden">Run Check</span>
-            </Button>
+              <Button
+                onClick={() => reportMutation.mutate()}
+                disabled={reportMutation.isPending || hasNoElements}
+                size="sm"
+              >
+                {reportMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                )}
+                <span className="hidden sm:inline">Run Compliance Check</span>
+                <span className="sm:hidden">Run Check</span>
+              </Button>
+            </div>
           }
         />
+
+        {hasNoElements && (
+          <Card className="border-amber-300 bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-900/10">
+            <CardContent className="flex items-start gap-3 p-4">
+              <Database className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
+              <div>
+                <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                  KENHDD data elements are not initialized
+                </p>
+                <p className="text-xs text-amber-800 dark:text-amber-300">
+                  Seed KENHDD elements for the current facility context to enable compliance checks.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Loading overlay while check is running */}
         {reportMutation.isPending && (

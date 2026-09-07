@@ -9,14 +9,11 @@ DHA Compliance: Gap #33 — KENHDD Schema Validation (Sprint 3.D)
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandParser
 
-from hmis.apps.kenhdd.models import KENHDDDataElement
-
-DEFAULT_ELEMENTS_PATH = Path(__file__).resolve().parents[5] / "data" / "kenhdd_elements.json"
+from hmis.apps.kenhdd.services.seeding import DEFAULT_ELEMENTS_PATH, seed_kenhdd_elements
 
 
 class Command(BaseCommand):
@@ -44,61 +41,17 @@ class Command(BaseCommand):
             self.stderr.write(self.style.ERROR(f"Elements file not found: {elements_path}"))
             return
 
-        with open(elements_path, encoding="utf-8") as fh:
-            try:
-                elements_data: list[dict] = json.load(fh)
-            except json.JSONDecodeError as exc:
-                self.stderr.write(self.style.ERROR(f"Invalid JSON in {elements_path}: {exc}"))
-                return
+        try:
+            result = seed_kenhdd_elements(elements_path=elements_path, dry_run=dry_run)
+        except ValueError as exc:
+            self.stderr.write(self.style.ERROR(f"Invalid JSON in {elements_path}: {exc}"))
+            return
 
-        self.stdout.write(
-            f"Loading {len(elements_data)} KENHDD elements from {elements_path.name}\n"
-        )
+        created_count = result["created"]
+        skipped_count = result["skipped"]
+        total_count = result["total"]
 
-        created_count = 0
-        skipped_count = 0
-
-        for elem in elements_data:
-            element_id = elem.get("element_id", "")
-            if not element_id:
-                self.stderr.write(self.style.ERROR("  SKIP: entry missing 'element_id' field"))
-                continue
-
-            if KENHDDDataElement.objects.filter(element_id=element_id).exists():
-                skipped_count += 1
-                self.stdout.write(self.style.WARNING(f"  SKIP: {element_id} — already exists"))
-                continue
-
-            if dry_run:
-                self.stdout.write(
-                    self.style.SUCCESS(
-                        f"  WOULD CREATE: {element_id} — "
-                        f"{elem.get('name', '?')} [{elem.get('resource_type', '?')}]"
-                    )
-                )
-                created_count += 1
-                continue
-
-            KENHDDDataElement.objects.create(
-                element_id=element_id,
-                name=elem.get("name", element_id),
-                description=elem.get("description", ""),
-                resource_type=elem.get("resource_type", "PATIENT"),
-                model_field=elem.get("model_field", ""),
-                requirement_level=elem.get("requirement_level", "OPTIONAL"),
-                data_type=elem.get("data_type", "STRING"),
-                coding_system=elem.get("coding_system", ""),
-                max_length=elem.get("max_length"),
-                format_pattern=elem.get("format_pattern", ""),
-                condition_expression=elem.get("condition_expression", ""),
-            )
-            created_count += 1
-            self.stdout.write(
-                self.style.SUCCESS(
-                    f"  CREATED: {element_id} — "
-                    f"{elem.get('name', element_id)} [{elem.get('resource_type', '?')}]"
-                )
-            )
+        self.stdout.write(f"Loading {total_count} KENHDD elements from {elements_path.name}\n")
 
         self.stdout.write("")
         prefix = "DRY RUN: " if dry_run else ""

@@ -38,6 +38,8 @@ interface VitalInputProps {
   max?: number;
   /** Additional class names */
   className?: string;
+  /** External error message from API validation */
+  externalError?: string;
 }
 
 export function VitalInput({
@@ -52,6 +54,7 @@ export function VitalInput({
   min,
   max,
   className,
+  externalError,
 }: VitalInputProps) {
   const { control } = useFormContext<VitalsFormValues>();
   const range = VITAL_RANGES[name];
@@ -94,6 +97,8 @@ export function VitalInput({
           </InputGroup>
           {fieldState.error ? (
             <FormMessage>{fieldState.error.message}</FormMessage>
+          ) : externalError ? (
+            <FormMessage>{externalError}</FormMessage>
           ) : normalRange ? (
             <p className="text-xs text-muted-foreground">Normal: {normalRange}</p>
           ) : null}
@@ -113,12 +118,15 @@ interface BloodPressureInputProps {
   disabled?: boolean;
   /** Additional class names */
   className?: string;
+  /** External error message from API validation */
+  externalError?: string;
 }
 
 export function BloodPressureInput({
   status = 'normal',
   disabled = false,
   className,
+  externalError,
 }: BloodPressureInputProps) {
   const { control, formState } = useFormContext<VitalsFormValues>();
 
@@ -182,6 +190,8 @@ export function BloodPressureInput({
       </InputGroup>
       {hasError ? (
         <FormMessage>{systolicError?.message || diastolicError?.message}</FormMessage>
+      ) : externalError ? (
+        <FormMessage>{externalError}</FormMessage>
       ) : (
         <p className="text-xs text-muted-foreground">Normal: 90/60 - 120/80</p>
       )}

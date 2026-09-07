@@ -10,6 +10,7 @@ import {
   KENHDDComplianceScoreSchema,
   KENHDDComplianceSummaryEntrySchema,
   KENHDDDataElementListSchema,
+  KENHDDSeedElementsResponseSchema,
   KENHDDFailedRecordSchema,
   KENHDDRecordResultSchema,
   KENHDDValidationRunDetailSchema,
@@ -25,6 +26,14 @@ export const kenhddApi = {
     const response = await apiClient.get('/api/kenhdd/elements/', { params });
     return parseResponse(KENHDDDataElementListSchema, response.data, {
       context: 'kenhddApi.listElements',
+    });
+  },
+
+  /** Seed KENHDD elements if not yet initialized. */
+  seedElements: async () => {
+    const response = await apiClient.post('/api/kenhdd/elements/seed/');
+    return parseResponse(KENHDDSeedElementsResponseSchema, response.data, {
+      context: 'kenhddApi.seedElements',
     });
   },
 

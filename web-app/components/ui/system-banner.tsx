@@ -133,7 +133,7 @@ export default function SystemBanner({
               </p>
             )}
             {description && (
-              <p className="text-xs text-muted-foreground sm:text-sm">{description}</p>
+              <div className="text-xs text-muted-foreground sm:text-sm">{description}</div>
             )}
             {dismissible && (
               <div className="mt-3 flex items-center justify-between border-t border-border/50 pt-2">

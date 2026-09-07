@@ -117,6 +117,7 @@ export function VitalsForm({
   // an infinite loop: reset → watch fires → onChange → parent updates →
   // data prop changes → reset again.
   const isResettingRef = React.useRef(false);
+  const initialSyncDoneRef = React.useRef(false);
 
   // Sync form changes to parent
   useEffect(() => {
@@ -143,8 +144,13 @@ export function VitalsForm({
     return () => subscription.unsubscribe();
   }, [form, onChange]);
 
-  // Reset form when external data changes
+  // Reset form only once on initial mount. Resetting on every external data
+  // change causes input jitter (e.g. 120 -> 12) while typing.
   useEffect(() => {
+    if (initialSyncDoneRef.current) {
+      return;
+    }
+
     isResettingRef.current = true;
     form.reset(
       {
@@ -163,6 +169,7 @@ export function VitalsForm({
     // after React finishes processing the reset.
     requestAnimationFrame(() => {
       isResettingRef.current = false;
+      initialSyncDoneRef.current = true;
     });
   }, [data, form]);
 
@@ -279,6 +286,7 @@ export function VitalsForm({
                 status={getFieldStatus('temperature', alerts)}
                 disabled={!canEdit}
                 step="0.1"
+                externalError={errors.temperature}
               />
 
               <VitalInput
@@ -296,6 +304,7 @@ export function VitalsForm({
               <BloodPressureInput
                 status={getFieldStatus('blood_pressure', alerts)}
                 disabled={!canEdit}
+                externalError={errors.blood_pressure}
               />
 
               <VitalInput
@@ -306,6 +315,7 @@ export function VitalsForm({
                 normalRange={getRangeHint('respiratory_rate')}
                 status={getFieldStatus('respiratory_rate', alerts)}
                 disabled={!canEdit}
+                externalError={errors.respiratory_rate}
               />
 
               <VitalInput

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import django_filters
 from django.conf import settings
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
@@ -315,6 +315,35 @@ class CDSAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     # Disable creation via API — alerts are created by the engine
     http_method_names = ["get", "head", "options", "post"]
 
+    def get_queryset(self):
+        """Return tenant-scoped alerts, including legacy rows missing tenant FKs.
+
+        Older CDS alerts were created before tenant fields were always populated.
+        Keep those visible by resolving scope through the related encounter.
+        """
+        qs = super().get_queryset()
+        facility = getattr(self.request, "facility", None)
+        organization = getattr(self.request, "organization", None)
+
+        if facility is not None:
+            return CDSAlert.objects.select_related(
+                "rule", "patient", "encounter", "resolved_by", "triggered_by"
+            ).filter(
+                Q(facility=facility)
+                | Q(facility__isnull=True, encounter__facility=facility)
+                | Q(facility__isnull=True, encounter__isnull=True, organization=organization)
+            )
+
+        if organization is not None:
+            return CDSAlert.objects.select_related(
+                "rule", "patient", "encounter", "resolved_by", "triggered_by"
+            ).filter(
+                Q(organization=organization)
+                | Q(organization__isnull=True, encounter__organization=organization)
+            )
+
+        return qs
+
     def get_serializer_class(self):
         if self.action == "list":
             return CDSAlertListSerializer
@@ -421,9 +450,7 @@ class CDSAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=["get"])
     def pending(self, request: Request) -> Response:
         """List pending alerts, optionally filtered by patient."""
-        qs = CDSAlert.objects.filter(status=CDSAlertStatus.PENDING).select_related(
-            "rule", "patient", "encounter"
-        )
+        qs = self.get_queryset().filter(status=CDSAlertStatus.PENDING)
         patient_id = request.query_params.get("patient")
         if patient_id:
             qs = qs.filter(patient_id=patient_id)
@@ -474,6 +501,8 @@ class CDSAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                     rule=rule,
                     patient_id=context.patient_id,
                     encounter=encounter,
+                    organization=encounter.organization,
+                    facility=encounter.facility,
                     priority=rule.priority,
                     message=result.message,
                     suggestion=rule.suggestion,

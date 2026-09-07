@@ -381,7 +381,7 @@
     "name": "Ownership Type",
     "description": "Facility ownership (GOK, FBO, NGO, PRIVATE)",
     "resource_type": "FACILITY",
-    "model_field": "ownership_type",
+    "model_field": "ownership",
     "requirement_level": "MANDATORY",
     "data_type": "CODED",
     "coding_system": "LOCAL"

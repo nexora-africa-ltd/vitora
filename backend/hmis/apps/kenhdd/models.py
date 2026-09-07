@@ -200,6 +200,22 @@ class KENHDDValidationRun(models.Model):
         related_name="kenhdd_runs",
         help_text="User who initiated the run",
     )
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="kenhdd_validation_runs",
+        help_text="Owning organization for this validation run.",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="kenhdd_validation_runs",
+        help_text="Facility context used for this validation run.",
+    )
     run_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -208,6 +224,7 @@ class KENHDDValidationRun(models.Model):
         verbose_name_plural = "KENHDD Validation Runs"
         indexes = [
             models.Index(fields=["resource_type", "-run_at"]),
+            models.Index(fields=["organization", "facility", "-run_at"]),
         ]
 
     def __str__(self) -> str:
@@ -257,6 +274,22 @@ class KENHDDFailedRecord(models.Model):
         blank=True,
         help_text="List of failed/warning element results with messages",
     )
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="kenhdd_failed_records",
+        help_text="Owning organization for this failed record entry.",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="kenhdd_failed_records",
+        help_text="Facility context for this failed record entry.",
+    )
 
     class Meta:
         ordering = ["-fail_count"]
@@ -264,6 +297,7 @@ class KENHDDFailedRecord(models.Model):
         verbose_name_plural = "KENHDD Failed Records"
         indexes = [
             models.Index(fields=["run", "-fail_count"]),
+            models.Index(fields=["organization", "facility", "run"]),
         ]
 
     def __str__(self) -> str:

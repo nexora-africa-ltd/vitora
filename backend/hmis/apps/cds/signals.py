@@ -56,6 +56,8 @@ def evaluate_cds_on_encounter_save(
                     rule=rule,
                     patient_id=context.patient_id,
                     encounter=instance,  # type: ignore[misc]
+                    organization=getattr(instance, "organization", None),  # type: ignore[arg-type]
+                    facility=getattr(instance, "facility", None),  # type: ignore[arg-type]
                     priority=rule.priority,
                     message=result.message,
                     suggestion=rule.suggestion,

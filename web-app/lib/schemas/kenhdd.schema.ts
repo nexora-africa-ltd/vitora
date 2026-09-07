@@ -100,6 +100,7 @@ export const KENHDDFailedRecordSchema = z.object({
   warning_count: z.number(),
   violation_details: z.array(KENHDDViolationDetailSchema),
   record_exists: z.boolean().optional().default(true),
+  record_href: z.string().nullable().optional(),
 });
 
 export const KENHDDValidationRunDetailSchema = KENHDDValidationRunSchema.extend({
@@ -113,4 +114,12 @@ export const KENHDDDataElementListSchema = z.object({
   next: z.string().nullable(),
   previous: z.string().nullable(),
   results: z.array(KENHDDDataElementSchema),
+});
+
+export const KENHDDSeedElementsResponseSchema = z.object({
+  created: z.number(),
+  skipped: z.number(),
+  total: z.number(),
+  seeded_for_facility_id: z.number(),
+  already_seeded: z.boolean(),
 });

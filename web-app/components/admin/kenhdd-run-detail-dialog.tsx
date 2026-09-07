@@ -94,6 +94,7 @@ interface ElementAggregate {
   warning_count: number;
   total: number;
   sample_messages: string[];
+  records: Array<{ id: number; record_id: string; href: string | null }>;
 }
 
 function getStatusIcon(status: string) {
@@ -132,7 +133,9 @@ function getLevelBadge(level: string) {
 function FailedRecordRow({ record, resourceType }: { record: FailedRecord; resourceType: string }) {
   const [expanded, setExpanded] = useState(false);
   const href =
-    record.record_exists !== false ? getRecordHref(resourceType, record.record_id) : null;
+    record.record_exists !== false
+      ? record.record_href ?? getRecordHref(resourceType, record.record_id)
+      : null;
   const isDeleted = record.record_exists === false;
 
   return (
@@ -296,6 +299,30 @@ export function KENHDDRunDetailDialog({ runId, open, onOpenChange }: KENHDDRunDe
             warning_count: v.status === 'WARNING' ? 1 : 0,
             total: 1,
             sample_messages: [v.message],
+            records: [
+              {
+                id: record.id,
+                record_id: record.record_id,
+                href:
+                  record.record_exists !== false
+                    ? record.record_href ?? getRecordHref(runDetail.resource_type, record.record_id)
+                    : null,
+              },
+            ],
+          });
+        }
+
+        if (
+          existing &&
+          !existing.records.some((r) => r.id === record.id)
+        ) {
+          existing.records.push({
+            id: record.id,
+            record_id: record.record_id,
+            href:
+              record.record_exists !== false
+                ? record.record_href ?? getRecordHref(runDetail.resource_type, record.record_id)
+                : null,
           });
         }
       }
@@ -483,6 +510,32 @@ export function KENHDDRunDetailDialog({ runId, open, onOpenChange }: KENHDDRunDe
                                 <span>{msg}</span>
                               </div>
                             ))}
+                          </div>
+                        )}
+                        {el.records.length > 0 && (
+                          <div className="border-t pt-1.5 text-xs">
+                            <div className="mb-1 text-[11px] text-muted-foreground">Affected records</div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {el.records.map((record) =>
+                                record.href ? (
+                                  <Link
+                                    key={`${el.element_id}-rec-${record.id}`}
+                                    href={record.href}
+                                    className="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-mono text-[11px] text-primary hover:bg-muted/50 hover:underline"
+                                  >
+                                    #{record.record_id}
+                                    <ExternalLink className="h-3 w-3" />
+                                  </Link>
+                                ) : (
+                                  <span
+                                    key={`${el.element_id}-rec-${record.id}`}
+                                    className="inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground"
+                                  >
+                                    #{record.record_id}
+                                  </span>
+                                )
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>

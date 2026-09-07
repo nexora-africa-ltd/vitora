@@ -132,6 +132,16 @@ interface AlertActionsProps {
 function AlertActions({ alert, onAccept, onOverride, onDismiss, isActing }: AlertActionsProps) {
   const priority = normalizePriority(alert.priority);
 
+  if (!alert.is_pending) {
+    return (
+      <div className="mt-2 flex shrink-0 items-center gap-1.5 sm:ml-auto sm:mt-0">
+        <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+          {alert.status.replace('_', ' ')}
+        </Badge>
+      </div>
+    );
+  }
+
   return (
     <div className="mt-2 flex shrink-0 items-center gap-1.5 sm:ml-auto sm:mt-0">
       {/* Accept recommendation */}
@@ -329,20 +339,23 @@ export function CDSAlertsPanel({ encounterId, onSuggestedAction, className }: CD
     dismissAlert.isPending;
 
   // Group alerts by priority tier
-  const { critical, high, lower, totalCount } = useMemo(() => {
+  const { critical, high, lower, resolved, totalCount } = useMemo(() => {
     const alerts = data?.results || [];
     const sorted = [...alerts].sort(
       (a, b) =>
         priorityOrder[normalizePriority(a.priority)] - priorityOrder[normalizePriority(b.priority)]
     );
 
+    const pending = sorted.filter((a) => a.is_pending);
+
     return {
-      critical: sorted.filter((a) => normalizePriority(a.priority) === 'CRITICAL'),
-      high: sorted.filter((a) => normalizePriority(a.priority) === 'HIGH'),
-      lower: sorted.filter((a) => {
+      critical: pending.filter((a) => normalizePriority(a.priority) === 'CRITICAL'),
+      high: pending.filter((a) => normalizePriority(a.priority) === 'HIGH'),
+      lower: pending.filter((a) => {
         const p = normalizePriority(a.priority);
         return p === 'MEDIUM' || p === 'LOW' || p === 'INFO';
       }),
+      resolved: sorted.filter((a) => !a.is_pending),
       totalCount: sorted.length,
     };
   }, [data]);
@@ -446,7 +459,7 @@ export function CDSAlertsPanel({ encounterId, onSuggestedAction, className }: CD
             />
           ))}
 
-          {/* Lower priority — collapsible */}
+          {/* Lower priority pending — collapsible */}
           {lower.length > 0 && (
             <div>
               <button
@@ -476,6 +489,27 @@ export function CDSAlertsPanel({ encounterId, onSuggestedAction, className }: CD
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Resolved history */}
+          {resolved.length > 0 && (
+            <div className="space-y-2 border-t pt-3">
+              <div className="text-xs font-medium text-muted-foreground">
+                Resolved alerts ({resolved.length})
+              </div>
+              <div className="space-y-2">
+                {resolved.map((alert) => (
+                  <AlertRow
+                    key={alert.id}
+                    alert={alert}
+                    onAccept={handleAccept}
+                    onOverride={handleOverride}
+                    onDismiss={handleDismiss}
+                    isActing={isActing}
+                  />
+                ))}
+              </div>
             </div>
           )}
         </CardContent>

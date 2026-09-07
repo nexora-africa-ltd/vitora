@@ -155,6 +155,7 @@ class KENHDDFailedRecordSerializer(serializers.ModelSerializer):
     """Serializer for a single failed record within a validation run."""
 
     record_exists = serializers.SerializerMethodField()
+    record_href = serializers.SerializerMethodField()
 
     class Meta:
         model = KENHDDFailedRecord
@@ -167,6 +168,7 @@ class KENHDDFailedRecordSerializer(serializers.ModelSerializer):
             "warning_count",
             "violation_details",
             "record_exists",
+            "record_href",
         ]
 
     def get_record_exists(self, obj: KENHDDFailedRecord) -> bool:
@@ -185,6 +187,40 @@ class KENHDDFailedRecordSerializer(serializers.ModelSerializer):
         if model_cls is None:
             return False
         return model_cls.objects.filter(pk=obj.record_id).exists()
+
+    def get_record_href(self, obj: KENHDDFailedRecord) -> str | None:
+        """Return a frontend path for remediating the violating record when possible."""
+        from hmis.apps.kenhdd.services.validation import KENHDDValidationService
+
+        if not self.get_record_exists(obj):
+            return None
+
+        resource_type = obj.run.resource_type
+        record_id = str(obj.record_id)
+
+        if resource_type == "PATIENT":
+            return f"/patients/{record_id}"
+        if resource_type == "ENCOUNTER":
+            return f"/encounters/{record_id}"
+        if resource_type == "LAB_RESULT":
+            return f"/laboratory/results/{record_id}"
+        if resource_type == "PRESCRIPTION":
+            return f"/pharmacy/prescriptions/{record_id}"
+        if resource_type == "MCH_VISIT":
+            return f"/mch/{record_id}"
+        if resource_type == "FACILITY":
+            return f"/facilities/{record_id}"
+        if resource_type == "DIAGNOSIS":
+            service = KENHDDValidationService()
+            model_cls = service.get_model_class(resource_type)
+            if model_cls is None:
+                return None
+            diagnosis = model_cls.objects.filter(pk=obj.record_id).values("encounter_id").first()
+            encounter_id = diagnosis.get("encounter_id") if diagnosis else None
+            if encounter_id:
+                return f"/encounters/{encounter_id}/edit/diagnosis"
+            return None
+        return None
 
 
 class KENHDDValidationRunDetailSerializer(serializers.ModelSerializer):
