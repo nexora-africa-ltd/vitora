@@ -145,6 +145,12 @@ export interface InboundIngestionEvent {
   updated_at: string;
 }
 
+export interface InboundReplayResponse {
+  status: 'replayed';
+  trace_id: string;
+  external_order: ExternalOrderRequest;
+}
+
 export interface CrosswalkEntry {
   id: number;
   source_system: string;

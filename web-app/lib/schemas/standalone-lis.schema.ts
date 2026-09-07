@@ -136,6 +136,12 @@ export const InboundIngestResponseSchema = z.object({
   external_order: ExternalOrderRequestSchema,
 });
 
+export const InboundReplayResponseSchema = z.object({
+  status: z.literal('replayed'),
+  trace_id: z.string().uuid(),
+  external_order: ExternalOrderRequestSchema,
+});
+
 export const MessageMappingConfigSchema = z.object({
   id: z.number(),
   code_system: z.string(),

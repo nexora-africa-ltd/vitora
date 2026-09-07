@@ -1701,6 +1701,8 @@ Before submitting a PR, verify:
 
 This prevents runtime TypeErrors (e.g., `staff.map is not a function`) when API responses don't match expected shapes.
 
+**Never return a raw API payload** such as `return response.data`, `return response`, or an unvalidated alias. This applies to action endpoints as well as CRUD methods. Define or reuse a Zod response schema and return `parseResponse(schema, response.data, { context })`; do not bypass validation by typing the result as `unknown`.
+
 ### Implementation Pattern
 
 ```typescript

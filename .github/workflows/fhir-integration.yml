@@ -49,7 +49,7 @@ jobs:
     services:
       # HAPI FHIR R4 Server
       hapi-fhir:
-        image: hapiproject/hapi:v6.10.0
+        image: hapiproject/hapi:v7.4.0
         ports:
           - 8090:8080
         env:

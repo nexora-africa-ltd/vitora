@@ -20,6 +20,7 @@ import {
   CrosswalkEntryListSchema,
   ResultDeliveryLogListSchema,
   InboundIngestResponseSchema,
+  InboundReplayResponseSchema,
   ResultDeliveryLogSchema,
   MessageMappingConfigListSchema,
   MessageMappingConfigSchema,
@@ -46,6 +47,7 @@ import type {
   CrosswalkEntry,
   ResultDeliveryLog,
   InboundIngestResponse,
+  InboundReplayResponse,
   MessageMappingConfig,
   MessageMappingValidationResult,
   StandaloneBillingInvoice,
@@ -360,9 +362,11 @@ export const standaloneLisApi = {
     });
   },
 
-  async replayInboundEvent(eventId: number): Promise<unknown> {
+  async replayInboundEvent(eventId: number): Promise<InboundReplayResponse> {
     const response = await apiClient.post(`${BASE}/interop/inbound-events/${eventId}/replay/`, {});
-    return response.data;
+    return parseResponse(InboundReplayResponseSchema, response.data, {
+      context: 'standaloneLisApi.replayInboundEvent',
+    });
   },
 
   async listCrosswalk(params?: { page?: number }): Promise<{

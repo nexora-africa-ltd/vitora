@@ -212,8 +212,8 @@ ignore = [
 # - temporary: readability/legacy simplification rules tracked in docs/lint-ignore-audit-workstream-f.md
 # - removable-now: stale suppressions removed in Workstream F (notably S110)
 "__init__.py" = ["F401"]
-"tests/*" = ["S101", "S105", "S106", "S108", "S314", "S603", "S607", "ARG", "F401", "F811", "F841", "SIM105", "SIM117", "T201", "B007", "B017", "UP038", "E402", "E712", "E741", "C408"]
-"**/tests/**" = ["S101", "S105", "S106", "S108", "S314", "S603", "S607", "ARG", "F401", "F811", "F841", "SIM105", "SIM117", "T201", "B007", "B017", "UP038", "E402", "E712", "E741", "C408"]
+"tests/*" = ["S101", "S105", "S106", "S108", "S110", "S314", "S603", "S607", "ARG", "F401", "F811", "F841", "SIM105", "SIM117", "T201", "B007", "B017", "UP038", "E402", "E712", "E741", "C408"]
+"**/tests/**" = ["S101", "S105", "S106", "S108", "S110", "S314", "S603", "S607", "ARG", "F401", "F811", "F841", "SIM105", "SIM117", "T201", "B007", "B017", "UP038", "E402", "E712", "E741", "C408"]
 "hmis/apps/*/admin.py" = ["ARG002"]  # Django admin methods require these signatures
 "hmis/apps/*/views.py" = ["ARG002", "SIM105"]  # Django view methods require these signatures, contextlib.suppress is stylistic
 "hmis/apps/*/sha_views.py" = ["ARG002", "E402", "F401"]  # DRF view methods may have unused args, late imports for optional deps

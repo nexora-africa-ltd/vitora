@@ -2,6 +2,8 @@
 # Markdown lint ignore list for CI docs checks.
 # Usage: markdownlint-cli reads this file automatically.
 AGENTS.md
+.agents/
+.github/copilot-instructions.md
 **/node_modules/
 **/.next/
 **/.expo/

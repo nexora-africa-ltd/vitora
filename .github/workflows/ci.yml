@@ -245,6 +245,12 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         if: hashFiles('desktop-app/src-tauri/Cargo.toml') != ''
 
+      - name: Install Tauri Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes libglib2.0-dev libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+        if: hashFiles('desktop-app/src-tauri/Cargo.toml') != ''
+
       - name: Run desktop sidecar smoke tests
         working-directory: ./desktop-app
         run: npm run test:desktop-smoke
