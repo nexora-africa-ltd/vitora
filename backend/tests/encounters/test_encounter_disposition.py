@@ -87,6 +87,7 @@ class TestDispositionSerializer:
         response = authenticated_client.get(f"/api/encounters/{sample_encounter.id}/")
         assert response.status_code == status.HTTP_200_OK
         assert "disposition" in response.data
+        assert "disposition_source" in response.data
         assert "disposition_notes" in response.data
 
     def test_can_set_disposition_via_api(self, authenticated_client, sample_encounter):
@@ -102,6 +103,7 @@ class TestDispositionSerializer:
         )
         assert response.status_code == status.HTTP_200_OK
         assert response.data["disposition"] == "ADVICE_ONLY"
+        assert response.data["disposition_source"] == "MANUAL"
         assert "diet changes" in response.data["disposition_notes"]
 
 
@@ -279,6 +281,52 @@ class TestDispositionAuditLogging:
         ).count()
 
         assert new_count > initial_count
+
+    def test_manual_override_audit_has_old_new_source_payload(
+        self, authenticated_client, sample_encounter
+    ):
+        """Manual disposition override should emit explicit audit payload with old/new state."""
+        from hmis.apps.core.models import AuditLog
+
+        sample_encounter.status = "IN_PROGRESS"
+        sample_encounter.disposition = "REFERRED"
+        sample_encounter.disposition_source = "AUTO_REFERRAL"
+        sample_encounter.disposition_notes = "Referral REF-TEST to CARDIOLOGY"
+        sample_encounter.save(
+            update_fields=[
+                "status",
+                "disposition",
+                "disposition_source",
+                "disposition_notes",
+                "updated_at",
+            ]
+        )
+
+        response = authenticated_client.patch(
+            f"/api/encounters/{sample_encounter.id}/",
+            {
+                "disposition": "ADVICE_ONLY",
+                "disposition_notes": "Counseled patient and provided home-care guidance.",
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+        log = (
+            AuditLog.objects.filter(
+                action="encounter_disposition_manual_override",
+                resource_type="Encounter",
+                resource_id=sample_encounter.id,
+            )
+            .order_by("-id")
+            .first()
+        )
+        assert log is not None
+        assert log.details["trigger"] == "encounter_update_api"
+        assert log.details["old"]["disposition"] == "REFERRED"
+        assert log.details["old"]["disposition_source"] == "AUTO_REFERRAL"
+        assert log.details["new"]["disposition"] == "ADVICE_ONLY"
+        assert log.details["new"]["disposition_source"] == "MANUAL"
 
 
 @pytest.mark.django_db

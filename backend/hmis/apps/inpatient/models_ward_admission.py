@@ -1339,6 +1339,10 @@ class Discharge(TimeStampedModel):
         if encounter is None or encounter.status in {"CLOSED", "CANCELLED"}:
             return
 
+        old_disposition = encounter.disposition
+        old_disposition_notes = encounter.disposition_notes or ""
+        old_disposition_source = encounter.disposition_source
+
         disposition_map = {
             "NORMAL": "TREATED_DISCHARGED",
             "ROUTINE": "TREATED_DISCHARGED",
@@ -1361,7 +1365,41 @@ class Discharge(TimeStampedModel):
             encounter.disposition = disposition
             update_fields.append("disposition")
 
+        if encounter.disposition_source != "AUTO_DISCHARGE":
+            encounter.disposition_source = "AUTO_DISCHARGE"
+            update_fields.append("disposition_source")
+
         encounter.save(update_fields=update_fields)
+
+        if {
+            "disposition",
+            "disposition_notes",
+            "disposition_source",
+        }.intersection(update_fields):
+            from hmis.apps.core.models import AuditLog
+
+            AuditLog.log(
+                action="encounter_disposition_auto_set",
+                user=self.discharged_by,
+                resource_type="Encounter",
+                resource_id=encounter.id,
+                patient_id=encounter.patient_id,
+                facility=getattr(encounter, "facility", None),
+                organization=getattr(encounter, "organization", None),
+                details={
+                    "trigger": "inpatient_discharge_created",
+                    "old": {
+                        "disposition": old_disposition,
+                        "disposition_notes": old_disposition_notes,
+                        "disposition_source": old_disposition_source,
+                    },
+                    "new": {
+                        "disposition": encounter.disposition,
+                        "disposition_notes": encounter.disposition_notes or "",
+                        "disposition_source": encounter.disposition_source,
+                    },
+                },
+            )
 
     def _create_death_record(self):
         """Create a DeathRecord linked to this discharge's admission."""

@@ -109,6 +109,7 @@ class TestClinicalReferralModel:
 
     def test_create_referral_marks_opd_encounter_as_referred(self, db, sample_encounter, test_user):
         """Creating a referral should mark the source OPD encounter as referred."""
+        from hmis.apps.core.models import AuditLog
         from hmis.apps.referrals.models import ClinicalReferral
 
         referral = ClinicalReferral.objects.create(
@@ -122,9 +123,49 @@ class TestClinicalReferralModel:
         sample_encounter.refresh_from_db()
 
         assert sample_encounter.disposition == "REFERRED"
+        assert sample_encounter.disposition_source == "AUTO_REFERRAL"
         assert referral.referral_number in sample_encounter.disposition_notes
         assert "PHYSIOTHERAPY" in sample_encounter.disposition_notes
         assert "Knee pain rehabilitation" in sample_encounter.disposition_notes
+
+        auto_log = (
+            AuditLog.objects.filter(
+                action="encounter_disposition_auto_set",
+                resource_type="Encounter",
+                resource_id=sample_encounter.id,
+            )
+            .order_by("-id")
+            .first()
+        )
+        assert auto_log is not None
+        assert auto_log.details["trigger"] == "referral_created"
+        assert auto_log.details["new"]["disposition"] == "REFERRED"
+        assert auto_log.details["new"]["disposition_source"] == "AUTO_REFERRAL"
+
+    def test_auto_referral_does_not_override_manual_disposition(
+        self, db, sample_encounter, test_user
+    ):
+        """Manual clinician disposition must not be overwritten by referral auto-suggestions."""
+        from hmis.apps.referrals.models import ClinicalReferral
+
+        sample_encounter.disposition = "ADVICE_ONLY"
+        sample_encounter.disposition_notes = "Reviewed and advised hydration."
+        sample_encounter.disposition_source = "MANUAL"
+        sample_encounter.save(
+            update_fields=["disposition", "disposition_notes", "disposition_source", "updated_at"]
+        )
+
+        ClinicalReferral.objects.create(
+            encounter=sample_encounter,
+            patient=sample_encounter.patient,
+            target_service="PHYSIOTHERAPY",
+            reason="Knee pain rehabilitation",
+            referred_by=test_user,
+        )
+
+        sample_encounter.refresh_from_db()
+        assert sample_encounter.disposition == "ADVICE_ONLY"
+        assert sample_encounter.disposition_source == "MANUAL"
 
     def test_sequential_numbering_per_day(self, db, sample_encounter, test_user):
         """Should generate sequential numbers within the same day."""

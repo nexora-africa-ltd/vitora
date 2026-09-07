@@ -225,6 +225,51 @@ class EncounterViewSet(
             else:
                 entry.save(update_fields=["encounter", "updated_at"])
 
+    def perform_update(self, serializer):
+        """Persist updates and stamp manual disposition provenance when clinician edited it."""
+        from hmis.apps.core.models import AuditLog
+
+        previous_disposition = serializer.instance.disposition
+        previous_disposition_notes = serializer.instance.disposition_notes
+        previous_disposition_source = serializer.instance.disposition_source
+
+        encounter = serializer.save()
+
+        disposition_touched = (
+            "disposition" in serializer.validated_data
+            or "disposition_notes" in serializer.validated_data
+        )
+        disposition_changed = encounter.disposition != previous_disposition or (
+            encounter.disposition_notes or ""
+        ) != (previous_disposition_notes or "")
+        if disposition_touched and disposition_changed:
+            encounter.mark_disposition_manual()
+            encounter.refresh_from_db(fields=["disposition_source"])
+            AuditLog.log(
+                action="encounter_disposition_manual_override",
+                user=self.request.user,
+                resource_type="Encounter",
+                resource_id=encounter.id,
+                patient_id=encounter.patient_id,
+                facility=getattr(self.request, "facility", None)
+                or getattr(encounter, "facility", None),
+                organization=getattr(self.request, "organization", None)
+                or getattr(encounter, "organization", None),
+                details={
+                    "trigger": "encounter_update_api",
+                    "old": {
+                        "disposition": previous_disposition,
+                        "disposition_notes": previous_disposition_notes or "",
+                        "disposition_source": previous_disposition_source,
+                    },
+                    "new": {
+                        "disposition": encounter.disposition,
+                        "disposition_notes": encounter.disposition_notes or "",
+                        "disposition_source": encounter.disposition_source,
+                    },
+                },
+            )
+
     def update(self, request, *args, **kwargs):
         """Override update to check if encounter can be edited and add audit logging."""
         from hmis.apps.triage.models import WaitingQueue

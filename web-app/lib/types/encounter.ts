@@ -87,6 +87,7 @@ export interface Encounter {
 
   // Disposition (Clinical Documentation Enhancement)
   disposition?: EncounterDisposition | null;
+  disposition_source?: EncounterDispositionSource | null;
   disposition_notes?: string | null;
 
   // Triage fields
@@ -273,6 +274,21 @@ export const ENCOUNTER_DISPOSITION_DISPLAY: Record<EncounterDisposition, string>
   ADMITTED: 'Admitted to Inpatient',
   FOLLOW_UP_SCHEDULED: 'Follow-up Scheduled',
   LEFT_AMA: 'Left Against Medical Advice',
+};
+
+export type EncounterDispositionSource =
+  | ''
+  | 'MANUAL'
+  | 'AUTO_REFERRAL'
+  | 'AUTO_ADMISSION'
+  | 'AUTO_DISCHARGE';
+
+export const ENCOUNTER_DISPOSITION_SOURCE_DISPLAY: Record<EncounterDispositionSource, string> = {
+  '': 'Not Set',
+  MANUAL: 'Clinician set',
+  AUTO_REFERRAL: 'Suggested from referral',
+  AUTO_ADMISSION: 'Suggested from admission',
+  AUTO_DISCHARGE: 'Suggested from discharge',
 };
 
 // Dispositions that require notes

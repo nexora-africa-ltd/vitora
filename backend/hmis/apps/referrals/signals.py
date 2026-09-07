@@ -108,13 +108,12 @@ def mark_source_encounter_referred(sender, instance, created, **kwargs):
         )
     ):
         disposition_note = _build_referral_disposition_note(instance)
-        existing_notes = (encounter.disposition_notes or "").strip()
-        if disposition_note not in existing_notes:
-            encounter.disposition = "REFERRED"
-            encounter.disposition_notes = (
-                f"{existing_notes}\n{disposition_note}" if existing_notes else disposition_note
-            )
-            encounter.save(update_fields=["disposition", "disposition_notes", "updated_at"])
+        encounter.apply_auto_disposition(
+            disposition="REFERRED",
+            source="AUTO_REFERRAL",
+            trigger="referral_created",
+            note=disposition_note,
+        )
 
     # Notify target department staff about incoming referral
     _notify_referral_created(instance)
@@ -239,6 +238,8 @@ def _revert_encounter_disposition_if_unique(referral: ClinicalReferral) -> None:
         return
     if encounter.disposition != "REFERRED":
         return
+    if encounter.disposition_source != "AUTO_REFERRAL":
+        return
 
     # Are there any sibling referrals still in an active state?
     sibling_active = (
@@ -254,11 +255,14 @@ def _revert_encounter_disposition_if_unique(referral: ClinicalReferral) -> None:
 
     # No siblings keeping the encounter referred — clear disposition fields.
     encounter.disposition = ""
+    encounter.disposition_source = ""
     # Append an audit note rather than wiping prior context.
     note = f"Referral {referral.referral_number} {referral.status.lower()}."
     existing = (encounter.disposition_notes or "").strip()
     encounter.disposition_notes = f"{existing}\n{note}" if existing else note
-    encounter.save(update_fields=["disposition", "disposition_notes", "updated_at"])
+    encounter.save(
+        update_fields=["disposition", "disposition_source", "disposition_notes", "updated_at"]
+    )
 
 
 def _create_allied_health_order(referral):

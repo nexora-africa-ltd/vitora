@@ -403,6 +403,84 @@ class EncounterBehaviorMixin:
             },
         )
 
+    def mark_disposition_manual(self) -> None:
+        """Mark disposition provenance as manual after clinician edits."""
+        target_source = (
+            "MANUAL" if (self.disposition or (self.disposition_notes or "").strip()) else ""
+        )
+        if self.disposition_source == target_source:
+            return
+        self.disposition_source = target_source
+        self.save(update_fields=["disposition_source", "updated_at"])
+
+    def apply_auto_disposition(
+        self,
+        *,
+        disposition: str,
+        source: str,
+        trigger: str,
+        note: str = "",
+    ) -> bool:
+        """Apply an auto-derived disposition unless a clinician has manually overridden it."""
+        old_disposition = self.disposition
+        old_disposition_notes = self.disposition_notes or ""
+        old_source = self.disposition_source
+
+        if self.status in {"CLOSED", "CANCELLED"}:
+            return False
+        if self.disposition_source == "MANUAL":
+            return False
+
+        update_fields: list[str] = []
+
+        if self.disposition != disposition:
+            self.disposition = disposition
+            update_fields.append("disposition")
+
+        if self.disposition_source != source:
+            self.disposition_source = source
+            update_fields.append("disposition_source")
+
+        stripped_note = note.strip()
+        if stripped_note:
+            existing_notes = (self.disposition_notes or "").strip()
+            if stripped_note not in existing_notes:
+                self.disposition_notes = (
+                    f"{existing_notes}\n{stripped_note}" if existing_notes else stripped_note
+                )
+                update_fields.append("disposition_notes")
+
+        if not update_fields:
+            return False
+
+        self.save(update_fields=[*update_fields, "updated_at"])
+
+        from hmis.apps.core.models import AuditLog
+
+        AuditLog.log(
+            action="encounter_disposition_auto_set",
+            user=None,
+            resource_type="Encounter",
+            resource_id=self.id,
+            patient_id=self.patient_id,
+            facility=getattr(self, "facility", None),
+            organization=getattr(self, "organization", None),
+            details={
+                "trigger": trigger,
+                "old": {
+                    "disposition": old_disposition,
+                    "disposition_notes": old_disposition_notes,
+                    "disposition_source": old_source,
+                },
+                "new": {
+                    "disposition": self.disposition,
+                    "disposition_notes": self.disposition_notes or "",
+                    "disposition_source": self.disposition_source,
+                },
+            },
+        )
+        return True
+
     def cancel(self, reason: str = "") -> None:
         """
         Cancel the encounter.

@@ -63,8 +63,12 @@ def close_source_opd_encounter_on_admission(sender, instance, created, **kwargs)
         return
 
     try:
-        encounter.disposition = "ADMITTED"
-        encounter.save(update_fields=["disposition", "updated_at"])
+        encounter.apply_auto_disposition(
+            disposition="ADMITTED",
+            source="AUTO_ADMISSION",
+            trigger="admission_created",
+            note=f"Admitted to inpatient via admission {instance.admission_number}.",
+        )
         encounter.finalize(instance.admitting_officer)
     except _inpatient_signal_handled_exceptions() as exc:
         logger.exception(

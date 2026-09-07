@@ -393,11 +393,13 @@ class TestEncounterDispositionRevert:
         )
         sample_encounter.refresh_from_db()
         assert sample_encounter.disposition  # signal set it
+        assert sample_encounter.disposition_source == "AUTO_REFERRAL"
 
         ref.cancel(user=test_user, reason="Patient declined")
 
         sample_encounter.refresh_from_db()
         assert sample_encounter.disposition in ("", None)
+        assert sample_encounter.disposition_source in ("", None)
 
     def test_cancel_keeps_disposition_when_other_active_referral_exists(
         self, db, sample_encounter, test_user

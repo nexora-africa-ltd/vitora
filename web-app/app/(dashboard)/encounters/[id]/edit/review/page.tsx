@@ -32,6 +32,7 @@ import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter
 import { AlertTriangle, CheckSquare } from 'lucide-react';
 import {
   ENCOUNTER_DISPOSITION_DISPLAY,
+  ENCOUNTER_DISPOSITION_SOURCE_DISPLAY,
   DISPOSITIONS_REQUIRING_NOTES,
   type EncounterDisposition,
 } from '@/lib/types/encounter';
@@ -542,6 +543,10 @@ export default function EncounterEditReviewPage() {
                   ]
                 : 'Not set'}
             </Badge>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">Source:</span>{' '}
+            {ENCOUNTER_DISPOSITION_SOURCE_DISPLAY[(encounter?.disposition_source ?? '') as keyof typeof ENCOUNTER_DISPOSITION_SOURCE_DISPLAY]}
           </div>
           <div className="text-sm text-muted-foreground">
             <span className="font-medium text-foreground">Notes:</span>{' '}

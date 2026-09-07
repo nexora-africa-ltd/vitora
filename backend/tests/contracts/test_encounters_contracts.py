@@ -254,6 +254,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "current_medications",
                 "diastolic_bp",
                 "disposition",
+                "disposition_source",
                 "disposition_notes",
                 "encounter_date",
                 "encounter_type",

@@ -431,6 +431,7 @@ class EncounterSerializer(serializers.ModelSerializer):
             "cancellation_reason",
             # Disposition (Clinical Documentation Enhancement)
             "disposition",
+            "disposition_source",
             "disposition_notes",
             # Triage fields (Phase 2 - Consultation Queue)
             "triage_requirement",
@@ -507,6 +508,7 @@ class EncounterSerializer(serializers.ModelSerializer):
             "finalized_by",
             "finalized_by_username",
             "finalized_at",
+            "disposition_source",
             "cancellation_reason",
             # Triage fields are read-only - use actions to change
             "triage_requirement",

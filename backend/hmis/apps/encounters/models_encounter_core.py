@@ -481,12 +481,26 @@ class Encounter(EncounterBehaviorMixin, HistoryMixin, FacilityScopedModel):
         ("FOLLOW_UP_SCHEDULED", "Follow-up Scheduled"),
         ("LEFT_AMA", "Left Against Medical Advice"),
     ]
+    DISPOSITION_SOURCE_CHOICES = [
+        ("", "Not Set"),
+        ("MANUAL", "Manual"),
+        ("AUTO_REFERRAL", "Auto: Referral"),
+        ("AUTO_ADMISSION", "Auto: Admission"),
+        ("AUTO_DISCHARGE", "Auto: Discharge"),
+    ]
     disposition = models.CharField(
         max_length=30,
         choices=DISPOSITION_CHOICES,
         blank=True,
         default="",
         help_text="Encounter outcome/disposition",
+    )
+    disposition_source = models.CharField(
+        max_length=30,
+        choices=DISPOSITION_SOURCE_CHOICES,
+        blank=True,
+        default="",
+        help_text="Whether disposition was set manually or auto-derived from workflow events",
     )
     disposition_notes = models.TextField(
         blank=True,

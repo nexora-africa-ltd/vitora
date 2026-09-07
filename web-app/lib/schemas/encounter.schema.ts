@@ -88,6 +88,14 @@ export const EncounterDispositionSchema = z.enum([
   'LEFT_AMA',
 ]);
 
+export const EncounterDispositionSourceSchema = z.enum([
+  '',
+  'MANUAL',
+  'AUTO_REFERRAL',
+  'AUTO_ADMISSION',
+  'AUTO_DISCHARGE',
+]);
+
 export const TriageBypassReasonSchema = z
   .enum([
     'STABLE_FOLLOW_UP',
@@ -284,6 +292,7 @@ export const EncounterSchema = z.object({
 
   // Disposition (Clinical Documentation Enhancement)
   disposition: EncounterDispositionSchema.optional().nullable(),
+  disposition_source: EncounterDispositionSourceSchema.optional().nullable(),
   disposition_notes: z.string().optional().nullable(),
 
   // Triage fields

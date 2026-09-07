@@ -187,7 +187,24 @@ class TestAdmissionCreation:
         opd_encounter.refresh_from_db()
         assert opd_encounter.status == "CLOSED"
         assert opd_encounter.disposition == "ADMITTED"
+        assert opd_encounter.disposition_source == "AUTO_ADMISSION"
         assert opd_encounter.finalized_at is not None
+
+        from hmis.apps.core.models import AuditLog
+
+        auto_log = (
+            AuditLog.objects.filter(
+                action="encounter_disposition_auto_set",
+                resource_type="Encounter",
+                resource_id=opd_encounter.id,
+            )
+            .order_by("-id")
+            .first()
+        )
+        assert auto_log is not None
+        assert auto_log.details["trigger"] == "admission_created"
+        assert auto_log.details["new"]["disposition"] == "ADMITTED"
+        assert auto_log.details["new"]["disposition_source"] == "AUTO_ADMISSION"
 
     def test_admission_number_auto_generation(
         self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user

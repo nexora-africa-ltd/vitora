@@ -209,6 +209,8 @@ class TestDischargeCreation:
 
     def test_ipd_encounter_closed_on_discharge(self, active_admission, test_user):
         """Should close the linked IPD encounter when the patient is discharged."""
+        from hmis.apps.core.models import AuditLog
+
         assert active_admission.ipd_encounter.status != "CLOSED"
 
         discharge_date = timezone.now()
@@ -234,10 +236,25 @@ class TestDischargeCreation:
             seconds=1
         )
         assert active_admission.ipd_encounter.disposition == "TREATED_DISCHARGED"
+        assert active_admission.ipd_encounter.disposition_source == "AUTO_DISCHARGE"
         assert (
             active_admission.ipd_encounter.disposition_notes
             == "Inpatient discharge outcome: NORMAL"
         )
+
+        auto_log = (
+            AuditLog.objects.filter(
+                action="encounter_disposition_auto_set",
+                resource_type="Encounter",
+                resource_id=active_admission.ipd_encounter.id,
+            )
+            .order_by("-id")
+            .first()
+        )
+        assert auto_log is not None
+        assert auto_log.details["trigger"] == "inpatient_discharge_created"
+        assert auto_log.details["new"]["disposition"] == "TREATED_DISCHARGED"
+        assert auto_log.details["new"]["disposition_source"] == "AUTO_DISCHARGE"
 
     def test_absconded_discharge_updates_encounter_outcome_note(self, active_admission, test_user):
         """Absconded discharge should stamp the encounter with discharge outcome."""
@@ -259,6 +276,7 @@ class TestDischargeCreation:
         active_admission.ipd_encounter.refresh_from_db()
         assert active_admission.ipd_encounter.status == "CLOSED"
         assert active_admission.ipd_encounter.disposition == "LEFT_AMA"
+        assert active_admission.ipd_encounter.disposition_source == "AUTO_DISCHARGE"
         assert (
             active_admission.ipd_encounter.disposition_notes
             == "Inpatient discharge outcome: ABSCONDED"
