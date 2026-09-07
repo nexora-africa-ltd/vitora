@@ -30,6 +30,7 @@ import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 import { LabOrderStatus, LabPriority } from '@/lib/types/laboratory';
 import { useDashboardStats } from '@/lib/hooks/use-dashboard-stats';
 import { useUser } from '@/lib/auth/context';
+import { useFacility } from '@/lib/context/facility-context';
 
 function getGreetingLabel(date = new Date()) {
   const hour = date.getHours();
@@ -63,7 +64,11 @@ export default function LaboratoryPage() {
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') ?? '');
   const debouncedSearch = useDebounce(searchQuery, 300);
   const user = useUser();
+  const { facilityDetail, facility } = useFacility();
   const { data: dashboardStats } = useDashboardStats();
+  const isLISStandaloneProfile =
+    facilityDetail?.operating_mode === 'STANDALONE_LAB' ||
+    facility?.deployment_profile === 'lis_standalone';
 
   const { data, isLoading, error } = useLabOrders({
     page,
@@ -106,21 +111,23 @@ export default function LaboratoryPage() {
           }
         />
 
-        <Card className="relative overflow-hidden border-primary/20">
-          <div
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_45%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.1),transparent_40%)]"
-            aria-hidden="true"
-          />
-          <CardContent className="relative p-4 sm:p-6">
-            <p className="text-sm text-muted-foreground">{getGreetingLabel()}</p>
-            <h2 className="text-xl font-semibold sm:text-2xl">
-              {getDisplayName(user?.first_name, user?.username)}, welcome to the laboratory hub.
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Review queue pressure and verification workload before opening orders.
-            </p>
-          </CardContent>
-        </Card>
+        {isLISStandaloneProfile && (
+          <Card className="relative overflow-hidden border-primary/20">
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_45%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.1),transparent_40%)]"
+              aria-hidden="true"
+            />
+            <CardContent className="relative p-4 sm:p-6">
+              <p className="text-sm text-muted-foreground">{getGreetingLabel()}</p>
+              <h2 className="text-xl font-semibold sm:text-2xl">
+                {getDisplayName(user?.first_name, user?.username)}, welcome to the laboratory hub.
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Review queue pressure and verification workload before opening orders.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <Card className="relative overflow-hidden">

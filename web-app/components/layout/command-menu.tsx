@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Search, Users } from 'lucide-react';
@@ -31,6 +31,8 @@ export function CommandMenu() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [selectedValue, setSelectedValue] = useState('');
+  const listRef = useRef<HTMLDivElement | null>(null);
   const debouncedSearch = useDebounce(search, 300);
   const { items: navItems, utilityItems } = useNavigationItems();
 
@@ -63,7 +65,7 @@ export function CommandMenu() {
     command();
   }, []);
 
-  const patients = patientResults?.results ?? [];
+  const patients = useMemo(() => patientResults?.results ?? [], [patientResults]);
 
   const navigationLinks = useMemo(() => {
     return navItems.flatMap((item) => {
@@ -105,14 +107,52 @@ export function CommandMenu() {
     });
   }, [utilityItems]);
 
+  const firstCommandValue = useMemo(() => {
+    if (patients.length > 0) {
+      return `patient-${patients[0].id}-${patients[0].first_name}-${patients[0].last_name}-${patients[0].mrn}`;
+    }
+    if (navigationLinks.length > 0) {
+      const firstNav = navigationLinks[0];
+      return `${firstNav.label} ${firstNav.href}`;
+    }
+    if (utilityLinks.length > 0) {
+      const firstUtility = utilityLinks[0];
+      return `${firstUtility.label} ${firstUtility.href}`;
+    }
+    return '';
+  }, [patients, navigationLinks, utilityLinks]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    setSelectedValue(firstCommandValue);
+  }, [open, firstCommandValue, debouncedSearch]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      listRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [open, debouncedSearch, patients.length]);
+
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
+    <CommandDialog
+      open={open}
+      onOpenChange={setOpen}
+      commandProps={{ value: selectedValue, onValueChange: setSelectedValue }}
+    >
       <CommandInput
         placeholder="Search patients, navigate..."
         value={search}
         onValueChange={setSearch}
       />
-      <CommandList>
+      <CommandList ref={listRef}>
         <CommandEmpty>{isSearching ? 'Searching...' : 'No results found.'}</CommandEmpty>
 
         {/* Patient search results */}

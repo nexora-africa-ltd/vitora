@@ -5,6 +5,18 @@
 import React, { ReactElement, ReactNode } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ThemeProvider } from 'next-themes';
+import * as AuthContext from '@/lib/auth/context';
+import * as FacilityContext from '@/lib/context/facility-context';
+import * as LicenseContext from '@/lib/context/license-context';
+import * as NavigationModeContext from '@/lib/context/navigation-mode-context';
+
+const PassthroughProvider = ({ children }: { children: ReactNode }) => <>{children}</>;
+const TestAuthProvider = AuthContext.AuthProvider ?? PassthroughProvider;
+const TestFacilityProvider = FacilityContext.FacilityProvider ?? PassthroughProvider;
+const TestLicenseProvider = LicenseContext.LicenseProvider ?? PassthroughProvider;
+const TestNavigationModeProvider =
+  NavigationModeContext.NavigationModeProvider ?? PassthroughProvider;
 
 /**
  * Create a fresh QueryClient for each test to avoid state pollution
@@ -40,7 +52,19 @@ interface AllProvidersProps {
 function AllProviders({ children, queryClient }: AllProvidersProps) {
   const client = queryClient || createTestQueryClient();
 
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={client}>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+        <TestAuthProvider>
+          <TestFacilityProvider>
+            <TestLicenseProvider>
+              <TestNavigationModeProvider>{children}</TestNavigationModeProvider>
+            </TestLicenseProvider>
+          </TestFacilityProvider>
+        </TestAuthProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
 }
 
 interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
