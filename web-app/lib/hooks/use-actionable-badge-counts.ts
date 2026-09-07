@@ -38,9 +38,11 @@ export function useActionableBadgeCounts(enabled: boolean) {
         acceptedSwaps,
         insuranceQueries,
         rejectedClaims,
+        pendingInvoices,
         pendingVerification,
         pendingBedRequests,
         dischargeReadiness,
+        unacknowledgedSurveillanceAlerts,
       ] = await Promise.all([
         apiClient.get('/api/pharmacy/alerts/severity-summary/', { params: { resolved: 'false' } }),
         apiClient.get('/api/inventory/exceptions-summary/'),
@@ -49,9 +51,11 @@ export function useActionableBadgeCounts(enabled: boolean) {
         getCount('/api/scheduling/shift-swaps/', { status: 'ACCEPTED', page_size: '1' }),
         getCount('/api/insurance/claims/', { status: 'QUERY', page_size: '1' }),
         getCount('/api/insurance/claims/', { status: 'REJECTED', page_size: '1' }),
+        getCount('/api/billing/invoices/', { status__in: 'pending,partial', page_size: '1' }),
         getCount('/api/lab/results/pending-verification/', { page_size: '1' }),
         getCount('/api/inpatient/bed-assignment-requests/', { status: 'PENDING', page_size: '1' }),
         apiClient.get('/api/inpatient/discharge-readiness-summary/'),
+        getCount('/api/surveillance/alerts/', { is_acknowledged: 'false', page_size: '1' }),
       ]);
 
       return {
@@ -60,10 +64,12 @@ export function useActionableBadgeCounts(enabled: boolean) {
         openVacancies,
         pendingSwaps: pendingSwaps + acceptedSwaps,
         insuranceAction: insuranceQueries + rejectedClaims,
+        pendingInvoices,
         pendingVerification,
         pendingBedRequests,
         dischargeReadiness:
           DischargeReadinessSchema.safeParse(dischargeReadiness.data).data?.total_blocked ?? 0,
+        unacknowledgedSurveillanceAlerts,
       };
     },
   });

@@ -90,9 +90,9 @@ export function useSidebarBadges(): SidebarBadges {
       badges['/emergency'] = stats.emergency.pending_review;
     }
 
-    // Billing: pending payments
-    if (stats.billing.pending_payments > 0) {
-      badges['/transactions/payments'] = stats.billing.pending_payments;
+    // Billing: invoices awaiting payment. `pending_payments` is a currency amount, not a count.
+    if ((actionableCounts?.pendingInvoices ?? 0) > 0) {
+      badges['/transactions/invoices'] = actionableCounts?.pendingInvoices ?? 0;
     }
 
     // Billing: pending SHA claims
@@ -122,9 +122,9 @@ export function useSidebarBadges(): SidebarBadges {
       badges['/procedures/orders'] = stats.procedures.pending_consent;
     }
 
-    // Surveillance: alerts (total_unresolved from alerts stats)
-    if (stats.alerts.total_unresolved > 0) {
-      badges['/surveillance/alerts'] = stats.alerts.total_unresolved;
+    // Surveillance: unacknowledged disease-surveillance alerts only.
+    if ((actionableCounts?.unacknowledgedSurveillanceAlerts ?? 0) > 0) {
+      badges['/surveillance/alerts'] = actionableCounts?.unacknowledgedSurveillanceAlerts ?? 0;
     }
 
     // MCH: high-risk registrations
