@@ -332,7 +332,7 @@ export function TodayAssignmentCard() {
               <Button
                 variant="outline"
                 size="sm"
-                className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-900 dark:hover:bg-amber-950/30 dark:hover:text-amber-400"
                 onClick={() => setEmergencyDialogOpen(true)}
               >
                 <AlertCircle className="mr-1 h-4 w-4" />
