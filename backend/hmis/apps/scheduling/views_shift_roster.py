@@ -16,7 +16,7 @@ import logging
 import math
 from datetime import date, datetime, timedelta
 
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 from django_filters import rest_framework as filters
 from drf_spectacular.types import OpenApiTypes
@@ -74,6 +74,7 @@ from hmis.apps.scheduling.serializers import (
     ShiftSwapRequestListSerializer,
     ShiftSwapRequestSerializer,
     ShiftTypeConfigSerializer,
+    ShiftVacancyFillSerializer,
     ShiftVacancySerializer,
     SlotCheckQuerySerializer,
     StaffConstraintSerializer,
@@ -169,13 +170,38 @@ class ShiftVacancyViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mod
 
     @action(detail=True, methods=["post"])
     def fill(self, request, pk=None):
-        """Mark an open vacancy as filled by the requesting user."""
+        """Mark an open vacancy as filled and create the assigned shift."""
         vacancy = self.get_object()
+        fill_serializer = ShiftVacancyFillSerializer(
+            data=request.data,
+            context={"request": request, "vacancy": vacancy},
+        )
+        fill_serializer.is_valid(raise_exception=True)
+        staff_resource = fill_serializer.validated_data["staff_resource_obj"]
+
         try:
-            vacancy.fill(request.user)
+            with transaction.atomic():
+                shift = Shift.objects.create(
+                    staff_resource=staff_resource,
+                    shift_date=vacancy.shift_date,
+                    start_time=vacancy.start_time,
+                    end_time=vacancy.end_time,
+                    shift_type=vacancy.shift_type,
+                    department=vacancy.department,
+                    notes=vacancy.notes,
+                    created_by=request.user,
+                    facility=vacancy.facility,
+                    organization=vacancy.organization,
+                )
+                vacancy.fill(request.user)
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(self.get_serializer(vacancy).data)
+        return Response(
+            {
+                "vacancy": self.get_serializer(vacancy).data,
+                "created_shift": ShiftSerializer(shift).data,
+            }
+        )
 
     @action(detail=True, methods=["post"])
     def cancel(self, request, pk=None):

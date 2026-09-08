@@ -1208,6 +1208,54 @@ class ShiftVacancySerializer(serializers.ModelSerializer):
         return None
 
 
+class ShiftVacancyFillSerializer(serializers.Serializer):
+    """Serializer for filling a vacancy and assigning a concrete staff resource."""
+
+    staff_resource = serializers.IntegerField()
+
+    def validate(self, attrs):
+        """Ensure selected staff resource can be assigned for this vacancy."""
+        from hmis.apps.scheduling.models import Resource, Shift
+
+        resource_id = attrs.get("staff_resource")
+        vacancy = self.context.get("vacancy")
+        request = self.context.get("request")
+        facility = getattr(request, "facility", None) if request else None
+
+        resource = Resource.objects.filter(pk=resource_id).first()
+        if not resource:
+            raise serializers.ValidationError({"staff_resource": "Resource does not exist."})
+        if resource.resource_type != "PERSON":
+            raise serializers.ValidationError(
+                {"staff_resource": "Only PERSON-type resources can fill vacancies."}
+            )
+        if not resource.is_active:
+            raise serializers.ValidationError({"staff_resource": "Resource is inactive."})
+        if facility and resource.facility_id != facility.id:
+            raise serializers.ValidationError(
+                {"staff_resource": "Resource must belong to the current facility."}
+            )
+        if (
+            vacancy
+            and Shift.objects.filter(
+                staff_resource=resource,
+                shift_date=vacancy.shift_date,
+            )
+            .exclude(status="CANCELLED")
+            .exists()
+        ):
+            raise serializers.ValidationError(
+                {
+                    "staff_resource": (
+                        "Selected resource already has a non-cancelled shift on this date."
+                    )
+                }
+            )
+
+        attrs["staff_resource_obj"] = resource
+        return attrs
+
+
 class ShiftStartSerializer(serializers.Serializer):
     """Serializer for clock-in (start shift) with optional room, clinic, and method."""
 

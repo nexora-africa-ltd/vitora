@@ -106,7 +106,7 @@ class TestShiftVacancyAPI:
     """Tests for the facility-scoped vacancy API."""
 
     def test_create_list_filter_and_fill_vacancy(
-        self, authenticated_client, sample_department, test_user
+        self, authenticated_client, sample_department, sample_person_resource, test_user
     ):
         """Vacancies can be created, filtered, and filled through the scheduling API."""
         vacancy_date = date.today() + timedelta(days=2)
@@ -134,11 +134,73 @@ class TestShiftVacancyAPI:
         assert list_response.status_code == status.HTTP_200_OK
         assert [item["id"] for item in list_response.data["results"]] == [vacancy_id]
 
-        fill_response = authenticated_client.post(f"/api/scheduling/vacancies/{vacancy_id}/fill/")
+        fill_response = authenticated_client.post(
+            f"/api/scheduling/vacancies/{vacancy_id}/fill/",
+            {"staff_resource": sample_person_resource.id},
+            format="json",
+        )
         assert fill_response.status_code == status.HTTP_200_OK
-        assert fill_response.data["status"] == "FILLED"
-        assert fill_response.data["filled_by"] == test_user.id
-        assert fill_response.data["filled_at"] is not None
+        assert fill_response.data["vacancy"]["status"] == "FILLED"
+        assert fill_response.data["vacancy"]["filled_by"] == test_user.id
+        assert fill_response.data["vacancy"]["filled_at"] is not None
+        assert fill_response.data["created_shift"]["staff_resource"] == sample_person_resource.id
+        assert fill_response.data["created_shift"]["shift_date"] == str(vacancy_date)
+
+    def test_fill_creates_shift_and_rejects_second_non_cancelled_shift(
+        self,
+        authenticated_client,
+        sample_shift_vacancy,
+        sample_person_resource,
+        sample_facility,
+    ):
+        """Filling requires a resource without an existing active/scheduled shift on the date."""
+        from hmis.apps.scheduling.models import Shift
+
+        Shift.objects.create(
+            staff_resource=sample_person_resource,
+            shift_date=sample_shift_vacancy.shift_date,
+            start_time=time(9, 0),
+            end_time=time(17, 0),
+            shift_type="DAY",
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+
+        response = authenticated_client.post(
+            f"/api/scheduling/vacancies/{sample_shift_vacancy.id}/fill/",
+            {"staff_resource": sample_person_resource.id},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "already has a non-cancelled shift" in response.data["staff_resource"][0]
+
+    def test_fill_rejects_staff_resource_from_another_facility(
+        self,
+        authenticated_client,
+        sample_shift_vacancy,
+        other_facility,
+    ):
+        """Vacancy fill only accepts PERSON resources in the active facility."""
+        from hmis.apps.scheduling.models import Resource
+
+        external_resource = Resource.objects.create(
+            name="External Clinician",
+            resource_type="PERSON",
+            code="EXT-PER-001",
+            is_active=True,
+            facility=other_facility,
+            organization=other_facility.organization,
+        )
+
+        response = authenticated_client.post(
+            f"/api/scheduling/vacancies/{sample_shift_vacancy.id}/fill/",
+            {"staff_resource": external_resource.id},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "current facility" in response.data["staff_resource"][0]
 
     def test_list_excludes_other_facility_vacancies(
         self,

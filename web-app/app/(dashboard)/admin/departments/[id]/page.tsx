@@ -67,6 +67,9 @@ export default function EditDepartmentPage() {
   const deleteDepartment = useDeleteDepartment();
   const { data: departments } = useDepartments({ page_size: 100 });
   const { data: staff } = useStaffList({ page_size: 100, employment_status: 'ACTIVE' });
+  const assignedStaff = (staff?.results ?? [])
+    .filter((member) => member.primary_department === departmentId)
+    .sort((a, b) => (a.full_name || a.user_username).localeCompare(b.full_name || b.user_username));
 
   const [formData, setFormData] = useState<DepartmentUpdateData>({});
 
@@ -194,6 +197,39 @@ export default function EditDepartmentPage() {
           {department.is_active ? 'Active' : 'Inactive'}
         </Badge>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Assigned Staff</CardTitle>
+          <CardDescription>
+            Active staff whose primary department is {department.code}.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {assignedStaff.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No active staff assigned to this department.</p>
+          ) : (
+            <div className="space-y-2">
+              {assignedStaff.map((member) => (
+                <div
+                  key={member.id}
+                  className="flex items-center justify-between rounded-md border px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{member.full_name || member.user_username}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {member.employee_id} {member.primary_role_name ? `• ${member.primary_role_name}` : ''}
+                    </p>
+                  </div>
+                  <Button size="sm" variant="outline" asChild>
+                    <Link href={`/admin/staff/${member.id}`}>View</Link>
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <form onSubmit={handleSubmit}>
         <Card>
