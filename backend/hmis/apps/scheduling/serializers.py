@@ -88,6 +88,7 @@ class ResourceSerializer(serializers.ModelSerializer):
 class ResourceListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for resource listings."""
 
+    department = serializers.SerializerMethodField()
     department_name = serializers.SerializerMethodField()
 
     class Meta:
@@ -111,6 +112,14 @@ class ResourceListSerializer(serializers.ModelSerializer):
             return obj.department.name
         if obj.staff_profile and obj.staff_profile.primary_department:
             return obj.staff_profile.primary_department.name
+        return None
+
+    def get_department(self, obj) -> int | None:
+        """Return the direct or staff-profile department ID used by roster filters."""
+        if obj.department_id:
+            return obj.department_id
+        if obj.staff_profile and obj.staff_profile.primary_department_id:
+            return obj.staff_profile.primary_department_id
         return None
 
 
@@ -994,16 +1003,26 @@ class ShiftCreateSerializer(serializers.ModelSerializer):
                 {"shift_date": "Cannot create shifts for past dates."}
             )
 
-        # Auto-fill from facility ShiftTypeConfig if times not provided
+        # Prefer a department override, retaining the facility config as fallback.
         if (not start_time or not end_time) and shift_type:
-            from hmis.apps.scheduling.models import ShiftTypeConfig
+            from hmis.apps.scheduling.models import DepartmentShiftConfig, ShiftTypeConfig
 
             request = self.context.get("request")
             facility = getattr(request, "facility", None) if request else None
             if facility:
-                config = ShiftTypeConfig.objects.filter(
-                    facility=facility, shift_type=shift_type, is_active=True
-                ).first()
+                department = attrs.get("department")
+                config = None
+                if department:
+                    config = DepartmentShiftConfig.objects.filter(
+                        facility=facility,
+                        department=department,
+                        shift_type=shift_type,
+                        is_active=True,
+                    ).first()
+                if not config:
+                    config = ShiftTypeConfig.objects.filter(
+                        facility=facility, shift_type=shift_type, is_active=True
+                    ).first()
                 if config:
                     if not start_time:
                         attrs["start_time"] = config.start_time
@@ -1352,6 +1371,50 @@ class SchedulingSettingsSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "updated_at", "autofill_run_history"]
 
+    def validate(self, attrs):
+        """Require canonical current-facility department IDs in department rules."""
+        request = self.context.get("request")
+        facility = getattr(request, "facility", None) if request else None
+        for field, count_field in (
+            ("autofill_group_minimums", "min_staff"),
+            ("autofill_group_maximums", "max_staff"),
+        ):
+            rules = attrs.get(field)
+            if rules is None:
+                continue
+            if not isinstance(rules, list):
+                raise serializers.ValidationError({field: "Must be a list of rules."})
+            for index, rule in enumerate(rules):
+                if not isinstance(rule, dict):
+                    raise serializers.ValidationError({field: f"Rule {index} must be an object."})
+                if rule.get("scope") != "DEPARTMENT":
+                    continue
+                department_id = rule.get("department_id")
+                if not isinstance(department_id, int) or isinstance(department_id, bool):
+                    raise serializers.ValidationError(
+                        {field: f"Rule {index} requires an integer department_id."}
+                    )
+                if "value" in rule:
+                    raise serializers.ValidationError(
+                        {field: f"Rule {index} must use department_id, not value."}
+                    )
+                if not isinstance(rule.get(count_field), int) or isinstance(
+                    rule.get(count_field), bool
+                ):
+                    raise serializers.ValidationError(
+                        {field: f"Rule {index} requires an integer {count_field}."}
+                    )
+                from hmis.apps.core.models import Department
+
+                if (
+                    facility
+                    and not Department.objects.filter(pk=department_id, facility=facility).exists()
+                ):
+                    raise serializers.ValidationError(
+                        {field: f"Rule {index} department_id must belong to the current facility."}
+                    )
+        return attrs
+
 
 class ShiftTypeConfigSerializer(serializers.ModelSerializer):
     """Serializer for per-facility shift type time configuration."""
@@ -1416,6 +1479,180 @@ class ShiftTypeConfigSerializer(serializers.ModelSerializer):
                         "shift_type": f"A configuration for '{shift_type}' already exists at this facility."
                     }
                 )
+        return attrs
+
+
+class DepartmentShiftConfigSerializer(serializers.ModelSerializer):
+    """Serializer for a facility department's shift type override."""
+
+    department_name = serializers.CharField(source="department.name", read_only=True)
+    shift_type_display = serializers.CharField(source="get_shift_type_display", read_only=True)
+    display_label = serializers.CharField(read_only=True)
+
+    class Meta:
+        from hmis.apps.scheduling.models import DepartmentShiftConfig
+
+        model = DepartmentShiftConfig
+        fields = [
+            "id",
+            "department",
+            "department_name",
+            "shift_type",
+            "shift_type_display",
+            "is_active",
+            "label",
+            "display_label",
+            "start_time",
+            "end_time",
+            "color",
+            "min_staff",
+            "max_staff",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "department_name",
+            "shift_type_display",
+            "display_label",
+            "created_at",
+            "updated_at",
+        ]
+
+    OVERNIGHT_TYPES = {"NIGHT", "NIGHT_OFF"}
+
+    def validate(self, attrs):
+        """Keep configuration local to the request facility and internally consistent."""
+        from hmis.apps.scheduling.models import DepartmentShiftConfig
+
+        department = attrs.get("department", getattr(self.instance, "department", None))
+        start_time = attrs.get("start_time", getattr(self.instance, "start_time", None))
+        end_time = attrs.get("end_time", getattr(self.instance, "end_time", None))
+        shift_type = attrs.get("shift_type", getattr(self.instance, "shift_type", ""))
+        min_staff = attrs.get("min_staff", getattr(self.instance, "min_staff", 1))
+        max_staff = attrs.get("max_staff", getattr(self.instance, "max_staff", None))
+        request = self.context.get("request")
+        facility = getattr(request, "facility", None) if request else None
+        if department and facility and department.facility_id != facility.id:
+            raise serializers.ValidationError(
+                {"department": "Department must belong to the current facility."}
+            )
+        if (
+            not self.instance
+            and facility
+            and DepartmentShiftConfig.objects.filter(
+                facility=facility,
+                department=department,
+                shift_type=shift_type,
+            ).exists()
+        ):
+            raise serializers.ValidationError(
+                {"shift_type": "A configuration for this department and shift type already exists."}
+            )
+        if max_staff is not None and max_staff < min_staff:
+            raise serializers.ValidationError(
+                {"max_staff": "Must be greater than or equal to min_staff."}
+            )
+        if (
+            start_time
+            and end_time
+            and end_time <= start_time
+            and shift_type not in self.OVERNIGHT_TYPES
+        ):
+            raise serializers.ValidationError(
+                {"end_time": "End time must be after start time for non-overnight shift types."}
+            )
+        return attrs
+
+
+class DepartmentRosterSettingsSerializer(serializers.ModelSerializer):
+    """Serializer for a department's canonical repeating rota."""
+
+    NON_WORKING_ROTA_TYPES = {
+        "DAY_OFF",
+        "NIGHT_OFF",
+        "OFF",
+        "AFTERNOON_OFF",
+        "LEAVE",
+        "SICK_LEAVE",
+        "REST",
+    }
+
+    department_name = serializers.CharField(source="department.name", read_only=True)
+
+    class Meta:
+        from hmis.apps.scheduling.models import DepartmentRosterSettings
+
+        model = DepartmentRosterSettings
+        fields = [
+            "id",
+            "department",
+            "department_name",
+            "repeating_shift_pattern",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "department_name", "created_at", "updated_at"]
+
+    def validate(self, attrs):
+        """Require a local department and active configuration for every rota type."""
+        from hmis.apps.scheduling.models import DepartmentShiftConfig, ShiftTypeConfig
+
+        request = self.context.get("request")
+        facility = getattr(request, "facility", None) if request else None
+        department = attrs.get("department", getattr(self.instance, "department", None))
+        pattern = attrs.get(
+            "repeating_shift_pattern", getattr(self.instance, "repeating_shift_pattern", [])
+        )
+        if department and facility and department.facility_id != facility.id:
+            raise serializers.ValidationError(
+                {"department": "Department must belong to the current facility."}
+            )
+        if not isinstance(pattern, list) or not all(isinstance(item, str) for item in pattern):
+            raise serializers.ValidationError(
+                {"repeating_shift_pattern": "Must be a list of shift type strings."}
+            )
+        if facility and department:
+            active_facility_types = set(
+                ShiftTypeConfig.objects.filter(facility=facility, is_active=True).values_list(
+                    "shift_type", flat=True
+                )
+            )
+            active_department_types = set(
+                DepartmentShiftConfig.objects.filter(
+                    facility=facility, department=department, is_active=True
+                ).values_list("shift_type", flat=True)
+            )
+            invalid_types = (
+                set(pattern)
+                - active_facility_types
+                - active_department_types
+                - self.NON_WORKING_ROTA_TYPES
+            )
+            if invalid_types:
+                raise serializers.ValidationError(
+                    {
+                        "repeating_shift_pattern": (
+                            "Each shift type must have an active facility configuration or "
+                            "active department override: " + ", ".join(sorted(invalid_types))
+                        )
+                    }
+                )
+        return attrs
+
+
+class AutofillPlanSerializer(serializers.Serializer):
+    """Validate a date range for a read-only server-side autofill plan."""
+
+    start_date = serializers.DateField()
+    end_date = serializers.DateField()
+
+    def validate(self, attrs):
+        """Keep plans bounded and chronological."""
+        if attrs["end_date"] < attrs["start_date"]:
+            raise serializers.ValidationError({"end_date": "Must be on or after start_date."})
+        if (attrs["end_date"] - attrs["start_date"]).days > 31:
+            raise serializers.ValidationError({"end_date": "Planning range cannot exceed 31 days."})
         return attrs
 
 

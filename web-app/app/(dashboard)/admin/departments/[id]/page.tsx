@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { DepartmentShiftOverrides } from '@/components/admin/department-shift-overrides';
 import { useToast } from '@/lib/hooks/use-toast';
 import {
   useDepartment,
@@ -321,6 +322,8 @@ export default function EditDepartmentPage() {
           </CardContent>
         </Card>
       </form>
+
+      <DepartmentShiftOverrides departmentId={department.id} departmentName={department.name} />
     </div>
   );
 }

@@ -13,7 +13,8 @@ Supported inputs/args:
 """
 
 import logging
-from datetime import datetime, timedelta
+import math
+from datetime import date, datetime, timedelta
 
 from django.db import models
 from django.utils import timezone
@@ -53,6 +54,7 @@ from hmis.apps.scheduling.serializers import (
     AppointmentNoShowSerializer,
     AppointmentSerializer,
     AppointmentStartSerializer,
+    AutofillPlanSerializer,
     AvailabilityQuerySerializer,
     ResourceListSerializer,
     ResourceSerializer,
@@ -87,6 +89,16 @@ from hmis.apps.scheduling.views_resources_appointments import ShiftFilter
 from hmis.apps.scheduling.views_shift_analytics import ShiftAnalyticsExportMixin
 
 logger = logging.getLogger(__name__)
+
+NON_WORKING_SHIFT_TYPES = {
+    "DAY_OFF",
+    "NIGHT_OFF",
+    "OFF",
+    "AFTERNOON_OFF",
+    "LEAVE",
+    "SICK_LEAVE",
+    "REST",
+}
 
 
 class ManageSchedulesWritePermission(permissions.BasePermission):
@@ -267,6 +279,466 @@ class ShiftViewSet(
             },
             ip_address=self._get_client_ip(),
         )
+
+    @action(detail=False, methods=["post"], url_path="autofill-plan")
+    def autofill_plan(self, request):
+        """Return deterministic draft coverage assignments without persisting shifts."""
+        from datetime import datetime as datetime_type
+
+        from hmis.apps.scheduling.models import (
+            DepartmentRosterSettings,
+            DepartmentShiftConfig,
+            SchedulingSettings,
+            ShiftTypeConfig,
+        )
+
+        self._resolve_tenant_context()
+        facility = getattr(request, "facility", None)
+        if not facility:
+            return Response(
+                {"error": "No facility context available"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        serializer = AutofillPlanSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        start_date = serializer.validated_data["start_date"]
+        end_date = serializer.validated_data["end_date"]
+        settings, _created = SchedulingSettings.objects.get_or_create(
+            facility=facility,
+            defaults={"organization": facility.organization},
+        )
+        resources = list(
+            Resource.objects.filter(facility=facility, resource_type="PERSON", is_active=True)
+            .select_related("department", "staff_profile__primary_department")
+            .order_by("id")
+        )
+        resource_departments = {
+            resource.id: resource.department_id
+            or getattr(resource.staff_profile, "primary_department_id", None)
+            for resource in resources
+        }
+        department_ids = sorted(
+            {department_id for department_id in resource_departments.values() if department_id}
+        )
+        facility_configs = {
+            config.shift_type: config
+            for config in ShiftTypeConfig.objects.filter(facility=facility, is_active=True)
+        }
+        department_configs = {
+            (config.department_id, config.shift_type): config
+            for config in DepartmentShiftConfig.objects.filter(
+                facility=facility, is_active=True, department_id__in=department_ids
+            )
+        }
+        department_config_types = {}
+        for department_id, shift_type in department_configs:
+            department_config_types.setdefault(department_id, set()).add(shift_type)
+        department_patterns = {
+            setting.department_id: setting.repeating_shift_pattern
+            for setting in DepartmentRosterSettings.objects.filter(
+                facility=facility,
+                department_id__in=department_ids,
+            )
+            if setting.repeating_shift_pattern
+        }
+        # Monday anchor keeps a department rota stable across different plan requests.
+        rota_anchor_date = date(2000, 1, 3)
+        configured_types = set(settings.active_shift_types or [])
+        if not configured_types:
+            configured_types = set(facility_configs) | {
+                shift_type for _, shift_type in department_configs
+            }
+        shift_types = sorted(configured_types)
+        existing_shifts = list(
+            Shift.objects.filter(
+                facility=facility,
+                shift_date__range=(start_date, end_date),
+            )
+            .exclude(status="CANCELLED")
+            .select_related("staff_resource")
+        )
+        assigned_dates = {}
+        weekly_hours = {}
+        weekly_nights = {}
+        existing_coverage = {}
+        for shift in existing_shifts:
+            assigned_dates.setdefault(shift.staff_resource_id, set()).add(shift.shift_date)
+            week_key = shift.shift_date - timedelta(days=shift.shift_date.weekday())
+            duration = datetime_type.combine(
+                shift.shift_date, shift.end_time
+            ) - datetime_type.combine(shift.shift_date, shift.start_time)
+            hours = duration.total_seconds() / 3600
+            if hours <= 0:
+                hours += 24
+            weekly_hours[(shift.staff_resource_id, week_key)] = (
+                weekly_hours.get((shift.staff_resource_id, week_key), 0) + hours
+            )
+            if shift.shift_type in {"NIGHT", "NIGHT_OFF"}:
+                weekly_nights[(shift.staff_resource_id, week_key)] = (
+                    weekly_nights.get((shift.staff_resource_id, week_key), 0) + 1
+                )
+            department_id = shift.department_id or resource_departments.get(shift.staff_resource_id)
+            existing_coverage[(shift.shift_date, department_id, shift.shift_type)] = (
+                existing_coverage.get((shift.shift_date, department_id, shift.shift_type), 0) + 1
+            )
+
+        draft_shifts = []
+        coverage = []
+        skipped = []
+        current_date = start_date
+        while current_date <= end_date:
+            for department_id in department_ids:
+                department_resources = [
+                    resource
+                    for resource in resources
+                    if resource_departments[resource.id] == department_id
+                ]
+                # An active departmental override set defines the department's roster
+                # shift types. Facilities without overrides inherit facility-wide types.
+                department_shift_types = [
+                    shift_type
+                    for shift_type in (department_config_types.get(department_id) or shift_types)
+                    if shift_type not in NON_WORKING_SHIFT_TYPES
+                ]
+                department_pattern = department_patterns.get(department_id)
+                department_offsets = {
+                    resource.id: offset
+                    for offset, resource in enumerate(
+                        sorted(department_resources, key=lambda resource: resource.id)
+                    )
+                }
+                expected_shift_by_resource = {}
+                if department_pattern:
+                    non_working_times = {
+                        "DAY_OFF": ("07:00", "19:00"),
+                        "NIGHT_OFF": ("19:00", "07:00"),
+                        "OFF": ("00:00", "23:59"),
+                        "AFTERNOON_OFF": ("14:00", "22:00"),
+                        "LEAVE": ("00:00", "23:59"),
+                        "SICK_LEAVE": ("00:00", "23:59"),
+                        "REST": ("00:00", "23:59"),
+                    }
+                    week_key = current_date - timedelta(days=current_date.weekday())
+                    for resource in department_resources:
+                        offset = department_offsets.get(resource.id, 0)
+                        pattern_index = ((current_date - rota_anchor_date).days + offset) % len(
+                            department_pattern
+                        )
+                        expected_shift_type = department_pattern[pattern_index]
+                        expected_shift_by_resource[resource.id] = expected_shift_type
+                        if expected_shift_type not in NON_WORKING_SHIFT_TYPES:
+                            continue
+                        dates = assigned_dates.setdefault(resource.id, set())
+                        if current_date in dates:
+                            continue
+                        start_time, end_time = non_working_times.get(
+                            expected_shift_type, ("00:00", "23:59")
+                        )
+                        draft_shifts.append(
+                            {
+                                "staff_resource": resource.id,
+                                "department": department_id,
+                                "shift_date": current_date.isoformat(),
+                                "start_time": start_time,
+                                "end_time": end_time,
+                                "shift_type": expected_shift_type,
+                                "config_source": "department",
+                            }
+                        )
+                        dates.add(current_date)
+                        if expected_shift_type == "NIGHT_OFF":
+                            weekly_nights[(resource.id, week_key)] = (
+                                weekly_nights.get((resource.id, week_key), 0) + 1
+                            )
+                for shift_type in department_shift_types:
+                    department_config = department_configs.get((department_id, shift_type))
+                    config = department_config or facility_configs.get(shift_type)
+                    if not config:
+                        continue
+                    required = (
+                        department_config.min_staff
+                        if department_config
+                        else int((settings.autofill_min_staff_per_shift or {}).get(shift_type, 1))
+                    )
+                    maximum = department_config.max_staff if department_config else None
+                    existing = existing_coverage.get((current_date, department_id, shift_type), 0)
+                    planned = 0
+                    rejection_counts = {}
+                    if not department_resources:
+                        rejection_counts["no_department_staff"] = 1
+                    ordered_resources = department_resources
+                    duration = datetime_type.combine(
+                        current_date, config.end_time
+                    ) - datetime_type.combine(current_date, config.start_time)
+                    hours = duration.total_seconds() / 3600
+                    if hours <= 0:
+                        hours += 24
+                    week_key = current_date - timedelta(days=current_date.weekday())
+                    for resource in ordered_resources:
+                        if existing + planned >= required:
+                            break
+                        if maximum is not None and existing + planned >= maximum:
+                            rejection_counts["max_staff_cap"] = (
+                                rejection_counts.get("max_staff_cap", 0) + 1
+                            )
+                            break
+                        if department_pattern:
+                            expected_shift_type = expected_shift_by_resource.get(resource.id)
+                            if expected_shift_type in NON_WORKING_SHIFT_TYPES:
+                                rejection_counts["staff_pattern_non_working"] = (
+                                    rejection_counts.get("staff_pattern_non_working", 0) + 1
+                                )
+                                continue
+                            if expected_shift_type != shift_type:
+                                rejection_counts["staff_pattern_mismatch"] = (
+                                    rejection_counts.get("staff_pattern_mismatch", 0) + 1
+                                )
+                                continue
+                        dates = assigned_dates.setdefault(resource.id, set())
+                        if current_date in dates:
+                            rejection_counts["already_assigned"] = (
+                                rejection_counts.get("already_assigned", 0) + 1
+                            )
+                            continue
+                        if (
+                            weekly_hours.get((resource.id, week_key), 0) + hours
+                            > settings.max_hours_per_week
+                        ):
+                            rejection_counts["max_weekly_hours"] = (
+                                rejection_counts.get("max_weekly_hours", 0) + 1
+                            )
+                            continue
+                        if (
+                            shift_type in {"NIGHT", "NIGHT_OFF"}
+                            and weekly_nights.get((resource.id, week_key), 0)
+                            >= settings.max_night_shifts_per_week
+                        ):
+                            rejection_counts["max_night_shifts"] = (
+                                rejection_counts.get("max_night_shifts", 0) + 1
+                            )
+                            continue
+                        consecutive = 0
+                        probe = current_date - timedelta(days=1)
+                        while probe in dates:
+                            consecutive += 1
+                            probe -= timedelta(days=1)
+                        if consecutive >= settings.max_consecutive_days:
+                            rejection_counts["max_consecutive_days"] = (
+                                rejection_counts.get("max_consecutive_days", 0) + 1
+                            )
+                            continue
+                        draft_shifts.append(
+                            {
+                                "staff_resource": resource.id,
+                                "department": department_id,
+                                "shift_date": current_date.isoformat(),
+                                "start_time": config.start_time.strftime("%H:%M"),
+                                "end_time": config.end_time.strftime("%H:%M"),
+                                "shift_type": shift_type,
+                                "config_source": "department" if department_config else "facility",
+                            }
+                        )
+                        dates.add(current_date)
+                        weekly_hours[(resource.id, week_key)] = (
+                            weekly_hours.get((resource.id, week_key), 0) + hours
+                        )
+                        if shift_type in {"NIGHT", "NIGHT_OFF"}:
+                            weekly_nights[(resource.id, week_key)] = (
+                                weekly_nights.get((resource.id, week_key), 0) + 1
+                            )
+                        planned += 1
+                    uncovered = max(required - existing - planned, 0)
+                    coverage.append(
+                        {
+                            "shift_date": current_date.isoformat(),
+                            "department_id": department_id,
+                            "shift_type": shift_type,
+                            "required_staff": required,
+                            "existing_staff": existing,
+                            "planned_staff": planned,
+                            "uncovered_staff": uncovered,
+                            "config_source": "department" if department_config else "facility",
+                        }
+                    )
+                    if uncovered:
+                        skipped.append(
+                            {
+                                "shift_date": current_date.isoformat(),
+                                "department_id": department_id,
+                                "shift_type": shift_type,
+                                "reason": "No eligible department resource remains after facility constraints.",
+                                "reason_counts": rejection_counts,
+                                "uncovered_staff": uncovered,
+                            }
+                        )
+            current_date += timedelta(days=1)
+
+        if settings.autofill_mode == "BALANCED_UTILIZATION":
+            target_days = max(1, min(7, settings.autofill_target_days_per_staff))
+            current_date = start_date
+            while current_date <= end_date:
+                week_key = current_date - timedelta(days=current_date.weekday())
+                for resource in resources:
+                    department_id = resource_departments[resource.id]
+                    if not department_id or current_date in assigned_dates.setdefault(
+                        resource.id, set()
+                    ):
+                        continue
+                    assigned_this_week = sum(
+                        1
+                        for assigned_date in assigned_dates[resource.id]
+                        if assigned_date - timedelta(days=assigned_date.weekday()) == week_key
+                    )
+                    if assigned_this_week >= target_days:
+                        continue
+                    department_shift_types = [
+                        shift_type
+                        for shift_type in (
+                            department_config_types.get(department_id) or shift_types
+                        )
+                        if shift_type not in NON_WORKING_SHIFT_TYPES
+                    ]
+                    department_pattern = department_patterns.get(department_id)
+                    if department_pattern:
+                        department_offset = sum(
+                            1
+                            for other in resources
+                            if resource_departments.get(other.id) == department_id
+                            and other.id < resource.id
+                        )
+                        pattern_index = (
+                            (current_date - rota_anchor_date).days + department_offset
+                        ) % len(department_pattern)
+                        expected_shift_type = department_pattern[pattern_index]
+                        if expected_shift_type in NON_WORKING_SHIFT_TYPES:
+                            continue
+                        department_shift_types = [expected_shift_type]
+                    for shift_type in department_shift_types:
+                        department_config = department_configs.get((department_id, shift_type))
+                        config = department_config or facility_configs.get(shift_type)
+                        if not config:
+                            continue
+                        planned_coverage = sum(
+                            1
+                            for draft_shift in draft_shifts
+                            if draft_shift["shift_date"] == current_date.isoformat()
+                            and draft_shift["department"] == department_id
+                            and draft_shift["shift_type"] == shift_type
+                        )
+                        if (
+                            department_config
+                            and department_config.max_staff is not None
+                            and existing_coverage.get((current_date, department_id, shift_type), 0)
+                            + planned_coverage
+                            >= department_config.max_staff
+                        ):
+                            continue
+                        duration = datetime_type.combine(
+                            current_date, config.end_time
+                        ) - datetime_type.combine(current_date, config.start_time)
+                        hours = duration.total_seconds() / 3600
+                        if hours <= 0:
+                            hours += 24
+                        if (
+                            weekly_hours.get((resource.id, week_key), 0) + hours
+                            > settings.max_hours_per_week
+                        ):
+                            continue
+                        if (
+                            shift_type in {"NIGHT", "NIGHT_OFF"}
+                            and weekly_nights.get((resource.id, week_key), 0)
+                            >= settings.max_night_shifts_per_week
+                        ):
+                            continue
+                        consecutive = 0
+                        probe = current_date - timedelta(days=1)
+                        while probe in assigned_dates[resource.id]:
+                            consecutive += 1
+                            probe -= timedelta(days=1)
+                        if consecutive >= settings.max_consecutive_days:
+                            continue
+                        draft_shifts.append(
+                            {
+                                "staff_resource": resource.id,
+                                "department": department_id,
+                                "shift_date": current_date.isoformat(),
+                                "start_time": config.start_time.strftime("%H:%M"),
+                                "end_time": config.end_time.strftime("%H:%M"),
+                                "shift_type": shift_type,
+                                "config_source": "department" if department_config else "facility",
+                            }
+                        )
+                        assigned_dates[resource.id].add(current_date)
+                        weekly_hours[(resource.id, week_key)] = (
+                            weekly_hours.get((resource.id, week_key), 0) + hours
+                        )
+                        if shift_type in {"NIGHT", "NIGHT_OFF"}:
+                            weekly_nights[(resource.id, week_key)] = (
+                                weekly_nights.get((resource.id, week_key), 0) + 1
+                            )
+                        break
+                current_date += timedelta(days=1)
+
+        required_coverage = sum(item["required_staff"] for item in coverage)
+        filled_coverage = sum(
+            min(item["required_staff"], item["existing_staff"] + item["planned_staff"])
+            for item in coverage
+        )
+        scheduled_resource_ids = {shift.staff_resource_id for shift in existing_shifts} | {
+            draft_shift["staff_resource"] for draft_shift in draft_shifts
+        }
+        working_loads = {resource.id: 0 for resource in resources}
+        for shift in existing_shifts:
+            if shift.shift_type in NON_WORKING_SHIFT_TYPES:
+                continue
+            if shift.staff_resource_id in working_loads:
+                working_loads[shift.staff_resource_id] += 1
+        for draft_shift in draft_shifts:
+            if draft_shift["shift_type"] in NON_WORKING_SHIFT_TYPES:
+                continue
+            resource_id = draft_shift["staff_resource"]
+            if resource_id in working_loads:
+                working_loads[resource_id] += 1
+        load_values = list(working_loads.values())
+        fairness_spread = 0.0
+        if load_values:
+            average_load = sum(load_values) / len(load_values)
+            fairness_spread = math.sqrt(
+                sum((load - average_load) ** 2 for load in load_values) / len(load_values)
+            )
+        report = {
+            "plan_only": True,
+            "resources_considered": len(resources),
+            "staff_scheduled": len(scheduled_resource_ids),
+            "staff_unassigned": len(resources) - len(scheduled_resource_ids),
+            "coverage_required": required_coverage,
+            "coverage_filled": filled_coverage,
+            "coverage_unfilled": required_coverage - filled_coverage,
+            "fairness_spread": round(fairness_spread, 2),
+            "date_range": {
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat(),
+            },
+            "coverage": coverage,
+            "uncovered": skipped,
+            "constraints_applied": [
+                "max_hours_per_week",
+                "max_night_shifts_per_week",
+                "max_consecutive_days",
+                "one_shift_per_resource_per_day",
+                "balanced_utilization_target_days",
+            ],
+        }
+        run_entry = {
+            "id": timezone.now().strftime("%Y%m%d%H%M%S%f"),
+            "created_at": timezone.now().isoformat(),
+            "week_start": start_date.isoformat(),
+            "week_end": end_date.isoformat(),
+            "strategy": "server-department-coverage-plan",
+            "report": report,
+        }
+        settings.autofill_run_history = [run_entry, *(settings.autofill_run_history or [])][:100]
+        settings.save(update_fields=["autofill_run_history", "updated_at"])
+        return Response({"draft_shifts": draft_shifts, "report": report})
 
     def _get_client_ip(self) -> str:
         """Get client IP address from request."""

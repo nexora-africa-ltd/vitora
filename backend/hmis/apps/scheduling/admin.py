@@ -14,6 +14,8 @@ from hmis.apps.scheduling.models import (
     AssignmentDecision,
     AssignmentOverride,
     AssignmentRule,
+    DepartmentRosterSettings,
+    DepartmentShiftConfig,
     Resource,
     Schedule,
     ScheduleBreak,
@@ -349,6 +351,28 @@ class ShiftTypeConfigAdmin(admin.ModelAdmin):
     search_fields = ["label"]
     readonly_fields = ["created_at", "updated_at"]
     raw_id_fields = ["facility", "organization"]
+
+
+@admin.register(DepartmentShiftConfig)
+class DepartmentShiftConfigAdmin(admin.ModelAdmin):
+    """Admin for department-specific shift configuration overrides."""
+
+    list_display = ["department", "shift_type", "min_staff", "max_staff", "is_active", "facility"]
+    list_filter = ["shift_type", "is_active", "facility", "department"]
+    search_fields = ["department__name", "label"]
+    readonly_fields = ["created_at", "updated_at"]
+    raw_id_fields = ["facility", "organization", "department"]
+
+
+@admin.register(DepartmentRosterSettings)
+class DepartmentRosterSettingsAdmin(admin.ModelAdmin):
+    """Admin for canonical department repeating rotas."""
+
+    list_display = ["department", "repeating_shift_pattern", "facility"]
+    list_filter = ["facility", "department"]
+    search_fields = ["department__name"]
+    readonly_fields = ["created_at", "updated_at"]
+    raw_id_fields = ["facility", "organization", "department"]
 
 
 @admin.register(StaffConstraint)

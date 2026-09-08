@@ -6,8 +6,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ChevronLeft,
   ChevronRight,
-  Save,
-  Eraser,
   Loader2,
   Sun,
   Moon,
@@ -30,6 +28,7 @@ import {
   MoreVertical,
   MessageSquare,
   ChevronDown,
+  Lock,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -76,6 +75,7 @@ import {
   schedulingSettingsApi,
   shiftTypeConfigsApi,
 } from '@/lib/api/scheduling';
+import { departmentsApi } from '@/lib/api/rbac';
 import { QRCodeDisplay } from '@/components/scheduling/qr-clock-in';
 import type {
   ShiftType,
@@ -87,6 +87,7 @@ import type {
   AutofillWeights,
   AutofillGroupMinimumRule,
   AutofillGroupMaximumRule,
+  AutofillPlan,
 } from '@/lib/types/scheduling';
 import { printRoster, SHIFT_PRINT_COLORS, type RosterStaffRow } from '@/lib/documents/print-roster';
 import { CommentThread } from '@/components/comments/comment-thread';
@@ -271,6 +272,48 @@ const REJECT_REASON_LABELS: Record<AutoFillRejectReason, string> = {
   no_shared_shift_with: 'Cannot share shift with staff pair',
 };
 
+const GAP_CAUSE_LABELS: Record<
+  string,
+  { title: string; description: string; actionLabel: string; actionHref: string }
+> = {
+  no_department_staff: {
+    title: 'Department has no available staff',
+    description: 'No active staff resources are assigned to this department.',
+    actionLabel: 'Manage departments',
+    actionHref: '/admin/departments',
+  },
+  already_assigned: {
+    title: 'Staff already assigned that day',
+    description: 'The department staff already have another shift on the affected date.',
+    actionLabel: 'Review roster',
+    actionHref: '/scheduling/roster',
+  },
+  max_weekly_hours: {
+    title: 'Weekly hour limit reached',
+    description: 'Eligible staff would exceed the facility weekly-hours limit.',
+    actionLabel: 'Review roster rules',
+    actionHref: '/scheduling/roster/settings',
+  },
+  max_night_shifts: {
+    title: 'Night-shift limit reached',
+    description: 'Eligible staff have reached the configured weekly night-shift limit.',
+    actionLabel: 'Review night limits',
+    actionHref: '/scheduling/roster/settings',
+  },
+  max_consecutive_days: {
+    title: 'Consecutive-day limit reached',
+    description: 'Assigning another shift would exceed the consecutive working-day limit.',
+    actionLabel: 'Review rest rules',
+    actionHref: '/scheduling/roster/settings',
+  },
+  unknown: {
+    title: 'No eligible staff available',
+    description: 'No staff member passed the configured scheduling rules.',
+    actionLabel: 'Review staff constraints',
+    actionHref: '/scheduling/roster/settings',
+  },
+};
+
 const DEFAULT_AUTOFILL_WEIGHTS = {
   weekly_load: 30,
   history_hours: 4,
@@ -389,13 +432,12 @@ export default function WeeklyRosterPage() {
   const weekLabel = useMemo(() => formatWeekRange(weekDates), [weekDates]);
   const today = useMemo(() => toLocalDateString(new Date()), []);
 
-  // Active paint brush
-  const [paintType, setPaintType] = useState<ShiftType>('DAY');
-  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState<number | null>(null);
 
   // Mobile day-by-day navigation (< md breakpoint)
   const [mobileDayIndex, setMobileDayIndex] = useState(() => new Date().getDay()); // 0=Sun
   const [legendOpen, setLegendOpen] = useState(false);
+  const [uncoveredPanelOpen, setUncoveredPanelOpen] = useState(false);
   const [decisionLogOpen, setDecisionLogOpen] = useState(false);
   const [compareRunA, setCompareRunA] = useState<string>('');
   const [compareRunB, setCompareRunB] = useState<string>('');
@@ -405,6 +447,9 @@ export default function WeeklyRosterPage() {
   // Draft assignments (unsaved changes)
   // Map<CellKey, ShiftType | null>  — null means "remove existing"
   const [draft, setDraft] = useState<Map<CellKey, ShiftType | null>>(new Map());
+  const [plannedShiftDetails, setPlannedShiftDetails] = useState<
+    Map<CellKey, { department: number; start_time: string; end_time: string }>
+  >(new Map());
   const hasDraftChanges = draft.size > 0;
 
   // Fetch staff resources (PERSON type)
@@ -413,9 +458,25 @@ export default function WeeklyRosterPage() {
     queryFn: () => resourcesApi.list({ resource_type: 'PERSON', page_size: 200, ordering: 'name' }),
   });
   const allStaff = useMemo(() => resourcesData?.results ?? [], [resourcesData?.results]);
+  const { data: departmentsData } = useQuery({
+    queryKey: ['departments', 'active', 'roster'],
+    queryFn: () => departmentsApi.list({ is_active: true, page_size: 500 }),
+  });
+  const departments = useMemo(
+    () => departmentsData?.results.filter((department) => department.is_active) ?? [],
+    [departmentsData?.results]
+  );
+  const selectedDepartmentCode = useMemo(() => {
+    if (departmentFilter === null) {
+      return null;
+    }
+    return departments.find((department) => department.id === departmentFilter)?.code ?? null;
+  }, [departmentFilter, departments]);
   const staffList = useMemo(
     () =>
-      departmentFilter ? allStaff.filter((r) => r.department_name === departmentFilter) : allStaff,
+      departmentFilter !== null
+        ? allStaff.filter((resource) => resource.department === departmentFilter)
+        : allStaff,
     [allStaff, departmentFilter]
   );
 
@@ -558,6 +619,31 @@ export default function WeeklyRosterPage() {
     return SHIFT_TYPES.filter((st) => st.isOff || st.value in shiftTypeDefaults);
   }, [shiftTypeDefaults]);
 
+  const cycleShiftTypes = useMemo(
+    () => availableShiftTypes.map((shiftType) => shiftType.value),
+    [availableShiftTypes]
+  );
+
+  const getNextShiftType = useCallback(
+    (currentType: ShiftType | null): ShiftType | null => {
+      if (cycleShiftTypes.length === 0) {
+        return null;
+      }
+      if (currentType === null) {
+        return cycleShiftTypes[0] ?? null;
+      }
+      const currentIndex = cycleShiftTypes.indexOf(currentType);
+      if (currentIndex === -1) {
+        return cycleShiftTypes[0] ?? null;
+      }
+      if (currentIndex === cycleShiftTypes.length - 1) {
+        return null;
+      }
+      return cycleShiftTypes[currentIndex + 1] ?? null;
+    },
+    [cycleShiftTypes]
+  );
+
   // Build a map of shift_type → custom hex color for cell rendering
   const customShiftColors = useMemo(() => {
     const map = new Map<string, string>();
@@ -581,17 +667,6 @@ export default function WeeklyRosterPage() {
     return map;
   }, [shiftsData]);
 
-  // Get departments from staff resources
-  const departments = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const r of allStaff) {
-      if (r.department_name && r.department) map.set(r.department_name, r.department);
-    }
-    return Array.from(map.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([name, id]) => ({ name, id }));
-  }, [allStaff]);
-
   // ==========================================================================
   // Cell interaction
   // ==========================================================================
@@ -602,34 +677,38 @@ export default function WeeklyRosterPage() {
       // Prevent editing past dates
       if (date < today) return;
       const key = cellKey(resourceId, date);
+      setPlannedShiftDetails((previous) => {
+        if (!previous.has(key)) return previous;
+        const next = new Map(previous);
+        next.delete(key);
+        return next;
+      });
       setDraft((prev) => {
         const next = new Map(prev);
         const existing = existingShifts.get(key);
         const draftValue = prev.get(key);
-        const currentType = prev.has(key) ? draftValue : (existing?.shift_type ?? null);
+        const currentType = prev.has(key) ? (draftValue ?? null) : (existing?.shift_type ?? null);
 
-        // Toggle off: if cell already has a shift (saved or drafted), remove it
-        if (currentType !== null) {
-          if (existing && !prev.has(key)) {
-            // Saved shift — mark for deletion
+        const nextType = getNextShiftType(currentType);
+        if (nextType === null) {
+          if (existing) {
             next.set(key, null);
-          } else if (prev.has(key) && draftValue !== null) {
-            // Draft addition — just remove the draft entry
-            next.delete(key);
-            // If there was a saved shift underneath, it reappears
           } else {
-            // Already marked for deletion — undo the removal
             next.delete(key);
           }
           return next;
         }
 
-        // Paint: assign the selected shift type to an empty cell
-        next.set(key, paintType);
+        if (existing && nextType === existing.shift_type) {
+          next.delete(key);
+          return next;
+        }
+
+        next.set(key, nextType);
         return next;
       });
     },
-    [paintType, existingShifts, canManageSchedules, today]
+    [existingShifts, canManageSchedules, getNextShiftType, today]
   );
 
   // Determine what's displayed in a cell
@@ -689,9 +768,10 @@ export default function WeeklyRosterPage() {
         if (!config) continue;
 
         // Use facility-configured times if available, otherwise fall back to hardcoded SHIFT_MAP
+        const plannedDetail = plannedShiftDetails.get(key);
         const facilityConfig = shiftTypeDefaults?.[shiftType];
-        const startTime = facilityConfig?.start_time ?? config.start;
-        const endTime = facilityConfig?.end_time ?? config.end;
+        const startTime = plannedDetail?.start_time ?? facilityConfig?.start_time ?? config.start;
+        const endTime = plannedDetail?.end_time ?? facilityConfig?.end_time ?? config.end;
 
         newShifts.push({
           staff_resource: resourceId,
@@ -699,7 +779,11 @@ export default function WeeklyRosterPage() {
           start_time: startTime,
           end_time: endTime,
           shift_type: shiftType,
-          department: departments.find((d) => d.name === departmentFilter)?.id,
+          department:
+            plannedDetail?.department ??
+            departmentFilter ??
+            allStaff.find((staff) => staff.id === resourceId)?.department ??
+            undefined,
         });
       }
 
@@ -724,6 +808,7 @@ export default function WeeklyRosterPage() {
     },
     onSuccess: (result) => {
       setDraft(new Map());
+      setPlannedShiftDetails(new Map());
       queryClient.invalidateQueries({ queryKey: ['roster-shifts'] });
       queryClient.invalidateQueries({ queryKey: ['scheduling-shifts'] });
       queryClient.invalidateQueries({ queryKey: ['my-shift-today'] });
@@ -756,6 +841,7 @@ export default function WeeklyRosterPage() {
     mutationFn: () => shiftsApi.bulkDelete(weekDates[0]!, weekDates[6]!, true),
     onSuccess: (result) => {
       setDraft(new Map());
+      setPlannedShiftDetails(new Map());
       queryClient.invalidateQueries({ queryKey: ['roster-shifts'] });
       queryClient.invalidateQueries({ queryKey: ['scheduling-shifts'] });
       if (result.deleted > 0) {
@@ -773,6 +859,7 @@ export default function WeeklyRosterPage() {
 
   function goToPrevWeek() {
     setDraft(new Map());
+    setPlannedShiftDetails(new Map());
     setAutoFillReport(null);
     setWeekStart((prev) => {
       const d = new Date(prev);
@@ -783,6 +870,7 @@ export default function WeeklyRosterPage() {
 
   function goToNextWeek() {
     setDraft(new Map());
+    setPlannedShiftDetails(new Map());
     setAutoFillReport(null);
     setWeekStart((prev) => {
       const d = new Date(prev);
@@ -793,16 +881,65 @@ export default function WeeklyRosterPage() {
 
   function goToThisWeek() {
     setDraft(new Map());
+    setPlannedShiftDetails(new Map());
     setAutoFillReport(null);
     setWeekStart(getWeekStart(new Date()));
+  }
+
+  function discardDraft() {
+    setDraft(new Map());
+    setPlannedShiftDetails(new Map());
   }
 
   // ==========================================================================
   // Auto-Fill
   // ==========================================================================
 
-  const [maxDaysPerStaff, setMaxDaysPerStaff] = useState(5);
   const [autoFillReport, setAutoFillReport] = useState<AutoFillReport | null>(null);
+  const [autofillGaps, setAutofillGaps] = useState<AutofillPlan['report']['uncovered']>([]);
+  const [autofillPlanSummary, setAutofillPlanSummary] = useState<AutofillPlan['report'] | null>(null);
+  const [openGapCause, setOpenGapCause] = useState<string | null>(null);
+
+  const groupedAutofillGaps = useMemo(() => {
+    const groups = new Map<
+      string,
+      { cause: string; totalShortage: number; gaps: AutofillPlan['report']['uncovered'] }
+    >();
+    for (const gap of autofillGaps) {
+      const primaryCause = Object.entries(gap.reason_counts ?? {}).sort(
+        ([, countA], [, countB]) => countB - countA
+      )[0]?.[0] ?? 'unknown';
+      const current = groups.get(primaryCause) ?? {
+        cause: primaryCause,
+        totalShortage: 0,
+        gaps: [],
+      };
+      current.totalShortage += gap.uncovered_staff;
+      current.gaps.push(gap);
+      groups.set(primaryCause, current);
+    }
+    return [...groups.values()].sort((a, b) => b.totalShortage - a.totalShortage);
+  }, [autofillGaps]);
+
+  const futureAutofillSummary = useMemo(() => {
+    if (!autofillPlanSummary) {
+      return null;
+    }
+    const futureCoverage = autofillPlanSummary.coverage.filter((item) => item.shift_date >= today);
+    const coverageRequired = futureCoverage.reduce((total, item) => total + item.required_staff, 0);
+    const coverageFilled = futureCoverage.reduce(
+      (total, item) => total + Math.min(item.required_staff, item.existing_staff + item.planned_staff),
+      0
+    );
+    const uncoveredFuture = autofillPlanSummary.uncovered
+      .filter((item) => item.shift_date >= today)
+      .reduce((total, item) => total + item.uncovered_staff, 0);
+    return {
+      coverageRequired,
+      coverageFilled,
+      coverageUnfilled: Math.max(coverageRequired - coverageFilled, uncoveredFuture),
+    };
+  }, [autofillPlanSummary, today]);
 
   const historyEnd = useMemo(() => {
     const d = new Date(weekStart);
@@ -881,7 +1018,7 @@ export default function WeeklyRosterPage() {
     return avg;
   }, [historicalAppointmentsData]);
 
-  const handleAutoFill = useCallback(() => {
+  const handleClientAutoFill = useCallback(() => {
     const availableWorking = new Set(
       availableShiftTypes.filter((st) => !st.isOff).map((st) => st.value)
     );
@@ -947,6 +1084,7 @@ export default function WeeklyRosterPage() {
     const maxNights = schedulingSettings?.max_night_shifts_per_week ?? 4;
     const minRestHours = schedulingSettings?.min_rest_hours ?? 11;
     const maxConsecutiveDays = schedulingSettings?.max_consecutive_days ?? 6;
+    const autoFillMaxDays = schedulingSettings?.autofill_target_days_per_staff ?? 5;
     const weights = {
       ...DEFAULT_AUTOFILL_WEIGHTS,
       ...((schedulingSettings?.autofill_weights as Record<string, number> | undefined) || {}),
@@ -1139,7 +1277,7 @@ export default function WeeklyRosterPage() {
         shiftType: ShiftType
       ): AutoFillRejectReason | null => {
         const id = staff.id;
-        if ((staffShiftCount.get(id) ?? 0) >= maxDaysPerStaff) return 'max_days_reached';
+        if ((staffShiftCount.get(id) ?? 0) >= autoFillMaxDays) return 'max_days_reached';
         if (staffAssignedDays.get(id)?.has(dayIdx)) return 'already_assigned';
         if (blockedTypes.get(id)?.has(shiftType)) return 'blocked_shift_type';
 
@@ -1478,7 +1616,7 @@ export default function WeeklyRosterPage() {
         ? `across ${activeTypes.length} shift types`
         : `using ${activeTypes.map((t) => SHIFT_MAP[t]?.label ?? t).join(', ')}`;
       toast.success(`Auto-filled ${filled} shift(s)`, {
-        description: `Max ${maxDaysPerStaff} days/staff, ${typeLabel}`,
+        description: `${typeLabel}`,
       });
       return next;
     });
@@ -1497,7 +1635,6 @@ export default function WeeklyRosterPage() {
     staffList,
     weekDates,
     existingShifts,
-    maxDaysPerStaff,
     blockedTypes,
     noWeekendStaff,
     preferredShiftTypes,
@@ -1509,6 +1646,72 @@ export default function WeeklyRosterPage() {
     predictiveDemandByWeekday,
     saveAutofillRunMutation,
   ]);
+
+  const handleAutoFill = useCallback(async () => {
+    if (weekDates.length !== 7) return;
+    try {
+      // The planner intentionally receives no UI department filter. It must plan facility-wide.
+      const plan: AutofillPlan = await shiftsApi.autofillPlan({
+        start_date: weekDates[0]!,
+        end_date: weekDates[6]!,
+      });
+
+      setDraft((previous) => {
+        const next = new Map(previous);
+        for (const shift of plan.draft_shifts) {
+          if (shift.shift_date >= today) {
+            next.set(cellKey(shift.staff_resource, shift.shift_date), shift.shift_type);
+          }
+        }
+        return next;
+      });
+      setPlannedShiftDetails((previous) => {
+        const next = new Map(previous);
+        for (const shift of plan.draft_shifts) {
+          next.set(cellKey(shift.staff_resource, shift.shift_date), {
+            department: shift.department,
+            start_time: shift.start_time,
+            end_time: shift.end_time,
+          });
+        }
+        return next;
+      });
+
+      const coverage = plan.report.coverage;
+      const planned = plan.draft_shifts.length;
+      const required = coverage.reduce((total, item) => total + item.required_staff, 0);
+      const finalCoverage = coverage.reduce(
+        (total, item) => total + item.existing_staff + item.planned_staff,
+        0
+      );
+      const translatedReport: AutoFillReport = {
+        filled: planned,
+        balanceMoves: 0,
+        targetCoverageSlots: required,
+        finalCoverageSlots: finalCoverage,
+        fairnessSpread: 0,
+        strategy: 'server-department-coverage-plan',
+        weights: {},
+        topRejectReasons: [],
+        decisions: [],
+      };
+      setAutoFillReport(translatedReport);
+      setAutofillGaps(plan.report.uncovered);
+      setUncoveredPanelOpen(false);
+      setAutofillPlanSummary(plan.report);
+      queryClient.invalidateQueries({ queryKey: ['roster-autofill-runs'] });
+
+      if (planned > 0) {
+        toast.success(`Planned ${planned} draft shift(s)`, {
+          description: `${plan.report.uncovered.length} coverage gap(s) remain. Review and save when ready.`,
+        });
+      } else {
+        toast.info('The server planner found no new shifts to add.');
+      }
+    } catch {
+      toast.error('Failed to generate the server auto-fill plan');
+    }
+  }, [weekDates, today, queryClient]);
 
   // ==========================================================================
   // Print
@@ -1540,6 +1743,31 @@ export default function WeeklyRosterPage() {
   const isLoading = resourcesLoading || shiftsLoading;
   const selectedRunA = autofillRuns.find((run) => run.id === compareRunA) ?? null;
   const selectedRunB = autofillRuns.find((run) => run.id === compareRunB) ?? null;
+  const normalizeRunReport = useCallback((run: AutofillRun | null) => {
+    const report = (run?.report ?? {}) as Record<string, unknown>;
+    const coverageRequired = Number(
+      report.coverage_required ?? report.targetCoverageSlots ?? report.coverageRequired ?? 0
+    );
+    const coverageFilled = Number(
+      report.coverage_filled ?? report.finalCoverageSlots ?? report.coverageFilled ?? 0
+    );
+    const coverageUnfilled = Number(
+      report.coverage_unfilled ?? Math.max(coverageRequired - coverageFilled, 0)
+    );
+    const fairnessSpread = Number(report.fairness_spread ?? report.fairnessSpread ?? 0);
+    const staffScheduled = Number(report.staff_scheduled ?? report.filled ?? 0);
+    const staffUnassigned = Number(report.staff_unassigned ?? 0);
+    return {
+      coverageRequired,
+      coverageFilled,
+      coverageUnfilled,
+      fairnessSpread,
+      staffScheduled,
+      staffUnassigned,
+    };
+  }, []);
+  const selectedRunASummary = normalizeRunReport(selectedRunA);
+  const selectedRunBSummary = normalizeRunReport(selectedRunB);
   const configuredActiveTypes =
     (schedulingSettings?.active_shift_types as string[] | undefined) ?? [];
   const configuredDefaultPattern =
@@ -1559,7 +1787,7 @@ export default function WeeklyRosterPage() {
       <div className={`space-y-4 ${hasDraftChanges ? 'pb-20' : ''}`}>
         <PageHeader
           title="Weekly Roster"
-          helpContent="Plan shifts for the week ahead. Click cells to assign shift types. Use the paint brush selector to choose a shift type, then click staff×day cells. Save when done. Tap the note icon on any saved shift to add comments."
+          helpContent="Plan shifts for the week ahead. Click a cell to cycle through shift types, then click until clear if needed. Save when done. Tap the note icon on any saved shift to add comments."
           actions={
             <div className="flex items-center gap-1 sm:gap-2">
               {/* === Desktop: full button row (hidden on mobile) === */}
@@ -1587,7 +1815,7 @@ export default function WeeklyRosterPage() {
                             {autofillDisabledReason
                               ? autofillDisabledReason
                               : configuredActiveTypes.length > 0
-                                ? `Fill active shift types (${configuredActiveTypes.join(', ')}), max ${maxDaysPerStaff} days/staff, mode ${configuredAutofillMode === 'BALANCED_UTILIZATION' ? `Balanced Utilization (${configuredTargetDays} target days)` : 'Minimum Coverage'}`
+                                ? `Fill active shift types (${configuredActiveTypes.join(', ')}), mode ${configuredAutofillMode === 'BALANCED_UTILIZATION' ? `Balanced Utilization (${configuredTargetDays} target days)` : 'Minimum Coverage'}`
                                 : `Fallback using default shift pattern (${configuredDefaultPattern.join(', ')}), mode ${configuredAutofillMode === 'BALANCED_UTILIZATION' ? `Balanced Utilization (${configuredTargetDays} target days)` : 'Minimum Coverage'}`}
                           </p>
                         </TooltipContent>
@@ -1605,22 +1833,45 @@ export default function WeeklyRosterPage() {
                   Print
                 </Button>
                 {canManageSchedules && (
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button size="sm" variant="outline" asChild>
+                          <Link href="/scheduling/roster/settings">
+                            <Settings className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Roster Settings & Staff Constraints</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+                {canManageSchedules && (
                   <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={existingShifts.size === 0 || clearRosterMutation.isPending}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        {clearRosterMutation.isPending ? (
-                          <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="mr-1 h-4 w-4" />
-                        )}
-                        Clear Week
-                      </Button>
-                    </AlertDialogTrigger>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="icon" variant="outline" className="h-8 w-8">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem
+                            disabled={existingShifts.size === 0 || clearRosterMutation.isPending}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            {clearRosterMutation.isPending ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="mr-2 h-4 w-4" />
+                            )}
+                            Clear Week
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Clear this week&apos;s roster?</AlertDialogTitle>
@@ -1642,60 +1893,10 @@ export default function WeeklyRosterPage() {
                     </AlertDialogContent>
                   </AlertDialog>
                 )}
-                {canManageSchedules && (
-                  <TooltipProvider delayDuration={200}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button size="sm" variant="outline" asChild>
-                          <Link href="/scheduling/roster/settings">
-                            <Settings className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Roster Settings & Staff Constraints</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-                {canManageSchedules && hasDraftChanges && (
-                  <Button size="sm" variant="outline" onClick={() => setDraft(new Map())}>
-                    <Eraser className="mr-1 h-4 w-4" />
-                    Discard
-                  </Button>
-                )}
-                {canManageSchedules && (
-                  <Button
-                    size="sm"
-                    onClick={() => saveMutation.mutate()}
-                    disabled={!hasDraftChanges || saveMutation.isPending}
-                  >
-                    {saveMutation.isPending ? (
-                      <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Save className="mr-1 h-4 w-4" />
-                    )}
-                    Save Roster{hasDraftChanges ? ` (${draft.size})` : ''}
-                  </Button>
-                )}
               </div>
 
-              {/* === Mobile: Save + Settings + overflow menu (shown below md) === */}
+              {/* === Mobile: settings + overflow menu (shown below md) === */}
               <div className="flex items-center gap-1.5 md:hidden">
-                {canManageSchedules && (
-                  <Button
-                    size="sm"
-                    onClick={() => saveMutation.mutate()}
-                    disabled={!hasDraftChanges || saveMutation.isPending}
-                  >
-                    {saveMutation.isPending ? (
-                      <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Save className="mr-1 h-4 w-4" />
-                    )}
-                    Save{hasDraftChanges ? ` (${draft.size})` : ''}
-                  </Button>
-                )}
                 {canManageSchedules && (
                   <Button size="icon" variant="outline" className="h-8 w-8" asChild>
                     <Link href="/scheduling/roster/settings">
@@ -1726,22 +1927,36 @@ export default function WeeklyRosterPage() {
                     {canManageSchedules && (
                       <>
                         <DropdownMenuSeparator />
-                        {hasDraftChanges && (
-                          <DropdownMenuItem onClick={() => setDraft(new Map())}>
-                            <Eraser className="mr-2 h-4 w-4" />
-                            Discard Changes
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem
-                          onClick={() => {
-                            if (existingShifts.size > 0) clearRosterMutation.mutate();
-                          }}
-                          disabled={existingShifts.size === 0 || clearRosterMutation.isPending}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Clear Week
-                        </DropdownMenuItem>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem
+                              disabled={existingShifts.size === 0 || clearRosterMutation.isPending}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Clear Week
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Clear this week&apos;s roster?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will delete all <strong>scheduled</strong> shifts for {weekLabel}.
+                                Active, completed, and cancelled shifts will not be affected. This action
+                                cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => clearRosterMutation.mutate()}
+                                className="bg-destructive text-white hover:bg-destructive/90"
+                              >
+                                Clear Roster
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </>
                     )}
                   </DropdownMenuContent>
@@ -1751,7 +1966,7 @@ export default function WeeklyRosterPage() {
           }
         />
 
-        {/* Week Nav + Paint Brush */}
+        {/* Week Nav + Controls */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           {/* Week Navigation */}
           <div className="flex items-center gap-2">
@@ -1769,143 +1984,53 @@ export default function WeeklyRosterPage() {
             </Button>
           </div>
 
-          {/* Paint Brush Selector + Department (desktop) */}
+          {/* Department + staffing controls (desktop) */}
           <div className="hidden flex-wrap items-center gap-2 md:flex">
-            {canManageSchedules && (
-              <>
-                <span className="shrink-0 text-xs text-muted-foreground">Paint:</span>
-                <Select value={paintType} onValueChange={(v) => setPaintType(v as ShiftType)}>
-                  <SelectTrigger className="h-8 w-[160px] text-xs">
-                    <SelectValue>
-                      {(() => {
-                        const st = SHIFT_MAP[paintType];
-                        return st ? (
-                          <span className="flex items-center gap-1.5">
-                            {st.icon}
-                            <span>{st.label}</span>
-                          </span>
-                        ) : (
-                          paintType
-                        );
-                      })()}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Working
-                    </div>
-                    {availableShiftTypes
-                      .filter((st) => !st.isOff)
-                      .map((st) => (
-                        <SelectItem key={st.value} value={st.value}>
-                          <span className="flex items-center gap-2">
-                            {st.icon}
-                            <span>{shiftTypeDefaults?.[st.value]?.label || st.label}</span>
-                            <span className="ml-auto text-muted-foreground">
-                              ({shiftTypeDefaults?.[st.value]?.start_time ?? st.start}–
-                              {shiftTypeDefaults?.[st.value]?.end_time ?? st.end})
-                            </span>
-                          </span>
-                        </SelectItem>
-                      ))}
-                    <div className="mt-1 border-t px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Off / Leave
-                    </div>
-                    {availableShiftTypes
-                      .filter((st) => st.isOff)
-                      .map((st) => (
-                        <SelectItem key={st.value} value={st.value}>
-                          <span className="flex items-center gap-2">
-                            {st.icon}
-                            <span>{st.label}</span>
-                          </span>
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </>
-            )}
-
             <Select
-              value={departmentFilter || '_none'}
-              onValueChange={(v) => setDepartmentFilter(v === '_none' ? '' : v)}
+              value={departmentFilter === null ? '_none' : String(departmentFilter)}
+              onValueChange={(value) =>
+                setDepartmentFilter(value === '_none' ? null : Number(value))
+              }
             >
               <SelectTrigger className="h-8 w-[130px] text-xs">
-                <SelectValue placeholder="Department" />
+                <SelectValue placeholder="Department">
+                  {selectedDepartmentCode ?? 'All Depts'}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="_none">All Depts</SelectItem>
                 {departments.map((d) => (
-                  <SelectItem key={d.name} value={d.name}>
+                  <SelectItem key={d.id} value={String(d.id)}>
                     {d.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
-            {canManageSchedules && (
-              <TooltipProvider delayDuration={200}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Select
-                      value={String(maxDaysPerStaff)}
-                      onValueChange={(v) => setMaxDaysPerStaff(Number(v))}
-                    >
-                      <SelectTrigger className="h-8 w-[80px] text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {[3, 4, 5, 6, 7].map((n) => (
-                          <SelectItem key={n} value={String(n)}>
-                            {n} days
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Max days per staff for Auto-Fill</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
           </div>
 
           {/* Filters (mobile only) — stacked vertically */}
           <div className="flex items-center gap-2 md:hidden">
             <Select
-              value={departmentFilter || '_none'}
-              onValueChange={(v) => setDepartmentFilter(v === '_none' ? '' : v)}
+              value={departmentFilter === null ? '_none' : String(departmentFilter)}
+              onValueChange={(value) =>
+                setDepartmentFilter(value === '_none' ? null : Number(value))
+              }
             >
               <SelectTrigger className="h-8 w-[110px] text-xs">
-                <SelectValue placeholder="Department" />
+                <SelectValue placeholder="Department">
+                  {selectedDepartmentCode ?? 'All Depts'}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="_none">All Depts</SelectItem>
                 {departments.map((d) => (
-                  <SelectItem key={d.name} value={d.name}>
+                  <SelectItem key={d.id} value={String(d.id)}>
                     {d.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            {canManageSchedules && (
-              <Select
-                value={String(maxDaysPerStaff)}
-                onValueChange={(v) => setMaxDaysPerStaff(Number(v))}
-              >
-                <SelectTrigger className="h-8 w-[75px] text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[3, 4, 5, 6, 7].map((n) => (
-                    <SelectItem key={n} value={String(n)}>
-                      {n} days
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
           </div>
         </div>
 
@@ -2005,79 +2130,108 @@ export default function WeeklyRosterPage() {
           </div>
         )}
 
-        {autoFillReport && (
+        {autofillPlanSummary && (
           <Card className="border-primary/30 bg-primary/5">
             <CardContent className="space-y-2 p-3">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-medium">Auto-fill report ({autoFillReport.strategy})</p>
-                <Badge variant="outline" className="text-xs">
-                  fairness spread {autoFillReport.fairnessSpread}
-                </Badge>
+                <p className="text-sm font-medium">Auto-fill plan summary</p>
+                <Badge variant="outline" className="text-xs">Review before saving</Badge>
               </div>
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                <Badge variant="secondary">{autoFillReport.filled} filled</Badge>
                 <Badge variant="secondary">
-                  {autoFillReport.finalCoverageSlots}/{autoFillReport.targetCoverageSlots} coverage
+                  {futureAutofillSummary?.coverageFilled ?? 0}/
+                  {futureAutofillSummary?.coverageRequired ?? 0} future coverage filled
                 </Badge>
+                <Badge variant="secondary">
+                  {futureAutofillSummary?.coverageUnfilled ?? 0} future staff-shifts unfilled
+                </Badge>
+                <Badge variant="secondary">
+                  fairness spread {autofillPlanSummary.fairness_spread.toFixed(2)}
+                </Badge>
+                <Badge variant="secondary">{autofillPlanSummary.staff_scheduled} staff scheduled</Badge>
+                <Badge variant="secondary">{autofillPlanSummary.staff_unassigned} staff unassigned</Badge>
               </div>
-              {autoFillReport.topRejectReasons.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  {autoFillReport.topRejectReasons.map((item) => (
-                    <span key={item.reason}>
-                      {REJECT_REASON_LABELS[item.reason]}: {item.count}
-                    </span>
-                  ))}
-                </div>
-              )}
             </CardContent>
           </Card>
         )}
 
-        {autoFillReport && (
-          <Collapsible open={decisionLogOpen} onOpenChange={setDecisionLogOpen}>
-            <Card>
-              <CardContent className="p-0">
+        {autofillGaps.length > 0 && (
+          <Card className="border-warning/40 bg-warning/5">
+            <CardContent className="p-0">
+              <Collapsible open={uncoveredPanelOpen} onOpenChange={setUncoveredPanelOpen}>
                 <CollapsibleTrigger asChild>
-                  <button className="flex w-full items-center justify-between p-3 text-left transition-colors hover:bg-muted/40">
-                    <span className="text-sm font-medium">Auto-fill Decision Log</span>
-                    <ChevronDown
-                      className={`h-4 w-4 transition-transform ${decisionLogOpen ? 'rotate-180' : ''}`}
-                    />
+                  <button className="flex w-full items-center justify-between gap-2 p-3 text-left transition-colors hover:bg-muted/30">
+                    <p className="text-sm font-medium">Uncovered Staffing Requirements</p>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">
+                        {autofillGaps.length} slots ·{' '}
+                        {autofillGaps.reduce((total, gap) => total + gap.uncovered_staff, 0)} staff missing
+                      </Badge>
+                      <ChevronDown
+                        className={`h-4 w-4 shrink-0 transition-transform ${uncoveredPanelOpen ? 'rotate-180' : ''}`}
+                      />
+                    </div>
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="space-y-2 px-3 pb-3">
-                    {autoFillReport.decisions.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">
-                        No decisions captured for this run.
-                      </p>
-                    ) : (
-                      autoFillReport.decisions.map((decision, index) => (
-                        <div
-                          key={`${decision.staffId}-${decision.date}-${index}`}
-                          className="rounded-md border p-2"
+                  <div className="space-y-2 border-t px-3 py-3">
+                    {groupedAutofillGaps.map((group) => {
+                      const cause = GAP_CAUSE_LABELS[group.cause] ?? {
+                        title: 'No eligible staff available',
+                        description: 'No staff member passed the configured scheduling rules.',
+                        actionLabel: 'Review staff constraints',
+                        actionHref: '/scheduling/roster/settings',
+                      };
+                      const departmentIds = new Set(group.gaps.map((gap) => gap.department_id));
+                      return (
+                        <Collapsible
+                          key={group.cause}
+                          open={openGapCause === group.cause}
+                          onOpenChange={(open) => setOpenGapCause(open ? group.cause : null)}
                         >
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="text-sm font-medium">{decision.staffName}</p>
-                            <Badge variant="outline" className="text-xs">
-                              {decision.shiftType} · {decision.date}
-                            </Badge>
+                          <div className="rounded-md border border-warning/30 bg-background/70">
+                            <div className="flex items-start gap-3 p-3">
+                              <CollapsibleTrigger asChild>
+                                <button className="flex min-w-0 flex-1 items-start justify-between gap-3 text-left hover:bg-muted/30">
+                                  <span className="min-w-0">
+                                    <span className="block text-sm font-medium">{cause.title}</span>
+                                    <span className="mt-1 block text-xs text-muted-foreground">
+                                      {group.totalShortage} staff-shift{group.totalShortage === 1 ? '' : 's'} missing across {departmentIds.size} department{departmentIds.size === 1 ? '' : 's'} · {group.gaps.length} date/shift slot{group.gaps.length === 1 ? '' : 's'}
+                                    </span>
+                                    <span className="mt-1 block text-xs text-muted-foreground">{cause.description}</span>
+                                  </span>
+                                  <ChevronDown className={`mt-0.5 h-4 w-4 shrink-0 transition-transform ${openGapCause === group.cause ? 'rotate-180' : ''}`} />
+                                </button>
+                              </CollapsibleTrigger>
+                              <Button size="sm" variant="outline" className="shrink-0" asChild>
+                                <Link href={cause.actionHref}>{cause.actionLabel}</Link>
+                              </Button>
+                            </div>
+                            <CollapsibleContent>
+                              <div className="space-y-1 border-t px-3 py-2">
+                                {group.gaps.map((gap) => {
+                                  const departmentName = departments.find((department) => department.id === gap.department_id)?.name ?? `Department #${gap.department_id}`;
+                                  const shiftLabel = SHIFT_MAP[gap.shift_type]?.label ?? gap.shift_type;
+                                  return (
+                                    <div key={`${gap.shift_date}-${gap.department_id}-${gap.shift_type}`} className="flex items-center justify-between gap-3 py-1 text-xs">
+                                      <span>{departmentName} · {gap.shift_date} · {shiftLabel}</span>
+                                      <Badge variant="outline" className="shrink-0">{gap.uncovered_staff} missing</Badge>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </CollapsibleContent>
                           </div>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            score: {decision.score.toFixed(2)}
-                          </p>
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            {decision.rationale.join(', ')}
-                          </p>
-                        </div>
-                      ))
-                    )}
+                        </Collapsible>
+                      );
+                    })}
                   </div>
                 </CollapsibleContent>
-              </CardContent>
-            </Card>
-          </Collapsible>
+              </Collapsible>
+            </CardContent>
+          </Card>
         )}
+
 
         <Card>
           <CardContent className="space-y-3 p-3">
@@ -2138,21 +2292,27 @@ export default function WeeklyRosterPage() {
               <div className="space-y-1.5 rounded-md border p-3 text-xs">
                 <p className="text-sm font-medium">Compare Summary</p>
                 <p>
-                  A filled: {Number((selectedRunA.report as Record<string, unknown>).filled || 0)}
+                  A scheduled: {selectedRunASummary.staffScheduled}
                 </p>
                 <p>
-                  B filled: {Number((selectedRunB.report as Record<string, unknown>).filled || 0)}
+                  B scheduled: {selectedRunBSummary.staffScheduled}
                 </p>
                 <p>
-                  Coverage A/B:{' '}
-                  {Number((selectedRunA.report as Record<string, unknown>).finalCoverageSlots || 0)}{' '}
-                  /
-                  {Number((selectedRunB.report as Record<string, unknown>).finalCoverageSlots || 0)}
+                  Coverage A: {selectedRunASummary.coverageFilled}/{selectedRunASummary.coverageRequired}{' '}
+                  ({selectedRunASummary.coverageUnfilled} unfilled)
+                </p>
+                <p>
+                  Coverage B: {selectedRunBSummary.coverageFilled}/{selectedRunBSummary.coverageRequired}{' '}
+                  ({selectedRunBSummary.coverageUnfilled} unfilled)
                 </p>
                 <p>
                   Fairness spread A/B:{' '}
-                  {Number((selectedRunA.report as Record<string, unknown>).fairnessSpread || 0)} /
-                  {Number((selectedRunB.report as Record<string, unknown>).fairnessSpread || 0)}
+                  {selectedRunASummary.fairnessSpread.toFixed(2)} /
+                  {selectedRunBSummary.fairnessSpread.toFixed(2)}
+                </p>
+                <p>
+                  Unassigned staff A/B: {selectedRunASummary.staffUnassigned} /
+                  {selectedRunBSummary.staffUnassigned}
                 </p>
               </div>
             )}
@@ -2236,6 +2396,11 @@ export default function WeeklyRosterPage() {
                               className={`px-1 py-1 text-center ${canManageSchedules && !isPast ? 'cursor-pointer' : ''} transition-colors ${
                                 isToday ? 'bg-primary/5' : ''
                               } ${isPast ? 'opacity-50' : ''} ${conflict ? 'bg-orange-50 dark:bg-orange-950/20' : ''} hover:bg-muted/50`}
+                              title={
+                                isPast && canManageSchedules
+                                  ? 'Past dates are locked. Auto-fill and manual edits only apply to today and future dates.'
+                                  : undefined
+                              }
                               onClick={() => handleCellClick(staff.id, date)}
                               onContextMenu={
                                 hasSavedShift
@@ -2279,6 +2444,11 @@ export default function WeeklyRosterPage() {
                                     title={`${savedShift.comments_count} note(s)`}
                                   >
                                     {savedShift.comments_count}
+                                  </span>
+                                )}
+                                {isPast && (
+                                  <span className="absolute -right-0.5 -bottom-0.5 rounded-full bg-muted p-0.5 text-muted-foreground">
+                                    <Lock className="h-2.5 w-2.5" />
                                   </span>
                                 )}
                                 {conflict && (
@@ -2411,6 +2581,11 @@ export default function WeeklyRosterPage() {
                       className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors ${
                         canManageSchedules && !isPast ? 'cursor-pointer active:bg-muted/80' : ''
                       } ${isPast ? 'opacity-50' : ''} ${conflict ? 'border-orange-300 bg-orange-50/50 dark:border-orange-700 dark:bg-orange-950/10' : 'bg-card'}`}
+                      title={
+                        isPast && canManageSchedules
+                          ? 'Past dates are locked. Auto-fill and manual edits only apply to today and future dates.'
+                          : undefined
+                      }
                       onClick={() => handleCellClick(staff.id, date)}
                     >
                       {/* Avatar */}
@@ -2434,6 +2609,15 @@ export default function WeeklyRosterPage() {
 
                       {/* Shift badge + actions */}
                       <div className="flex shrink-0 items-center gap-1.5">
+                        {isPast && (
+                          <span
+                            className="inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                            title="Past date is locked"
+                          >
+                            <Lock className="mr-1 h-2.5 w-2.5" />
+                            Locked
+                          </span>
+                        )}
                         {cell.type && shiftInfo ? (
                           <div
                             className={`inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs font-medium ${
@@ -2482,82 +2666,76 @@ export default function WeeklyRosterPage() {
                 })}
               </div>
 
-              {/* Mobile sticky paint bar */}
-              {canManageSchedules && (
-                <div className="sticky bottom-0 z-10 -mx-4 mt-3 border-t bg-background/95 px-4 py-2 backdrop-blur-sm">
-                  <div className="scrollbar-none flex items-center gap-1.5 overflow-x-auto pb-1">
-                    <span className="mr-1 shrink-0 text-[10px] text-muted-foreground">Paint:</span>
-                    {availableShiftTypes
-                      .filter((st) => !st.isOff)
-                      .map((st) => (
-                        <button
-                          key={st.value}
-                          onClick={() => setPaintType(st.value)}
-                          className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1.5 text-[11px] font-medium transition-all ${
-                            customShiftColors.has(st.value) ? 'text-foreground' : st.color
-                          } ${paintType === st.value ? 'scale-105 ring-2 ring-primary ring-offset-1' : 'opacity-70'}`}
-                          style={
-                            customShiftColors.has(st.value)
-                              ? {
-                                  backgroundColor: `${customShiftColors.get(st.value)}20`,
-                                  borderColor: `${customShiftColors.get(st.value)}80`,
-                                }
-                              : undefined
-                          }
-                        >
-                          {st.icon}
-                          <span>{st.short}</span>
-                        </button>
-                      ))}
-                    <div className="mx-0.5 h-5 w-px shrink-0 bg-border" />
-                    {availableShiftTypes
-                      .filter((st) => st.isOff)
-                      .map((st) => (
-                        <button
-                          key={st.value}
-                          onClick={() => setPaintType(st.value)}
-                          className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1.5 text-[11px] font-medium transition-all ${
-                            st.color
-                          } ${paintType === st.value ? 'scale-105 ring-2 ring-primary ring-offset-1' : 'opacity-70'}`}
-                        >
-                          {st.icon}
-                          <span>{st.short}</span>
-                        </button>
-                      ))}
-                  </div>
-                </div>
-              )}
             </>
           )}
         </div>
 
         {/* Summary bar */}
-        {canManageSchedules && hasDraftChanges && (
+        {canManageSchedules && (hasDraftChanges || existingShifts.size > 0) && (
           <div className="sticky bottom-14 z-20 md:bottom-4">
             <Card className="border-primary/20 shadow-lg">
               <CardContent className="flex items-center justify-between gap-4 px-4 py-3">
                 <div className="flex items-center gap-2 text-sm">
                   <AlertCircle className="h-4 w-4 text-primary" />
                   <span className="font-medium">
-                    {draft.size} unsaved change{draft.size !== 1 ? 's' : ''}
+                    {hasDraftChanges
+                      ? `${draft.size} unsaved change${draft.size !== 1 ? 's' : ''}`
+                      : 'Saved shifts exist for this week'}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setDraft(new Map())}>
-                    Discard
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => saveMutation.mutate()}
-                    disabled={saveMutation.isPending}
-                  >
-                    {saveMutation.isPending ? (
-                      <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="mr-1 h-4 w-4" />
-                    )}
-                    Save
-                  </Button>
+                  {existingShifts.size > 0 && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-destructive hover:text-destructive"
+                          disabled={clearRosterMutation.isPending}
+                        >
+                          <Trash2 className="mr-1 h-4 w-4" />
+                          Reset Week
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Reset this week&apos;s saved roster?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will delete all scheduled shifts for {weekLabel}. Active, completed,
+                            and cancelled shifts will not be affected.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => clearRosterMutation.mutate()}
+                            className="bg-destructive text-white hover:bg-destructive/90"
+                          >
+                            Reset Week
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                  {hasDraftChanges && (
+                    <>
+                      <Button size="sm" variant="outline" onClick={discardDraft}>
+                        Discard
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => saveMutation.mutate()}
+                        disabled={saveMutation.isPending}
+                      >
+                        {saveMutation.isPending ? (
+                          <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="mr-1 h-4 w-4" />
+                        )}
+                        Save
+                      </Button>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>

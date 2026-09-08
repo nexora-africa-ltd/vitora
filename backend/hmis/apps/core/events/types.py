@@ -299,6 +299,8 @@ class SchedulingEvents:
     SHIFT_BREAK_STARTED = "scheduling.shift.break_started"
     SHIFT_BREAK_RESUMED = "scheduling.shift.break_resumed"
     SHIFT_EMERGENCY_CREATED = "scheduling.shift.emergency_created"
+    DEPARTMENT_SHIFT_CONFIG_CREATED = "scheduling.department_shift_config.created"
+    DEPARTMENT_SHIFT_CONFIG_UPDATED = "scheduling.department_shift_config.updated"
 
     # Explicit shift vacancy lifecycle
     SHIFT_VACANCY_CREATED = "scheduling.shift_vacancy.created"

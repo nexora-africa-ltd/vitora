@@ -321,7 +321,8 @@ export const SchedulingSettingsSchema = z.object({
     .array(
       z.object({
         scope: z.enum(['DEPARTMENT', 'ROLE']),
-        value: z.string(),
+        value: z.string().optional(),
+        department_id: z.number().optional(),
         min_staff: z.number(),
         shift_types: z.array(z.string()),
       })
@@ -331,7 +332,8 @@ export const SchedulingSettingsSchema = z.object({
     .array(
       z.object({
         scope: z.enum(['DEPARTMENT', 'ROLE']),
-        value: z.string(),
+        value: z.string().optional(),
+        department_id: z.number().optional(),
         max_staff: z.number(),
         shift_types: z.array(z.string()),
       })
@@ -598,4 +600,104 @@ export const ShiftTypeConfigBulkUpsertResultSchema = z.object({
       })
     )
     .optional(),
+});
+
+// =============================================================================
+// Department Shift Configuration & Server Autofill Plans
+// =============================================================================
+
+export const DepartmentShiftConfigSchema = z.object({
+  id: z.number(),
+  department: z.number(),
+  department_name: z.string(),
+  shift_type: ShiftTypeSchema,
+  shift_type_display: z.string(),
+  is_active: z.boolean(),
+  label: z.string(),
+  display_label: z.string(),
+  start_time: z.string(),
+  end_time: z.string(),
+  color: z.string(),
+  min_staff: z.number(),
+  max_staff: z.number().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const PaginatedDepartmentShiftConfigSchema = createPaginatedSchema(
+  DepartmentShiftConfigSchema
+);
+
+export const DepartmentShiftConfigDefaultsSchema = z.record(
+  z.record(
+    z.object({
+      start_time: z.string(),
+      end_time: z.string(),
+      label: z.string(),
+      color: z.string(),
+      min_staff: z.number(),
+      max_staff: z.number().nullable(),
+    })
+  )
+);
+
+export const DepartmentRosterSettingsSchema = z.object({
+  id: z.number(),
+  department: z.number(),
+  department_name: z.string(),
+  repeating_shift_pattern: z.array(z.string()),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const PaginatedDepartmentRosterSettingsSchema = createPaginatedSchema(
+  DepartmentRosterSettingsSchema
+);
+
+export const AutofillPlanSchema = z.object({
+  draft_shifts: z.array(
+    z.object({
+      staff_resource: z.number(),
+      department: z.number(),
+      shift_date: z.string(),
+      start_time: z.string(),
+      end_time: z.string(),
+      shift_type: ShiftTypeSchema,
+      config_source: z.enum(['department', 'facility']),
+    })
+  ),
+  report: z.object({
+    plan_only: z.boolean(),
+    resources_considered: z.number(),
+    staff_scheduled: z.number(),
+    staff_unassigned: z.number(),
+    coverage_required: z.number(),
+    coverage_filled: z.number(),
+    coverage_unfilled: z.number(),
+    fairness_spread: z.number(),
+    date_range: z.object({ start_date: z.string(), end_date: z.string() }),
+    coverage: z.array(
+      z.object({
+        shift_date: z.string(),
+        department_id: z.number(),
+        shift_type: ShiftTypeSchema,
+        required_staff: z.number(),
+        existing_staff: z.number(),
+        planned_staff: z.number(),
+        uncovered_staff: z.number(),
+        config_source: z.enum(['department', 'facility']),
+      })
+    ),
+    uncovered: z.array(
+      z.object({
+        shift_date: z.string(),
+        department_id: z.number(),
+        shift_type: ShiftTypeSchema,
+        reason: z.string(),
+        reason_counts: z.record(z.number()).optional(),
+        uncovered_staff: z.number(),
+      })
+    ),
+    constraints_applied: z.array(z.string()),
+  }),
 });

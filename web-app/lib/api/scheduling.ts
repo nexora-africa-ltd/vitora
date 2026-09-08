@@ -36,6 +36,12 @@ import {
   ShiftTypeConfigSchema,
   PaginatedShiftTypeConfigSchema,
   ShiftTypeConfigBulkUpsertResultSchema,
+  DepartmentShiftConfigSchema,
+  PaginatedDepartmentShiftConfigSchema,
+  DepartmentShiftConfigDefaultsSchema,
+  DepartmentRosterSettingsSchema,
+  PaginatedDepartmentRosterSettingsSchema,
+  AutofillPlanSchema,
 } from '@/lib/schemas/scheduling.schema';
 import type {
   Resource,
@@ -93,6 +99,15 @@ import type {
   ShiftTypeConfigCreateData,
   ShiftTypeConfigDefaults,
   ShiftTypeConfigBulkUpsertResult,
+  DepartmentShiftConfig,
+  DepartmentShiftConfigCreateData,
+  DepartmentShiftConfigListParams,
+  DepartmentShiftConfigDefaults,
+  DepartmentRosterSettings,
+  DepartmentRosterSettingsCreateData,
+  DepartmentRosterSettingsListParams,
+  AutofillPlan,
+  AutofillPlanData,
 } from '@/lib/types/scheduling';
 
 const BASE_URL = '/api/scheduling';
@@ -557,6 +572,94 @@ export const shiftsApi = {
     return parseResponse(z.array(CrossFacilityConflictSchema), response.data, {
       context: 'shiftsApi.crossFacilityConflicts',
     });
+  },
+
+  /** Return server-calculated draft coverage assignments without persisting shifts. */
+  autofillPlan: async (data: AutofillPlanData): Promise<AutofillPlan> => {
+    const response = await apiClient.post(`${BASE_URL}/shifts/autofill-plan/`, data);
+    return parseResponse(AutofillPlanSchema, response.data, {
+      context: 'shiftsApi.autofillPlan',
+    });
+  },
+};
+
+export const departmentShiftConfigsApi = {
+  list: async (
+    params?: DepartmentShiftConfigListParams
+  ): Promise<{ count: number; results: DepartmentShiftConfig[] }> => {
+    const response = await apiClient.get(`${BASE_URL}/department-shift-configs/`, { params });
+    return parseResponse(PaginatedDepartmentShiftConfigSchema, response.data, {
+      context: 'departmentShiftConfigsApi.list',
+    });
+  },
+
+  get: async (id: number): Promise<DepartmentShiftConfig> => {
+    const response = await apiClient.get(`${BASE_URL}/department-shift-configs/${id}/`);
+    return parseResponse(DepartmentShiftConfigSchema, response.data, {
+      context: 'departmentShiftConfigsApi.get',
+    });
+  },
+
+  create: async (data: DepartmentShiftConfigCreateData): Promise<DepartmentShiftConfig> => {
+    const response = await apiClient.post(`${BASE_URL}/department-shift-configs/`, data);
+    return parseResponse(DepartmentShiftConfigSchema, response.data, {
+      context: 'departmentShiftConfigsApi.create',
+    });
+  },
+
+  update: async (
+    id: number,
+    data: Partial<DepartmentShiftConfigCreateData>
+  ): Promise<DepartmentShiftConfig> => {
+    const response = await apiClient.patch(`${BASE_URL}/department-shift-configs/${id}/`, data);
+    return parseResponse(DepartmentShiftConfigSchema, response.data, {
+      context: 'departmentShiftConfigsApi.update',
+    });
+  },
+
+  delete: async (id: number): Promise<void> => {
+    await apiClient.delete(`${BASE_URL}/department-shift-configs/${id}/`);
+  },
+
+  defaults: async (): Promise<DepartmentShiftConfigDefaults> => {
+    const response = await apiClient.get(`${BASE_URL}/department-shift-configs/defaults/`);
+    return parseResponse(DepartmentShiftConfigDefaultsSchema, response.data, {
+      context: 'departmentShiftConfigsApi.defaults',
+    });
+  },
+};
+
+export const departmentRosterSettingsApi = {
+  list: async (
+    params?: DepartmentRosterSettingsListParams
+  ): Promise<{ count: number; results: DepartmentRosterSettings[] }> => {
+    const response = await apiClient.get(`${BASE_URL}/department-roster-settings/`, { params });
+    return parseResponse(PaginatedDepartmentRosterSettingsSchema, response.data, {
+      context: 'departmentRosterSettingsApi.list',
+    });
+  },
+
+  create: async (
+    data: DepartmentRosterSettingsCreateData
+  ): Promise<DepartmentRosterSettings> => {
+    const response = await apiClient.post(`${BASE_URL}/department-roster-settings/`, data);
+    return parseResponse(DepartmentRosterSettingsSchema, response.data, {
+      context: 'departmentRosterSettingsApi.create',
+    });
+  },
+
+  update: async (
+    id: number,
+    data: Partial<DepartmentRosterSettingsCreateData>
+  ): Promise<DepartmentRosterSettings> => {
+    const response = await apiClient.patch(`${BASE_URL}/department-roster-settings/${id}/`, data);
+    return parseResponse(DepartmentRosterSettingsSchema, response.data, {
+      context: 'departmentRosterSettingsApi.update',
+    });
+  },
+
+  delete: async (id: number): Promise<void> => {
+    await apiClient.delete(`${BASE_URL}/department-roster-settings/${id}/`);
   },
 };
 

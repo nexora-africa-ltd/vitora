@@ -244,13 +244,13 @@ export default function RosterSettingsPage() {
 
   const [settingsForm, setSettingsForm] = useState<Partial<SchedulingSettings>>({});
   const [newGroupRule, setNewGroupRule] = useState<AutofillGroupMinimumRule>({
-    scope: 'DEPARTMENT',
+    scope: 'ROLE',
     value: '',
     min_staff: 1,
     shift_types: ['DAY'],
   });
   const [newGroupMaxRule, setNewGroupMaxRule] = useState<AutofillGroupMaximumRule>({
-    scope: 'DEPARTMENT',
+    scope: 'ROLE',
     value: '',
     max_staff: 1,
     shift_types: ['NIGHT'],
@@ -314,7 +314,6 @@ export default function RosterSettingsPage() {
   };
 
   const addDefaultPatternType = (shiftType: string) => {
-    if (currentDefaultShiftPattern.includes(shiftType)) return;
     updateSetting('default_shift_pattern', [...currentDefaultShiftPattern, shiftType]);
   };
 
@@ -326,7 +325,7 @@ export default function RosterSettingsPage() {
   };
 
   const addGroupMinimumRule = () => {
-    const value = newGroupRule.value.trim();
+    const value = (newGroupRule.value ?? '').trim();
     if (!value) {
       toast.error('Enter a department or role value');
       return;
@@ -352,7 +351,7 @@ export default function RosterSettingsPage() {
   };
 
   const addGroupMaximumRule = () => {
-    const value = newGroupMaxRule.value.trim();
+    const value = (newGroupMaxRule.value ?? '').trim();
     if (!value) {
       toast.error('Enter a department or role value');
       return;
@@ -392,9 +391,6 @@ export default function RosterSettingsPage() {
     queryFn: () => resourcesApi.list({ resource_type: 'PERSON', page_size: 200, ordering: 'name' }),
   });
   const staffList = staffData?.results ?? [];
-  const availableDepartmentOptions = Array.from(
-    new Set(staffList.map((staff) => (staff.department_name ?? '').trim()).filter((name) => !!name))
-  ).sort((a, b) => a.localeCompare(b));
   const availableRoleOptions = Array.from(
     new Set(
       staffList
@@ -410,10 +406,8 @@ export default function RosterSettingsPage() {
         .filter((name) => !!name)
     )
   ).sort((a, b) => a.localeCompare(b));
-  const currentScopeOptions =
-    newGroupRule.scope === 'DEPARTMENT' ? availableDepartmentOptions : availableRoleOptions;
-  const currentMaxScopeOptions =
-    newGroupMaxRule.scope === 'DEPARTMENT' ? availableDepartmentOptions : availableRoleOptions;
+  const currentScopeOptions = availableRoleOptions;
+  const currentMaxScopeOptions = availableRoleOptions;
   // Add constraint dialog
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newConstraint, setNewConstraint] = useState<StaffConstraintCreateData>({
@@ -859,9 +853,7 @@ export default function RosterSettingsPage() {
                   </p>
 
                   <div className="flex flex-wrap gap-2">
-                    {WORKING_SHIFT_TYPES.filter(
-                      (st) => !currentDefaultShiftPattern.includes(st.value)
-                    ).map((st) => (
+                    {WORKING_SHIFT_TYPES.map((st) => (
                       <Button
                         key={`add-${st.value}`}
                         type="button"
@@ -942,7 +934,7 @@ export default function RosterSettingsPage() {
               <div className="flex items-center gap-2">
                 <Settings className="h-5 w-5 text-primary" />
                 <CardTitle className="text-base">Global Autofill Rules</CardTitle>
-                <HelpPopover content="These rules control coverage and utilization. Group minimum rules set required staffing from specific departments/roles per shift type, while group maximum rules cap over-concentration on a shift. Balanced Utilization mode adds extra assignments toward target days per staff; Minimum Coverage mode stops after required coverage is met." />
+                <HelpPopover content="These facility-wide rules control role coverage and utilization. Configure department-specific coverage, times, and patterns in Department Shift Overrides below." />
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -997,28 +989,10 @@ export default function RosterSettingsPage() {
               <div className="space-y-3 border-t pt-3">
                 <div className="flex items-center gap-2">
                   <Label className="text-sm">Group Minimum Rules</Label>
-                  <HelpPopover content="Guarantee minimum staffing from a specific department or role per day and shift type. These rules are applied as required autofill slots before general balancing." />
+                  <HelpPopover content="Guarantee minimum staffing from a role per day and shift type. Use Department Shift Overrides for department coverage." />
                 </div>
 
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-                  <Select
-                    value={newGroupRule.scope}
-                    onValueChange={(v) =>
-                      setNewGroupRule((prev) => ({
-                        ...prev,
-                        scope: v as 'DEPARTMENT' | 'ROLE',
-                        value: '',
-                      }))
-                    }
-                  >
-                    <SelectTrigger className="h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="DEPARTMENT">Department</SelectItem>
-                      <SelectItem value="ROLE">Role</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                   <Select
                     value={newGroupRule.value || '_none'}
                     onValueChange={(v) =>
@@ -1029,14 +1003,14 @@ export default function RosterSettingsPage() {
                     <SelectTrigger className="h-9">
                       <SelectValue
                         placeholder={
-                          newGroupRule.scope === 'DEPARTMENT' ? 'Select department' : 'Select role'
+                          'Select role'
                         }
                       />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="_none">Select...</SelectItem>
                       {currentScopeOptions.map((option) => (
-                        <SelectItem key={`${newGroupRule.scope}-${option}`} value={option}>
+                        <SelectItem key={`role-${option}`} value={option}>
                           {option}
                         </SelectItem>
                       ))}
@@ -1058,8 +1032,7 @@ export default function RosterSettingsPage() {
                 </div>
                 {currentScopeOptions.length === 0 && (
                   <p className="text-xs text-amber-600">
-                    No {newGroupRule.scope === 'DEPARTMENT' ? 'departments' : 'roles'} found on
-                    staff resources yet.
+                    No roles found on staff resources yet.
                   </p>
                 )}
 
@@ -1088,7 +1061,7 @@ export default function RosterSettingsPage() {
 
                 {currentGroupMinimums.length === 0 ? (
                   <p className="text-xs text-muted-foreground">
-                    No department/role minimum rules configured.
+                      No role minimum rules configured.
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -1099,7 +1072,7 @@ export default function RosterSettingsPage() {
                       >
                         <div className="text-xs">
                           <span className="font-medium">
-                            {rule.scope === 'DEPARTMENT' ? 'Dept' : 'Role'}: {rule.value}
+                            {rule.scope === 'DEPARTMENT' ? `Department ${rule.department_id}` : 'Role'}: {rule.value}
                           </span>
                           <span className="text-muted-foreground">
                             {' '}
@@ -1124,28 +1097,10 @@ export default function RosterSettingsPage() {
               <div className="space-y-3 border-t pt-3">
                 <div className="flex items-center gap-2">
                   <Label className="text-sm">Group Maximum Rules</Label>
-                  <HelpPopover content="Limit over-concentration by capping how many staff from a specific department or role can be placed on the same shift and day." />
+                  <HelpPopover content="Limit how many staff from a role can be placed on the same shift and day. Use Department Shift Overrides for department limits." />
                 </div>
 
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-                  <Select
-                    value={newGroupMaxRule.scope}
-                    onValueChange={(v) =>
-                      setNewGroupMaxRule((prev) => ({
-                        ...prev,
-                        scope: v as 'DEPARTMENT' | 'ROLE',
-                        value: '',
-                      }))
-                    }
-                  >
-                    <SelectTrigger className="h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="DEPARTMENT">Department</SelectItem>
-                      <SelectItem value="ROLE">Role</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                   <Select
                     value={newGroupMaxRule.value || '_none'}
                     onValueChange={(v) =>
@@ -1156,16 +1111,14 @@ export default function RosterSettingsPage() {
                     <SelectTrigger className="h-9">
                       <SelectValue
                         placeholder={
-                          newGroupMaxRule.scope === 'DEPARTMENT'
-                            ? 'Select department'
-                            : 'Select role'
+                          'Select role'
                         }
                       />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="_none">Select...</SelectItem>
                       {currentMaxScopeOptions.map((option) => (
-                        <SelectItem key={`${newGroupMaxRule.scope}-${option}`} value={option}>
+                        <SelectItem key={`role-cap-${option}`} value={option}>
                           {option}
                         </SelectItem>
                       ))}
@@ -1187,8 +1140,7 @@ export default function RosterSettingsPage() {
                 </div>
                 {currentMaxScopeOptions.length === 0 && (
                   <p className="text-xs text-amber-600">
-                    No {newGroupMaxRule.scope === 'DEPARTMENT' ? 'departments' : 'roles'} found on
-                    staff resources yet.
+                    No roles found on staff resources yet.
                   </p>
                 )}
 
@@ -1217,7 +1169,7 @@ export default function RosterSettingsPage() {
 
                 {currentGroupMaximums.length === 0 ? (
                   <p className="text-xs text-muted-foreground">
-                    No department/role maximum rules configured.
+                      No role maximum rules configured.
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -1228,7 +1180,7 @@ export default function RosterSettingsPage() {
                       >
                         <div className="text-xs">
                           <span className="font-medium">
-                            {rule.scope === 'DEPARTMENT' ? 'Dept' : 'Role'}: {rule.value}
+                            {rule.scope === 'DEPARTMENT' ? `Department ${rule.department_id}` : 'Role'}: {rule.value}
                           </span>
                           <span className="text-muted-foreground">
                             {' '}
@@ -1277,6 +1229,24 @@ export default function RosterSettingsPage() {
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-primary" />
+                <CardTitle className="text-base">Department Shift Overrides</CardTitle>
+                <HelpPopover content="Department operating schedules belong with the department itself. Facility shift times below remain the fallback where no department override exists." />
+              </div>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground">
+                Configure each department's active shift types, coverage, and timings from its department settings.
+              </p>
+              <Button variant="outline" asChild>
+                <Link href="/admin/departments">Manage Department Schedules</Link>
+              </Button>
             </CardContent>
           </Card>
 

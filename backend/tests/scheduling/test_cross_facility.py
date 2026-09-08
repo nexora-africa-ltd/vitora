@@ -111,11 +111,14 @@ class TestResourceDepartmentExtraction:
     def test_resource_list_includes_department_name(
         self, authenticated_client, resource_with_department
     ):
-        """ResourceListSerializer should return department_name from linked StaffProfile."""
+        """ResourceListSerializer should return canonical department data from StaffProfile."""
         response = authenticated_client.get("/api/scheduling/resources/")
         assert response.status_code == status.HTTP_200_OK
         results = response.data["results"]
         resource = next(r for r in results if r["id"] == resource_with_department.id)
+        assert (
+            resource["department"] == resource_with_department.staff_profile.primary_department_id
+        )
         assert resource["department_name"] == "Cardiology"
 
     def test_resource_list_department_null_when_no_profile(

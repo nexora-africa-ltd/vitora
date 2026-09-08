@@ -377,7 +377,7 @@ class ResourceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             .exclude(
                 scheduling_resources__facility=facility,
             )
-            .select_related("user")
+            .select_related("user", "primary_department", "primary_role")
         )
 
         created_count = 0
@@ -395,11 +395,14 @@ class ResourceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 code=code,
                 is_active=True,
                 staff_profile=profile,
+                department=profile.primary_department,
                 facility=facility,
                 organization=facility.organization,
                 metadata={
                     "employee_id": profile.employee_id or "",
                     "role": str(profile.primary_role) if profile.primary_role else "",
+                    "role_id": profile.primary_role_id,
+                    "role_code": profile.primary_role.code if profile.primary_role else "",
                     "department": (
                         str(profile.primary_department) if profile.primary_department else ""
                     ),

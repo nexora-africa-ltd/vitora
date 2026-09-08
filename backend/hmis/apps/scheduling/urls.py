@@ -15,6 +15,8 @@ from hmis.apps.scheduling.views import (
     AssignmentOverrideViewSet,
     AssignmentRuleViewSet,
     AssignmentViewSet,
+    DepartmentRosterSettingsViewSet,
+    DepartmentShiftConfigViewSet,
     ResourceViewSet,
     ScheduleViewSet,
     SchedulingSettingsViewSet,
@@ -33,6 +35,14 @@ router.register(r"shifts", ShiftViewSet, basename="shift")
 router.register(r"vacancies", ShiftVacancyViewSet, basename="shift-vacancy")
 router.register(r"settings", SchedulingSettingsViewSet, basename="scheduling-settings")
 router.register(r"shift-type-configs", ShiftTypeConfigViewSet, basename="shift-type-config")
+router.register(
+    r"department-shift-configs", DepartmentShiftConfigViewSet, basename="department-shift-config"
+)
+router.register(
+    r"department-roster-settings",
+    DepartmentRosterSettingsViewSet,
+    basename="department-roster-settings",
+)
 router.register(r"constraints", StaffConstraintViewSet, basename="staff-constraint")
 router.register(r"shift-swaps", ShiftSwapViewSet, basename="shift-swap")
 

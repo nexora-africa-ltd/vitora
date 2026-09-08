@@ -617,14 +617,16 @@ export interface SchedulingSettings {
 
 export interface AutofillGroupMinimumRule {
   scope: 'DEPARTMENT' | 'ROLE';
-  value: string;
+  value?: string;
+  department_id?: number;
   min_staff: number;
   shift_types: string[];
 }
 
 export interface AutofillGroupMaximumRule {
   scope: 'DEPARTMENT' | 'ROLE';
-  value: string;
+  value?: string;
+  department_id?: number;
   max_staff: number;
   shift_types: string[];
 }
@@ -693,6 +695,131 @@ export interface ShiftTypeConfigBulkUpsertResult {
     error?: string;
     errors?: Record<string, string[]>;
   }>;
+}
+
+// =============================================================================
+// Department Shift Configuration & Server Autofill Plans
+// =============================================================================
+
+export interface DepartmentShiftConfig {
+  id: number;
+  department: number;
+  department_name: string;
+  shift_type: ShiftType;
+  shift_type_display: string;
+  is_active: boolean;
+  label: string;
+  display_label: string;
+  start_time: string;
+  end_time: string;
+  color: string;
+  min_staff: number;
+  max_staff: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DepartmentShiftConfigCreateData {
+  department: number;
+  shift_type: ShiftType;
+  is_active?: boolean;
+  label?: string;
+  start_time: string;
+  end_time: string;
+  color?: string;
+  min_staff?: number;
+  max_staff?: number | null;
+}
+
+export interface DepartmentShiftConfigListParams {
+  department?: number;
+  is_active?: boolean;
+  page?: number;
+  page_size?: number;
+  ordering?: string;
+}
+
+export type DepartmentShiftConfigDefaults = Record<
+  string,
+  Record<
+    string,
+    {
+      start_time: string;
+      end_time: string;
+      label: string;
+      color: string;
+      min_staff: number;
+      max_staff: number | null;
+    }
+  >
+>;
+
+export interface DepartmentRosterSettings {
+  id: number;
+  department: number;
+  department_name: string;
+  repeating_shift_pattern: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DepartmentRosterSettingsCreateData {
+  department: number;
+  repeating_shift_pattern: string[];
+}
+
+export interface DepartmentRosterSettingsListParams {
+  department?: number;
+  page?: number;
+  page_size?: number;
+}
+
+export interface AutofillPlanData {
+  start_date: string;
+  end_date: string;
+}
+
+export interface AutofillPlanDraftShift extends ShiftCreateData {
+  department: number;
+  config_source: 'department' | 'facility';
+}
+
+export interface AutofillPlanCoverage {
+  shift_date: string;
+  department_id: number;
+  shift_type: ShiftType;
+  required_staff: number;
+  existing_staff: number;
+  planned_staff: number;
+  uncovered_staff: number;
+  config_source: 'department' | 'facility';
+}
+
+export interface AutofillPlanReport {
+  plan_only: boolean;
+  resources_considered: number;
+  staff_scheduled: number;
+  staff_unassigned: number;
+  coverage_required: number;
+  coverage_filled: number;
+  coverage_unfilled: number;
+  fairness_spread: number;
+  date_range: { start_date: string; end_date: string };
+  coverage: AutofillPlanCoverage[];
+  uncovered: Array<{
+    shift_date: string;
+    department_id: number;
+    shift_type: ShiftType;
+    reason: string;
+    reason_counts?: Record<string, number>;
+    uncovered_staff: number;
+  }>;
+  constraints_applied: string[];
+}
+
+export interface AutofillPlan {
+  draft_shifts: AutofillPlanDraftShift[];
+  report: AutofillPlanReport;
 }
 
 export type ConstraintType =

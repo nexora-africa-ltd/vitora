@@ -53,6 +53,8 @@ from hmis.apps.scheduling.serializers import (
     AppointmentSerializer,
     AppointmentStartSerializer,
     AvailabilityQuerySerializer,
+    DepartmentRosterSettingsSerializer,
+    DepartmentShiftConfigSerializer,
     ResourceListSerializer,
     ResourceSerializer,
     ScheduleBreakSerializer,
@@ -293,6 +295,115 @@ class ShiftTypeConfigViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             response_data["errors"] = errors
             return Response(response_data, status=status.HTTP_207_MULTI_STATUS)
         return Response(response_data, status=status.HTTP_200_OK)
+
+
+class DepartmentShiftConfigViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    """CRUD and defaults for facility department shift type overrides."""
+
+    from hmis.apps.scheduling.models import DepartmentShiftConfig
+
+    queryset = DepartmentShiftConfig.objects.select_related("department")
+    serializer_class = DepartmentShiftConfigSerializer
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
+    tenant_scope = "facility"
+
+    def create(self, request, *args, **kwargs):
+        """Resolve tenant context before serializer validates the department."""
+        self._resolve_tenant_context()
+        return super().create(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        """Persist the override in the request facility."""
+        serializer.save(**self.get_tenant_save_kwargs())
+
+    def get_queryset(self):
+        """Optionally filter department override configs without crossing tenant scope."""
+        queryset = super().get_queryset()
+        department = self.request.query_params.get("department")
+        if department:
+            queryset = queryset.filter(department_id=department)
+        is_active = self.request.query_params.get("is_active")
+        if is_active is not None:
+            queryset = queryset.filter(is_active=is_active.lower() in {"true", "1"})
+        return queryset
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete only when the user holds the model delete permission."""
+        if not request.user.has_perm("scheduling.delete_departmentshiftconfig"):
+            return Response(
+                {"detail": "You do not have permission to delete this resource."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().destroy(request, *args, **kwargs)
+
+    @action(detail=False, methods=["get"], url_path="defaults")
+    def defaults(self, request):
+        """Return active overrides grouped by canonical department ID and shift type."""
+        self._resolve_tenant_context()
+        facility = getattr(request, "facility", None)
+        if not facility:
+            return Response(
+                {"error": "No facility context available"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        result = {}
+        configs = self.get_queryset().filter(facility=facility, is_active=True)
+        for config in configs:
+            department_configs = result.setdefault(str(config.department_id), {})
+            department_configs[config.shift_type] = {
+                "start_time": config.start_time.strftime("%H:%M"),
+                "end_time": config.end_time.strftime("%H:%M"),
+                "label": config.display_label,
+                "color": config.color,
+                "min_staff": config.min_staff,
+                "max_staff": config.max_staff,
+            }
+        return Response(result)
+
+
+class DepartmentRosterSettingsViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    """CRUD and defaults endpoint for canonical per-department repeating rotas."""
+
+    from hmis.apps.scheduling.models import DepartmentRosterSettings
+
+    queryset = DepartmentRosterSettings.objects.select_related("department")
+    serializer_class = DepartmentRosterSettingsSerializer
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
+    tenant_scope = "facility"
+
+    def create(self, request, *args, **kwargs):
+        """Resolve facility context before serializer department validation."""
+        self._resolve_tenant_context()
+        return super().create(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        """Persist the rota in the current facility tenant."""
+        serializer.save(**self.get_tenant_save_kwargs())
+
+    def get_queryset(self):
+        """Optionally filter canonical rotas by local department."""
+        queryset = super().get_queryset()
+        department = self.request.query_params.get("department")
+        return queryset.filter(department_id=department) if department else queryset
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete only when the user has the model delete permission."""
+        if not request.user.has_perm("scheduling.delete_departmentrostersettings"):
+            return Response(
+                {"detail": "You do not have permission to delete this resource."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().destroy(request, *args, **kwargs)
+
+    @action(detail=False, methods=["get"], url_path="defaults")
+    def defaults(self, _request):
+        """Return canonical rotas keyed by department ID for roster clients."""
+        self._resolve_tenant_context()
+        return Response(
+            {
+                str(setting.department_id): setting.repeating_shift_pattern
+                for setting in self.get_queryset().filter(repeating_shift_pattern__isnull=False)
+            }
+        )
 
 
 class StaffConstraintViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):

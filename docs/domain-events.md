@@ -325,7 +325,7 @@ Convention: `<domain>.<aggregate>.<action>`
 | `PATIENT_CREATED` | `core.patient.created` | `core/signals.py` |
 | `PATIENT_UPDATED` | `core.patient.updated` | — (defined, not yet wired) |
 
-### SchedulingEvents (22 constants)
+### SchedulingEvents (24 constants)
 
 | Constant | Value | Published From |
 |----------|-------|---------------|
@@ -351,6 +351,8 @@ Convention: `<domain>.<aggregate>.<action>`
 | `SHIFT_VACANCY_CREATED` | `scheduling.shift_vacancy.created` | `scheduling/signals.py` |
 | `SHIFT_VACANCY_FILLED` | `scheduling.shift_vacancy.filled` | `scheduling/signals.py` |
 | `SHIFT_VACANCY_CANCELLED` | `scheduling.shift_vacancy.cancelled` | `scheduling/signals.py` |
+| `DEPARTMENT_SHIFT_CONFIG_CREATED` | `scheduling.department_shift_config.created` | `scheduling/signals.py` |
+| `DEPARTMENT_SHIFT_CONFIG_UPDATED` | `scheduling.department_shift_config.updated` | `scheduling/signals.py` |
 
 ### ImagingEvents (11 constants)
 
@@ -444,12 +446,12 @@ Convention: `<domain>.<aggregate>.<action>`
 | ImmunizationEvents | 3 | 1 | 33% |
 | SurveillanceEvents | 2 | 1 | 50% |
 | CoreEvents | 5 | 3 | 60% |
-| SchedulingEvents | 19 | 19 | 100% |
+| SchedulingEvents | 24 | 24 | 100% |
 | ImagingEvents | 11 | 9 | 82% |
 | TheatreEvents | 13 | 13 | 100% |
 | ReferralEvents | 7 | 7 | 100% |
 | InsuranceEvents | 28 | 26 | 93% |
-| **Total** | **136** | **113** | **83%** |
+| **Total** | **138** | **115** | **83%** |
 
 ---
 
@@ -546,6 +548,7 @@ Convention: `<domain>.<aggregate>.<action>`
 | `publish_rule_toggle_event` | `post_save` | `AssignmentRule` | `RULE_ACTIVATED` / `RULE_DEACTIVATED` | `rule_code`, `applies_to`, `priority` |
 | `publish_shift_event` | `post_save` | `Shift` | `SHIFT_CREATED` / `SHIFT_STARTED` / `SHIFT_COMPLETED` / `SHIFT_CANCELLED` / `SHIFT_BREAK_STARTED` | `staff_resource_id`, `shift_date`, `status`, `shift_type`, `department`, `clock_in_method`, `auto_clocked_out`, `late_minutes` |
 | `publish_shift_vacancy_event` | `post_save` | `ShiftVacancy` | `SHIFT_VACANCY_CREATED` / `SHIFT_VACANCY_FILLED` / `SHIFT_VACANCY_CANCELLED` | `shift_date`, `start_time`, `end_time`, `shift_type`, `status`, `department_id`, `filled_by_id` |
+| `publish_department_shift_config_event` | `post_save` | `DepartmentShiftConfig` | `DEPARTMENT_SHIFT_CONFIG_CREATED` / `DEPARTMENT_SHIFT_CONFIG_UPDATED` | `department_id`, `shift_type`, `is_active` |
 
 Appointment status → Event mapping:
 

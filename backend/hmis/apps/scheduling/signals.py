@@ -23,6 +23,7 @@ from hmis.apps.scheduling.models import (
     AssignmentDecision,
     AssignmentOverride,
     AssignmentRule,
+    DepartmentShiftConfig,
     Resource,
     Schedule,
     Shift,
@@ -31,6 +32,30 @@ from hmis.apps.scheduling.models import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+@receiver(post_save, sender=DepartmentShiftConfig)
+def publish_department_shift_config_event(sender, instance, created, **kwargs):
+    """Publish changes to a department shift configuration for roster projections."""
+    if is_sync_materialization_active():
+        return
+    publish_event(
+        event_type=(
+            SchedulingEvents.DEPARTMENT_SHIFT_CONFIG_CREATED
+            if created
+            else SchedulingEvents.DEPARTMENT_SHIFT_CONFIG_UPDATED
+        ),
+        aggregate_type="DepartmentShiftConfig",
+        aggregate_id=instance.id,
+        payload={
+            "department_id": instance.department_id,
+            "shift_type": instance.shift_type,
+            "is_active": instance.is_active,
+        },
+        facility_id=instance.facility_id,
+        organization_id=instance.organization_id,
+    )
+
 
 # Map appointment statuses to domain event types
 _STATUS_EVENT_MAP = {

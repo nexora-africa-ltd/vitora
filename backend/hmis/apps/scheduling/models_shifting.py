@@ -706,6 +706,80 @@ class ShiftTypeConfig(FacilityScopedModel, TimeStampedModel):
         return self.label or self.get_shift_type_display()
 
 
+class DepartmentShiftConfig(FacilityScopedModel, TimeStampedModel):
+    """Per-department override for a facility shift type configuration."""
+
+    department = models.ForeignKey(
+        "core.Department",
+        on_delete=models.CASCADE,
+        related_name="department_shift_configs",
+        help_text="Department this shift configuration applies to",
+    )
+    shift_type = models.CharField(
+        max_length=30,
+        choices=Shift.SHIFT_TYPE_CHOICES,
+        help_text="The shift type this departmental configuration applies to",
+    )
+    is_active = models.BooleanField(default=True)
+    label = models.CharField(max_length=100, blank=True, default="")
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    color = models.CharField(max_length=7, blank=True, default="")
+    min_staff = models.PositiveIntegerField(default=1)
+    max_staff = models.PositiveIntegerField(null=True, blank=True)
+
+    class Meta(TimeStampedModel.Meta):
+        verbose_name = "Department Shift Configuration"
+        verbose_name_plural = "Department Shift Configurations"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "department", "shift_type"],
+                name="unique_department_shift_type_per_facility",
+            ),
+        ]
+        ordering = ["department__name", "shift_type"]
+
+    def __str__(self) -> str:
+        """Return a concise departmental shift configuration label."""
+        return f"{self.department}: {self.shift_type}"
+
+    @property
+    def display_label(self) -> str:
+        """Return a custom label or the standard shift type display label."""
+        return self.label or self.get_shift_type_display()
+
+
+class DepartmentRosterSettings(FacilityScopedModel, TimeStampedModel):
+    """Canonical repeating rota for one department within a facility."""
+
+    department = models.ForeignKey(
+        "core.Department",
+        on_delete=models.CASCADE,
+        related_name="department_roster_settings",
+        help_text="Department this repeating rota applies to",
+    )
+    repeating_shift_pattern = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Repeating ordered shift types, e.g. ['DAY', 'DAY', 'NIGHT', 'OFF'].",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        verbose_name = "Department Roster Settings"
+        verbose_name_plural = "Department Roster Settings"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "department"],
+                name="unique_department_roster_settings_per_facility",
+            ),
+        ]
+        ordering = ["department__name"]
+
+    def __str__(self) -> str:
+        """Return the department's concise rota label."""
+        return f"Rota: {self.department}"
+
+
 class StaffConstraint(FacilityScopedModel, TimeStampedModel):
     """
     Per-staff scheduling constraints / restrictions.
