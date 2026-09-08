@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CalendarDays, Plus } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -28,6 +28,7 @@ import {
   useFillShiftVacancy,
   useShiftVacancies,
 } from '@/lib/hooks/use-shift-vacancies';
+import { shiftTypeConfigsApi } from '@/lib/api/scheduling';
 import { departmentsApi } from '@/lib/api/rbac';
 import { useQuery } from '@tanstack/react-query';
 import type { ShiftType, ShiftVacancy, ShiftVacancyCreateData, ShiftVacancyStatus } from '@/lib/types/scheduling';
@@ -40,14 +41,23 @@ const vacancyStatuses: Array<{ value: ShiftVacancyStatus; label: string }> = [
   { value: 'CANCELLED', label: 'Cancelled' },
 ];
 
-const shiftTypes: Array<{ value: ShiftType; label: string }> = [
-  { value: 'DAY', label: 'Day' },
-  { value: 'NIGHT', label: 'Night' },
-  { value: 'MORNING', label: 'Morning' },
-  { value: 'AFTERNOON', label: 'Afternoon' },
-  { value: 'ON_CALL', label: 'On Call' },
-  { value: 'OVERTIME', label: 'Overtime' },
+const WORKING_SHIFT_TYPE_FALLBACKS: Array<{
+  value: ShiftType;
+  label: string;
+  start_time: string;
+  end_time: string;
+}> = [
+  { value: 'DAY', label: 'Day', start_time: '08:00', end_time: '16:00' },
+  { value: 'NIGHT', label: 'Night', start_time: '19:00', end_time: '07:00' },
+  { value: 'MORNING', label: 'Morning', start_time: '06:00', end_time: '14:00' },
+  { value: 'AFTERNOON', label: 'Afternoon', start_time: '14:00', end_time: '22:00' },
+  { value: 'ON_CALL', label: 'On Call', start_time: '00:00', end_time: '23:59' },
+  { value: 'OVERTIME', label: 'Overtime', start_time: '08:00', end_time: '16:00' },
 ];
+
+const WORKING_SHIFT_FALLBACK_BY_TYPE = Object.fromEntries(
+  WORKING_SHIFT_TYPE_FALLBACKS.map((option) => [option.value, option])
+) as Record<ShiftType, (typeof WORKING_SHIFT_TYPE_FALLBACKS)[number] | undefined>;
 
 const statusStyles: Record<ShiftVacancyStatus, string> = {
   OPEN: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
@@ -87,12 +97,54 @@ export default function ShiftVacanciesPage() {
     queryFn: () => departmentsApi.list({ page_size: 200, is_active: true }),
     enabled: createOpen && Boolean(facility),
   });
+  const { data: shiftTypeDefaults } = useQuery({
+    queryKey: ['shift-type-config-defaults', facility?.id],
+    queryFn: () => shiftTypeConfigsApi.defaults(),
+    enabled: createOpen && Boolean(facility),
+  });
   const createMutation = useCreateShiftVacancy();
   const fillMutation = useFillShiftVacancy();
   const cancelMutation = useCancelShiftVacancy();
   const vacancies = vacanciesQuery.data?.results ?? [];
   const departments = departmentsData?.results ?? [];
   const totalPages = Math.ceil((vacanciesQuery.data?.count ?? 0) / 20);
+
+  const vacancyShiftTypeOptions = useMemo(() => {
+    if (shiftTypeDefaults && Object.keys(shiftTypeDefaults).length > 0) {
+      const configured = Object.entries(shiftTypeDefaults)
+        .filter(([shiftType]) => shiftType in WORKING_SHIFT_FALLBACK_BY_TYPE)
+        .map(([shiftType, config]) => {
+          const fallback = WORKING_SHIFT_FALLBACK_BY_TYPE[shiftType as ShiftType];
+          return {
+            value: shiftType as ShiftType,
+            label: config.label || fallback?.label || shiftType,
+          };
+        });
+      if (configured.length > 0) {
+        return configured;
+      }
+    }
+    return WORKING_SHIFT_TYPE_FALLBACKS.map(({ value, label }) => ({ value, label }));
+  }, [shiftTypeDefaults]);
+
+  useEffect(() => {
+    if (!createOpen || vacancyShiftTypeOptions.length === 0) return;
+
+    const currentIsValid = vacancyShiftTypeOptions.some((option) => option.value === form.shift_type);
+    if (currentIsValid) return;
+
+    const firstOption = vacancyShiftTypeOptions[0];
+    if (!firstOption) return;
+
+    const configured = shiftTypeDefaults?.[firstOption.value];
+    const fallback = WORKING_SHIFT_FALLBACK_BY_TYPE[firstOption.value];
+    setForm((current) => ({
+      ...current,
+      shift_type: firstOption.value,
+      start_time: configured?.start_time || fallback?.start_time || current.start_time,
+      end_time: configured?.end_time || fallback?.end_time || current.end_time,
+    }));
+  }, [createOpen, form.shift_type, shiftTypeDefaults, vacancyShiftTypeOptions]);
 
   function submitCreate() {
     if (!form.shift_date || !form.start_time || !form.end_time) {
@@ -262,9 +314,28 @@ export default function ShiftVacanciesPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="vacancy-shift-type">Shift type</Label>
-              <Select value={form.shift_type} onValueChange={(value) => setForm((current) => ({ ...current, shift_type: value as ShiftType }))}>
+              <Select
+                value={form.shift_type}
+                onValueChange={(value) => {
+                  const shiftType = value as ShiftType;
+                  const configured = shiftTypeDefaults?.[shiftType];
+                  const fallback = WORKING_SHIFT_FALLBACK_BY_TYPE[shiftType];
+                  setForm((current) => ({
+                    ...current,
+                    shift_type: shiftType,
+                    start_time: configured?.start_time || fallback?.start_time || current.start_time,
+                    end_time: configured?.end_time || fallback?.end_time || current.end_time,
+                  }));
+                }}
+              >
                 <SelectTrigger id="vacancy-shift-type"><SelectValue /></SelectTrigger>
-                <SelectContent>{shiftTypes.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {vacancyShiftTypeOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
