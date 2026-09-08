@@ -214,6 +214,47 @@ TEMPLATES = [
         },
         "notes": "HL7 v2.3.1. Some models use custom Z-segments for QC data.",
     },
+    {
+        "name": "Goldsite Automatic Zoom HL7",
+        "manufacturer": "Goldsite Diagnostics Inc.",
+        "model_pattern": "Automatic Zoom*",
+        "category": "IMMUNOASSAY",
+        "description": (
+            "Goldsite Automatic Zoom LIS interface. HL7 v2.3.1 over TCP/MLLP "
+            "with ORU^R01, QRY^Q02, QCK^Q02, and DSR^Q03 message workflows."
+        ),
+        "protocol": "HL7",
+        "default_port": 2575,
+        "default_encoding": "ascii",
+        "default_config": {
+            "version": "2.3.1",
+            "receiving_application": "GOLSITE",
+            "receiving_facility": "AUTO_ZOOM",
+            "sending_application": "VITORA",
+            "sending_facility": "VITORA_LAB",
+            "ack_mode": "original",
+            "mllp_framing": True,
+        },
+        "default_field_mapping": {
+            "sample_id": "OBR.2",
+            "sample_id_field": "OBR.2",
+            "query_sample_id_field": "QRD.8",
+            "test_code": "OBX.3.0",
+            "test_code_field": "OBX.3.0",
+            "result_value": "OBX.6",
+            "result_value_field": "OBX.6",
+            "result_unit": "OBX.7",
+            "result_unit_field": "OBX.7",
+            "flags": "OBX.9",
+            "reference_range": "OBX.8",
+            "test_time": "OBX.15",
+            "result_type_field": "MSH.15",
+        },
+        "notes": (
+            "Goldsite uses MSH-16 for result mode (0 sample, 1 calibration, 2 QC) "
+            "and QRD-8 for barcode query in real-time mode."
+        ),
+    },
     # --- Molecular / PCR ---
     {
         "name": "Cepheid GeneXpert ASTM",

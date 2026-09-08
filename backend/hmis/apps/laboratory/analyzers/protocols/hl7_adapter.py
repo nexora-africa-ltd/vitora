@@ -69,8 +69,11 @@ class HL7BidirectionalAdapter(ProtocolAdapter):
         # Determine message type from MSH-9
         # In our field dict, MSH fields are indexed from 2 (since MSH-1 is | and MSH-2 is encoding)
         # So MSH-9 (message type) is at dict key "8"
-        msg_type_field = msh.get("fields", {}).get("8", "")
+        msh_fields = msh.get("fields", {})
+        msg_type_field = msh_fields.get("8", "")
         msg_type = self._determine_message_type(msg_type_field)
+        message_control_id = msh_fields.get("9", "")
+        goldsite_result_type = msh_fields.get("15", "")
 
         # Extract data based on message type
         sample_id = ""
@@ -81,7 +84,14 @@ class HL7BidirectionalAdapter(ProtocolAdapter):
         patient_id = ""
         order_id = ""
         timestamp = ""
-        raw_fields = {"MSH": msh}
+        raw_fields = {
+            "MSH": msh,
+            "meta": {
+                "message_control_id": message_control_id,
+                "message_type": msg_type_field,
+                "goldsite_result_type": goldsite_result_type,
+            },
+        }
 
         for segment_str in segments[1:]:
             seg = self._parse_segment(segment_str)
@@ -127,6 +137,32 @@ class HL7BidirectionalAdapter(ProtocolAdapter):
                 # Query Parameter Definition (for host queries)
                 msg_type = "QUERY"
                 sample_id = fields.get("3", "")  # Sample being queried
+
+            elif seg_type == "QRD":
+                # Goldsite QRY^Q02 uses QRD-8 for sample barcode in real-time mode.
+                msg_type = "QUERY"
+                sample_id = sample_id or fields.get("8", "")
+
+            elif seg_type == "DSP":
+                # Goldsite DSR^Q03 uses DSP-3 as comma-delimited pending item IDs.
+                # Keep first code in test_code for backward-compatible downstream routing.
+                pending_items = fields.get("3", "")
+                if pending_items:
+                    first_code = pending_items.split(",")[0].strip()
+                    test_code = test_code or first_code
+                    raw_fields.setdefault("meta", {})["pending_item_ids"] = [
+                        part.strip() for part in pending_items.split(",") if part.strip()
+                    ]
+
+            elif seg_type == "ERR":
+                # In Goldsite query-display flows ERR indicates completed/not-found semantics.
+                raw_fields.setdefault("meta", {})["query_status_code"] = fields.get("1", "")
+
+            elif seg_type == "MSA":
+                raw_fields.setdefault("meta", {})["ack_code"] = fields.get("1", "")
+                raw_fields.setdefault("meta", {})["ack_message_control_id"] = fields.get("2", "")
+                raw_fields.setdefault("meta", {})["ack_error_text"] = fields.get("3", "")
+                raw_fields.setdefault("meta", {})["ack_error_code"] = fields.get("6", "")
 
         # Apply field_mapping overrides
         if self.field_mapping:
@@ -182,20 +218,97 @@ class HL7BidirectionalAdapter(ProtocolAdapter):
 
         return "\r".join(segments)
 
-    def build_ack(self, success: bool = True) -> str:
+    def build_ack(
+        self,
+        success: bool = True,
+        original_message_control_id: str = "",
+        error_code: str = "",
+        error_text: str = "",
+    ) -> str:
         """
         Build an HL7 ACK message.
+
+        Supports Goldsite-compatible status signaling via MSA-3 (text)
+        and MSA-6 (error/status code) while remaining backward-compatible
+        with existing call sites that only pass success/failure.
         """
         now = datetime.now().strftime("%Y%m%d%H%M%S")
         msg_control_id = f"ACK{now}"
         ack_code = "AA" if success else "AE"
+        ack_ref = original_message_control_id or msg_control_id
+        msa_segment = f"MSA|{ack_code}|{ack_ref}"
+
+        if error_text:
+            msa_segment += f"|{error_text}"
+        if error_code:
+            if not error_text:
+                msa_segment += "|"
+            msa_segment += f"||{error_code}"
 
         segments = [
             f"MSH|^~\\&|{self.sending_application}|{self.sending_facility}|"
             f"{self.receiving_application}|{self.receiving_facility}|{now}||"
             f"ACK^R01|{msg_control_id}|P|{self.version}",
-            f"MSA|{ack_code}|{msg_control_id}",
+            msa_segment,
         ]
+        return "\r".join(segments)
+
+    def build_query_ack(
+        self,
+        query_id: str,
+        original_message_control_id: str,
+        accepted: bool = True,
+        error_code: str = "",
+        error_text: str = "",
+    ) -> str:
+        """Build Goldsite-compatible QCK^Q02 acknowledgement."""
+        now = datetime.now().strftime("%Y%m%d%H%M%S")
+        msg_control_id = f"QCK{now}"
+        ack_code = "AA" if accepted else "AE"
+        qak_status = "OK" if accepted else "AE"
+
+        segments = [
+            f"MSH|^~\\&|{self.sending_application}|{self.sending_facility}|"
+            f"{self.receiving_application}|{self.receiving_facility}|{now}||"
+            f"QCK^Q02|{msg_control_id}|P|{self.version}",
+            f"MSA|{ack_code}|{original_message_control_id}",
+            f"QAK|{query_id}|{qak_status}",
+        ]
+
+        if error_code or error_text:
+            segments.append(f"ERR|{error_code or '0'}")
+
+        return "\r".join(segments)
+
+    def build_display_response(
+        self,
+        query_id: str,
+        original_message_control_id: str,
+        sample_id: str,
+        pending_item_ids: list[str] | None = None,
+        completed_or_not_found: bool = False,
+    ) -> str:
+        """Build Goldsite-compatible DSR^Q03 response."""
+        now = datetime.now().strftime("%Y%m%d%H%M%S")
+        msg_control_id = f"DSR{now}"
+        pending_item_ids = pending_item_ids or []
+        qrd_segment = f"QRD|{now}|R|D|{query_id}|||RD|{sample_id}|OTH|||T"
+
+        segments = [
+            f"MSH|^~\\&|{self.sending_application}|{self.sending_facility}|"
+            f"{self.receiving_application}|{self.receiving_facility}|{now}||"
+            f"DSR^Q03|{msg_control_id}|P|{self.version}|||P",
+            f"MSA|AA|{original_message_control_id}",
+            qrd_segment,
+            "QRF||||||RCT|COR|ALL",
+        ]
+
+        if completed_or_not_found or not pending_item_ids:
+            segments.append("ERR|0")
+        else:
+            joined_items = ",".join(pending_item_ids)
+            segments.append(f"DSP|10000001|1|{joined_items}")
+
         return "\r".join(segments)
 
     def frame_message(self, message: str) -> bytes:
@@ -288,6 +401,8 @@ class HL7BidirectionalAdapter(ProtocolAdapter):
             "ORM": "ORDER",
             "QRY": "QUERY",
             "QBP": "QUERY",
+            "DSR": "QUERY",
+            "QCK": "ACK",
             "ACK": "ACK",
             "RSP": "RESULT",
         }

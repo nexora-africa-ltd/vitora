@@ -69,14 +69,11 @@ def retry_failed_messages(max_retries: int = 3, batch_size: int = 50) -> dict:
     """
     Retry failed outbound messages that haven't exceeded max retries.
 
-    TODO: [AFTER PILOT] Implement actual TCP send for retries.
-    Currently just marks messages for manual retry via the dashboard.
-    Real retry requires:
-    - TCP connection to analyzer
-    - Protocol-specific handshake (ENQ→ACK for ASTM)
-    - Timeout handling per analyzer model
+    Retries by moving eligible failed messages back to PENDING and then
+    dispatching outbound transport for those messages.
     """
     from .models import AnalyzerMessage
+    from .services import dispatch_pending_outbound_messages
 
     failed_messages = AnalyzerMessage.objects.filter(
         direction=AnalyzerMessage.Direction.OUTBOUND,
@@ -92,13 +89,26 @@ def retry_failed_messages(max_retries: int = 3, batch_size: int = 50) -> dict:
     for msg in failed_messages:
         results["attempted"] += 1
         msg.retry_count += 1
-        # TODO: [AFTER PILOT] Actually resend via TCP connection
-        # For now, mark as pending for manual dashboard action
         msg.status = AnalyzerMessage.Status.PENDING
         msg.save(update_fields=["retry_count", "status"])
+
         results["success"] += 1
 
+    dispatch_result = dispatch_pending_outbound_messages(batch_size=batch_size)
+    results["dispatch"] = dispatch_result
+    results["failed"] = dispatch_result["failed"] + dispatch_result["timeouts"]
+
     logger.info(f"Message retry complete: {results}")
+    return results
+
+
+@shared_task(name="laboratory.analyzers.dispatch_outbound_messages")
+def dispatch_outbound_messages(batch_size: int = 50, channel_id: int | None = None) -> dict:
+    """Send pending outbound analyzer messages over configured transports."""
+    from .services import dispatch_pending_outbound_messages
+
+    results = dispatch_pending_outbound_messages(channel_id=channel_id, batch_size=batch_size)
+    logger.info("Outbound analyzer dispatch complete: %s", results)
     return results
 
 

@@ -85,6 +85,7 @@ app.conf.task_routes = {
     # Laboratory analyzer tasks
     "laboratory.analyzers.check_channel_health": {"queue": "monitoring"},
     "laboratory.analyzers.retry_failed_messages": {"queue": "maintenance"},
+    "laboratory.analyzers.dispatch_outbound_messages": {"queue": "laboratory"},
     "laboratory.analyzers.broadcast_work_orders": {"queue": "laboratory"},
     # Blood bank tasks
     "hmis.apps.blood_bank.tasks.expire_eligible_blood_units": {"queue": "maintenance"},
@@ -317,6 +318,11 @@ app.conf.beat_schedule = {
     "lab-retry-failed-analyzer-messages": {
         "task": "laboratory.analyzers.retry_failed_messages",
         "schedule": crontab(minute="*/15"),
+    },
+    # Laboratory: Dispatch outbound analyzer HL7 messages — every 30 seconds
+    "lab-dispatch-outbound-analyzer-messages": {
+        "task": "laboratory.analyzers.dispatch_outbound_messages",
+        "schedule": 30.0,
     },
     # Laboratory: Broadcast pending work orders to analyzers — every 10 minutes
     "lab-broadcast-work-orders": {

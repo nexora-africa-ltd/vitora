@@ -554,6 +554,16 @@ class TestHL7BidirectionalAdapter:
         ack = self.adapter.build_ack(False)
         assert "AE" in ack
 
+    def test_build_ack_with_goldsite_error_fields(self):
+        """Should support Goldsite-style MSA text and status code values."""
+        ack = self.adapter.build_ack(
+            success=False,
+            original_message_control_id="MSG123",
+            error_code="101",
+            error_text="Required field missing",
+        )
+        assert "MSA|AE|MSG123|Required field missing||101" in ack
+
     def test_frame_message_mllp(self):
         """Should apply MLLP framing."""
         framed = self.adapter.frame_message("MSH|^~\\&|TEST")
@@ -576,6 +586,31 @@ class TestHL7BidirectionalAdapter:
         """Should reject invalid messages."""
         assert not self.adapter.validate_message("NOT|MSH")
         assert not self.adapter.validate_message("")
+
+    def test_parse_goldsite_qry_with_qrd_barcode(self):
+        """Should parse Goldsite query barcode from QRD-8."""
+        msg = (
+            "MSH|^~\\&|GOLSITE|AA|LIS|LAB|20260506||QRY^Q02|MSG004|P|2.3.1\r"
+            "QRD|20260506120000|R|D|1|||RD|BC-001|OTH|||T\r"
+            "QRF|AA|||||RCT|COR|ALL"
+        )
+        parsed = self.adapter.parse_message(msg)
+        assert parsed.message_type == "QUERY"
+        assert parsed.sample_id == "BC-001"
+        assert parsed.raw_fields["meta"]["message_control_id"] == "MSG004"
+
+    def test_parse_goldsite_dsr_with_pending_items(self):
+        """Should parse Goldsite pending test list from DSP-3."""
+        msg = (
+            "MSH|^~\\&|LIS|LAB|GOLSITE|AA|20260506||DSR^Q03|MSG005|P|2.3.1\r"
+            "MSA|AA|MSG004\r"
+            "QRD|20260506120000|R|D|1|||RD|BC-001|OTH|||T\r"
+            "DSP|10000001|1|51,1,4"
+        )
+        parsed = self.adapter.parse_message(msg)
+        assert parsed.message_type == "QUERY"
+        assert parsed.test_code == "51"
+        assert parsed.raw_fields["meta"]["pending_item_ids"] == ["51", "1", "4"]
 
 
 class TestSerialBridgeAdapter:
@@ -734,6 +769,52 @@ class TestProcessInboundMessage:
             AnalyzerMessage.Status.PARSED,
             AnalyzerMessage.Status.RECEIVED,
         ]
+
+    def test_process_goldsite_hl7_query_creates_qck_and_dsr(
+        self, hl7_channel, sample_specimen, sample_order_item
+    ):
+        """HL7 QRY should queue Goldsite-compatible QCK and DSR responses."""
+        raw = (
+            "MSH|^~\\&|GOLSITE|AA|LIS|LAB|20260506||QRY^Q02|MSG200|P|2.3.1\r"
+            f"QRD|20260506120000|R|D|88|||RD|{sample_specimen.barcode}|OTH|||T\r"
+            "QRF|AA|||||RCT|COR|ALL"
+        )
+        msg = process_inbound_message(hl7_channel, raw)
+
+        outbound = AnalyzerMessage.objects.filter(
+            channel=hl7_channel,
+            direction=AnalyzerMessage.Direction.OUTBOUND,
+            sample_id=sample_specimen.barcode,
+        ).order_by("id")
+        assert outbound.count() >= 2
+        assert any("QCK^Q02" in item.raw_data for item in outbound)
+        assert any("DSR^Q03" in item.raw_data for item in outbound)
+
+        dsr = next(item for item in outbound if "DSR^Q03" in item.raw_data)
+        assert "DSP|10000001|1|HGB" in dsr.raw_data
+        assert msg.status in [AnalyzerMessage.Status.PARSED, AnalyzerMessage.Status.APPLIED]
+
+    def test_process_goldsite_hl7_query_not_found_uses_err(self, hl7_channel):
+        """HL7 QRY for unknown barcode should produce DSR ERR status segment."""
+        raw = (
+            "MSH|^~\\&|GOLSITE|AA|LIS|LAB|20260506||QRY^Q02|MSG404|P|2.3.1\r"
+            "QRD|20260506120000|R|D|89|||RD|UNKNOWN-BC|OTH|||T\r"
+            "QRF|AA|||||RCT|COR|ALL"
+        )
+        process_inbound_message(hl7_channel, raw)
+
+        dsr = (
+            AnalyzerMessage.objects.filter(
+                channel=hl7_channel,
+                direction=AnalyzerMessage.Direction.OUTBOUND,
+                sample_id="UNKNOWN-BC",
+            )
+            .filter(raw_data__icontains="DSR^Q03")
+            .order_by("-id")
+            .first()
+        )
+        assert dsr is not None
+        assert "ERR|0" in dsr.raw_data
 
     def test_process_unparseable_message(self, sample_channel):
         """Should mark message as failed on parse error."""
@@ -1192,3 +1273,24 @@ class TestAnalyzerTasks:
 
         result = broadcast_work_orders()
         assert "channels_checked" in result
+
+
+@pytest.mark.django_db
+class TestAnalyzerBeatSchedule:
+    """Tests for analyzer tasks registered in Celery beat schedule."""
+
+    def test_dispatch_outbound_messages_in_beat_schedule(self):
+        """Outbound dispatch task should be configured in Celery beat schedule."""
+        from hmis.celery import app
+
+        schedule = app.conf.beat_schedule
+        task_names = [v["task"] for v in schedule.values()]
+        assert "laboratory.analyzers.dispatch_outbound_messages" in task_names
+
+    def test_dispatch_outbound_messages_task_route_queue(self):
+        """Outbound dispatch task should route to the laboratory queue."""
+        from hmis.celery import app
+
+        routes = app.conf.task_routes
+        assert "laboratory.analyzers.dispatch_outbound_messages" in routes
+        assert routes["laboratory.analyzers.dispatch_outbound_messages"]["queue"] == "laboratory"

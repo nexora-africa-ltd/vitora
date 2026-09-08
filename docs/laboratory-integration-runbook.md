@@ -124,3 +124,58 @@ Record each change:
 - old/new protocol or host/port settings
 - reason and approver
 - commissioning evidence reference
+
+## 11) Goldsite Automatic Zoom (HL7 v2.3.1) Go-Live Defaults
+
+Use these defaults when commissioning Goldsite Automatic Zoom channels:
+
+- Protocol: `HL7`
+- Transport: TCP/MLLP (`<0x0B>...<0x1C><0x0D>`)
+- HL7 version: `2.3.1`
+- Port: `2575` (confirm facility-specific override with biomedical team)
+- Encoding: `ascii`
+- Sending application/facility: `VITORA` / `VITORA_LAB`
+- Receiving application/facility: `GOLSITE` / analyzer model code (for example `AA`)
+- Goldsite result mode field: `MSH-16` (`0` sample, `1` calibration, `2` QC)
+- Real-time query barcode source: `QRD-8`
+
+### 11.1 Recommended setup commands
+
+```bash
+cd backend
+poetry run python manage.py seed_analyzer_templates
+```
+
+```bash
+cd backend
+poetry run pytest tests/laboratory/test_analyzer_interfacing.py -k "goldsite or HL7BidirectionalAdapter" -q
+```
+
+```bash
+cd backend
+poetry run pytest tests/laboratory/test_analyzer_hl7_roundtrip.py -q
+```
+
+### 11.2 Go-live verification commands
+
+```bash
+cd backend
+poetry run python manage.py shell -c "from hmis.apps.laboratory.analyzers.tasks import dispatch_outbound_messages; print(dispatch_outbound_messages.delay(batch_size=20).id)"
+```
+
+```bash
+cd backend
+poetry run python manage.py shell -c "from hmis.apps.laboratory.analyzers.models import AnalyzerMessage; print(AnalyzerMessage.objects.filter(direction='OUTBOUND', status='PENDING').count())"
+```
+
+```bash
+cd backend
+poetry run python manage.py shell -c "from hmis.apps.laboratory.analyzers.models import AnalyzerMessage; print(AnalyzerMessage.objects.filter(direction='INBOUND', message_type='ACK_HL7').order_by('-id').values('id','sample_id','status')[:10])"
+```
+
+Expected behavior in production query flow:
+
+1. Instrument sends `QRY^Q02`.
+2. Vitora queues and dispatches `QCK^Q02` and `DSR^Q03`.
+3. Analyzer replies with `ACK^Q03` for the `DSR^Q03` payload.
+4. Outbound messages move from `PENDING` to `SENT` (or `REJECTED` on `AE/AR`).

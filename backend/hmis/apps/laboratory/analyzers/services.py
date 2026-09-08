@@ -15,12 +15,135 @@ from datetime import timedelta
 from django.utils import timezone
 
 from hmis.apps.laboratory.models import LabOrderItem, LabResult, Specimen
+from hmis.apps.laboratory.services.mllp_client import (
+    MLLPClient,
+    MLLPConfig,
+    MLLPConnectionError,
+    MLLPFramingError,
+    MLLPTimeoutError,
+)
 
 from .models import AnalyzerMessage, InstrumentChannel
 from .protocols import ASTMAdapter, HL7BidirectionalAdapter, ProtocolAdapter, SerialBridgeAdapter
 from .protocols.base import ParsedMessage, ProtocolError
 
 logger = logging.getLogger(__name__)
+
+
+def dispatch_pending_outbound_messages(channel_id: int | None = None, batch_size: int = 50) -> dict:
+    """Send queued outbound analyzer messages over configured channel transport."""
+    pending = AnalyzerMessage.objects.select_related("channel").filter(
+        direction=AnalyzerMessage.Direction.OUTBOUND,
+        status=AnalyzerMessage.Status.PENDING,
+        channel__is_active=True,
+    )
+
+    if channel_id:
+        pending = pending.filter(channel_id=channel_id)
+
+    pending = pending.order_by("timestamp")[:batch_size]
+    results = {
+        "attempted": 0,
+        "sent": 0,
+        "acked": 0,
+        "rejected": 0,
+        "timeouts": 0,
+        "failed": 0,
+    }
+
+    for message in pending:
+        results["attempted"] += 1
+        send_result = transmit_outbound_message(message)
+        if send_result["status"] == "acked":
+            results["sent"] += 1
+            results["acked"] += 1
+        elif send_result["status"] == "sent_no_ack":
+            results["sent"] += 1
+        elif send_result["status"] == "rejected":
+            results["rejected"] += 1
+        elif send_result["status"] == "timeout":
+            results["timeouts"] += 1
+        else:
+            results["failed"] += 1
+
+    return results
+
+
+def transmit_outbound_message(message: AnalyzerMessage) -> dict:
+    """Transmit one outbound analyzer message and process synchronous ACK response."""
+    channel = message.channel
+    adapter = get_adapter_for_channel(channel)
+
+    if channel.protocol != InstrumentChannel.Protocol.HL7:
+        message.mark_failed("Outbound transport worker currently supports HL7 channels only.")
+        return {"status": "failed", "reason": "unsupported_protocol"}
+
+    config = MLLPConfig(
+        host=channel.host,
+        port=channel.port,
+        timeout=float(channel.config.get("timeout", 30.0)),
+        receive_timeout=float(channel.config.get("receive_timeout", 30.0)),
+        max_retries=int(channel.config.get("max_retries", 1)),
+        use_ssl=bool(channel.config.get("use_ssl", False)),
+        ssl_verify=bool(channel.config.get("ssl_verify", True)),
+    )
+
+    try:
+        with MLLPClient(config) as client:
+            response = client.send_message(message.raw_data, wait_for_ack=True)
+    except MLLPTimeoutError as exc:
+        message.mark_timeout()
+        message.error_message = str(exc)
+        message.save(update_fields=["error_message"])
+        channel.update_status(InstrumentChannel.ConnectionStatus.ERROR, str(exc))
+        return {"status": "timeout", "reason": str(exc)}
+    except (MLLPConnectionError, MLLPFramingError, OSError, ValueError, TypeError) as exc:
+        message.mark_failed(str(exc))
+        channel.update_status(InstrumentChannel.ConnectionStatus.ERROR, str(exc))
+        return {"status": "failed", "reason": str(exc)}
+
+    channel.update_status(InstrumentChannel.ConnectionStatus.CONNECTED)
+    message.mark_sent()
+
+    if not response:
+        return {"status": "sent_no_ack"}
+
+    parsed_ack = adapter.parse_message(response.message)
+    ack_meta = parsed_ack.raw_fields.get("meta", {}) if parsed_ack.raw_fields else {}
+    ack_code = ack_meta.get("ack_code", "")
+
+    AnalyzerMessage.objects.create(
+        channel=channel,
+        direction=AnalyzerMessage.Direction.INBOUND,
+        message_type=AnalyzerMessage.MessageType.ACK_HL7,
+        status=AnalyzerMessage.Status.RECEIVED,
+        raw_data=response.message,
+        parsed_data=parsed_ack.raw_fields,
+        sample_id=message.sample_id,
+        specimen=message.specimen,
+        facility=channel.facility,
+        organization=channel.organization,
+    )
+
+    message.parsed_data = {
+        **(message.parsed_data or {}),
+        "transport": {
+            "ack_code": ack_code,
+            "ack_message_control_id": ack_meta.get("ack_message_control_id", ""),
+            "ack_error_code": ack_meta.get("ack_error_code", ""),
+            "ack_error_text": ack_meta.get("ack_error_text", ""),
+            "response_time_ms": response.response_time_ms,
+        },
+    }
+    message.save(update_fields=["parsed_data"])
+
+    if ack_code in {"AE", "AR"}:
+        message.status = AnalyzerMessage.Status.REJECTED
+        message.error_message = ack_meta.get("ack_error_text", "Remote endpoint rejected message")
+        message.save(update_fields=["status", "error_message"])
+        return {"status": "rejected", "ack_code": ack_code}
+
+    return {"status": "acked", "ack_code": ack_code or "AA"}
 
 
 def get_adapter_for_channel(channel: InstrumentChannel) -> ProtocolAdapter:
@@ -184,11 +307,7 @@ def process_inbound_message(channel: InstrumentChannel, raw_data: str) -> Analyz
             _apply_result(message, parsed)
             message.mark_applied()
         elif parsed.is_query:
-            # Host query — generate work order response
-            # TODO: [AFTER PILOT] Auto-respond to host queries with pending work orders
-            logger.info(
-                f"Host query received for sample {parsed.sample_id} on channel {channel.name}"
-            )
+            _handle_hl7_query_workflow(channel, message, parsed)
 
         message.save()
         return message
@@ -495,3 +614,93 @@ def _apply_result(message: AnalyzerMessage, parsed: ParsedMessage) -> None:
             f"Created result for order item {lab_order_item.id} "
             f"from analyzer {message.channel.name}"
         )
+
+
+def _handle_hl7_query_workflow(
+    channel: InstrumentChannel,
+    inbound_message: AnalyzerMessage,
+    parsed: ParsedMessage,
+) -> list[AnalyzerMessage]:
+    """Build and queue Goldsite QCK/DSR responses for HL7 query workflows."""
+    if channel.protocol != InstrumentChannel.Protocol.HL7:
+        logger.info(
+            "Query workflow skipped for non-HL7 channel %s (sample=%s)",
+            channel.name,
+            parsed.sample_id,
+        )
+        return []
+
+    adapter = get_adapter_for_channel(channel)
+    query_meta = parsed.raw_fields.get("meta", {}) if parsed.raw_fields else {}
+    query_id = (parsed.raw_fields.get("QRD", {}).get("4", "") if parsed.raw_fields else "") or "1"
+    incoming_control_id = query_meta.get("message_control_id", "") or "UNKNOWN"
+
+    qck_payload = adapter.build_query_ack(
+        query_id=query_id,
+        original_message_control_id=incoming_control_id,
+        accepted=True,
+    )
+    qck_message = AnalyzerMessage.objects.create(
+        channel=channel,
+        direction=AnalyzerMessage.Direction.OUTBOUND,
+        message_type=AnalyzerMessage.MessageType.ACK_HL7,
+        status=AnalyzerMessage.Status.PENDING,
+        raw_data=qck_payload,
+        sample_id=parsed.sample_id,
+        specimen=inbound_message.specimen,
+        facility=channel.facility,
+        organization=channel.organization,
+        parsed_data={
+            "workflow": "QRY_Q02_QCK_Q02",
+            "query_id": query_id,
+            "inbound_message_id": inbound_message.id,
+        },
+    )
+
+    pending_item_ids: list[str] = []
+    completed_or_not_found = True
+    if inbound_message.specimen:
+        pending_items = LabOrderItem.objects.filter(
+            lab_order=inbound_message.specimen.lab_order,
+            status__in=["PENDING", "IN_PROGRESS", "ORDERED"],
+        ).select_related("test")
+
+        pending_item_ids = [
+            item.test.code for item in pending_items if item.test and item.test.code
+        ]
+        completed_or_not_found = len(pending_item_ids) == 0
+
+    dsr_payload = adapter.build_display_response(
+        query_id=query_id,
+        original_message_control_id=incoming_control_id,
+        sample_id=parsed.sample_id,
+        pending_item_ids=pending_item_ids,
+        completed_or_not_found=completed_or_not_found,
+    )
+    dsr_message = AnalyzerMessage.objects.create(
+        channel=channel,
+        direction=AnalyzerMessage.Direction.OUTBOUND,
+        message_type=AnalyzerMessage.MessageType.ORDER_DOWNLOAD,
+        status=AnalyzerMessage.Status.PENDING,
+        raw_data=dsr_payload,
+        sample_id=parsed.sample_id,
+        specimen=inbound_message.specimen,
+        facility=channel.facility,
+        organization=channel.organization,
+        parsed_data={
+            "workflow": "QRY_Q02_DSR_Q03",
+            "query_id": query_id,
+            "inbound_message_id": inbound_message.id,
+            "pending_item_ids": pending_item_ids,
+            "completed_or_not_found": completed_or_not_found,
+        },
+    )
+
+    logger.info(
+        "Queued Goldsite query response messages for sample %s on channel %s (qck=%s, dsr=%s)",
+        parsed.sample_id,
+        channel.name,
+        qck_message.id,
+        dsr_message.id,
+    )
+    return [qck_message, dsr_message]
