@@ -80,9 +80,12 @@ export const shaQueryKeys = {
   // DHA HIE ILM ePrescriptions
   prescriptions: () => [...shaQueryKeys.all, 'ilm-prescriptions'] as const,
   localPrescriptions: (params?: {
+    claim_pk?: number;
+    encounter_pk?: number;
     patient_pk?: number;
     status?: string;
     intervention_code?: string;
+    page_size?: number;
   }) => [...shaQueryKeys.prescriptions(), 'local', params] as const,
 };
 
@@ -493,7 +496,14 @@ export function usePendingPreauths(options?: { enabled?: boolean }) {
 // ============================================================================
 
 export function useLocalDhaPrescriptions(
-  params?: { patient_pk?: number; status?: string; intervention_code?: string },
+  params?: {
+    claim_pk?: number;
+    encounter_pk?: number;
+    patient_pk?: number;
+    status?: string;
+    intervention_code?: string;
+    page_size?: number;
+  },
   options?: { enabled?: boolean }
 ) {
   return useQuery({

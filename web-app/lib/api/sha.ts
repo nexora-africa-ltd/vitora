@@ -2619,7 +2619,14 @@ async function ilmRemovePrescriptionDoctor(body: {
 }
 
 async function listLocalDhaPrescriptions(
-  params: { patient_pk?: number; status?: string; intervention_code?: string } = {}
+  params: {
+    claim_pk?: number;
+    encounter_pk?: number;
+    patient_pk?: number;
+    status?: string;
+    intervention_code?: string;
+    page_size?: number;
+  } = {}
 ) {
   const response = await apiClient.get(`${ILM_BASE}/prescriptions/local/`, { params });
   return parseResponse(SHADhaPrescriptionListSchema, response.data, {

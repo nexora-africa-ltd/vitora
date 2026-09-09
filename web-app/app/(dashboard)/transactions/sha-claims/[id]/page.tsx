@@ -30,13 +30,14 @@ import { ClaimNextStepBanner } from '@/components/billing/sha/ClaimNextStepBanne
 import { ClaimOverviewTab } from '@/components/billing/sha/ClaimOverviewTab';
 import { ClaimWorkflowTab } from '@/components/billing/sha/ClaimWorkflowTab';
 import { ClaimAdjudicationTab } from '@/components/billing/sha/ClaimAdjudicationTab';
+import { ClaimEPrescriptionTab } from '@/components/billing/sha/ClaimEPrescriptionTab';
 import { InterventionsList } from '@/components/billing/sha/InterventionsList';
 import {
   claimStatusNeedsAdjudicationAttention,
   getEffectiveClaimStatus,
 } from '@/lib/sha/payer-preview';
 
-type TabId = 'overview' | 'workflow' | 'interventions' | 'adjudication';
+type TabId = 'overview' | 'workflow' | 'eprescriptions' | 'interventions' | 'adjudication';
 
 interface ClaimInterventionRow {
   id: number;
@@ -277,7 +278,7 @@ export default function ClaimDetailPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const hash = window.location.hash.replace('#', '');
-    if (['overview', 'workflow', 'interventions', 'adjudication'].includes(hash)) {
+    if (['overview', 'workflow', 'eprescriptions', 'interventions', 'adjudication'].includes(hash)) {
       setActiveTab(hash as TabId);
     }
   }, []);
@@ -415,7 +416,7 @@ export default function ClaimDetailPage() {
       <div className="space-y-4 pb-20 sm:space-y-6 lg:pb-0">
         <PageHeader
           title={`Claim ${claim.claim_number || `#${claim.id}`}`}
-          helpContent="Review and manage this SHA claim. Use the tabs to switch between overview, DHA workflow steps, interventions, and adjudication."
+          helpContent="Review and manage this SHA claim. Use the tabs to switch between overview, DHA workflow steps, ePrescriptions, interventions, and adjudication."
           actions={
             <>
               <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isRefetching}>
@@ -467,12 +468,15 @@ export default function ClaimDetailPage() {
 
         {/* Tabbed workspace */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid h-auto w-full grid-cols-4">
+          <TabsList className="grid h-auto w-full grid-cols-5">
             <TabsTrigger value="overview" className="w-full">
               Overview
             </TabsTrigger>
             <TabsTrigger value="workflow" className="w-full">
               Workflow
+            </TabsTrigger>
+            <TabsTrigger value="eprescriptions" className="w-full">
+              ePrescriptions
             </TabsTrigger>
             <TabsTrigger value="interventions" className="w-full">
               Interventions
@@ -504,6 +508,10 @@ export default function ClaimDetailPage() {
               isActive={activeTab === 'workflow'}
               onChange={refetch}
             />
+          </TabsContent>
+
+          <TabsContent value="eprescriptions" className="mt-4 sm:mt-6">
+            <ClaimEPrescriptionTab claim={claim} />
           </TabsContent>
 
           <TabsContent value="interventions" className="mt-4 sm:mt-6">

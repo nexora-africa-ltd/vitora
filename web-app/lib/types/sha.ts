@@ -909,7 +909,9 @@ export interface Claim {
   encounter_clinician?: {
     id: number;
     name?: string | null;
+    hwr_id?: string | null;
     license_number?: string | null;
+    identification_number?: string | null;
     licensing_body?: string | null;
     national_id?: string | null;
   } | null;

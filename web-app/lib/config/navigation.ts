@@ -1185,13 +1185,6 @@ const _allNavItems: NavItemType[] = [
         requiresInternet: true,
       },
       {
-        label: 'SHA ePrescriptions',
-        href: '/transactions/sha-claims/prescriptions',
-        icon: Pill,
-        actionKey: 'billing.submit_sha_claim',
-        requiresInternet: true,
-      },
-      {
         label: 'Supplier Bills',
         href: '/transactions/supplier-bills',
         icon: FileSpreadsheet,

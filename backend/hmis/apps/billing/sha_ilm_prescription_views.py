@@ -13,6 +13,7 @@ import contextlib
 import logging
 from typing import Any
 
+from django.db.models import Q
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
@@ -428,14 +429,34 @@ class SHADhaPrescriptionListView(BillingILMSchemaMixin, APIView):
 
     def get(self, request):
         qs = SHADhaPrescription.objects.all()
+        claim_pk = request.query_params.get("claim_pk")
+        encounter_pk = request.query_params.get("encounter_pk")
         patient_pk = request.query_params.get("patient_pk")
+
+        context_filter = Q()
+        has_context_filter = False
+        if claim_pk:
+            context_filter |= Q(claim_id=claim_pk)
+            has_context_filter = True
+        if encounter_pk:
+            context_filter |= Q(encounter_id=encounter_pk)
+            has_context_filter = True
         if patient_pk:
-            qs = qs.filter(patient_id=patient_pk)
+            context_filter |= Q(patient_id=patient_pk)
+            has_context_filter = True
+        if has_context_filter:
+            qs = qs.filter(context_filter)
+
         status_param = request.query_params.get("status")
         if status_param:
             qs = qs.filter(status=status_param)
         intervention = request.query_params.get("intervention_code")
         if intervention:
             qs = qs.filter(intervention_code=intervention)
-        rows = list(qs.order_by("-created_at")[:200])
+        page_size = request.query_params.get("page_size", "200")
+        try:
+            limit = min(max(int(page_size), 1), 1000)
+        except (TypeError, ValueError):
+            limit = 200
+        rows = list(qs.order_by("-created_at")[:limit])
         return Response({"results": [_serialize_prescription(r) for r in rows]})

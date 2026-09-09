@@ -445,9 +445,14 @@ class SHAClaimSerializer(serializers.ModelSerializer):
         return {
             "id": user.id,
             "name": user.get_full_name() or user.username,
+            "hwr_id": profile.hwr_id or "",
             "license_number": profile.license_number or "",
             "licensing_body": profile.licensing_body or "",
             "national_id": profile.hwr_national_id or "",
+            "identification_number": profile.hwr_id
+            or profile.license_number
+            or profile.hwr_national_id
+            or "",
         }
 
     def validate(self, attrs):
