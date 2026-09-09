@@ -29,7 +29,7 @@
  */
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   Search,
   CheckCircle2,
@@ -44,7 +44,6 @@ import {
   Calendar,
   IdCard,
 } from 'lucide-react';
-import { SHALogo } from '@/components/ui/sha-logo';
 import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -76,9 +75,15 @@ export interface DHAPractitionerSearchProps {
   showDetailedResult?: boolean;
   /** Whether to auto-select on successful search */
   autoSelect?: boolean;
+  /** Optional prefilled identification type for editing flows */
+  initialIdentificationType?: IdentificationType;
+  /** Optional prefilled identification number for editing flows */
+  initialIdentificationNumber?: string;
+  /** Run a search automatically once prefilled values are available */
+  autoSearchOnMount?: boolean;
 }
 
-type IdentificationType = 'National ID' | 'passport';
+type IdentificationType = 'National ID' | 'passport' | 'registration_number';
 
 export function DHAPractitionerSearch({
   onSelect,
@@ -87,61 +92,121 @@ export function DHAPractitionerSearch({
   className,
   showDetailedResult = true,
   autoSelect = true,
+  initialIdentificationType = 'National ID',
+  initialIdentificationNumber = '',
+  autoSearchOnMount = false,
 }: DHAPractitionerSearchProps) {
-  const [idType, setIdType] = useState<IdentificationType>('National ID');
-  const [idNumber, setIdNumber] = useState('');
+  const [idType, setIdType] = useState<IdentificationType>(initialIdentificationType);
+  const [idNumber, setIdNumber] = useState(initialIdentificationNumber);
   const [isLoading, setIsLoading] = useState(false);
   const [practitioner, setPractitioner] = useState<DHAPractitioner | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [autoLookupNoMatchMessage, setAutoLookupNoMatchMessage] = useState<string | null>(null);
+  const autoSearchSignatureRef = useRef<string>('');
+
+  const performSearch = useCallback(
+    async (
+      identificationType: IdentificationType,
+      identificationNumber: string,
+      options?: { isAutoSearch?: boolean }
+    ) => {
+      const normalizedIdentificationNumber = identificationNumber.trim();
+      if (!normalizedIdentificationNumber) {
+        setError('Please enter an identification number');
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+      setNotFound(false);
+      setPractitioner(null);
+      if (!options?.isAutoSearch) {
+        setAutoLookupNoMatchMessage(null);
+      }
+
+      try {
+        const response = await shaApi.searchPractitioner({
+          identification_type: identificationType,
+          identification_number: normalizedIdentificationNumber,
+        });
+
+        if (response.message) {
+          setPractitioner(response.message);
+          setAutoLookupNoMatchMessage(null);
+          if (autoSelect && onSelect) {
+            onSelect(response.message);
+          }
+        } else {
+          setNotFound(true);
+          if (options?.isAutoSearch) {
+            setAutoLookupNoMatchMessage(
+              `Auto lookup attempted with ${
+                identificationType === 'registration_number'
+                  ? 'registration number'
+                  : identificationType.toLowerCase()
+              }: ${normalizedIdentificationNumber}. No DHA match found.`
+            );
+          }
+          onError?.('No practitioner found');
+        }
+      } catch (err: unknown) {
+        const is404 =
+          (err &&
+            typeof err === 'object' &&
+            'response' in err &&
+            (err as { response?: { status?: number } }).response?.status === 404) ||
+          (err instanceof Error && err.message.includes('404'));
+
+        if (is404) {
+          setNotFound(true);
+          if (options?.isAutoSearch) {
+            setAutoLookupNoMatchMessage(
+              `Auto lookup attempted with ${
+                identificationType === 'registration_number'
+                  ? 'registration number'
+                  : identificationType.toLowerCase()
+              }: ${normalizedIdentificationNumber}. No DHA match found.`
+            );
+          }
+          onError?.('No practitioner found');
+        } else {
+          const errorMessage = err instanceof Error ? err.message : 'Failed to search practitioner';
+          setError(errorMessage);
+          onError?.(errorMessage);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [autoSelect, onSelect, onError]
+  );
 
   const handleSearch = useCallback(async () => {
-    if (!idNumber.trim()) {
-      setError('Please enter an identification number');
+    await performSearch(idType, idNumber);
+  }, [performSearch, idType, idNumber]);
+
+  useEffect(() => {
+    setIdType(initialIdentificationType);
+    setIdNumber(initialIdentificationNumber);
+  }, [initialIdentificationType, initialIdentificationNumber]);
+
+  useEffect(() => {
+    const normalizedIdentificationNumber = initialIdentificationNumber.trim();
+    if (!autoSearchOnMount || !normalizedIdentificationNumber) {
       return;
     }
 
-    setIsLoading(true);
-    setError(null);
-    setNotFound(false);
-    setPractitioner(null);
-
-    try {
-      const response = await shaApi.searchPractitioner({
-        identification_type: idType,
-        identification_number: idNumber.trim(),
-      });
-
-      if (response.message) {
-        setPractitioner(response.message);
-        if (autoSelect && onSelect) {
-          onSelect(response.message);
-        }
-      } else {
-        setNotFound(true);
-        onError?.('No practitioner found');
-      }
-    } catch (err: unknown) {
-      // Check if it's a 404 (not found) response - treat as "not found" not an error
-      const is404 =
-        (err &&
-          typeof err === 'object' &&
-          'response' in err &&
-          (err as { response?: { status?: number } }).response?.status === 404) ||
-        (err instanceof Error && err.message.includes('404'));
-
-      if (is404) {
-        setNotFound(true);
-        onError?.('No practitioner found');
-      } else {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to search practitioner';
-        setError(errorMessage);
-        onError?.(errorMessage);
-      }
-    } finally {
-      setIsLoading(false);
+    const signature = `${initialIdentificationType}:${normalizedIdentificationNumber}`;
+    if (autoSearchSignatureRef.current === signature) {
+      return;
     }
-  }, [idType, idNumber, autoSelect, onSelect, onError]);
+
+    autoSearchSignatureRef.current = signature;
+    void performSearch(initialIdentificationType, normalizedIdentificationNumber, {
+      isAutoSearch: true,
+    });
+  }, [autoSearchOnMount, initialIdentificationType, initialIdentificationNumber, performSearch]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -199,6 +264,7 @@ export function DHAPractitionerSearch({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="National ID">National ID</SelectItem>
+              <SelectItem value="registration_number">Reg. No.</SelectItem>
               <SelectItem value="passport">Passport</SelectItem>
             </SelectContent>
           </Select>
@@ -209,7 +275,11 @@ export function DHAPractitionerSearch({
               onChange={(e) => setIdNumber(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={
-                idType === 'National ID' ? 'Enter National ID number' : 'Enter Passport number'
+                idType === 'National ID'
+                  ? 'Enter National ID number'
+                  : idType === 'registration_number'
+                    ? 'Enter registration number'
+                    : 'Enter Passport number'
               }
               disabled={disabled || isLoading}
               className="pl-9"
@@ -233,6 +303,11 @@ export function DHAPractitionerSearch({
           Search the Kenya Digital Health Authority registry to verify and auto-fill practitioner
           details
         </p>
+        {autoLookupNoMatchMessage && (
+          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            {autoLookupNoMatchMessage}
+          </p>
+        )}
       </div>
 
       {/* Not Found Display */}
@@ -299,7 +374,7 @@ export function DHAPractitionerSearch({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="flex items-center gap-2 font-semibold">
-                  <SHALogo size="sm" />
+                  <KenyaCoatOfArms size={16} />
                   Registration Details
                 </h4>
                 <Badge

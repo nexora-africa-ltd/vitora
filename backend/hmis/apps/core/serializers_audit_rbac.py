@@ -335,6 +335,7 @@ class StaffProfileSerializer(serializers.ModelSerializer):
     emergency_contact_name = serializers.CharField(required=False, allow_blank=True, default="")
     emergency_contact_phone = serializers.CharField(required=False, allow_blank=True, default="")
     hwr_national_id = serializers.CharField(required=False, allow_blank=True, default="")
+    hwr_national_id_encrypted = serializers.CharField(source="hwr_national_id", read_only=True)
 
     user_username = serializers.CharField(source="user.username", read_only=True)
     user_email = serializers.CharField(source="user.email", read_only=True)
@@ -395,6 +396,7 @@ class StaffProfileSerializer(serializers.ModelSerializer):
             "hwr_salutation",
             "identification_type",
             "postal_address",
+            "hwr_national_id_encrypted",
             "hwr_national_id",
             "hwr_last_verified_at",
             "phone_number",
@@ -433,6 +435,12 @@ class StaffProfileUpdateSerializer(serializers.ModelSerializer):
     emergency_contact_name = serializers.CharField(required=False, allow_blank=True, default="")
     emergency_contact_phone = serializers.CharField(required=False, allow_blank=True, default="")
     hwr_national_id = serializers.CharField(required=False, allow_blank=True, default="")
+    hwr_national_id_encrypted = serializers.CharField(
+        source="hwr_national_id",
+        required=False,
+        allow_blank=True,
+        default="",
+    )
 
     email = serializers.EmailField(source="user.email", required=False)
     first_name = serializers.CharField(source="user.first_name", required=False)
@@ -482,6 +490,7 @@ class StaffProfileUpdateSerializer(serializers.ModelSerializer):
             "hwr_salutation",
             "identification_type",
             "postal_address",
+            "hwr_national_id_encrypted",
             "hwr_national_id",
             "phone_number",
             "emergency_contact_name",

@@ -307,7 +307,7 @@ export default function BedAssignmentRequestsPage() {
       </Dialog>
 
       <Dialog open={assigningRequest !== null} onOpenChange={(open) => { if (!open) { setAssigningRequest(null); setBedId(''); } }}>
-        <DialogContent>
+        <DialogContent className="overflow-visible">
           <DialogHeader><DialogTitle>Assign available bed</DialogTitle></DialogHeader>
           <div className="space-y-4"><p className="text-sm text-muted-foreground">Reserve an available bed for {assigningRequest?.patient_name || 'this patient'}.</p><div className="space-y-2"><Label htmlFor="bed">Available bed</Label><Select value={bedId} onValueChange={setBedId}><SelectTrigger id="bed"><SelectValue placeholder="Select available bed" /></SelectTrigger><SelectContent>{availableBeds.map((bed) => <SelectItem key={bed.id} value={String(bed.id)}>{bed.bed_number}{bed.ward_name ? ` · ${bed.ward_name}` : ''}</SelectItem>)}</SelectContent></Select>{availableBeds.length === 0 ? <p className="text-xs text-muted-foreground">No available beds match this request&apos;s ward.</p> : null}</div></div>
           <DialogFooter><Button variant="outline" onClick={() => setAssigningRequest(null)}>Cancel</Button><Button onClick={handleAssign} disabled={!bedId || assignRequest.isPending}>{assignRequest.isPending ? 'Assigning...' : 'Reserve bed'}</Button></DialogFooter>

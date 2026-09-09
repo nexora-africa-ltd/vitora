@@ -1111,7 +1111,7 @@ export interface DHAPractitionerSearchResponse {
  * Search request parameters
  */
 export interface DHAPractitionerSearchRequest {
-  identification_type: 'National ID' | 'passport';
+  identification_type: 'National ID' | 'passport' | 'registration_number';
   identification_number: string;
 }
 

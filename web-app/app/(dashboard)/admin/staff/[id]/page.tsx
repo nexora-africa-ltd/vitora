@@ -26,6 +26,8 @@ import {
   Lock,
   Eye,
   EyeOff,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
@@ -36,7 +38,6 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import {
   Select,
@@ -46,16 +47,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  MultiSelect,
-  MultiSelectTrigger,
-  MultiSelectContent,
-  MultiSelectInput,
-  MultiSelectList,
-  MultiSelectGroup,
-  MultiSelectItem,
-  MultiSelectEmpty,
-} from '@/components/kibo-ui/multi-select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -159,6 +151,9 @@ export default function EditStaffPage() {
   });
   const [membershipErrors, setMembershipErrors] = useState<Record<string, string>>({});
   const [hwrPopulated, setHwrPopulated] = useState(false);
+  const [pendingSecondaryDepartment, setPendingSecondaryDepartment] = useState('');
+  const [pendingSecondaryFacility, setPendingSecondaryFacility] = useState('');
+  const [pendingMembershipFacility, setPendingMembershipFacility] = useState('');
 
   // Reset password dialog state
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
@@ -204,7 +199,7 @@ export default function EditStaffPage() {
         hwr_salutation: staff.hwr_salutation || '',
         identification_type: staff.identification_type || '',
         postal_address: staff.postal_address || '',
-        hwr_national_id: staff.hwr_national_id || '',
+        hwr_national_id: staff.hwr_national_id_encrypted || staff.hwr_national_id || '',
       });
       setSecondaryDepartments((staff.secondary_departments ?? []).map(String));
       setSecondaryFacilities((staff.secondary_facilities ?? []).map(String));
@@ -528,6 +523,54 @@ export default function EditStaffPage() {
   const initials =
     `${(staff.user_first_name || '')[0] || ''}${(staff.user_last_name || '')[0] || ''}`.toUpperCase();
   const supervisorName = staffList?.results?.find((s) => s.id === staff.supervisor);
+  const directReports = (staffList?.results ?? []).filter((s) => s.supervisor === staffId);
+  const departmentsHeaded = (departments?.results ?? []).filter((department) => department.head === staffId);
+  const isSupervisor = directReports.length > 0 || departmentsHeaded.length > 0;
+  const supervisorDepartmentLabel = departmentsHeaded.length
+    ? departmentsHeaded.map((department) => department.name).join(', ')
+    : staff.primary_department_name || '';
+  const departmentNameById = new Map(
+    (departments?.results ?? []).map((department) => [department.id.toString(), department.name])
+  );
+  const facilityNameById = new Map(
+    (facilities?.results ?? []).map((facility) => [facility.id.toString(), facility.name])
+  );
+  const additionalDepartmentOptions = (departments?.results ?? [])
+    .filter(
+      (department) =>
+        department.id.toString() !== formData.department &&
+        !secondaryDepartments.includes(department.id.toString())
+    )
+    .map((department) => ({ value: department.id.toString(), label: department.name }));
+  const additionalFacilityOptions = (facilities?.results ?? [])
+    .filter(
+      (facility) =>
+        facility.id.toString() !== formData.primary_facility &&
+        !secondaryFacilities.includes(facility.id.toString())
+    )
+    .map((facility) => ({ value: facility.id.toString(), label: facility.name }));
+  const membershipFacilityOptions = (facilities?.results ?? [])
+    .filter((facility) => !membershipForm.facilities.includes(facility.id.toString()))
+    .map((facility) => ({ value: facility.id.toString(), label: facility.name }));
+  const primaryFacilityId = formData.primary_facility;
+  const preferredMembershipFacilityId = membershipForm.facilities.includes(primaryFacilityId)
+    ? primaryFacilityId
+    : membershipForm.facilities[0] || '';
+  const preferredMembershipFacilityName =
+    (facilities?.results ?? []).find((facility) => facility.id.toString() === preferredMembershipFacilityId)
+      ?.name || '';
+  const additionalAllowedFacilitiesCount = preferredMembershipFacilityId
+    ? membershipForm.facilities.filter((facilityId) => facilityId !== preferredMembershipFacilityId).length
+    : 0;
+  const preferredHwrNationalId =
+    staff.hwr_national_id_encrypted?.trim() || staff.hwr_national_id?.trim() || '';
+  const fallbackHwrRegistrationNumber = staff.license_number?.trim() || '';
+  const hwrLookupIdentificationType = preferredHwrNationalId
+    ? 'National ID'
+    : fallbackHwrRegistrationNumber
+      ? 'registration_number'
+      : 'National ID';
+  const hwrLookupIdentificationNumber = preferredHwrNationalId || fallbackHwrRegistrationNumber;
 
   return (
     <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
@@ -764,6 +807,21 @@ export default function EditStaffPage() {
                 </span>
               )}
             </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span className="font-medium">Supervisor:</span>
+              {isSupervisor ? (
+                <span className="inline-flex items-center gap-1 text-green-700">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Yes
+                  {supervisorDepartmentLabel ? ` - ${supervisorDepartmentLabel}` : ''}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-red-600">
+                  <XCircle className="h-3.5 w-3.5" />
+                  No
+                </span>
+              )}
+            </div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-0.5 text-xs text-muted-foreground/70">
               <span>{staff.organization_name || 'No organization'}</span>
               <span className="mx-0.5">•</span>
@@ -773,29 +831,13 @@ export default function EditStaffPage() {
         </div>
       </div>
 
-      {/* Tabbed Form */}
       <form onSubmit={handleSubmit}>
-        <Tabs defaultValue="personal" className="space-y-4">
-          <TabsList className="w-full justify-start">
-            <TabsTrigger value="personal" className="gap-1.5">
+        <div className="space-y-4">
+          <section className="space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <User className="h-4 w-4" />
-              <span className="hidden sm:inline">Personal</span>
-              <span className="sm:hidden">Info</span>
-            </TabsTrigger>
-            <TabsTrigger value="assignment" className="gap-1.5">
-              <Shield className="h-4 w-4" />
-              <span className="hidden sm:inline">Assignment</span>
-              <span className="sm:hidden">Role</span>
-            </TabsTrigger>
-            <TabsTrigger value="professional" className="gap-1.5">
-              <Briefcase className="h-4 w-4" />
-              <span className="hidden sm:inline">Professional</span>
-              <span className="sm:hidden">License</span>
-            </TabsTrigger>
-          </TabsList>
-
-          {/* ── Personal Information ── */}
-          <TabsContent value="personal">
+              Personal
+            </div>
             <Card>
               <CardContent className="space-y-4 pt-6">
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -807,7 +849,7 @@ export default function EditStaffPage() {
                       name="first_name"
                       value={formData.first_name}
                       onChange={(e) => handleChange('first_name', e.target.value)}
-                      placeholder="First name…"
+                      placeholder="First name..."
                     />
                     {formErrors.first_name && (
                       <p className="text-sm text-destructive">{formErrors.first_name}</p>
@@ -821,7 +863,7 @@ export default function EditStaffPage() {
                       name="last_name"
                       value={formData.last_name}
                       onChange={(e) => handleChange('last_name', e.target.value)}
-                      placeholder="Last name…"
+                      placeholder="Last name..."
                     />
                     {formErrors.last_name && (
                       <p className="text-sm text-destructive">{formErrors.last_name}</p>
@@ -835,7 +877,7 @@ export default function EditStaffPage() {
                       name="middle_name"
                       value={formData.middle_name}
                       onChange={(e) => handleChange('middle_name', e.target.value)}
-                      placeholder="Middle name…"
+                      placeholder="Middle name..."
                     />
                   </div>
                 </div>
@@ -854,7 +896,7 @@ export default function EditStaffPage() {
                       type="email"
                       value={formData.email}
                       onChange={(e) => handleChange('email', e.target.value)}
-                      placeholder="email@example.com…"
+                      placeholder="email@example.com..."
                     />
                     {formErrors.email && (
                       <p className="text-sm text-destructive">{formErrors.email}</p>
@@ -873,7 +915,7 @@ export default function EditStaffPage() {
                       type="tel"
                       value={formData.phone_number}
                       onChange={(e) => handleChange('phone_number', e.target.value)}
-                      placeholder="+254712345678…"
+                      placeholder="+254712345678..."
                     />
                   </div>
                 </div>
@@ -889,7 +931,7 @@ export default function EditStaffPage() {
                     name="employee_id"
                     value={formData.employee_id}
                     onChange={(e) => handleChange('employee_id', e.target.value)}
-                    placeholder="EMP-001…"
+                    placeholder="EMP-001..."
                   />
                   {formErrors.employee_id && (
                     <p className="text-sm text-destructive">{formErrors.employee_id}</p>
@@ -897,336 +939,13 @@ export default function EditStaffPage() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          </section>
 
-          {/* ── Role & Assignment ── */}
-          <TabsContent value="assignment">
-            <div className="space-y-4">
-              <Card>
-                <CardContent className="space-y-4 pt-6">
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="department">
-                        <Building2 className="mr-1 inline h-4 w-4" />
-                        Department *
-                      </Label>
-                      <Select
-                        value={formData.department}
-                        onValueChange={(value) => handleChange('department', value)}
-                      >
-                        <SelectTrigger id="department" aria-label="Department">
-                          <SelectValue placeholder="Select department" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {departments?.results.map((dept: { id: number; name: string }) => (
-                            <SelectItem key={dept.id} value={dept.id.toString()}>
-                              {dept.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {formErrors.department && (
-                        <p className="text-sm text-destructive">{formErrors.department}</p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="role">
-                        <Shield className="mr-1 inline h-4 w-4" />
-                        Role *
-                      </Label>
-                      <Select
-                        value={formData.role}
-                        onValueChange={(value) => handleChange('role', value)}
-                      >
-                        <SelectTrigger id="role" aria-label="Role">
-                          <SelectValue placeholder="Select role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {roles?.results.map((role) => (
-                            <SelectItem key={role.id} value={role.id.toString()}>
-                              {role.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {formErrors.role && (
-                        <p className="text-sm text-destructive">{formErrors.role}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="max-w-sm space-y-2">
-                    <Label htmlFor="primary_facility">
-                      <Building2 className="mr-1 inline h-4 w-4" />
-                      Primary Facility *
-                    </Label>
-                    <Select
-                      value={formData.primary_facility}
-                      onValueChange={(value) => handleChange('primary_facility', value)}
-                    >
-                      <SelectTrigger id="primary_facility" aria-label="Primary facility">
-                        <SelectValue placeholder="Select primary facility" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(facilities?.results ?? []).length > 0 ? (
-                          (facilities?.results ?? []).map((item) => (
-                            <SelectItem key={item.id} value={item.id.toString()}>
-                              {item.name}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectEmpty>No facilities available</SelectEmpty>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    {formErrors.primary_facility && (
-                      <p className="text-sm text-destructive">{formErrors.primary_facility}</p>
-                    )}
-                  </div>
-
-                  <Separator />
-
-                  {/* Supervisor */}
-                  <div className="max-w-sm space-y-2">
-                    <Label htmlFor="supervisor">
-                      <Users className="mr-1 inline h-4 w-4" />
-                      Supervisor
-                    </Label>
-                    <Select value={supervisor} onValueChange={setSupervisor}>
-                      <SelectTrigger id="supervisor" aria-label="Supervisor">
-                        <SelectValue placeholder="Select supervisor (optional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {(staffList?.results ?? [])
-                          .filter((s) => s.id !== staffId)
-                          .map((s) => (
-                            <SelectItem key={s.id} value={s.id.toString()}>
-                              {s.full_name || `${s.user_first_name} ${s.user_last_name}`}
-                              {s.primary_department_name ? ` (${s.primary_department_name})` : ''}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <Separator />
-
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Additional Assignments
-                  </p>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <MultiSelect
-                      data={(departments?.results ?? [])
-                        .filter((d) => d.id.toString() !== formData.department)
-                        .map((d) => ({ label: d.name, value: d.id.toString() }))}
-                      type="secondary-departments"
-                      values={secondaryDepartments}
-                      onValuesChange={setSecondaryDepartments}
-                    >
-                      <MultiSelectTrigger placeholder="Additional departments…" />
-                      <MultiSelectContent>
-                        <MultiSelectInput placeholder="Search departments…" />
-                        <MultiSelectList>
-                          <MultiSelectGroup>
-                            {(departments?.results ?? [])
-                              .filter((d) => d.id.toString() !== formData.department)
-                              .map((d) => (
-                                <MultiSelectItem key={d.id} value={d.id.toString()}>
-                                  {d.name}
-                                </MultiSelectItem>
-                              ))}
-                          </MultiSelectGroup>
-                          <MultiSelectEmpty>No departments found</MultiSelectEmpty>
-                        </MultiSelectList>
-                      </MultiSelectContent>
-                    </MultiSelect>
-
-                    <MultiSelect
-                      data={(facilities?.results ?? [])
-                        .filter((f) => f.id.toString() !== formData.primary_facility)
-                        .map((f) => ({ label: f.name, value: f.id.toString() }))}
-                      type="secondary-facilities"
-                      values={secondaryFacilities}
-                      onValuesChange={setSecondaryFacilities}
-                    >
-                      <MultiSelectTrigger placeholder="Additional facilities…" />
-                      <MultiSelectContent>
-                        <MultiSelectInput placeholder="Search facilities…" />
-                        <MultiSelectList>
-                          <MultiSelectGroup>
-                            {(facilities?.results ?? [])
-                              .filter((f) => f.id.toString() !== formData.primary_facility)
-                              .map((f) => (
-                                <MultiSelectItem key={f.id} value={f.id.toString()}>
-                                  {f.name}
-                                </MultiSelectItem>
-                              ))}
-                          </MultiSelectGroup>
-                          <MultiSelectEmpty>No facilities found</MultiSelectEmpty>
-                        </MultiSelectList>
-                      </MultiSelectContent>
-                    </MultiSelect>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="space-y-4 pt-6">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm font-medium">Organization Membership</p>
-                      <p className="text-sm text-muted-foreground">
-                        Manage this staff member&apos;s current-organization role, status, and
-                        facility access separately from the home-profile fields above.
-                      </p>
-                    </div>
-                    {currentMembership ? (
-                      <Badge
-                        variant={currentMembership.is_primary ? 'default' : 'secondary'}
-                        className="w-fit"
-                      >
-                        {currentMembership.is_primary
-                          ? 'Primary membership'
-                          : 'Secondary membership'}
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="w-fit">
-                        No membership record yet
-                      </Badge>
-                    )}
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="membership-role">Organization Role *</Label>
-                      <Select
-                        value={membershipForm.role}
-                        onValueChange={(value) => handleMembershipFieldChange('role', value)}
-                      >
-                        <SelectTrigger id="membership-role" aria-label="Organization role">
-                          <SelectValue placeholder="Select organization role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {roles?.results.map((role) => (
-                            <SelectItem key={role.id} value={role.id.toString()}>
-                              {role.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {membershipErrors.role && (
-                        <p className="text-sm text-destructive">{membershipErrors.role}</p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="membership-department">Organization Department</Label>
-                      <Select
-                        value={membershipForm.department || 'none'}
-                        onValueChange={(value) =>
-                          handleMembershipFieldChange('department', value === 'none' ? '' : value)
-                        }
-                      >
-                        <SelectTrigger
-                          id="membership-department"
-                          aria-label="Organization department"
-                        >
-                          <SelectValue placeholder="Select organization department" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No department</SelectItem>
-                          {departments?.results.map((dept: { id: number; name: string }) => (
-                            <SelectItem key={dept.id} value={dept.id.toString()}>
-                              {dept.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="membership-status">Membership Status</Label>
-                      <Select
-                        value={membershipForm.status}
-                        onValueChange={(value) => handleMembershipFieldChange('status', value)}
-                      >
-                        <SelectTrigger id="membership-status" aria-label="Membership status">
-                          <SelectValue placeholder="Select membership status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="ACTIVE">Active</SelectItem>
-                          <SelectItem value="SUSPENDED">Suspended</SelectItem>
-                          <SelectItem value="REVOKED">Revoked</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Allowed Facilities</Label>
-                      <MultiSelect
-                        data={(facilities?.results ?? []).map((facility) => ({
-                          label: facility.name,
-                          value: facility.id.toString(),
-                        }))}
-                        type="membership-facilities"
-                        values={membershipForm.facilities}
-                        onValuesChange={(values) =>
-                          setMembershipForm((prev) => ({ ...prev, facilities: values }))
-                        }
-                      >
-                        <MultiSelectTrigger placeholder="Membership facilities…" />
-                        <MultiSelectContent>
-                          <MultiSelectInput placeholder="Search facilities…" />
-                          <MultiSelectList>
-                            <MultiSelectGroup>
-                              {(facilities?.results ?? []).map((facility) => (
-                                <MultiSelectItem key={facility.id} value={facility.id.toString()}>
-                                  {facility.name}
-                                </MultiSelectItem>
-                              ))}
-                            </MultiSelectGroup>
-                            <MultiSelectEmpty>No facilities found</MultiSelectEmpty>
-                          </MultiSelectList>
-                        </MultiSelectContent>
-                      </MultiSelect>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                    {currentMembership && !currentMembership.is_primary ? (
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        onClick={handleMembershipDelete}
-                        disabled={deleteMembership.isPending}
-                      >
-                        {deleteMembership.isPending ? 'Removing…' : 'Remove Membership'}
-                      </Button>
-                    ) : null}
-                    <Button
-                      type="button"
-                      onClick={handleMembershipSave}
-                      disabled={createMembership.isPending || updateMembership.isPending}
-                    >
-                      {createMembership.isPending || updateMembership.isPending
-                        ? 'Saving Membership…'
-                        : currentMembership
-                          ? 'Save Membership'
-                          : 'Create Membership'}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+          <section className="space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Briefcase className="h-4 w-4" />
+              Professional
             </div>
-          </TabsContent>
-
-          {/* ── Professional Information ── */}
-          <TabsContent value="professional">
             <Card>
               <CardContent className="space-y-4 pt-6">
                 <div className="space-y-1">
@@ -1240,11 +959,14 @@ export default function EditStaffPage() {
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Search by National ID to verify and update professional details from the DHA
-                    registry
+                    Search by National ID or registration number to verify and update professional
+                    details from the DHA registry.
                   </p>
                 </div>
                 <DHAPractitionerSearch
+                  initialIdentificationType={hwrLookupIdentificationType}
+                  initialIdentificationNumber={hwrLookupIdentificationNumber}
+                  autoSearchOnMount={Boolean(hwrLookupIdentificationNumber)}
                   onSelect={(practitioner: DHAPractitioner) => {
                     const currentLicense =
                       practitioner.licenses?.find(
@@ -1360,7 +1082,7 @@ export default function EditStaffPage() {
                       spellCheck={false}
                       value={formData.license_number}
                       onChange={(e) => handleChange('license_number', e.target.value)}
-                      placeholder="MED-12345…"
+                      placeholder="MED-12345..."
                       className={hwrPopulated && formData.license_number ? 'bg-muted' : ''}
                     />
                   </div>
@@ -1386,7 +1108,7 @@ export default function EditStaffPage() {
                       name="specialization"
                       value={formData.specialization}
                       onChange={(e) => handleChange('specialization', e.target.value)}
-                      placeholder="e.g., Internal Medicine…"
+                      placeholder="e.g., Internal Medicine..."
                       className={hwrPopulated && formData.specialization ? 'bg-muted' : ''}
                     />
                   </div>
@@ -1450,7 +1172,7 @@ export default function EditStaffPage() {
                       name="hwr_national_id"
                       value={formData.hwr_national_id}
                       onChange={(e) => handleChange('hwr_national_id', e.target.value)}
-                      placeholder="e.g., 34221265"
+                      placeholder="e.g., 34444422"
                       className={hwrPopulated && formData.hwr_national_id ? 'bg-muted' : ''}
                     />
                   </div>
@@ -1492,8 +1214,372 @@ export default function EditStaffPage() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          </section>
+
+          <section className="space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Shield className="h-4 w-4" />
+              Assignment
+            </div>
+            <Card>
+              <CardContent className="space-y-4 pt-6">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="department">
+                      <Building2 className="mr-1 inline h-4 w-4" />
+                      Department *
+                    </Label>
+                    <Select
+                      value={formData.department}
+                      onValueChange={(value) => handleChange('department', value)}
+                    >
+                      <SelectTrigger id="department" aria-label="Department">
+                        <SelectValue placeholder="Select department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departments?.results.map((dept: { id: number; name: string }) => (
+                          <SelectItem key={dept.id} value={dept.id.toString()}>
+                            {dept.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {formErrors.department && (
+                      <p className="text-sm text-destructive">{formErrors.department}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="role">
+                      <Shield className="mr-1 inline h-4 w-4" />
+                      Role *
+                    </Label>
+                    <Select value={formData.role} onValueChange={(value) => handleChange('role', value)}>
+                      <SelectTrigger id="role" aria-label="Role">
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roles?.results.map((role) => (
+                          <SelectItem key={role.id} value={role.id.toString()}>
+                            {role.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {formErrors.role && <p className="text-sm text-destructive">{formErrors.role}</p>}
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="max-w-sm space-y-2">
+                  <Label htmlFor="primary_facility">
+                    <Building2 className="mr-1 inline h-4 w-4" />
+                    Primary Facility *
+                  </Label>
+                  <Select
+                    value={formData.primary_facility}
+                    onValueChange={(value) => handleChange('primary_facility', value)}
+                  >
+                    <SelectTrigger id="primary_facility" aria-label="Primary facility">
+                      <SelectValue placeholder="Select primary facility" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(facilities?.results ?? []).length > 0 ? (
+                        (facilities?.results ?? []).map((item) => (
+                          <SelectItem key={item.id} value={item.id.toString()}>
+                            {item.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectEmpty>No facilities available</SelectEmpty>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {formErrors.primary_facility && (
+                    <p className="text-sm text-destructive">{formErrors.primary_facility}</p>
+                  )}
+                </div>
+
+                <Separator />
+
+                <div className="max-w-sm space-y-2">
+                  <Label htmlFor="supervisor">
+                    <Users className="mr-1 inline h-4 w-4" />
+                    Supervisor
+                  </Label>
+                  <Select value={supervisor} onValueChange={setSupervisor}>
+                    <SelectTrigger id="supervisor" aria-label="Supervisor">
+                      <SelectValue placeholder="Select supervisor (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {(staffList?.results ?? [])
+                        .filter((s) => s.id !== staffId)
+                        .map((s) => (
+                          <SelectItem key={s.id} value={s.id.toString()}>
+                            {s.full_name || `${s.user_first_name} ${s.user_last_name}`}
+                            {s.primary_department_name ? ` (${s.primary_department_name})` : ''}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Separator />
+
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Additional Assignments
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="secondary-departments">Additional Departments</Label>
+                    <SearchableSelect
+                      id="secondary-departments"
+                      options={additionalDepartmentOptions}
+                      value={pendingSecondaryDepartment}
+                      onValueChange={(value) => {
+                        if (!secondaryDepartments.includes(value)) {
+                          setSecondaryDepartments((prev) => [...prev, value]);
+                        }
+                        setPendingSecondaryDepartment('');
+                      }}
+                      placeholder="Add department..."
+                      searchPlaceholder="Search departments..."
+                      emptyMessage="No departments found"
+                    />
+                    {secondaryDepartments.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {secondaryDepartments.map((departmentId) => (
+                          <Badge key={departmentId} variant="secondary" className="gap-1 pr-1">
+                            <span>{departmentNameById.get(departmentId) || departmentId}</span>
+                            <button
+                              type="button"
+                              className="rounded px-1 text-xs hover:bg-muted"
+                              onClick={() =>
+                                setSecondaryDepartments((prev) =>
+                                  prev.filter((value) => value !== departmentId)
+                                )
+                              }
+                              aria-label="Remove additional department"
+                            >
+                              x
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="secondary-facilities">Additional Facilities</Label>
+                    <SearchableSelect
+                      id="secondary-facilities"
+                      options={additionalFacilityOptions}
+                      value={pendingSecondaryFacility}
+                      onValueChange={(value) => {
+                        if (!secondaryFacilities.includes(value)) {
+                          setSecondaryFacilities((prev) => [...prev, value]);
+                        }
+                        setPendingSecondaryFacility('');
+                      }}
+                      placeholder="Add facility..."
+                      searchPlaceholder="Search facilities..."
+                      emptyMessage="No facilities found"
+                    />
+                    {secondaryFacilities.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {secondaryFacilities.map((facilityId) => (
+                          <Badge key={facilityId} variant="secondary" className="gap-1 pr-1">
+                            <span>{facilityNameById.get(facilityId) || facilityId}</span>
+                            <button
+                              type="button"
+                              className="rounded px-1 text-xs hover:bg-muted"
+                              onClick={() =>
+                                setSecondaryFacilities((prev) =>
+                                  prev.filter((value) => value !== facilityId)
+                                )
+                              }
+                              aria-label="Remove additional facility"
+                            >
+                              x
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="space-y-4 pt-6">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Organization Membership</p>
+                    <p className="text-sm text-muted-foreground">
+                      Manage this staff member&apos;s current-organization role, status, and facility
+                      access separately from the home-profile fields above.
+                    </p>
+                  </div>
+                  {currentMembership ? (
+                    <Badge
+                      variant={currentMembership.is_primary ? 'default' : 'secondary'}
+                      className="w-fit"
+                    >
+                      {currentMembership.is_primary ? 'Primary membership' : 'Secondary membership'}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="w-fit">
+                      No membership record yet
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="membership-role">Organization Role *</Label>
+                    <Select
+                      value={membershipForm.role}
+                      onValueChange={(value) => handleMembershipFieldChange('role', value)}
+                    >
+                      <SelectTrigger id="membership-role" aria-label="Organization role">
+                        <SelectValue placeholder="Select organization role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roles?.results.map((role) => (
+                          <SelectItem key={role.id} value={role.id.toString()}>
+                            {role.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {membershipErrors.role && (
+                      <p className="text-sm text-destructive">{membershipErrors.role}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="membership-department">Organization Department</Label>
+                    <Select
+                      value={membershipForm.department || 'none'}
+                      onValueChange={(value) =>
+                        handleMembershipFieldChange('department', value === 'none' ? '' : value)
+                      }
+                    >
+                      <SelectTrigger id="membership-department" aria-label="Organization department">
+                        <SelectValue placeholder="Select organization department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No department</SelectItem>
+                        {departments?.results.map((dept: { id: number; name: string }) => (
+                          <SelectItem key={dept.id} value={dept.id.toString()}>
+                            {dept.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="membership-status">Membership Status</Label>
+                    <Select
+                      value={membershipForm.status}
+                      onValueChange={(value) => handleMembershipFieldChange('status', value)}
+                    >
+                      <SelectTrigger id="membership-status" aria-label="Membership status">
+                        <SelectValue placeholder="Select membership status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ACTIVE">Active</SelectItem>
+                        <SelectItem value="SUSPENDED">Suspended</SelectItem>
+                        <SelectItem value="REVOKED">Revoked</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Allowed Facilities</Label>
+                    <SearchableSelect
+                      id="membership-facilities"
+                      options={membershipFacilityOptions}
+                      value={pendingMembershipFacility}
+                      onValueChange={(value) => {
+                        if (!membershipForm.facilities.includes(value)) {
+                          setMembershipForm((prev) => ({
+                            ...prev,
+                            facilities: [...prev.facilities, value],
+                          }));
+                        }
+                        setPendingMembershipFacility('');
+                      }}
+                      placeholder="Add facility..."
+                      searchPlaceholder="Search facilities..."
+                      emptyMessage="No facilities found"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {membershipForm.facilities.length === 0
+                        ? 'No facilities selected.'
+                        : `${preferredMembershipFacilityName || 'Primary facility'}${
+                            additionalAllowedFacilitiesCount > 0
+                              ? ` +${additionalAllowedFacilitiesCount}`
+                              : ''
+                          }`}
+                    </p>
+                    {membershipForm.facilities.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {membershipForm.facilities.map((facilityId) => (
+                          <Badge key={facilityId} variant="secondary" className="gap-1 pr-1">
+                            <span>{facilityNameById.get(facilityId) || facilityId}</span>
+                            <button
+                              type="button"
+                              className="rounded px-1 text-xs hover:bg-muted"
+                              onClick={() =>
+                                setMembershipForm((prev) => ({
+                                  ...prev,
+                                  facilities: prev.facilities.filter((value) => value !== facilityId),
+                                }))
+                              }
+                              aria-label="Remove allowed facility"
+                            >
+                              x
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                  {currentMembership && !currentMembership.is_primary ? (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={handleMembershipDelete}
+                      disabled={deleteMembership.isPending}
+                    >
+                      {deleteMembership.isPending ? 'Removing...' : 'Remove Membership'}
+                    </Button>
+                  ) : null}
+                  <Button
+                    type="button"
+                    onClick={handleMembershipSave}
+                    disabled={createMembership.isPending || updateMembership.isPending}
+                  >
+                    {createMembership.isPending || updateMembership.isPending
+                      ? 'Saving Membership...'
+                      : currentMembership
+                        ? 'Save Membership'
+                        : 'Create Membership'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        </div>
 
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Button type="button" variant="outline" asChild>

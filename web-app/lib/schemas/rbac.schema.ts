@@ -209,6 +209,7 @@ export const StaffProfileSchema = z.object({
   licensing_body: z.string().nullable().optional(),
   is_license_valid: z.boolean().optional(),
   specialization: z.string().nullable().optional(),
+  hwr_national_id_encrypted: z.string().nullable().optional(),
   phone_number: z.string().nullable().optional(),
   emergency_contact_name: z.string().nullable().optional(),
   emergency_contact_phone: z.string().nullable().optional(),

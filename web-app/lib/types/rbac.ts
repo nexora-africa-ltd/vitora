@@ -223,6 +223,7 @@ export interface StaffProfile {
   hwr_salutation?: string | null;
   identification_type?: string | null;
   postal_address?: string | null;
+  hwr_national_id_encrypted?: string | null;
   hwr_national_id?: string | null;
   hwr_last_verified_at?: string | null;
   phone_number?: string | null;
