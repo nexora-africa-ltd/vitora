@@ -253,3 +253,67 @@ export const FeatureFlagSchema = z.object({
 });
 
 export type FeatureFlagSchemaType = z.infer<typeof FeatureFlagSchema>;
+
+// =============================================================================
+// EMERGENCY ACCESS (Break-glass)
+// =============================================================================
+
+export const EmergencyAccessStatusSchema = z.enum(['ACTIVE', 'EXPIRED', 'REVOKED', 'REVIEWED']);
+
+export const EmergencyAccessReasonSchema = z.enum([
+  'LIFE_THREATENING',
+  'UNCONSCIOUS_PATIENT',
+  'MASS_CASUALTY',
+  'CRITICAL_LAB_RESULT',
+  'MEDICATION_EMERGENCY',
+  'DISASTER_RESPONSE',
+  'OTHER',
+]);
+
+export const EmergencyAccessSchema = z.object({
+  id: z.number(),
+  user: z.number(),
+  user_username: z.string(),
+  user_full_name: z.string(),
+  patient: z.number().nullable(),
+  patient_mrn: z.string().nullable(),
+  patient_name: z.string().nullable(),
+  reason: EmergencyAccessReasonSchema,
+  reason_display: z.string(),
+  reason_details: z.string(),
+  requested_at: z.string(),
+  expires_at: z.string(),
+  duration_minutes: z.number(),
+  status: EmergencyAccessStatusSchema,
+  status_display: z.string(),
+  is_active: z.boolean(),
+  is_expired: z.boolean(),
+  remaining_minutes: z.number(),
+  approver: z.number().nullable(),
+  approver_username: z.string().nullable(),
+  approved_at: z.string().nullable(),
+  approval_notes: z.string(),
+  revoked_by: z.number().nullable(),
+  revoked_by_username: z.string().nullable(),
+  revoked_at: z.string().nullable(),
+  revocation_reason: z.string(),
+  escalation_sent: z.boolean(),
+  escalation_sent_at: z.string().nullable(),
+  ip_address: z.string().nullable(),
+});
+
+export const PaginatedEmergencyAccessSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(EmergencyAccessSchema),
+});
+
+export const EmergencyAccessDashboardStatsSchema = z.object({
+  total_active: z.number(),
+  total_pending_review: z.number(),
+  total_today: z.number(),
+  total_this_week: z.number(),
+  by_reason: z.record(z.number()),
+  by_status: z.record(z.number()),
+});

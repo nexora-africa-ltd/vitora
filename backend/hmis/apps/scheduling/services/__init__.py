@@ -15,6 +15,10 @@ from hmis.apps.scheduling.services.assignment import (
     OverrideResult,
     RuleEvaluator,
 )
+from hmis.apps.scheduling.services.assignment_defaults import (
+    DEFAULT_ASSIGNMENT_RULES,
+    seed_assignment_defaults_for_facility,
+)
 
 # Re-export Phase 1 availability services (for backward compatibility)
 from hmis.apps.scheduling.services.availability import (
@@ -35,4 +39,6 @@ __all__ = [
     "AssignmentResult",
     "OverrideResult",
     "CandidateEvaluation",
+    "DEFAULT_ASSIGNMENT_RULES",
+    "seed_assignment_defaults_for_facility",
 ]

@@ -701,3 +701,107 @@ export const AutofillPlanSchema = z.object({
     constraints_applied: z.array(z.string()),
   }),
 });
+
+// =============================================================================
+// Assignment Engine
+// =============================================================================
+
+export const AssignmentRuleAppliesToSchema = z.enum([
+  'APPOINTMENT',
+  'SHIFT',
+  'BED_ASSIGNMENT',
+  'LAB_BATCH',
+  'THEATRE_SLOT',
+]);
+
+export const AssignmentRuleSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  rule_code: z.string(),
+  applies_to: AssignmentRuleAppliesToSchema,
+  rule_definition: z.record(z.unknown()),
+  version: z.number(),
+  priority: z.number(),
+  is_active: z.boolean(),
+  effective_from: z.string().nullable(),
+  effective_until: z.string().nullable(),
+  description: z.string(),
+  created_by: z.number().nullable(),
+  created_by_name: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const AssignmentRuleListItemSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  rule_code: z.string(),
+  applies_to: AssignmentRuleAppliesToSchema,
+  priority: z.number(),
+  is_active: z.boolean(),
+  version: z.number(),
+});
+
+export const PaginatedAssignmentRuleListSchema = createPaginatedSchema(AssignmentRuleListItemSchema);
+
+export const AssignmentDecisionSchema = z.object({
+  id: z.number(),
+  assignment_type: z.string(),
+  target_id: z.number(),
+  target_type: z.string(),
+  rule_applied: z.number().nullable(),
+  rule_applied_name: z.string().nullable(),
+  assigned_resource: z.number().nullable(),
+  assigned_resource_name: z.string().nullable(),
+  decision_outcome: z.string(),
+  decision_reason: z.string(),
+  candidates_evaluated: z.number(),
+  scoring_details: z.record(z.unknown()),
+  evaluation_inputs: z.record(z.unknown()),
+  evaluation_time_ms: z.number().nullable(),
+  triggered_by: z.number().nullable(),
+  triggered_by_name: z.string().nullable(),
+  created_at: z.string(),
+});
+
+export const PaginatedAssignmentDecisionSchema = createPaginatedSchema(AssignmentDecisionSchema);
+
+export const AssignmentOverrideSchema = z.object({
+  id: z.number(),
+  target_type: z.string(),
+  target_id: z.number(),
+  original_resource: z.number().nullable(),
+  original_resource_name: z.string().nullable(),
+  new_resource: z.number(),
+  new_resource_name: z.string().nullable(),
+  override_reason: z.string(),
+  justification: z.string(),
+  overridden_by: z.number().nullable(),
+  overridden_by_name: z.string().nullable(),
+  requires_approval: z.boolean(),
+  approval_status: z.string(),
+  approved_by: z.number().nullable(),
+  approved_by_name: z.string().nullable(),
+  approved_at: z.string().nullable(),
+  approval_notes: z.string(),
+  rejected_by: z.number().nullable(),
+  rejected_at: z.string().nullable(),
+  rejection_reason: z.string(),
+  created_at: z.string(),
+});
+
+export const PaginatedAssignmentOverrideSchema = createPaginatedSchema(AssignmentOverrideSchema);
+
+export const AutoAssignResponseSchema = z.object({
+  success: z.boolean(),
+  assigned_resource: ResourceListItemSchema.nullable(),
+  decision: AssignmentDecisionSchema.nullable(),
+  target_id: z.number().nullable(),
+  error: z.string().nullable().optional(),
+});
+
+export const ManualOverrideResponseSchema = z.object({
+  success: z.boolean(),
+  override: AssignmentOverrideSchema.nullable(),
+  error: z.string().nullable().optional(),
+});

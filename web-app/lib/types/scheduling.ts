@@ -950,3 +950,149 @@ export interface ShiftSwapRejectData {
 export interface ShiftSwapApproveData {
   notes?: string;
 }
+
+// =============================================================================
+// Assignment Engine
+// =============================================================================
+
+export type AssignmentType =
+  | 'APPOINTMENT'
+  | 'SHIFT'
+  | 'BED_ASSIGNMENT'
+  | 'LAB_BATCH'
+  | 'THEATRE_SLOT';
+
+export interface AssignmentRule {
+  id: number;
+  name: string;
+  rule_code: string;
+  applies_to: AssignmentType;
+  rule_definition: Record<string, unknown>;
+  version: number;
+  priority: number;
+  is_active: boolean;
+  effective_from: string | null;
+  effective_until: string | null;
+  description: string;
+  created_by: number | null;
+  created_by_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AssignmentRuleListItem {
+  id: number;
+  name: string;
+  rule_code: string;
+  applies_to: AssignmentType;
+  priority: number;
+  is_active: boolean;
+  version: number;
+}
+
+export interface AssignmentRuleCreateData {
+  name: string;
+  rule_code: string;
+  applies_to: AssignmentType;
+  rule_definition: Record<string, unknown>;
+  version?: number;
+  priority?: number;
+  is_active?: boolean;
+  effective_from?: string | null;
+  effective_until?: string | null;
+  description?: string;
+}
+
+export interface AssignmentDecision {
+  id: number;
+  assignment_type: string;
+  target_id: number;
+  target_type: string;
+  rule_applied: number | null;
+  rule_applied_name: string | null;
+  assigned_resource: number | null;
+  assigned_resource_name: string | null;
+  decision_outcome: string;
+  decision_reason: string;
+  candidates_evaluated: number;
+  scoring_details: Record<string, unknown>;
+  evaluation_inputs: Record<string, unknown>;
+  evaluation_time_ms: number | null;
+  triggered_by: number | null;
+  triggered_by_name: string | null;
+  created_at: string;
+}
+
+export interface AssignmentOverride {
+  id: number;
+  target_type: string;
+  target_id: number;
+  original_resource: number | null;
+  original_resource_name: string | null;
+  new_resource: number;
+  new_resource_name: string | null;
+  override_reason: string;
+  justification: string;
+  overridden_by: number | null;
+  overridden_by_name: string | null;
+  requires_approval: boolean;
+  approval_status: string;
+  approved_by: number | null;
+  approved_by_name: string | null;
+  approved_at: string | null;
+  approval_notes: string;
+  rejected_by: number | null;
+  rejected_at: string | null;
+  rejection_reason: string;
+  created_at: string;
+}
+
+export interface AssignmentOverrideCreateData {
+  target_type: string;
+  target_id: number;
+  original_resource?: number | null;
+  new_resource: number;
+  override_reason: string;
+  justification: string;
+  requires_approval?: boolean;
+}
+
+export interface AutoAssignRequest {
+  assignment_type: AssignmentType;
+  patient_id?: number;
+  scheduled_start?: string;
+  scheduled_end?: string;
+  reason?: string;
+  appointment_type?: string;
+  candidate_ids?: number[];
+}
+
+export interface AutoAssignResponse {
+  success: boolean;
+  assigned_resource: ResourceListItem | null;
+  decision: AssignmentDecision | null;
+  target_id: number | null;
+  error?: string | null;
+}
+
+export interface ManualOverrideRequest {
+  target_type: string;
+  target_id: number;
+  new_resource_id: number;
+  override_reason:
+    | 'PATIENT_REQUEST'
+    | 'STAFF_UNAVAILABLE'
+    | 'EMERGENCY'
+    | 'SPECIALIZATION_NEEDED'
+    | 'LOAD_BALANCING'
+    | 'ADMINISTRATIVE'
+    | 'OTHER';
+  justification: string;
+  requires_approval?: boolean;
+}
+
+export interface ManualOverrideResponse {
+  success: boolean;
+  override: AssignmentOverride | null;
+  error?: string | null;
+}

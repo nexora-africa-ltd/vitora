@@ -42,6 +42,15 @@ import {
   DepartmentRosterSettingsSchema,
   PaginatedDepartmentRosterSettingsSchema,
   AutofillPlanSchema,
+  AssignmentRuleSchema,
+  AssignmentRuleListItemSchema,
+  PaginatedAssignmentRuleListSchema,
+  AssignmentDecisionSchema,
+  PaginatedAssignmentDecisionSchema,
+  AssignmentOverrideSchema,
+  PaginatedAssignmentOverrideSchema,
+  AutoAssignResponseSchema,
+  ManualOverrideResponseSchema,
 } from '@/lib/schemas/scheduling.schema';
 import type {
   Resource,
@@ -108,6 +117,16 @@ import type {
   DepartmentRosterSettingsListParams,
   AutofillPlan,
   AutofillPlanData,
+  AssignmentRule,
+  AssignmentRuleListItem,
+  AssignmentRuleCreateData,
+  AssignmentDecision,
+  AssignmentOverride,
+  AssignmentOverrideCreateData,
+  AutoAssignRequest,
+  AutoAssignResponse,
+  ManualOverrideRequest,
+  ManualOverrideResponse,
 } from '@/lib/types/scheduling';
 
 const BASE_URL = '/api/scheduling';
@@ -1034,6 +1053,183 @@ export const shiftTypeConfigsApi = {
     const response = await apiClient.post(`${BASE_URL}/shift-type-configs/bulk_upsert/`, items);
     return parseResponse(ShiftTypeConfigBulkUpsertResultSchema, response.data, {
       context: 'shiftTypeConfigsApi.bulkUpsert',
+    });
+  },
+};
+
+// =============================================================================
+// Assignment Engine API
+// =============================================================================
+
+export const assignmentRulesApi = {
+  list: async (params?: {
+    applies_to?: string;
+    is_active?: boolean;
+    priority_gte?: number;
+    rule_code?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<{ count: number; results: AssignmentRuleListItem[] }> => {
+    const response = await apiClient.get(`${BASE_URL}/assignment-rules/`, { params });
+    return parseResponse(PaginatedAssignmentRuleListSchema, response.data, {
+      context: 'assignmentRulesApi.list',
+    });
+  },
+
+  get: async (id: number): Promise<AssignmentRule> => {
+    const response = await apiClient.get(`${BASE_URL}/assignment-rules/${id}/`);
+    return parseResponse(AssignmentRuleSchema, response.data, {
+      context: 'assignmentRulesApi.get',
+    });
+  },
+
+  create: async (data: AssignmentRuleCreateData): Promise<AssignmentRule> => {
+    const response = await apiClient.post(`${BASE_URL}/assignment-rules/`, data);
+    return parseResponse(AssignmentRuleSchema, response.data, {
+      context: 'assignmentRulesApi.create',
+    });
+  },
+
+  update: async (id: number, data: Partial<AssignmentRuleCreateData>): Promise<AssignmentRule> => {
+    const response = await apiClient.patch(`${BASE_URL}/assignment-rules/${id}/`, data);
+    return parseResponse(AssignmentRuleSchema, response.data, {
+      context: 'assignmentRulesApi.update',
+    });
+  },
+
+  delete: async (id: number): Promise<void> => {
+    await apiClient.delete(`${BASE_URL}/assignment-rules/${id}/`);
+  },
+
+  activate: async (id: number): Promise<AssignmentRule> => {
+    const response = await apiClient.post(`${BASE_URL}/assignment-rules/${id}/activate/`);
+    return parseResponse(AssignmentRuleSchema, response.data, {
+      context: 'assignmentRulesApi.activate',
+    });
+  },
+
+  deactivate: async (id: number): Promise<AssignmentRule> => {
+    const response = await apiClient.post(`${BASE_URL}/assignment-rules/${id}/deactivate/`);
+    return parseResponse(AssignmentRuleSchema, response.data, {
+      context: 'assignmentRulesApi.deactivate',
+    });
+  },
+
+  seedDefaults: async (dryRun = false): Promise<{
+    facility_id: number;
+    created: number;
+    skipped: number;
+    templates: number;
+    created_rule_codes: string[];
+    total_rules: number;
+  }> => {
+    const response = await apiClient.post(`${BASE_URL}/assignment-rules/seed-defaults/`, {
+      dry_run: dryRun,
+    });
+    return parseResponse(
+      z.object({
+        facility_id: z.number(),
+        created: z.number(),
+        skipped: z.number(),
+        templates: z.number(),
+        created_rule_codes: z.array(z.string()).default([]),
+        total_rules: z.number(),
+      }),
+      response.data,
+      {
+        context: 'assignmentRulesApi.seedDefaults',
+      }
+    );
+  },
+};
+
+export const assignmentDecisionsApi = {
+  list: async (params?: {
+    assignment_type?: string;
+    target_type?: string;
+    target_id?: number;
+    decision_outcome?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<{ count: number; results: AssignmentDecision[] }> => {
+    const response = await apiClient.get(`${BASE_URL}/assignment-decisions/`, { params });
+    return parseResponse(PaginatedAssignmentDecisionSchema, response.data, {
+      context: 'assignmentDecisionsApi.list',
+    });
+  },
+
+  get: async (id: number): Promise<AssignmentDecision> => {
+    const response = await apiClient.get(`${BASE_URL}/assignment-decisions/${id}/`);
+    return parseResponse(AssignmentDecisionSchema, response.data, {
+      context: 'assignmentDecisionsApi.get',
+    });
+  },
+};
+
+export const assignmentOverridesApi = {
+  list: async (params?: {
+    target_type?: string;
+    target_id?: number;
+    override_reason?: string;
+    approval_status?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<{ count: number; results: AssignmentOverride[] }> => {
+    const response = await apiClient.get(`${BASE_URL}/assignment-overrides/`, { params });
+    return parseResponse(PaginatedAssignmentOverrideSchema, response.data, {
+      context: 'assignmentOverridesApi.list',
+    });
+  },
+
+  get: async (id: number): Promise<AssignmentOverride> => {
+    const response = await apiClient.get(`${BASE_URL}/assignment-overrides/${id}/`);
+    return parseResponse(AssignmentOverrideSchema, response.data, {
+      context: 'assignmentOverridesApi.get',
+    });
+  },
+
+  create: async (data: AssignmentOverrideCreateData): Promise<AssignmentOverride> => {
+    const response = await apiClient.post(`${BASE_URL}/assignment-overrides/`, data);
+    return parseResponse(AssignmentOverrideSchema, response.data, {
+      context: 'assignmentOverridesApi.create',
+    });
+  },
+
+  delete: async (id: number): Promise<void> => {
+    await apiClient.delete(`${BASE_URL}/assignment-overrides/${id}/`);
+  },
+
+  approve: async (id: number, notes = ''): Promise<AssignmentOverride> => {
+    const response = await apiClient.post(`${BASE_URL}/assignment-overrides/${id}/approve/`, {
+      notes,
+    });
+    return parseResponse(AssignmentOverrideSchema, response.data, {
+      context: 'assignmentOverridesApi.approve',
+    });
+  },
+
+  reject: async (id: number, reason: string): Promise<AssignmentOverride> => {
+    const response = await apiClient.post(`${BASE_URL}/assignment-overrides/${id}/reject/`, {
+      reason,
+    });
+    return parseResponse(AssignmentOverrideSchema, response.data, {
+      context: 'assignmentOverridesApi.reject',
+    });
+  },
+};
+
+export const assignmentsApi = {
+  autoAssign: async (data: AutoAssignRequest): Promise<AutoAssignResponse> => {
+    const response = await apiClient.post(`${BASE_URL}/assignments/auto-assign/`, data);
+    return parseResponse(AutoAssignResponseSchema, response.data, {
+      context: 'assignmentsApi.autoAssign',
+    });
+  },
+
+  manualOverride: async (data: ManualOverrideRequest): Promise<ManualOverrideResponse> => {
+    const response = await apiClient.post(`${BASE_URL}/assignments/manual-override/`, data);
+    return parseResponse(ManualOverrideResponseSchema, response.data, {
+      context: 'assignmentsApi.manualOverride',
     });
   },
 };

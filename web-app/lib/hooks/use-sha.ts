@@ -76,6 +76,14 @@ export const shaQueryKeys = {
   preauth: () => [...shaQueryKeys.all, 'preauth'] as const,
   preauthStatus: (id: number) => [...shaQueryKeys.preauth(), id] as const,
   preauthPending: () => [...shaQueryKeys.preauth(), 'pending'] as const,
+
+  // DHA HIE ILM ePrescriptions
+  prescriptions: () => [...shaQueryKeys.all, 'ilm-prescriptions'] as const,
+  localPrescriptions: (params?: {
+    patient_pk?: number;
+    status?: string;
+    intervention_code?: string;
+  }) => [...shaQueryKeys.prescriptions(), 'local', params] as const,
 };
 
 // ============================================================================
@@ -477,6 +485,81 @@ export function usePendingPreauths(options?: { enabled?: boolean }) {
     queryKey: shaQueryKeys.preauthPending(),
     queryFn: () => shaApi.getPendingPreauths(),
     enabled: options?.enabled,
+  });
+}
+
+// ============================================================================
+// DHA HIE ILM ePrescription Hooks
+// ============================================================================
+
+export function useLocalDhaPrescriptions(
+  params?: { patient_pk?: number; status?: string; intervention_code?: string },
+  options?: { enabled?: boolean }
+) {
+  return useQuery({
+    queryKey: shaQueryKeys.localPrescriptions(params),
+    queryFn: () => shaApi.listLocalDhaPrescriptions(params ?? {}),
+    enabled: options?.enabled !== false,
+  });
+}
+
+export function useIlmPreviewPrescription() {
+  return useMutation({
+    mutationFn: (params: { consent_token: string; patient_pk?: number }) =>
+      shaApi.ilmPreviewPrescription(params),
+  });
+}
+
+export function useIlmCreatePrescription() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      consent_token: string;
+      intervention_code: string;
+      identification_number: string;
+      identification_type?: string;
+      regulation_body?: string;
+      items: Array<Record<string, unknown>>;
+      patient_pk?: number;
+      encounter_pk?: number;
+    }) => shaApi.ilmCreatePrescription(body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: shaQueryKeys.prescriptions() });
+    },
+  });
+}
+
+export function useIlmDispensePrescription() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      consent_token: string;
+      intervention_code: string;
+      actual_products: Array<{
+        actual_product_code: string;
+        medication_price: number;
+        total_quantity: number;
+      }>;
+      doctors?: Array<{ identification_number: string; identification_type?: string }>;
+      prescription_pk?: number;
+    }) => shaApi.ilmDispensePrescription(body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: shaQueryKeys.prescriptions() });
+    },
+  });
+}
+
+export function useIlmRemovePrescriptionDoctor() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      consent_token: string;
+      intervention_code: string;
+      practitioner_registration_number: string;
+    }) => shaApi.ilmRemovePrescriptionDoctor(body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: shaQueryKeys.prescriptions() });
+    },
   });
 }
 

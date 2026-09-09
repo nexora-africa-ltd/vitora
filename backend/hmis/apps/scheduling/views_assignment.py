@@ -81,8 +81,18 @@ from hmis.apps.scheduling.services import (
     get_available_slots,
     get_weekly_availability,
 )
+from hmis.apps.scheduling.services.assignment_defaults import seed_assignment_defaults_for_facility
 
 logger = logging.getLogger(__name__)
+
+
+class AssignmentEngineSuperuserPermission(permissions.BasePermission):
+    """Restrict assignment engine endpoints to superusers only."""
+
+    message = "Assignment Engine endpoints are restricted to superusers."
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and request.user.is_superuser)
 
 
 class AssignmentRuleFilter(filters.FilterSet):
@@ -108,7 +118,7 @@ class AssignmentRuleViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
 
     queryset = AssignmentRule.objects.all()
-    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
+    permission_classes = [permissions.IsAuthenticated, AssignmentEngineSuperuserPermission]
     filterset_class = AssignmentRuleFilter
     tenant_scope = "facility"
 
@@ -143,6 +153,35 @@ class AssignmentRuleViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         rule.save(update_fields=["is_active", "updated_at"])
         return Response(AssignmentRuleSerializer(rule).data)
 
+    @action(detail=False, methods=["post"], url_path="seed-defaults")
+    def seed_defaults(self, request):
+        """Seed baseline assignment rules for the current facility."""
+        if not request.user.is_superuser:
+            return Response(
+                {"detail": "You do not have permission to seed assignment defaults."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        if facility is None:
+            return Response(
+                {"detail": "No facility context available for default seeding."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        dry_run_value = request.data.get("dry_run", False)
+        if isinstance(dry_run_value, str):
+            dry_run = dry_run_value.strip().lower() in {"1", "true", "yes", "on"}
+        else:
+            dry_run = bool(dry_run_value)
+        result = seed_assignment_defaults_for_facility(
+            facility=facility,
+            created_by=request.user,
+            dry_run=dry_run,
+        )
+        return Response(result)
+
 
 class AssignmentDecisionFilter(filters.FilterSet):
     """Filter for AssignmentDecision model."""
@@ -170,7 +209,7 @@ class AssignmentDecisionViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelVi
 
     queryset = AssignmentDecision.objects.all()
     serializer_class = AssignmentDecisionSerializer
-    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
+    permission_classes = [permissions.IsAuthenticated, AssignmentEngineSuperuserPermission]
     filterset_class = AssignmentDecisionFilter
     tenant_facility_chain = "assigned_resource__facility"
     tenant_org_chain = "assigned_resource__organization"
@@ -202,7 +241,7 @@ class AssignmentOverrideViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     queryset = AssignmentOverride.objects.all()
     serializer_class = AssignmentOverrideSerializer
-    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
+    permission_classes = [permissions.IsAuthenticated, AssignmentEngineSuperuserPermission]
     filterset_class = AssignmentOverrideFilter
     tenant_facility_chain = "new_resource__facility"
     tenant_org_chain = "new_resource__organization"
@@ -259,7 +298,7 @@ class AssignmentViewSet(viewsets.ViewSet):
     Provides auto-assign and manual-override endpoints.
     """
 
-    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
+    permission_classes = [permissions.IsAuthenticated, AssignmentEngineSuperuserPermission]
 
     @extend_schema(
         request=inline_serializer(

@@ -313,6 +313,13 @@ const _allNavItems: NavItemType[] = [
         icon: AlertTriangle,
         actionKey: 'scheduling.manage_schedules',
       },
+      {
+        label: 'Assignments',
+        href: '/scheduling/assignments',
+        icon: ListOrdered,
+        actionKey: 'scheduling.manage_schedules',
+        visibleWhen: ({ isSuperuser }) => isSuperuser === true,
+      },
     ],
   },
   {
@@ -1178,6 +1185,13 @@ const _allNavItems: NavItemType[] = [
         requiresInternet: true,
       },
       {
+        label: 'SHA ePrescriptions',
+        href: '/transactions/sha-claims/prescriptions',
+        icon: Pill,
+        actionKey: 'billing.submit_sha_claim',
+        requiresInternet: true,
+      },
+      {
         label: 'Supplier Bills',
         href: '/transactions/supplier-bills',
         icon: FileSpreadsheet,
@@ -1533,6 +1547,12 @@ const _allNavItems: NavItemType[] = [
         href: '/admin/join-requests',
         icon: UserPlus,
         actionKey: 'admin.manage_staff',
+      },
+      {
+        label: 'Emergency Access',
+        href: '/admin/emergency-access',
+        icon: ShieldAlert,
+        actionKey: 'admin.view_audit_logs',
       },
       {
         label: 'Audit Logs',
