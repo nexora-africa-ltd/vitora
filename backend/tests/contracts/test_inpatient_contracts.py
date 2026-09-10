@@ -91,6 +91,8 @@ from hmis.apps.inpatient.serializers_ward_admission import (
     AdmissionICUReadinessSerializer,
     AdmissionRecommendationSerializer,
     AdmissionSerializer,
+    BedAssignmentRequestAssignSerializer,
+    BedAssignmentRequestSerializer,
     BedSerializer,
     BedTurnoverActionSerializer,
     InpatientWardSerializer,
@@ -1600,6 +1602,42 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "ward",
                 "ward_name",
                 "ward_type",
+            }
+        ),
+    ),
+    (
+        BedAssignmentRequestAssignSerializer,
+        frozenset(
+            {
+                "bed",
+            }
+        ),
+    ),
+    (
+        BedAssignmentRequestSerializer,
+        frozenset(
+            {
+                "assigned_at",
+                "assigned_bed",
+                "assigned_bed_number",
+                "assigned_by",
+                "assigned_by_username",
+                "created_at",
+                "id",
+                "patient",
+                "patient_mrn",
+                "patient_name",
+                "priority",
+                "priority_display",
+                "reason",
+                "recommendation",
+                "requested_by",
+                "requested_by_username",
+                "requested_ward",
+                "requested_ward_name",
+                "status",
+                "status_display",
+                "updated_at",
             }
         ),
     ),

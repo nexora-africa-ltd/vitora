@@ -50,11 +50,13 @@ from hmis.apps.core.serializers_membership_dhis2 import (
     OrgMembershipSerializer,
 )
 from hmis.apps.core.serializers_org_facility import (
+    BillingContactSerializer,
     FacilityCreateSerializer,
     FacilityDetailSerializer,
     FacilityListSerializer,
     OrganizationDetailSerializer,
     OrganizationListSerializer,
+    SubscriptionPeriodSerializer,
     SubscriptionPlanCreateSerializer,
     SubscriptionPlanDetailSerializer,
     SubscriptionPlanListSerializer,
@@ -480,8 +482,8 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "full_name",
                 "hwr_id",
                 "hwr_last_verified_at",
-                "hwr_national_id_encrypted",
                 "hwr_national_id",
+                "hwr_national_id_encrypted",
                 "hwr_salutation",
                 "hwr_status",
                 "id",
@@ -538,8 +540,8 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "full_name",
                 "hwr_id",
                 "hwr_last_verified_at",
-                "hwr_national_id_encrypted",
                 "hwr_national_id",
+                "hwr_national_id_encrypted",
                 "hwr_salutation",
                 "hwr_status",
                 "id",
@@ -595,8 +597,8 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "employment_type",
                 "first_name",
                 "hwr_id",
-                "hwr_national_id_encrypted",
                 "hwr_national_id",
+                "hwr_national_id_encrypted",
                 "hwr_salutation",
                 "hwr_status",
                 "identification_type",
@@ -779,6 +781,18 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "staff_profile",
                 "status",
                 "updated_at",
+            }
+        ),
+    ),
+    (
+        BillingContactSerializer,
+        frozenset(
+            {
+                "billing_address",
+                "billing_email",
+                "contact_name",
+                "kra_pin",
+                "phone",
             }
         ),
     ),
@@ -1032,6 +1046,27 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "staff_count",
                 "subscription_plan",
                 "subscription_tier",
+            }
+        ),
+    ),
+    (
+        SubscriptionPeriodSerializer,
+        frozenset(
+            {
+                "amount",
+                "billing_interval",
+                "confirmed_at",
+                "confirmed_by",
+                "created_at",
+                "currency",
+                "id",
+                "organization",
+                "payment_reference",
+                "period_end",
+                "period_start",
+                "plan",
+                "status",
+                "updated_at",
             }
         ),
     ),

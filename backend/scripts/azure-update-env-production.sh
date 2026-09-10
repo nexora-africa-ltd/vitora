@@ -17,7 +17,7 @@
 set -euo pipefail
 
 RG="${ACA_RG:-vitora-rg-sa}"
-APP_NAME="${ACA_NAME:-vitora-api-prod-private-sa}"
+APP_NAME="${ACA_NAME:-vitora-api-private-prod-sa}"
 
 FQDN=$(az containerapp show \
   --name "$APP_NAME" \
@@ -40,7 +40,12 @@ echo "==> Updating PRODUCTION container app: $APP_NAME (https://${FQDN})"
 echo "    Production domain: ${PROD_DOMAIN}"
 echo ""
 echo "⚠️  WARNING: This updates the PRODUCTION environment."
-read -p "    Continue? [y/N] " confirm
+if [[ -t 0 ]]; then
+  read -r -p "    Continue? [y/N] " confirm
+else
+  confirm="${ACA_CONFIRM:-N}"
+  echo "    Non-interactive shell detected; using ACA_CONFIRM=${confirm}"
+fi
 if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
   echo "Aborted."
   exit 0

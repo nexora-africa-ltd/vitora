@@ -24,8 +24,11 @@ from hmis.apps.scheduling.serializers import (
     AssignmentRuleSerializer,
     AutoAssignRequestSerializer,
     AutoAssignResponseSerializer,
+    AutofillPlanSerializer,
     AvailabilityQuerySerializer,
     AvailabilitySlotSerializer,
+    DepartmentRosterSettingsSerializer,
+    DepartmentShiftConfigSerializer,
     EmergencyClockInSerializer,
     ManualOverrideRequestSerializer,
     ManualOverrideResponseSerializer,
@@ -49,6 +52,8 @@ from hmis.apps.scheduling.serializers import (
     ShiftSwapRequestListSerializer,
     ShiftSwapRequestSerializer,
     ShiftTypeConfigSerializer,
+    ShiftVacancyFillSerializer,
+    ShiftVacancySerializer,
     SlotCheckQuerySerializer,
     SlotCheckResponseSerializer,
     StaffConstraintSerializer,
@@ -279,6 +284,15 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
+        AutofillPlanSerializer,
+        frozenset(
+            {
+                "end_date",
+                "start_date",
+            }
+        ),
+    ),
+    (
         AvailabilityQuerySerializer,
         frozenset(
             {
@@ -294,6 +308,41 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "date",
                 "end_time",
                 "start_time",
+            }
+        ),
+    ),
+    (
+        DepartmentRosterSettingsSerializer,
+        frozenset(
+            {
+                "created_at",
+                "department",
+                "department_name",
+                "id",
+                "repeating_shift_pattern",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        DepartmentShiftConfigSerializer,
+        frozenset(
+            {
+                "color",
+                "created_at",
+                "department",
+                "department_name",
+                "display_label",
+                "end_time",
+                "id",
+                "is_active",
+                "label",
+                "max_staff",
+                "min_staff",
+                "shift_type",
+                "shift_type_display",
+                "start_time",
+                "updated_at",
             }
         ),
     ),
@@ -685,6 +734,39 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "shift_type",
                 "shift_type_display",
                 "start_time",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        ShiftVacancyFillSerializer,
+        frozenset(
+            {
+                "staff_resource",
+            }
+        ),
+    ),
+    (
+        ShiftVacancySerializer,
+        frozenset(
+            {
+                "created_at",
+                "created_by",
+                "created_by_name",
+                "department",
+                "department_name",
+                "end_time",
+                "filled_at",
+                "filled_by",
+                "filled_by_name",
+                "id",
+                "notes",
+                "shift_date",
+                "shift_type",
+                "shift_type_display",
+                "start_time",
+                "status",
+                "status_display",
                 "updated_at",
             }
         ),
