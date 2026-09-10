@@ -8,7 +8,7 @@ parameter validation, DHAError → HTTP status mapping and snapshot persistence.
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, seal
 
 import pytest
 
@@ -51,8 +51,9 @@ class TestFacilitySearchEndpoint:
         assert resp.status_code == 400
 
     def test_calls_service_with_required_params(self, sha_client):
-        with patch(ILM_SERVICE_PATH) as M:
+        with patch(ILM_SERVICE_PATH, autospec=True) as M:
             M.return_value.search_facility.return_value = _ok_result({"officialName": "Demo"})
+            seal(M.return_value)
             resp = sha_client.get(
                 self.URL,
                 {"identifier": "MFL-001", "identifier_type": "mfl", "name": "Demo"},
@@ -65,18 +66,20 @@ class TestFacilitySearchEndpoint:
             assert kw["name"] == "Demo"
 
     def test_unauthorized_returns_502(self, sha_client):
-        with patch(ILM_SERVICE_PATH) as M:
+        with patch(ILM_SERVICE_PATH, autospec=True) as M:
             M.return_value.search_facility.side_effect = DHAUnauthorizedError(
                 "no token", status_code=401
             )
+            seal(M.return_value)
             resp = sha_client.get(self.URL, {"identifier": "x", "identifier_type": "mfl"})
             assert resp.status_code == 502
 
     def test_not_found_returns_404(self, sha_client):
-        with patch(ILM_SERVICE_PATH) as M:
+        with patch(ILM_SERVICE_PATH, autospec=True) as M:
             M.return_value.search_facility.side_effect = DHANotFoundError(
                 "missing", status_code=404
             )
+            seal(M.return_value)
             resp = sha_client.get(self.URL, {"identifier": "x", "identifier_type": "mfl"})
             assert resp.status_code == 404
 
@@ -89,8 +92,9 @@ class TestPatientLookupEndpoint:
         assert sha_client.get(self.URL).status_code == 400
 
     def test_calls_service(self, sha_client):
-        with patch(ILM_SERVICE_PATH) as M:
+        with patch(ILM_SERVICE_PATH, autospec=True) as M:
             M.return_value.lookup_patient.return_value = _ok_result({"first_name": "Jane"})
+            seal(M.return_value)
             resp = sha_client.get(
                 self.URL,
                 {"identification_number": "111", "identification_type": "National ID"},
@@ -104,8 +108,9 @@ class TestProfessionalSearchEndpoint:
     URL = "/api/sha/ilm/registries/professional-search/"
 
     def test_national_id_does_not_require_regulator(self, sha_client):
-        with patch(ILM_SERVICE_PATH) as M:
+        with patch(ILM_SERVICE_PATH, autospec=True) as M:
             M.return_value.search_professional.return_value = _ok_result({"message": {}})
+            seal(M.return_value)
             resp = sha_client.get(
                 self.URL,
                 {"identification_number": "x", "identification_type": "National ID"},
@@ -120,8 +125,9 @@ class TestProfessionalSearchEndpoint:
         assert resp.status_code == 400
 
     def test_calls_service(self, sha_client):
-        with patch(ILM_SERVICE_PATH) as M:
+        with patch(ILM_SERVICE_PATH, autospec=True) as M:
             M.return_value.search_professional.return_value = _ok_result({"message": {}})
+            seal(M.return_value)
             resp = sha_client.get(
                 self.URL,
                 {
@@ -133,8 +139,9 @@ class TestProfessionalSearchEndpoint:
             assert resp.status_code == 200
 
     def test_normalizes_full_regulator_name(self, sha_client):
-        with patch(ILM_SERVICE_PATH) as M:
+        with patch(ILM_SERVICE_PATH, autospec=True) as M:
             M.return_value.search_professional.return_value = _ok_result({"message": {}})
+            seal(M.return_value)
             resp = sha_client.get(
                 self.URL,
                 {
@@ -161,10 +168,11 @@ class TestEligibilityEndpoint:
         assert sha_client.get(self.URL).status_code == 400
 
     def test_returns_payload_and_snapshot_id(self, sha_client, sample_patient):
-        with patch(ILM_SERVICE_PATH) as M:
+        with patch(ILM_SERVICE_PATH, autospec=True) as M:
             M.return_value.check_eligibility.return_value = _ok_result(
                 {"memberCrNumber": "CR-1"}, snapshot_id=42
             )
+            seal(M.return_value)
             resp = sha_client.get(
                 self.URL,
                 {
@@ -179,10 +187,11 @@ class TestEligibilityEndpoint:
             assert kw["patient"].pk == sample_patient.pk
 
     def test_validation_error_returns_400(self, sha_client):
-        with patch(ILM_SERVICE_PATH) as M:
+        with patch(ILM_SERVICE_PATH, autospec=True) as M:
             M.return_value.check_eligibility.side_effect = DHAValidationError(
                 "bad input", status_code=400
             )
+            seal(M.return_value)
             resp = sha_client.get(
                 self.URL,
                 {"identification_number": "x", "identification_type": "National ID"},
@@ -196,8 +205,9 @@ class TestBenefitsEndpoints:
         assert sha_client.get("/api/sha/ilm/benefits/").status_code == 400
 
     def test_benefits_propagates_optional_params(self, sha_client):
-        with patch(ILM_SERVICE_PATH) as M:
+        with patch(ILM_SERVICE_PATH, autospec=True) as M:
             M.return_value.fetch_benefits.return_value = _ok_result({"results": []})
+            seal(M.return_value)
             resp = sha_client.get(
                 "/api/sha/ilm/benefits/",
                 {"patient_id": "CR-1", "is_unique_benefit": "true", "fields": "x,y"},
@@ -208,8 +218,9 @@ class TestBenefitsEndpoints:
             assert kw["fields"] == "x,y"
 
     def test_sub_benefits(self, sha_client):
-        with patch(ILM_SERVICE_PATH) as M:
+        with patch(ILM_SERVICE_PATH, autospec=True) as M:
             M.return_value.fetch_sub_benefits.return_value = _ok_result({"results": []})
+            seal(M.return_value)
             resp = sha_client.get("/api/sha/ilm/sub-benefits/", {"patient_id": "CR-1"})
             assert resp.status_code == 200
 
@@ -218,8 +229,9 @@ class TestBenefitsEndpoints:
         assert resp.status_code == 400
 
     def test_benefit_interventions_ok(self, sha_client):
-        with patch(ILM_SERVICE_PATH) as M:
+        with patch(ILM_SERVICE_PATH, autospec=True) as M:
             M.return_value.fetch_benefit_interventions.return_value = _ok_result({"results": []})
+            seal(M.return_value)
             resp = sha_client.get(
                 "/api/sha/ilm/benefit-interventions/",
                 {"patient_id": "CR-1", "sub_benefit_code": "SB-1"},
@@ -231,8 +243,9 @@ class TestBenefitsEndpoints:
         assert resp.status_code == 400
 
     def test_utilization_ok(self, sha_client):
-        with patch(ILM_SERVICE_PATH) as M:
+        with patch(ILM_SERVICE_PATH, autospec=True) as M:
             M.return_value.fetch_utilization.return_value = _ok_result({"crId": "CR-1"})
+            seal(M.return_value)
             resp = sha_client.get(
                 "/api/sha/ilm/utilization/",
                 {"patient_id": "CR-1", "intervention_code": "INT-1"},

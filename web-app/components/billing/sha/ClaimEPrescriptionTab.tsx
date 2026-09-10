@@ -28,6 +28,7 @@ import {
   useLocalDhaPrescriptions,
 } from '@/lib/hooks/use-sha';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useDebounce } from '@/lib/hooks/use-debounce';
 import type { SHADhaPrescription } from '@/lib/schemas/sha.schema';
 import type { Claim } from '@/lib/types/sha';
 import type { Prescription } from '@/lib/types/pharmacy';
@@ -106,31 +107,6 @@ function resolvePractitionerIdentifier(clinician: Claim['encounter_clinician']):
   return '';
 }
 
-function extractGenericConceptCodeOptions(
-  prescriptions: Array<{ items?: unknown; intervention_code?: string; id: number }>
-) {
-  const seen = new Set<string>();
-  const options: Array<{ value: string; label: string; sublabel: string }> = [];
-
-  prescriptions.forEach((prescription) => {
-    const items = Array.isArray(prescription.items) ? prescription.items : [];
-    items.forEach((item) => {
-      if (!item || typeof item !== 'object' || Array.isArray(item)) return;
-      const code = toSafeString((item as { generic_concept_code?: unknown }).generic_concept_code).trim();
-      if (!code) return;
-      if (seen.has(code)) return;
-      seen.add(code);
-      options.push({
-        value: code,
-        label: code,
-        sublabel: `From Rx #${prescription.id}${prescription.intervention_code ? ` • ${prescription.intervention_code}` : ''}`,
-      });
-    });
-  });
-
-  return options;
-}
-
 function parsePositiveInteger(value: string | number | null | undefined, fallback: string): string {
   const parsed = Number.parseInt(String(value ?? ''), 10);
   return Number.isFinite(parsed) && parsed > 0 ? String(parsed) : fallback;
@@ -166,6 +142,13 @@ export function ClaimEPrescriptionTab({ claim }: ClaimEPrescriptionTabProps) {
   const [consentTokenError, setConsentTokenError] = useState('');
 
   const [selectedSourcePrescriptionId, setSelectedSourcePrescriptionId] = useState('');
+  const [genericConceptSearch, setGenericConceptSearch] = useState('');
+  const [selectedTerminologyProvenance, setSelectedTerminologyProvenance] = useState<{
+    owner: string;
+    sources?: string;
+    collection?: string;
+  } | null>(null);
+  const debouncedGenericConceptSearch = useDebounce(genericConceptSearch, 300);
 
   const activeInterventionOptions = useMemo(
     () =>
@@ -271,6 +254,13 @@ export function ClaimEPrescriptionTab({ claim }: ClaimEPrescriptionTabProps) {
     queryFn: () => pharmacyApi.listPrescriptions({ patient: claimPatientPk, page_size: 500 }),
     enabled: claimPatientPk !== undefined,
   });
+  const terminologyQuery = useQuery({
+    queryKey: ['sha-ilm-terminology-concepts', debouncedGenericConceptSearch],
+    queryFn: () =>
+      shaApi.ilmSearchClinicalConcepts({ search: debouncedGenericConceptSearch, limit: 30 }),
+    enabled: debouncedGenericConceptSearch.trim().length >= 2,
+    retry: false,
+  });
 
   const allLocalPrescriptionRows = useMemo(() => data?.results ?? [], [data?.results]);
 
@@ -311,7 +301,15 @@ export function ClaimEPrescriptionTab({ claim }: ClaimEPrescriptionTabProps) {
     [undispensedPharmacyPrescriptions]
   );
 
-  const genericConceptCodeOptions = useMemo(() => extractGenericConceptCodeOptions(rows), [rows]);
+  const genericConceptCodeOptions = useMemo(
+    () =>
+      (terminologyQuery.data?.results ?? []).map((concept) => ({
+        value: concept.code,
+        label: concept.display,
+        sublabel: `${concept.code} • ${concept.system}`,
+      })),
+    [terminologyQuery.data?.results]
+  );
 
   const invalidItemRow = useMemo(
     () =>
@@ -399,6 +397,15 @@ export function ClaimEPrescriptionTab({ claim }: ClaimEPrescriptionTabProps) {
       return;
     }
 
+    if (!selectedTerminologyProvenance) {
+      toast({
+        title: 'Select DHA terminology concepts first',
+        description: 'Each prescription item must use a concept resolved through DHA ILM terminology.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (invalidItemRow) {
       toast({
         title: 'Complete all required fields for each prescription item',
@@ -413,6 +420,7 @@ export function ClaimEPrescriptionTab({ claim }: ClaimEPrescriptionTabProps) {
         consent_token: consentToken,
         intervention_code: createInterventionCode.trim(),
         identification_number: createIdentificationNumber.trim(),
+        terminology: selectedTerminologyProvenance,
         items: createItemsRows.map((row) => ({
           generic_concept_code: row.generic_concept_code.trim(),
           dose_quantity: Number(row.dose_quantity) || 0,
@@ -617,14 +625,26 @@ export function ClaimEPrescriptionTab({ claim }: ClaimEPrescriptionTabProps) {
                       <SearchableSelect
                         options={genericConceptCodeOptions}
                         value={row.generic_concept_code}
-                        onValueChange={(value) => handleItemRowChange(row.id, 'generic_concept_code', value)}
+                        onValueChange={(value) => {
+                          handleItemRowChange(row.id, 'generic_concept_code', value);
+                          if (terminologyQuery.data?.provenance) {
+                            setSelectedTerminologyProvenance(terminologyQuery.data.provenance);
+                          }
+                        }}
                         placeholder="Search generic concept code..."
-                        searchPlaceholder="Search known generic concept codes"
-                        emptyMessage="No generic codes indexed yet. Load an undispensed prescription first."
+                        searchPlaceholder="Type at least two characters to search DHA terminology"
+                        emptyMessage={
+                          genericConceptSearch.trim().length < 2
+                            ? 'Type at least two characters to search DHA terminology.'
+                            : terminologyQuery.isError
+                              ? 'DHA terminology is unavailable or not configured.'
+                              : 'No DHA terminology concepts found.'
+                        }
+                        isLoading={terminologyQuery.isFetching}
+                        onSearchChange={setGenericConceptSearch}
                       />
                       <p className="text-[11px] text-muted-foreground">
-                        DHA&apos;s standardized code for the prescribed medicine. Suggestions reuse codes from
-                        prior local ILM prescriptions; they are not a live DHA catalogue search.
+                        Search DHA ILM terminology and select the standard medicine concept required for this item.
                       </p>
                     </div>
                     <div className="space-y-1.5">

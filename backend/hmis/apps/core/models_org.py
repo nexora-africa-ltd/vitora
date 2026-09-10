@@ -86,6 +86,8 @@ class Organization(TimeStampedModel):
     contact_phone = encrypted_pii_property("contact_phone")
     address_encrypted = models.TextField(default="", blank=True)
     address = encrypted_pii_property("address")
+    billing_contact_name = models.CharField(max_length=200, blank=True, default="")
+    billing_kra_pin = models.CharField(max_length=30, blank=True, default="")
 
     # ------------------------------------------------------------------
     # Location (optional HQ)

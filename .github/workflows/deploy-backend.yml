@@ -87,8 +87,17 @@ jobs:
           ingress: external
 
       - name: Apply backend environment variables
+        env:
+          PAYSTACK_SECRET_KEY: ${{ secrets.PAYSTACK_SECRET_KEY }}
         run: |
           az extension add --name containerapp --upgrade --only-show-errors
+          if [[ -n "$PAYSTACK_SECRET_KEY" ]]; then
+            az containerapp secret set \
+              --name "${{ env.CONTAINER_APP_NAME }}" \
+              --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+              --secrets "paystack-secret-key=$PAYSTACK_SECRET_KEY" \
+              --output none
+          fi
           az containerapp update \
             --name "${{ env.CONTAINER_APP_NAME }}" \
             --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
@@ -101,6 +110,10 @@ jobs:
             PII_HMAC_KEY=secretref:pii-hmac-key \
             AZURE_STORAGE_CONNECTION_STRING=secretref:azure-storage-connection-string \
             DJANGO_SECRET_KEY=secretref:django-secret-key \
+            PAYSTACK_SECRET_KEY=secretref:paystack-secret-key \
+            PAYSTACK_PUBLIC_KEY=${{ vars.PAYSTACK_PUBLIC_KEY || '' }} \
+            PAYSTACK_CALLBACK_URL=${{ vars.PAYSTACK_CALLBACK_URL || (env.DEPLOY_ENV == 'production' && 'https://app.vitora.digital/account-billing?payment=returned' || 'https://staging.vitora.digital/account-billing?payment=returned') }} \
+            PAYSTACK_WEBHOOK_URL=${{ vars.PAYSTACK_WEBHOOK_URL || (env.DEPLOY_ENV == 'production' && 'https://api.vitora.digital/api/payments/paystack/webhook/' || 'https://staging-api.vitora.digital/api/payments/paystack/webhook/') }} \
             DEBUG=false \
             PORT=8000 \
             MEDIA_BACKEND=${{ vars.MEDIA_BACKEND || 'azure_blob' }} \
@@ -144,6 +157,9 @@ jobs:
             ILM_REQUEST_TIMEOUT=30 \
             ILM_MAX_RETRIES=2 \
             ILM_BACKOFF_SECONDS=0.5 \
+            ILM_TERMINOLOGY_OWNER=${{ vars.ILM_TERMINOLOGY_OWNER || '' }} \
+            ILM_TERMINOLOGY_SOURCES=${{ vars.ILM_TERMINOLOGY_SOURCES || '' }} \
+            ILM_TERMINOLOGY_COLLECTION=${{ vars.ILM_TERMINOLOGY_COLLECTION || '' }} \
             FACILITY_MFL_CODE=TEST-001 \
             FACILITY_LEVEL=L3 \
             FACILITY_NAME=Demo-Health-Facility \

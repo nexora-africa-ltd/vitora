@@ -95,3 +95,33 @@ export interface SubscriptionPlanCreateData {
 }
 
 export type SubscriptionPlanUpdateData = Partial<Omit<SubscriptionPlanCreateData, 'code'>>;
+
+export type SubscriptionBillingInterval = 'MONTHLY' | 'ANNUAL';
+export type SubscriptionPeriodStatus = 'PENDING' | 'PAID' | 'VOID';
+
+export interface SubscriptionPeriod {
+  id: number;
+  organization: number;
+  plan: number;
+  billing_interval: SubscriptionBillingInterval;
+  amount: string;
+  currency: string;
+  period_start: string;
+  period_end: string;
+  status: SubscriptionPeriodStatus;
+  payment_reference: string;
+  confirmed_at: string | null;
+  confirmed_by: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubscriptionPeriodCreateData {
+  organization: number;
+  plan: number;
+  billing_interval: SubscriptionBillingInterval;
+  amount: string;
+  currency?: string;
+  period_start: string;
+  period_end: string;
+}

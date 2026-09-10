@@ -43,6 +43,7 @@ from .models import (
     StaffInvitation,
     StaffProfile,
     SubCounty,
+    SubscriptionPeriod,
     SubscriptionPlan,
     UserCertificate,
     Ward,
@@ -143,6 +144,55 @@ class SubscriptionPlanCreateSerializer(serializers.ModelSerializer):
         if SubscriptionPlan.objects.filter(code=value).exists():
             raise serializers.ValidationError(f"A plan with code '{value}' already exists.")
         return value
+
+
+class SubscriptionPeriodSerializer(serializers.ModelSerializer):
+    """Platform-only serializer for auditable subscription periods."""
+
+    class Meta:
+        model = SubscriptionPeriod
+        fields = [
+            "id",
+            "organization",
+            "plan",
+            "billing_interval",
+            "amount",
+            "currency",
+            "period_start",
+            "period_end",
+            "status",
+            "payment_reference",
+            "confirmed_at",
+            "confirmed_by",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "status",
+            "payment_reference",
+            "confirmed_at",
+            "confirmed_by",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class BillingContactSerializer(serializers.ModelSerializer):
+    """Tenant-safe organization billing contact projection."""
+
+    contact_name = serializers.CharField(
+        source="billing_contact_name", required=False, allow_blank=True
+    )
+    billing_email = serializers.EmailField(source="contact_email", required=False, allow_blank=True)
+    phone = serializers.CharField(source="contact_phone", required=False, allow_blank=True)
+    billing_address = serializers.CharField(source="address", required=False, allow_blank=True)
+    kra_pin = serializers.CharField(
+        source="billing_kra_pin", required=False, allow_blank=True, max_length=30
+    )
+
+    class Meta:
+        model = Organization
+        fields = ["contact_name", "billing_email", "phone", "billing_address", "kra_pin"]
 
 
 # ============================================================================

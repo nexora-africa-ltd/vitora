@@ -32,8 +32,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.billing.models import FacilityBillingConfig, Invoice, Payment, PaymentPoint, Service
+from hmis.apps.billing.services.mpesa import MpesaConfigurationError
 from hmis.apps.core.audit import AuditedMutationMixin
-from hmis.apps.core.mixins import NestedTenantScopeMixin
+from hmis.apps.core.mixins import NestedTenantScopeMixin, resolve_request_tenant
 from hmis.apps.core.models import Facility
 from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
 
@@ -54,9 +55,23 @@ class MpesaViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     serializer_class = None  # No model serializer - all actions use inline serializers
 
+    def _request_facility(self, request):
+        """Resolve an authorized active facility, never an unscoped merchant."""
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        if facility is None:
+            raise MpesaConfigurationError("Select an authorized facility for M-Pesa payments.")
+        return facility
+
     @staticmethod
     def _mpesa_error_map() -> tuple[tuple[type[Exception], int, str, str], ...]:
         return (
+            (
+                MpesaConfigurationError,
+                status.HTTP_503_SERVICE_UNAVAILABLE,
+                "mpesa_configuration_error",
+                "Facility M-Pesa configuration is incomplete.",
+            ),
             (
                 ValidationError,
                 status.HTTP_400_BAD_REQUEST,
@@ -108,7 +123,7 @@ class MpesaViewSet(viewsets.ViewSet):
                         },
                         status=status.HTTP_200_OK,
                     )
-                if code == "validation_error":
+                if code in {"validation_error", "mpesa_configuration_error"}:
                     return Response({"error": str(exc), "code": code}, status=http_status)
                 return Response({"error": message, "code": code}, status=http_status)
 
@@ -176,13 +191,15 @@ class MpesaViewSet(viewsets.ViewSet):
 
         try:
             # Get invoice
-            invoice = get_object_or_404(Invoice, id=invoice_id)
+            facility = self._request_facility(request)
+            invoice = get_object_or_404(Invoice, id=invoice_id, facility=facility)
 
             # Validate payment point
             payment_point = get_object_or_404(
                 PaymentPoint,
                 id=payment_point_id,
                 is_active=True,
+                facility=facility,
             )
 
             if payment_point.method != Payment.Method.MPESA:
@@ -286,6 +303,10 @@ class MpesaViewSet(viewsets.ViewSet):
                     facility = pending_payment.invoice.facility
 
             # Process callback (facility used for credential context)
+            if pending_payment is None or facility is None:
+                return Response(
+                    {"ResultCode": 1, "ResultDesc": "Unknown facility payment reference."}
+                )
             mpesa_service = MpesaService(facility=facility)
             payment_data = mpesa_service.process_callback(request.data)
 
@@ -391,8 +412,18 @@ class MpesaViewSet(viewsets.ViewSet):
             )
 
         try:
-            payment = (
+            facility = self._request_facility(request)
+            # Check ownership before returning even locally cached payment data.
+            if (
                 Payment.objects.filter(mpesa_transaction_id=checkout_request_id)
+                .exclude(invoice__facility=facility)
+                .exists()
+            ):
+                return Response({"detail": "Payment not found."}, status=status.HTTP_404_NOT_FOUND)
+            payment = (
+                Payment.objects.filter(
+                    mpesa_transaction_id=checkout_request_id, invoice__facility=facility
+                )
                 .select_related("invoice__facility")
                 .first()
             )
@@ -422,7 +453,6 @@ class MpesaViewSet(viewsets.ViewSet):
                 )
 
             # Resolve facility for credential loading
-            facility = None
             if payment and payment.invoice:
                 facility = payment.invoice.facility
 
@@ -524,6 +554,11 @@ class MpesaViewSet(viewsets.ViewSet):
                 status=status.HTTP_200_OK,
             )
 
+        try:
+            facility = self._request_facility(request)
+        except MpesaConfigurationError as exc:
+            return self._handle_mpesa_error(action="verify", exc=exc)
+
         # Check for duplicate — has this code already been recorded?
         existing = Payment.objects.filter(mpesa_receipt_number=transaction_id).first()
         if existing:
@@ -531,17 +566,13 @@ class MpesaViewSet(viewsets.ViewSet):
                 {
                     "verified": False,
                     "receipt_number": transaction_id,
-                    "error": (
-                        f"This transaction code has already been used on payment "
-                        f"{existing.payment_reference} for invoice "
-                        f"{existing.invoice.invoice_number}."
-                    ),
+                    "error": ("This transaction code has already been used."),
                 },
                 status=status.HTTP_200_OK,
             )
 
         try:
-            mpesa_service = MpesaService()
+            mpesa_service = MpesaService(facility=facility)
             result = mpesa_service.verify_transaction(transaction_id)
             return Response(result, status=status.HTTP_200_OK)
 

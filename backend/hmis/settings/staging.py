@@ -82,6 +82,8 @@ SECURE_HSTS_PRELOAD = False
 
 # =============================================================================
 # CORS - Allow staging frontend
+# Shared M-Pesa sandbox credentials are supported for staging exercises only.
+MPESA_SANDBOX_ALLOWED = True
 # =============================================================================
 CORS_ALLOWED_ORIGINS = [
     origin.strip()

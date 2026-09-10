@@ -36,6 +36,7 @@ interface SearchableSelectProps
   disabled?: boolean;
   isLoading?: boolean;
   maxVisibleOptions?: number;
+  onSearchChange?: (query: string) => void;
 }
 
 export function SearchableSelect({
@@ -49,6 +50,7 @@ export function SearchableSelect({
   disabled,
   isLoading = false,
   maxVisibleOptions = 150,
+  onSearchChange,
   id,
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
@@ -105,7 +107,14 @@ export function SearchableSelect({
           shouldFilter={false}
           className="dark:bg-transparent dark:[&_[cmdk-input-wrapper]]:border-slate-700 dark:[&_[cmdk-item][data-selected=true]]:bg-teal-400/15 dark:[&_[cmdk-item][data-selected=true]]:text-teal-100"
         >
-          <CommandInput placeholder={searchPlaceholder} value={query} onValueChange={setQuery} />
+          <CommandInput
+            placeholder={searchPlaceholder}
+            value={query}
+            onValueChange={(nextQuery) => {
+              setQuery(nextQuery);
+              onSearchChange?.(nextQuery);
+            }}
+          />
           <CommandList>
             <CommandEmpty>{emptyMessage}</CommandEmpty>
             <CommandGroup>

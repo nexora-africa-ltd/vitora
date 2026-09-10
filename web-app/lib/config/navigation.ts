@@ -1469,6 +1469,17 @@ const _allNavItems: NavItemType[] = [
     ],
   } as NavItemWithChildren,
   {
+    label: 'Account',
+    icon: CreditCard,
+    children: [
+      {
+        label: 'Account & Billing',
+        href: '/account-billing',
+        icon: Receipt,
+      },
+    ],
+  } as NavItemWithChildren,
+  {
     label: 'Admin',
     icon: ShieldUser,
     moduleKey: 'admin',
@@ -1490,6 +1501,13 @@ const _allNavItems: NavItemType[] = [
         label: 'Subscription Plans',
         href: '/admin/subscription-plans',
         icon: CreditCard,
+        actionKey: 'admin.manage_departments',
+        visibleWhen: ({ isSuperuser }) => isSuperuser === true,
+      },
+      {
+        label: 'Subscription Billing',
+        href: '/admin/subscription-periods',
+        icon: Receipt,
         actionKey: 'admin.manage_departments',
         visibleWhen: ({ isSuperuser }) => isSuperuser === true,
       },

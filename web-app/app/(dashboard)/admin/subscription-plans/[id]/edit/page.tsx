@@ -34,6 +34,7 @@ export default function EditSubscriptionPlanPage({ params }: { params: Promise<{
 
   const [form, setForm] = useState<SubscriptionPlanUpdateData>({});
   const [features, setFeatures] = useState<Record<string, boolean>>({});
+  const allFeatureKeys = Array.from(new Set([...Object.keys(FEATURE_LABELS), ...Object.keys(features)])).sort();
 
   useEffect(() => {
     if (plan) {
@@ -50,7 +51,8 @@ export default function EditSubscriptionPlanPage({ params }: { params: Promise<{
         sort_order: plan.sort_order,
         trial_period_days: plan.trial_period_days,
       });
-      setFeatures({ ...plan.features });
+      const defaultFeatures = Object.fromEntries(Object.keys(FEATURE_LABELS).map((key) => [key, false]));
+      setFeatures({ ...defaultFeatures, ...plan.features });
     }
   }, [plan]);
 
@@ -82,7 +84,13 @@ export default function EditSubscriptionPlanPage({ params }: { params: Promise<{
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    updateMutation.mutate({ ...form, features });
+    updateMutation.mutate({
+      name: form.name,
+      description: form.description,
+      is_active: form.is_active,
+      sort_order: form.sort_order,
+      features,
+    });
   };
 
   if (isLoading) {
@@ -102,7 +110,7 @@ export default function EditSubscriptionPlanPage({ params }: { params: Promise<{
     <div className="space-y-4 sm:space-y-6">
       <PageHeader
         title={`Edit ${plan.name}`}
-        helpContent="Update plan name, pricing, limits, and features. Changes to limits will sync to all linked organizations."
+        helpContent="Update plan display metadata and feature flags. Pricing, limits, and AI quota remain immutable commercial terms; create a new plan version to change those."
       />
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -171,6 +179,7 @@ export default function EditSubscriptionPlanPage({ params }: { params: Promise<{
                   type="number"
                   step="0.01"
                   value={form.monthly_price ?? '0'}
+                  disabled
                   onChange={(e) => setForm({ ...form, monthly_price: e.target.value })}
                   className="mt-1"
                 />
@@ -182,6 +191,7 @@ export default function EditSubscriptionPlanPage({ params }: { params: Promise<{
                   type="number"
                   step="0.01"
                   value={form.annual_price ?? '0'}
+                  disabled
                   onChange={(e) => setForm({ ...form, annual_price: e.target.value })}
                   className="mt-1"
                 />
@@ -192,6 +202,7 @@ export default function EditSubscriptionPlanPage({ params }: { params: Promise<{
                   id="trial_period_days"
                   type="number"
                   value={form.trial_period_days ?? 0}
+                  disabled
                   onChange={(e) =>
                     setForm({ ...form, trial_period_days: parseInt(e.target.value) || 0 })
                   }
@@ -216,6 +227,7 @@ export default function EditSubscriptionPlanPage({ params }: { params: Promise<{
                   id="max_facilities"
                   type="number"
                   value={form.max_facilities ?? ''}
+                  disabled
                   onChange={(e) =>
                     setForm({
                       ...form,
@@ -232,6 +244,7 @@ export default function EditSubscriptionPlanPage({ params }: { params: Promise<{
                   id="max_users"
                   type="number"
                   value={form.max_users ?? ''}
+                  disabled
                   onChange={(e) =>
                     setForm({
                       ...form,
@@ -248,6 +261,7 @@ export default function EditSubscriptionPlanPage({ params }: { params: Promise<{
                   id="max_patients"
                   type="number"
                   value={form.max_patients ?? ''}
+                  disabled
                   onChange={(e) =>
                     setForm({
                       ...form,
@@ -264,6 +278,7 @@ export default function EditSubscriptionPlanPage({ params }: { params: Promise<{
                   id="monthly_ai_tokens"
                   type="number"
                   value={form.monthly_ai_tokens ?? ''}
+                  disabled
                   onChange={(e) =>
                     setForm({
                       ...form,
@@ -283,14 +298,14 @@ export default function EditSubscriptionPlanPage({ params }: { params: Promise<{
               <CardTitle className="text-base">Feature Flags</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {Object.entries(features).map(([key, enabled]) => (
+              {allFeatureKeys.map((key) => (
                 <div key={key} className="flex items-center justify-between">
                   <Label htmlFor={`feature-${key}`}>
                     {FEATURE_LABELS[key] || key.replace(/_/g, ' ')}
                   </Label>
                   <Switch
                     id={`feature-${key}`}
-                    checked={enabled}
+                    checked={Boolean(features[key])}
                     onCheckedChange={(v) => setFeatures({ ...features, [key]: v })}
                   />
                 </div>

@@ -82,3 +82,30 @@ export interface OrgTokenUsage {
   ai_tokens_reset_at: string | null;
   facilities: FacilityTokenUsage[];
 }
+
+export interface TenantBillingSummary {
+  organization_id: number;
+  plan: import('./subscription').SubscriptionPlanDetail | null;
+  subscription_status: OrganizationDetail['subscription_status'];
+  subscription_valid_until: string | null;
+  ai_tokens: {
+    monthly: number | null;
+    used: number;
+    remaining: number | null;
+    reset_at: string | null;
+  };
+  periods: import('./subscription').SubscriptionPeriod[];
+}
+
+export interface PaystackCheckoutResponse {
+  authorization_url: string;
+  reference: string;
+}
+
+export interface BillingContact {
+  contact_name: string;
+  billing_email: string;
+  phone: string;
+  billing_address: string;
+  kra_pin: string;
+}

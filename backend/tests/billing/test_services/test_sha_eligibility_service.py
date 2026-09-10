@@ -917,10 +917,7 @@ class TestSHAEligibilityServiceMockAPI:
 
         mock_get.assert_called_once()
         call_args = mock_get.call_args
-        assert (
-            call_args.args[0]
-            == "https://ilm-dev.dha.go.ke/uat-middleware/api/v1/patients/eligibility"
-        )
+        assert call_args.args[0] == f"{service.api_base_url}/api/v1/patients/eligibility"
         assert call_args.kwargs["params"] == {
             "identification_type": "National ID",
             "identification_number": "32440686",

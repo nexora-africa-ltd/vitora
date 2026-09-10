@@ -34,6 +34,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", get_random_secret_key())
 
+# Paystack subscription checkout. Keep the secret server-side; the public key
+# is exposed only when a future client-side Paystack flow explicitly needs it.
+PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY", "")
+PAYSTACK_PUBLIC_KEY = os.getenv("PAYSTACK_PUBLIC_KEY", "")
+PAYSTACK_CALLBACK_URL = os.getenv("PAYSTACK_CALLBACK_URL", "")
+PAYSTACK_WEBHOOK_URL = os.getenv("PAYSTACK_WEBHOOK_URL", "")
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
@@ -894,6 +901,8 @@ BILLING_DEFAULT_DUE_DAYS = 30  # Days until invoice due
 BILLING_OVERDUE_GRACE_DAYS = 7  # Grace period before marking overdue
 
 # M-Pesa Configuration (from environment)
+# Deployment policy, deliberately not environment-overridable. Only dev/test/staging opt in.
+MPESA_SANDBOX_ALLOWED = False
 MPESA_ENVIRONMENT = os.getenv("MPESA_ENVIRONMENT", "sandbox")
 MPESA_CONSUMER_KEY = os.getenv("MPESA_CONSUMER_KEY", "")
 MPESA_CONSUMER_SECRET = os.getenv("MPESA_CONSUMER_SECRET", "")
@@ -938,6 +947,11 @@ ILM_BASE_URL = os.getenv("ILM_BASE_URL", "")  # Defaults to SHA_AUTH_BASE_URL wh
 ILM_REQUEST_TIMEOUT = int(os.getenv("ILM_REQUEST_TIMEOUT", str(SHA_API_TIMEOUT)))
 ILM_MAX_RETRIES = int(os.getenv("ILM_MAX_RETRIES", "2"))
 ILM_BACKOFF_SECONDS = float(os.getenv("ILM_BACKOFF_SECONDS", "0.5"))
+# Clinical terminology scope for ILM concept and mapping searches. These are
+# identifiers, not credentials, and remain blank until DHA provisions them.
+ILM_TERMINOLOGY_OWNER = os.getenv("ILM_TERMINOLOGY_OWNER", "")
+ILM_TERMINOLOGY_SOURCES = os.getenv("ILM_TERMINOLOGY_SOURCES", "")
+ILM_TERMINOLOGY_COLLECTION = os.getenv("ILM_TERMINOLOGY_COLLECTION", "")
 # SHA FHIR Base URL (for bundle profile/resource URLs - NOT API endpoint)
 # UAT: https://qa-mis.apeiro-digital.com
 # Production: https://mis.apeiro-digital.com or https://fhir.sha.go.ke

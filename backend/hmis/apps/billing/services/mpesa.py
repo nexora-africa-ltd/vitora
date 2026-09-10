@@ -7,12 +7,17 @@ This module contains business logic services for billing operations:
 """
 
 import base64
+from contextlib import suppress
 from datetime import datetime, timedelta
 from decimal import Decimal
 
 import requests
 from django.conf import settings
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+
+
+class MpesaConfigurationError(ValidationError):
+    """Required facility merchant configuration is missing or disallowed."""
 
 
 class MpesaService:
@@ -27,8 +32,8 @@ class MpesaService:
 
     Multi-tenant support:
     - Pass a ``facility`` to load credentials from FacilityBillingConfig.
-    - Falls back to global settings when no facility is given or when
-      the facility's config has no M-Pesa credentials.
+    - Live collections always require complete facility merchant credentials.
+    - Shared sandbox settings are permitted only in dev/test/staging settings.
 
     Configuration in settings (global fallback):
     - MPESA_CONSUMER_KEY
@@ -54,8 +59,8 @@ class MpesaService:
         Args:
             facility: Optional Facility instance. When provided, credentials
                       are loaded from the facility's FacilityBillingConfig
-                      if it has complete M-Pesa credentials. Otherwise
-                      falls back to global django settings.
+                      for live transactions. Global credentials are sandbox-only
+                      and require MPESA_SANDBOX_ALLOWED in deployment settings.
         """
         self.facility = facility
         config = self._resolve_config(facility)
@@ -65,12 +70,12 @@ class MpesaService:
         self.passkey = config["passkey"]
         self.shortcode = config["shortcode"]
         self.callback_url = config["callback_url"]
+        self.initiator_name = config["initiator_name"]
+        self.security_credential = config["security_credential"]
+        self.environment = config["environment"]
 
         environment = config["environment"]
-        self.base_url = self._BASE_URLS.get(
-            environment,
-            getattr(settings, "MPESA_BASE_URL", "https://sandbox.safaricom.co.ke"),
-        )
+        self.base_url = self._BASE_URLS[environment]
         self.oauth_url = f"{self.base_url}/oauth/v1/generate?grant_type=client_credentials"
         self.stk_push_url = f"{self.base_url}/mpesa/stkpush/v1/processrequest"
         self.query_url = f"{self.base_url}/mpesa/stkpushquery/v1/query"
@@ -81,48 +86,69 @@ class MpesaService:
 
     @staticmethod
     def _resolve_config(facility) -> dict:
-        """
-        Resolve M-Pesa credentials from facility config or global settings.
-
-        Priority:
-        1. FacilityBillingConfig with all required credentials populated.
-        2. Global django settings (MPESA_* env vars).
-        """
+        """Fail closed for live merchants; allow shared sandbox only outside production."""
+        sandbox_allowed = getattr(settings, "MPESA_SANDBOX_ALLOWED", False) is True
+        global_environment = getattr(settings, "MPESA_ENVIRONMENT", "sandbox")
+        billing_config = None
         if facility is not None:
-            try:
+            with suppress(ObjectDoesNotExist):
                 billing_config = facility.billing_config
-                if billing_config.has_mpesa_credentials:
-                    # In sandbox, shortcode/passkey may be empty — fall back to
-                    # global defaults (Safaricom shared sandbox credentials).
-                    return {
-                        "consumer_key": billing_config.mpesa_consumer_key,
-                        "consumer_secret": billing_config.mpesa_consumer_secret,
-                        "passkey": (
-                            billing_config.mpesa_passkey or getattr(settings, "MPESA_PASSKEY", "")
-                        ),
-                        "shortcode": (
-                            billing_config.mpesa_shortcode
-                            or getattr(settings, "MPESA_SHORTCODE", "174379")
-                        ),
-                        "callback_url": (
-                            billing_config.mpesa_callback_url
-                            or getattr(settings, "MPESA_CALLBACK_URL", "")
-                        ),
-                        "environment": billing_config.mpesa_environment or "sandbox",
-                    }
-            except (
-                AttributeError,
-                TypeError,
-                ValueError,
-                RuntimeError,
-                OSError,
-                AssertionError,
-                ImportError,
-            ):
-                # No billing_config (RelatedObjectDoesNotExist) — fall through
-                pass
 
-        # Global fallback
+        if billing_config is not None:
+            environment = billing_config.mpesa_environment
+            if environment not in MpesaService._BASE_URLS:
+                raise MpesaConfigurationError("Invalid facility M-Pesa environment.")
+            if environment == "sandbox" and not sandbox_allowed:
+                raise MpesaConfigurationError(
+                    "Sandbox M-Pesa is disabled in this deployment. Configure live facility credentials."
+                )
+            config = {
+                "consumer_key": billing_config.mpesa_consumer_key.strip(),
+                "consumer_secret": billing_config.mpesa_consumer_secret.strip(),
+                "passkey": billing_config.mpesa_passkey.strip(),
+                "shortcode": billing_config.mpesa_shortcode.strip(),
+                # The callback is an application endpoint, not a merchant credential.
+                "callback_url": billing_config.mpesa_callback_url
+                or getattr(settings, "MPESA_CALLBACK_URL", ""),
+                "environment": environment,
+                "initiator_name": billing_config.mpesa_initiator_name.strip(),
+                "security_credential": billing_config.mpesa_security_credential.strip(),
+            }
+            if environment == "production":
+                missing = [
+                    key
+                    for key in ("consumer_key", "consumer_secret", "passkey", "shortcode")
+                    if not config[key]
+                ]
+                if missing:
+                    raise MpesaConfigurationError(
+                        "Incomplete facility M-Pesa credentials: "
+                        + ", ".join(missing)
+                        + ". Configure this facility in Finance > Payments Configuration."
+                    )
+                return config
+            if config["consumer_key"] and config["consumer_secret"]:
+                if global_environment == "sandbox":
+                    for key, default in (
+                        ("passkey", ""),
+                        ("shortcode", "174379"),
+                        ("initiator_name", "testapi"),
+                        ("security_credential", ""),
+                    ):
+                        config[key] = config[key] or getattr(
+                            settings, f"MPESA_{key.upper()}", default
+                        )
+                if not config["passkey"] or not config["shortcode"]:
+                    raise MpesaConfigurationError(
+                        "Configure facility sandbox shortcode and passkey; live global credentials cannot be used."
+                    )
+                return config
+
+        if not sandbox_allowed or global_environment != "sandbox":
+            raise MpesaConfigurationError(
+                "Complete facility M-Pesa credentials are required. Select a facility and configure its merchant account."
+            )
+        # Only the explicitly sandbox global configuration can be shared.
         return {
             "consumer_key": getattr(settings, "MPESA_CONSUMER_KEY", ""),
             "consumer_secret": getattr(settings, "MPESA_CONSUMER_SECRET", ""),
@@ -131,7 +157,9 @@ class MpesaService:
             "callback_url": getattr(
                 settings, "MPESA_CALLBACK_URL", "https://example.com/api/billing/mpesa/callback/"
             ),
-            "environment": getattr(settings, "MPESA_ENVIRONMENT", "sandbox"),
+            "environment": "sandbox",
+            "initiator_name": getattr(settings, "MPESA_INITIATOR_NAME", "testapi"),
+            "security_credential": getattr(settings, "MPESA_SECURITY_CREDENTIAL", ""),
         }
 
     def format_phone(self, phone: str) -> str:
@@ -462,6 +490,12 @@ class MpesaService:
         Raises:
             ValidationError: If the API request itself fails
         """
+        if self.environment == "production" and not (
+            self.initiator_name and self.security_credential
+        ):
+            raise MpesaConfigurationError(
+                "Configure this facility's M-Pesa initiator name and security credential for transaction verification."
+            )
         access_token = self.get_access_token()
 
         # The Transaction Status API requires a result callback URL even though
@@ -471,8 +505,8 @@ class MpesaService:
         timeout_url = result_url
 
         payload = {
-            "Initiator": getattr(settings, "MPESA_INITIATOR_NAME", "testapi"),
-            "SecurityCredential": getattr(settings, "MPESA_SECURITY_CREDENTIAL", ""),
+            "Initiator": self.initiator_name,
+            "SecurityCredential": self.security_credential,
             "CommandID": "TransactionStatusQuery",
             "TransactionID": transaction_id,
             "PartyA": self.shortcode,

@@ -529,6 +529,7 @@ export function useIlmCreatePrescription() {
       identification_number: string;
       identification_type?: string;
       regulation_body?: string;
+      terminology: { owner: string; sources?: string; collection?: string };
       items: Array<Record<string, unknown>>;
       patient_pk?: number;
       encounter_pk?: number;

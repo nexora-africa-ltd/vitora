@@ -336,6 +336,10 @@ class FacilityBillingConfig(models.Model):
     )
 
     # ------------------------------------------------------------------
+    # Transaction Status API credentials (independent from STK Push credentials).
+    mpesa_initiator_name = models.CharField(max_length=100, blank=True, default="")
+    mpesa_security_credential_encrypted = models.TextField(blank=True, default="")
+
     # SHA/DHA ILM API Credentials (per-facility multi-tenant support)
     # ------------------------------------------------------------------
 
@@ -407,6 +411,23 @@ class FacilityBillingConfig(models.Model):
         return f"Billing Config – {self.facility.name}"
 
     # ------------------------------------------------------------------
+    @property
+    def mpesa_security_credential(self) -> str:
+        """Daraja Transaction Status API credential, encrypted per facility."""
+        from hmis.apps.core.kms import get_kms_provider
+
+        if not self.mpesa_security_credential_encrypted:
+            return ""
+        return get_kms_provider().decrypt_string(self.mpesa_security_credential_encrypted)
+
+    @mpesa_security_credential.setter
+    def mpesa_security_credential(self, value: str) -> None:
+        from hmis.apps.core.kms import get_kms_provider
+
+        self.mpesa_security_credential_encrypted = (
+            get_kms_provider().encrypt_string(value) if value else ""
+        )
+
     # KMS-encrypted M-Pesa credential properties
     # ------------------------------------------------------------------
 

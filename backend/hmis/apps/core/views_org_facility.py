@@ -13,11 +13,16 @@ Supported inputs/args:
 """
 
 import logging
+import uuid
+from datetime import timedelta
+from decimal import Decimal
 
+import requests
 from django.apps import apps
 from django.conf import settings as django_settings
 from django.contrib.auth.models import Permission
 from django.contrib.auth.signals import user_logged_in, user_login_failed
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import models
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
@@ -32,7 +37,7 @@ from drf_spectacular.utils import (
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.mixins import ListModelMixin, RetrieveModelMixin
-from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
+from rest_framework.permissions import AllowAny, BasePermission, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -58,6 +63,7 @@ from .models import (
     Role,
     StaffProfile,
     SubCounty,
+    SubscriptionPeriod,
     SubscriptionPlan,
     UserCertificate,
     Ward,
@@ -72,6 +78,7 @@ from .permissions import (
 from .role_permissions_sync import sync_role_group_permissions
 from .serializers import (
     AuditLogSerializer,
+    BillingContactSerializer,
     CertificateAuthoritySerializer,
     CodeSystemSerializer,
     CountySerializer,
@@ -104,6 +111,7 @@ from .serializers import (
     StaffProfileSerializer,
     StaffProfileUpdateSerializer,
     SubCountySerializer,
+    SubscriptionPeriodSerializer,
     SubscriptionPlanCreateSerializer,
     SubscriptionPlanDetailSerializer,
     SubscriptionPlanListSerializer,
@@ -118,6 +126,15 @@ from .serializers import (
 from .views_audit_reference import _get_client_ip, _query_param_truthy
 
 logger = logging.getLogger(__name__)
+
+
+class IsSuperuserPermission(BasePermission):
+    """Restrict platform billing and entitlement operations to Nexora superusers."""
+
+    message = "Only Nexora superusers can manage subscription billing."
+
+    def has_permission(self, request, view):  # noqa: ARG002
+        return bool(request.user and request.user.is_authenticated and request.user.is_superuser)
 
 
 class NotificationViewSet(viewsets.ModelViewSet):
@@ -632,7 +649,7 @@ class SubscriptionPlanViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ("create", "update", "partial_update", "destroy"):
-            return [IsAdminUser()]
+            return [IsSuperuserPermission()]
         return [IsAuthenticated()]
 
     def get_serializer_class(self):
@@ -641,6 +658,24 @@ class SubscriptionPlanViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
         if self.action == "create":
             return SubscriptionPlanCreateSerializer
         return SubscriptionPlanDetailSerializer
+
+
+class SubscriptionPeriodViewSet(viewsets.ModelViewSet):
+    """Platform-only subscription billing ledger and payment confirmation API."""
+
+    queryset = SubscriptionPeriod.objects.select_related("organization", "plan", "confirmed_by")
+    permission_classes = [IsSuperuserPermission]
+    serializer_class = SubscriptionPeriodSerializer
+
+    @action(detail=True, methods=["post"])
+    def confirm(self, request, pk=None):
+        period = self.get_object()
+        reference = str(request.data.get("payment_reference") or "").strip()
+        try:
+            period.confirm_payment(reference, confirmed_by=request.user)
+        except DjangoValidationError as exc:
+            return Response({"detail": exc.messages}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(self.get_serializer(period).data)
 
 
 # ============================================================================
@@ -687,6 +722,24 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         if self.action == "list":
             return OrganizationListSerializer
         return OrganizationDetailSerializer
+
+    def partial_update(self, request, *args, **kwargs):
+        """Keep commercial entitlement changes exclusive to the billing ledger."""
+        restricted = {
+            "subscription_plan",
+            "subscription_status",
+            "subscription_valid_until",
+            "ai_tokens_used",
+            "ai_tokens_reset_at",
+        }
+        if restricted.intersection(request.data):
+            return Response(
+                {
+                    "detail": "Subscription entitlement can only be changed through a confirmed subscription period."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().partial_update(request, *args, **kwargs)
 
     @action(detail=True, methods=["get"])
     def facilities(self, request, pk=None):
@@ -777,6 +830,243 @@ class OrganizationViewSet(viewsets.ModelViewSet):
                 "facilities": facility_list,
             }
         )
+
+    @action(detail=True, methods=["get"], url_path="account-billing")
+    def account_billing(self, request, pk=None):
+        """Return the tenant's read-only plan, usage, and subscription history."""
+        from django.db.models import Sum
+
+        from hmis.apps.ai.models import (
+            AICarePlanResult,
+            AICDSResult,
+            AIDischargeResult,
+            AIICURiskResult,
+            AIInvestigationSuggestResult,
+            AILabInterpretResult,
+            AISurgicalChecklistSessionResult,
+            AISurgicalPostOpCarePlanResult,
+            AISurgicalPreOpAssessResult,
+        )
+
+        organization = self.get_object()
+        periods = organization.subscription_periods.select_related("plan").all()
+        ai_models = [
+            AICarePlanResult,
+            AICDSResult,
+            AILabInterpretResult,
+            AIDischargeResult,
+            AIICURiskResult,
+            AIInvestigationSuggestResult,
+            AISurgicalPreOpAssessResult,
+            AISurgicalChecklistSessionResult,
+            AISurgicalPostOpCarePlanResult,
+        ]
+        aggregated_used = 0
+        for model in ai_models:
+            aggregated_used += (
+                model.objects.filter(facility__organization=organization).aggregate(
+                    total=Sum("total_tokens")
+                )["total"]
+                or 0
+            )
+        effective_used = max(int(organization.ai_tokens_used or 0), int(aggregated_used))
+        effective_remaining = None
+        if organization.monthly_ai_tokens is not None:
+            effective_remaining = max(0, organization.monthly_ai_tokens - effective_used)
+        return Response(
+            {
+                "organization_id": organization.id,
+                "plan": SubscriptionPlanDetailSerializer(organization.subscription_plan).data
+                if organization.subscription_plan
+                else None,
+                "subscription_status": organization.subscription_status,
+                "subscription_valid_until": organization.subscription_valid_until,
+                "ai_tokens": {
+                    "monthly": organization.monthly_ai_tokens,
+                    "used": effective_used,
+                    "remaining": effective_remaining,
+                    "reset_at": organization.ai_tokens_reset_at,
+                },
+                "periods": SubscriptionPeriodSerializer(periods, many=True).data,
+            }
+        )
+
+    @action(detail=True, methods=["get", "patch"], url_path="billing-contact")
+    def billing_contact(self, request, pk=None):
+        """Read or update organization billing contact details only."""
+        organization = self.get_object()
+        if request.method == "GET":
+            return Response(BillingContactSerializer(organization).data)
+        if not FacilityAdminPermission().has_permission(request, self):
+            return Response(
+                {"detail": "Only organization administrators can update billing contact details."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        serializer = BillingContactSerializer(organization, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="paystack-checkout")
+    def paystack_checkout(self, request, pk=None):
+        """Create a pending period and initiate a Paystack hosted checkout."""
+        if not FacilityAdminPermission().has_permission(request, self):
+            return Response(
+                {"detail": "Only organization administrators can initiate subscription payment."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        organization = self.get_object()
+        plan_id = request.data.get("plan_id")
+        interval = str(request.data.get("billing_interval") or "MONTHLY").upper()
+        if interval not in SubscriptionPeriod.BillingInterval.values:
+            return Response({"detail": "billing_interval must be MONTHLY or ANNUAL."}, status=400)
+        try:
+            plan = SubscriptionPlan.objects.get(pk=plan_id, is_active=True)
+        except (SubscriptionPlan.DoesNotExist, TypeError, ValueError):
+            return Response({"detail": "An active subscription plan is required."}, status=400)
+        if not organization.contact_email:
+            return Response(
+                {"detail": "Set an organization contact email before initiating payment."},
+                status=400,
+            )
+
+        amount = plan.monthly_price if interval == "MONTHLY" else plan.annual_price
+        if amount <= 0:
+            return Response({"detail": "This plan does not require a paid checkout."}, status=400)
+        secret_key = getattr(django_settings, "PAYSTACK_SECRET_KEY", "")
+        if not secret_key:
+            return Response({"detail": "Paystack checkout is not configured."}, status=503)
+
+        now = timezone.now()
+        current_end = organization.subscription_valid_until
+        if current_end is None:
+            latest_period = (
+                organization.subscription_periods.filter(status=SubscriptionPeriod.Status.PAID)
+                .order_by("-period_end")
+                .first()
+            )
+            current_end = latest_period.period_end if latest_period else None
+        period_start = max(now, current_end) if current_end else now
+        period = SubscriptionPeriod.objects.create(
+            organization=organization,
+            plan=plan,
+            billing_interval=interval,
+            amount=amount,
+            currency="KES",
+            period_start=period_start,
+            period_end=period_start + timedelta(days=365 if interval == "ANNUAL" else 30),
+        )
+        reference = f"VITORA-{organization.id}-{period.id}-{uuid.uuid4().hex[:10]}"
+        payer_full_name = request.user.get_full_name().strip() or request.user.username
+        first_name, _, last_name = payer_full_name.partition(" ")
+        payload = {
+            "email": organization.contact_email,
+            "first_name": first_name,
+            "last_name": last_name,
+            "amount": int(amount * 100),
+            "currency": "KES",
+            "reference": reference,
+            "metadata": {
+                "organization_id": organization.id,
+                "subscription_period_id": period.id,
+                "payer_full_name": payer_full_name,
+                "custom_fields": [
+                    {
+                        "display_name": "Organization",
+                        "variable_name": "organization_name",
+                        "value": organization.name,
+                    },
+                    {
+                        "display_name": "Contact name",
+                        "variable_name": "payer_full_name",
+                        "value": payer_full_name,
+                    },
+                ],
+            },
+        }
+        callback_url = getattr(django_settings, "PAYSTACK_CALLBACK_URL", "")
+        if callback_url:
+            payload["callback_url"] = callback_url
+        try:
+            response = requests.post(
+                "https://api.paystack.co/transaction/initialize",
+                json=payload,
+                headers={"Authorization": f"Bearer {secret_key}"},
+                timeout=15,
+            )
+            response.raise_for_status()
+            data = response.json().get("data") or {}
+            authorization_url = data.get("authorization_url")
+            if not authorization_url:
+                raise requests.RequestException("Paystack did not return an authorization URL.")
+        except (requests.RequestException, ValueError) as exc:
+            period.delete()
+            logger.warning(
+                "Paystack checkout initialization failed for organization %s: %s",
+                organization.id,
+                exc,
+            )
+            return Response({"detail": "Unable to initiate Paystack checkout."}, status=502)
+        period.payment_reference = str(data.get("reference") or reference)
+        period.save(update_fields=["payment_reference", "updated_at"])
+        return Response(
+            {"authorization_url": authorization_url, "reference": period.payment_reference},
+            status=201,
+        )
+
+    @action(detail=True, methods=["post"], url_path="paystack-status")
+    def paystack_status(self, request, pk=None):
+        """Reconcile a Paystack browser return when a webhook is delayed."""
+        if not FacilityAdminPermission().has_permission(request, self):
+            return Response(
+                {"detail": "Only organization administrators can reconcile subscription payment."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        organization = self.get_object()
+        reference = str(request.data.get("reference") or "").strip()
+        if not reference:
+            return Response(
+                {"detail": "Payment reference is required."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            period = organization.subscription_periods.get(payment_reference=reference)
+        except SubscriptionPeriod.DoesNotExist:
+            return Response(
+                {"detail": "Subscription payment was not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+        secret_key = getattr(django_settings, "PAYSTACK_SECRET_KEY", "")
+        if not secret_key:
+            return Response(
+                {"detail": "Paystack checkout is not configured."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        try:
+            verification = requests.get(
+                f"https://api.paystack.co/transaction/verify/{reference}",
+                headers={"Authorization": f"Bearer {secret_key}"},
+                timeout=15,
+            )
+            verification.raise_for_status()
+            payment = verification.json().get("data") or {}
+        except (requests.RequestException, ValueError):
+            return Response(
+                {"detail": "Unable to verify Paystack transaction."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        if payment.get("status") != "success":
+            return Response(
+                {"detail": "Payment is still pending."}, status=status.HTTP_409_CONFLICT
+            )
+        if (
+            payment.get("currency") != period.currency
+            or Decimal(str(payment.get("amount", 0))) != period.amount * 100
+        ):
+            return Response(
+                {"detail": "Payment amount or currency does not match the subscription period."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        period.confirm_payment(reference)
+        return Response(SubscriptionPeriodSerializer(period).data)
 
 
 # ============================================================================

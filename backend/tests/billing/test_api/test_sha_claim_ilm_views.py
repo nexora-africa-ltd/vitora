@@ -16,7 +16,8 @@ and HTTP-level error translation.
 from __future__ import annotations
 
 from datetime import timedelta
-from unittest.mock import MagicMock, patch
+from types import SimpleNamespace
+from unittest.mock import patch, seal
 
 import pytest  # type: ignore
 from django.utils import timezone
@@ -41,19 +42,24 @@ def _claim_url(claim, suffix: str) -> str:
 
 
 def _ilm_result(payload=None, status_code: int = 200):
-    """Build a fake IlmClaimResult-like object the ViewSet can introspect."""
-    result = MagicMock()
-    result.status_code = status_code
-    result.payload = payload or {}
-    return result
+    """Build a concrete IlmClaimResult-like object the ViewSet can introspect."""
+    return SimpleNamespace(
+        status_code=status_code,
+        payload=payload or {},
+        response=None,
+        reconciliation_summary=None,
+    )
 
 
 @pytest.mark.django_db
 class TestStartVisitEndpoint:
     def test_start_visit_calls_service(self, sha_client, sample_sha_claim):
-        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
+        with patch(
+            "hmis.apps.billing.services.ilm_claim_service.IlmClaimService", autospec=True
+        ) as svc:
             instance = svc.return_value
             instance.start_visit.return_value = _ilm_result({"claim_id": "DHA-1"})
+            seal(instance)
             response = sha_client.post(
                 _claim_url(sample_sha_claim, "start-visit"),
                 {
@@ -70,9 +76,12 @@ class TestStartVisitEndpoint:
 
     def test_start_visit_invalid_payload(self, sha_client, sample_sha_claim):
         # service_type=INPATIENT without admission_date is treated as a bad request.
-        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
+        with patch(
+            "hmis.apps.billing.services.ilm_claim_service.IlmClaimService", autospec=True
+        ) as svc:
             instance = svc.return_value
             instance.start_visit.side_effect = ValueError("admission_date is required")
+            seal(instance)
             response = sha_client.post(
                 _claim_url(sample_sha_claim, "start-visit"),
                 {
@@ -88,11 +97,14 @@ class TestStartVisitEndpoint:
     def test_start_visit_returns_conflict_when_visit_already_opened(
         self, sha_client, sample_sha_claim
     ):
-        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
+        with patch(
+            "hmis.apps.billing.services.ilm_claim_service.IlmClaimService", autospec=True
+        ) as svc:
             instance = svc.return_value
             instance.start_visit.side_effect = VisitAlreadyOpenedError(
                 "DHA visit is already active for this claim."
             )
+            seal(instance)
             response = sha_client.post(
                 _claim_url(sample_sha_claim, "start-visit"),
                 {
@@ -110,8 +122,11 @@ class TestStartVisitEndpoint:
 @pytest.mark.django_db
 class TestInterventionEndpoints:
     def test_add_intervention(self, sha_client, sample_sha_claim):
-        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
+        with patch(
+            "hmis.apps.billing.services.ilm_claim_service.IlmClaimService", autospec=True
+        ) as svc:
             svc.return_value.add_intervention.return_value = _ilm_result({"ok": True})
+            seal(svc.return_value)
             response = sha_client.post(
                 _claim_url(sample_sha_claim, "interventions/add"),
                 {"intervention_code": "INT-1"},
@@ -166,8 +181,11 @@ class TestVisitSessionEndpoints:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_add_virtual_claim_line(self, sha_client, sample_sha_claim):
-        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
+        with patch(
+            "hmis.apps.billing.services.ilm_claim_service.IlmClaimService", autospec=True
+        ) as svc:
             svc.return_value.add_virtual_claim_line.return_value = _ilm_result({"ok": True})
+            seal(svc.return_value)
             response = sha_client.post(
                 _claim_url(sample_sha_claim, "interventions/virtual-claim-line"),
                 {
@@ -204,8 +222,11 @@ class TestVisitSessionEndpoints:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_switch_intervention(self, sha_client, sample_sha_claim):
-        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
+        with patch(
+            "hmis.apps.billing.services.ilm_claim_service.IlmClaimService", autospec=True
+        ) as svc:
             svc.return_value.switch_intervention.return_value = _ilm_result({})
+            seal(svc.return_value)
             response = sha_client.post(
                 _claim_url(sample_sha_claim, "interventions/switch"),
                 {
@@ -221,8 +242,11 @@ class TestVisitSessionEndpoints:
         assert kwargs["retain_bill_items"] is False
 
     def test_restore_intervention(self, sha_client, sample_sha_claim):
-        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
+        with patch(
+            "hmis.apps.billing.services.ilm_claim_service.IlmClaimService", autospec=True
+        ) as svc:
             svc.return_value.restore_intervention.return_value = _ilm_result({})
+            seal(svc.return_value)
             response = sha_client.post(
                 _claim_url(sample_sha_claim, "interventions/restore"),
                 {"intervention_code": "X"},
@@ -231,8 +255,11 @@ class TestVisitSessionEndpoints:
         assert response.status_code == status.HTTP_200_OK
 
     def test_retire_intervention(self, sha_client, sample_sha_claim):
-        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
+        with patch(
+            "hmis.apps.billing.services.ilm_claim_service.IlmClaimService", autospec=True
+        ) as svc:
             svc.return_value.retire_intervention.return_value = _ilm_result({})
+            seal(svc.return_value)
             response = sha_client.post(
                 _claim_url(sample_sha_claim, "interventions/retire"),
                 {"intervention_code": "X"},
@@ -245,12 +272,15 @@ class TestVisitSessionEndpoints:
 class TestDiagnosisEndpoints:
     def test_add_diagnosis(self, sha_client, sample_sha_claim):
         with (
-            patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc,
+            patch(
+                "hmis.apps.billing.services.ilm_claim_service.IlmClaimService", autospec=True
+            ) as svc,
             patch(
                 "hmis.apps.billing.services.claim_form_attachment_service.ClaimFormAttachmentService.ensure_for_claim"
             ) as ensure_claim_form,
         ):
             svc.return_value.add_diagnosis.return_value = _ilm_result({})
+            seal(svc.return_value)
             response = sha_client.post(
                 _claim_url(sample_sha_claim, "diagnoses/add"),
                 {"icd_code": "J06.9", "intervention_code": "INT-1"},
@@ -289,12 +319,15 @@ class TestDiagnosisEndpoints:
         )
 
         with (
-            patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc,
+            patch(
+                "hmis.apps.billing.services.ilm_claim_service.IlmClaimService", autospec=True
+            ) as svc,
             patch(
                 "hmis.apps.billing.services.claim_form_attachment_service.ClaimFormAttachmentService.ensure_for_claim"
             ) as ensure_claim_form,
         ):
             svc.return_value.remove_diagnosis.return_value = _ilm_result({})
+            seal(svc.return_value)
             response = sha_client.post(
                 _claim_url(sample_sha_claim, "diagnoses/remove"),
                 {"icd_code": "J06.9", "intervention_code": "INT-1"},
@@ -315,8 +348,11 @@ class TestDiagnosisEndpoints:
 @pytest.mark.django_db
 class TestLineEndpoints:
     def test_add_line(self, sha_client, sample_sha_claim):
-        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
+        with patch(
+            "hmis.apps.billing.services.ilm_claim_service.IlmClaimService", autospec=True
+        ) as svc:
             svc.return_value.add_line.return_value = _ilm_result({"claim_line_id": "L1"})
+            seal(svc.return_value)
             response = sha_client.post(
                 _claim_url(sample_sha_claim, "lines/add"),
                 {
@@ -336,8 +372,11 @@ class TestLineEndpoints:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_remove_line(self, sha_client, sample_sha_claim):
-        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
+        with patch(
+            "hmis.apps.billing.services.ilm_claim_service.IlmClaimService", autospec=True
+        ) as svc:
             svc.return_value.remove_line.return_value = _ilm_result({})
+            seal(svc.return_value)
             response = sha_client.post(
                 _claim_url(sample_sha_claim, "lines/remove"),
                 {"claim_line_id": "L1"},
@@ -349,10 +388,13 @@ class TestLineEndpoints:
 @pytest.mark.django_db
 class TestPreviewSubmitClose:
     def test_preview(self, sha_client, sample_sha_claim):
-        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
+        with patch(
+            "hmis.apps.billing.services.ilm_claim_service.IlmClaimService", autospec=True
+        ) as svc:
             svc.return_value.preview.return_value = _ilm_result(
                 {"total": "200", "claim_diagnoses": [{"icd_code": "J06.9"}]}
             )
+            seal(svc.return_value)
             response = sha_client.post(_claim_url(sample_sha_claim, "preview"), {}, format="json")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["payload"]["total"] == "200"
@@ -368,7 +410,9 @@ class TestPreviewSubmitClose:
         sample_sha_claim.save(update_fields=["previewed_at", "updated_at"])
 
         with (
-            patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc,
+            patch(
+                "hmis.apps.billing.services.ilm_claim_service.IlmClaimService", autospec=True
+            ) as svc,
             patch(
                 "hmis.apps.billing.sha_automation.SHAClaimAutomationService.auto_attach_documents"
             ),
@@ -378,6 +422,7 @@ class TestPreviewSubmitClose:
         ):
             validate.return_value = (True, [])
             svc.return_value.submit.return_value = _ilm_result({"sha_claim_reference": "SHA-REF-1"})
+            seal(svc.return_value)
             response = sha_client.post(
                 _claim_url(sample_sha_claim, "submit"),
                 {"invoice_number": "INV-1"},
@@ -392,8 +437,11 @@ class TestPreviewSubmitClose:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_close_passes_params(self, sha_client, sample_sha_claim):
-        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
+        with patch(
+            "hmis.apps.billing.services.ilm_claim_service.IlmClaimService", autospec=True
+        ) as svc:
             svc.return_value.close.return_value = _ilm_result({})
+            seal(svc.return_value)
             response = sha_client.post(
                 _claim_url(sample_sha_claim, "close"),
                 {
@@ -412,10 +460,13 @@ class TestErrorMapping:
     def test_dha_validation_error_returns_400(self, sha_client, sample_sha_claim):
         from hmis.apps.billing.services.dha_errors import DHAValidationError
 
-        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
+        with patch(
+            "hmis.apps.billing.services.ilm_claim_service.IlmClaimService", autospec=True
+        ) as svc:
             svc.return_value.preview.side_effect = DHAValidationError(
                 "invalid", errors={"foo": "bar"}
             )
+            seal(svc.return_value)
             response = sha_client.post(_claim_url(sample_sha_claim, "preview"), {}, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.data["errors"] == {"foo": "bar"}
@@ -423,22 +474,31 @@ class TestErrorMapping:
     def test_dha_timeout_returns_502(self, sha_client, sample_sha_claim):
         from hmis.apps.billing.services.dha_errors import DHATimeoutError
 
-        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
+        with patch(
+            "hmis.apps.billing.services.ilm_claim_service.IlmClaimService", autospec=True
+        ) as svc:
             svc.return_value.preview.side_effect = DHATimeoutError("timeout")
+            seal(svc.return_value)
             response = sha_client.post(_claim_url(sample_sha_claim, "preview"), {}, format="json")
         assert response.status_code == status.HTTP_502_BAD_GATEWAY
 
     def test_dha_unauthorized_returns_502(self, sha_client, sample_sha_claim):
         from hmis.apps.billing.services.dha_errors import DHAUnauthorizedError
 
-        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
+        with patch(
+            "hmis.apps.billing.services.ilm_claim_service.IlmClaimService", autospec=True
+        ) as svc:
             svc.return_value.preview.side_effect = DHAUnauthorizedError("nope")
+            seal(svc.return_value)
             response = sha_client.post(_claim_url(sample_sha_claim, "preview"), {}, format="json")
         assert response.status_code == status.HTTP_502_BAD_GATEWAY
 
     def test_runtime_error_uses_operation_failed_mapping(self, sha_client, sample_sha_claim):
-        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
+        with patch(
+            "hmis.apps.billing.services.ilm_claim_service.IlmClaimService", autospec=True
+        ) as svc:
             svc.return_value.preview.side_effect = RuntimeError("temporary ILM gateway fault")
+            seal(svc.return_value)
             response = sha_client.post(_claim_url(sample_sha_claim, "preview"), {}, format="json")
 
         assert response.status_code == status.HTTP_502_BAD_GATEWAY

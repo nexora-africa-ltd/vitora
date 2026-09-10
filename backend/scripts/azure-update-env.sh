@@ -79,6 +79,7 @@ declare -A SECRETS=(
   ["loinc-password"]="${LOINC_PASSWORD:-}"
   ["pricing-nonce-secret"]="${PRICING_NONCE_SECRET:-}"
   ["azure-storage-connection-string"]="${AZURE_STORAGE_CONNECTION_STRING:-}"
+  ["paystack-secret-key"]="${PAYSTACK_SECRET_KEY:-}"
 )
 
 SECRET_ARGS=()
@@ -124,6 +125,10 @@ az containerapp update \
     "ENCRYPTION_KEY=secretref:encryption-key" \
     "PII_HMAC_KEY=secretref:pii-hmac-key" \
     "AZURE_STORAGE_CONNECTION_STRING=secretref:azure-storage-connection-string" \
+    "PAYSTACK_SECRET_KEY=secretref:paystack-secret-key" \
+    "PAYSTACK_PUBLIC_KEY=${PAYSTACK_PUBLIC_KEY:-}" \
+    "PAYSTACK_CALLBACK_URL=${PAYSTACK_CALLBACK_URL:-https://staging.vitora.digital/account-billing?payment=returned}" \
+    "PAYSTACK_WEBHOOK_URL=${PAYSTACK_WEBHOOK_URL:-https://${FQDN}/api/payments/paystack/webhook/}" \
     "DEBUG=false" \
     "PORT=8000" \
     "MEDIA_BACKEND=${MEDIA_BACKEND:-azure_blob}" \
@@ -166,6 +171,9 @@ az containerapp update \
     "ILM_REQUEST_TIMEOUT=${ILM_REQUEST_TIMEOUT:-30}" \
     "ILM_MAX_RETRIES=${ILM_MAX_RETRIES:-2}" \
     "ILM_BACKOFF_SECONDS=${ILM_BACKOFF_SECONDS:-0.5}" \
+    "ILM_TERMINOLOGY_OWNER=${ILM_TERMINOLOGY_OWNER:-}" \
+    "ILM_TERMINOLOGY_SOURCES=${ILM_TERMINOLOGY_SOURCES:-}" \
+    "ILM_TERMINOLOGY_COLLECTION=${ILM_TERMINOLOGY_COLLECTION:-}" \
     "FACILITY_MFL_CODE=${FACILITY_MFL_CODE:-TEST-001}" \
     "FACILITY_LEVEL=${FACILITY_LEVEL:-L3}" \
     "FACILITY_NAME=${FACILITY_NAME:-Demo-Health-Facility}" \

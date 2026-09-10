@@ -248,21 +248,27 @@ class TestHasFeature:
 class TestPlanSaveSignal:
     """Tests for the post_save signal that syncs plan changes to orgs."""
 
-    def test_plan_update_syncs_to_org(self, org_with_basic_plan, basic_plan):
-        """When a plan is updated, linked orgs should be synced."""
+    def test_plan_update_with_linked_org_is_rejected(self, org_with_basic_plan, basic_plan):
+        """Active customer terms are immutable; create a new plan version instead."""
+        from django.core.exceptions import ValidationError
+
         basic_plan.max_facilities = 20
         basic_plan.max_users = 100
-        basic_plan.save()
+        with pytest.raises(ValidationError):
+            basic_plan.save()
         org_with_basic_plan.refresh_from_db()
-        assert org_with_basic_plan.max_facilities == 20
-        assert org_with_basic_plan.max_users == 100
+        assert org_with_basic_plan.max_facilities == 3
+        assert org_with_basic_plan.max_users == 10
 
-    def test_plan_update_syncs_max_patients(self, org_with_free_plan, free_plan):
-        """When a plan's max_patients changes, the org should update too."""
+    def test_plan_update_cannot_change_linked_patient_limit(self, org_with_free_plan, free_plan):
+        """Customer limits cannot be changed in place after a plan is assigned."""
+        from django.core.exceptions import ValidationError
+
         free_plan.max_patients = 200
-        free_plan.save()
+        with pytest.raises(ValidationError):
+            free_plan.save()
         org_with_free_plan.refresh_from_db()
-        assert org_with_free_plan.max_patients == 200
+        assert org_with_free_plan.max_patients == 5
 
     def test_unlinked_org_not_affected(self, db, basic_plan):
         """Orgs not linked to the plan should not be affected."""
@@ -393,16 +399,18 @@ class TestOrganizationPlanAPI:
         assert org_data["subscription_plan"] == basic_plan.pk
         assert org_data["plan_name"] == "Basic Plan"
 
-    def test_update_org_plan(self, superuser_client, sample_organization, basic_plan):
-        """Changing org's subscription_plan should save the FK."""
+    def test_update_org_plan_is_rejected_without_subscription_period(
+        self, superuser_client, sample_organization, basic_plan
+    ):
+        """Organization plan changes must be derived from a confirmed billing period."""
         response = superuser_client.patch(
             f"/api/organizations/{sample_organization.pk}/",
             {"subscription_plan": basic_plan.pk},
             format="json",
         )
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_403_FORBIDDEN
         sample_organization.refresh_from_db()
-        assert sample_organization.subscription_plan == basic_plan
+        assert sample_organization.subscription_plan != basic_plan
 
 
 # ============================================================================

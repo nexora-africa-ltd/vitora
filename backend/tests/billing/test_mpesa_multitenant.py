@@ -2,8 +2,8 @@
 Tests for multi-tenant M-Pesa support.
 
 Verifies that MpesaService can load credentials per-facility from
-FacilityBillingConfig, falling back to global settings when no
-facility-level config exists.
+    FacilityBillingConfig, allowing shared credentials only for sandbox use
+    in development, testing, and staging.
 """
 
 from datetime import date, timedelta
@@ -101,6 +101,92 @@ def config_b(db, facility_b):
 class TestMpesaServiceCredentialResolution:
     """MpesaService should resolve credentials per-facility."""
 
+    def test_sandbox_never_borrows_live_global_passkey(self, settings, facility_a):
+        settings.MPESA_SANDBOX_ALLOWED = True
+        settings.MPESA_ENVIRONMENT = "production"
+        FacilityBillingConfig.objects.create(
+            facility=facility_a,
+            mpesa_consumer_key="sandbox-key",
+            mpesa_consumer_secret="sandbox-secret",
+            mpesa_environment="sandbox",
+        )
+        with pytest.raises(ValidationError, match="live global credentials cannot be used"):
+            MpesaService(facility=facility_a)
+
+    def test_decryption_failure_does_not_fall_back(self, config_a, facility_a):
+        with patch("hmis.apps.core.kms.get_kms_provider") as provider:
+            provider.return_value.decrypt_string.side_effect = ValueError("Unable to decrypt")
+            with pytest.raises(ValueError, match="Unable to decrypt"):
+                MpesaService(facility=facility_a)
+
+    @pytest.mark.parametrize(
+        "missing",
+        ["mpesa_consumer_key", "mpesa_consumer_secret", "mpesa_passkey", "mpesa_shortcode"],
+    )
+    def test_incomplete_live_credentials_never_fall_back(
+        self, settings, config_a, facility_a, missing
+    ):
+        settings.MPESA_SANDBOX_ALLOWED = True  # Even on staging, live collections must be isolated.
+        settings.MPESA_ENVIRONMENT = "production"
+        config_a.mpesa_environment = "production"
+        setattr(config_a, missing, "")
+        config_a.save()
+        with pytest.raises(ValidationError, match="facility"):
+            MpesaService(facility=facility_a)
+
+    @pytest.mark.parametrize("with_facility", [True, False])
+    def test_production_requires_facility_config(self, settings, facility_a, with_facility):
+        settings.MPESA_SANDBOX_ALLOWED = False
+        settings.MPESA_ENVIRONMENT = "production"
+        with pytest.raises(ValidationError, match="facility"):
+            MpesaService(facility=facility_a if with_facility else None)
+
+    def test_production_rejects_sandbox_facility(self, settings, config_a, facility_a):
+        settings.MPESA_SANDBOX_ALLOWED = False
+        with pytest.raises(ValidationError, match="Sandbox"):
+            MpesaService(facility=facility_a)
+
+    def test_shared_credentials_cannot_target_live_gateway(self, settings):
+        settings.MPESA_SANDBOX_ALLOWED = True
+        settings.MPESA_ENVIRONMENT = "production"
+        with pytest.raises(ValidationError, match="facility"):
+            MpesaService()
+
+    def test_complete_live_credentials_use_only_facility_values(
+        self, settings, config_a, facility_a
+    ):
+        settings.MPESA_SANDBOX_ALLOWED = False
+        config_a.mpesa_environment = "production"
+        config_a.save()
+        service = MpesaService(facility=facility_a)
+        assert service.consumer_key == "key_facility_a"
+        assert service.shortcode == "100001"
+        assert service.base_url == "https://api.safaricom.co.ke"
+
+    def test_live_verification_requires_facility_initiator(self, settings, config_a, facility_a):
+        settings.MPESA_SANDBOX_ALLOWED = False
+        config_a.mpesa_environment = "production"
+        config_a.save()
+        with patch("hmis.apps.billing.services.mpesa.requests.get") as oauth:
+            with pytest.raises(ValidationError, match="initiator"):
+                MpesaService(facility=facility_a).verify_transaction("ABC1234567")
+            oauth.assert_not_called()
+
+    def test_verification_uses_encrypted_facility_initiator(self, settings, config_a, facility_a):
+        settings.MPESA_SANDBOX_ALLOWED = False
+        config_a.mpesa_environment = "production"
+        config_a.mpesa_initiator_name = "facility-operator"
+        config_a.mpesa_security_credential = "facility-security-credential"
+        config_a.save()
+        config_a.refresh_from_db()
+        assert config_a.mpesa_security_credential_encrypted != "facility-security-credential"
+        with patch.object(MpesaService, "get_access_token", return_value="token"):
+            with patch("hmis.apps.billing.services.mpesa.requests.post") as post:
+                post.return_value.json.return_value = {"ResponseCode": "0"}
+                MpesaService(facility=facility_a).verify_transaction("ABC1234567")
+        assert post.call_args.kwargs["json"]["Initiator"] == "facility-operator"
+        assert post.call_args.kwargs["json"]["SecurityCredential"] == "facility-security-credential"
+
     def test_facility_credentials_used_when_provided(self, config_a, facility_a):
         """Service should use facility-specific credentials when facility is given."""
         service = MpesaService(facility=facility_a)
@@ -126,6 +212,8 @@ class TestMpesaServiceCredentialResolution:
     def test_falls_back_to_global_settings_when_no_facility(self, mock_settings):
         """Without a facility, service should use global settings from django.conf."""
         mock_settings.MPESA_CONSUMER_KEY = "global_key"
+        mock_settings.MPESA_SANDBOX_ALLOWED = True
+        mock_settings.MPESA_ENVIRONMENT = "sandbox"
         mock_settings.MPESA_CONSUMER_SECRET = "global_secret"
         mock_settings.MPESA_PASSKEY = "global_passkey"
         mock_settings.MPESA_SHORTCODE = "174379"
@@ -142,6 +230,8 @@ class TestMpesaServiceCredentialResolution:
     def test_falls_back_to_global_when_facility_has_no_config(self, mock_settings, facility_a):
         """If facility exists but has no billing config, fall back to global."""
         mock_settings.MPESA_CONSUMER_KEY = "global_key"
+        mock_settings.MPESA_SANDBOX_ALLOWED = True
+        mock_settings.MPESA_ENVIRONMENT = "sandbox"
         mock_settings.MPESA_CONSUMER_SECRET = "global_secret"
         mock_settings.MPESA_PASSKEY = "global_passkey"
         mock_settings.MPESA_SHORTCODE = "174379"
@@ -160,6 +250,8 @@ class TestMpesaServiceCredentialResolution:
     ):
         """If config exists but M-Pesa fields are blank, fall back to global."""
         mock_settings.MPESA_CONSUMER_KEY = "global_key"
+        mock_settings.MPESA_SANDBOX_ALLOWED = True
+        mock_settings.MPESA_ENVIRONMENT = "sandbox"
         mock_settings.MPESA_CONSUMER_SECRET = "global_secret"
         mock_settings.MPESA_PASSKEY = "global_passkey"
         mock_settings.MPESA_SHORTCODE = "174379"
@@ -178,6 +270,8 @@ class TestMpesaServiceCredentialResolution:
     def test_sandbox_uses_global_shortcode_and_passkey_when_empty(self, mock_settings, facility_a):
         """Sandbox config with only key+secret should fall back to global shortcode/passkey."""
         mock_settings.MPESA_PASSKEY = "global_sandbox_passkey"
+        mock_settings.MPESA_SANDBOX_ALLOWED = True
+        mock_settings.MPESA_ENVIRONMENT = "sandbox"
         mock_settings.MPESA_SHORTCODE = "174379"
         mock_settings.MPESA_CALLBACK_URL = "https://global.example.com/callback/"
         mock_settings.MPESA_BASE_URL = "https://sandbox.safaricom.co.ke"
@@ -264,6 +358,57 @@ class TestMpesaServiceCredentialResolution:
 class TestMpesaViewSetMultiTenant:
     """MpesaViewSet should pass facility context to MpesaService."""
 
+    @patch("hmis.apps.billing.services.MpesaService")
+    def test_query_uses_selected_facility(self, service, authenticated_client, sample_facility):
+        service.return_value.query_transaction_status.return_value = {"ResultCode": "0"}
+        response = authenticated_client.get("/api/billing/mpesa/query/unknown-checkout/")
+        assert response.status_code == 200
+        service.assert_called_once_with(facility=sample_facility)
+
+    @patch("hmis.apps.billing.services.MpesaService")
+    def test_foreign_payment_query_is_denied(
+        self, service, authenticated_client, invoice_a, billing_user
+    ):
+        Payment.objects.create(
+            invoice=invoice_a,
+            amount=Decimal("100.00"),
+            method="mpesa",
+            mpesa_transaction_id="other-org-checkout",
+            received_by=billing_user,
+        )
+        response = authenticated_client.get("/api/billing/mpesa/query/other-org-checkout/")
+        assert response.status_code == 404
+        service.assert_not_called()
+
+    @patch("hmis.apps.billing.services.MpesaService")
+    def test_foreign_invoice_cannot_select_merchant(
+        self, service, authenticated_client, invoice_a, sample_payment_point
+    ):
+        response = authenticated_client.post(
+            "/api/billing/mpesa/initiate/",
+            {
+                "invoice_id": invoice_a.id,
+                "payment_point": sample_payment_point.id,
+                "phone_number": "0712345678",
+                "amount": "100.00",
+            },
+        )
+        assert response.status_code == 404
+        service.assert_not_called()
+
+    @patch("hmis.apps.billing.services.MpesaService")
+    def test_unknown_callback_does_not_construct_global_service(self, service, api_client):
+        response = api_client.post(
+            "/api/billing/mpesa/callback/",
+            {
+                "Body": {"stkCallback": {"CheckoutRequestID": "unknown"}},
+            },
+            format="json",
+        )
+        assert response.status_code == 200
+        assert response.data["ResultCode"] == 1
+        service.assert_not_called()
+
     @pytest.fixture
     def invoice_a(self, db, facility_a, sample_patient, billing_user):
         """Invoice scoped to facility_a."""
@@ -313,6 +458,13 @@ class TestMpesaViewSetMultiTenant:
         }
         MockMpesaService.return_value = mock_service_instance
 
+        # This caller must be authorized for the invoice's facility.
+        profile = authenticated_client.handler._force_user.staff_profile
+        profile.primary_facility = facility_a
+        profile.organization = facility_a.organization
+        profile.save(update_fields=["primary_facility", "organization"])
+        mpesa_payment_point.facility = facility_a
+        mpesa_payment_point.save()
         response = authenticated_client.post(
             "/api/billing/mpesa/initiate/",
             {
@@ -403,6 +555,33 @@ class TestMpesaViewSetMultiTenant:
 
 class TestFacilityBillingConfigMpesaFields:
     """FacilityBillingConfig should store per-facility M-Pesa credentials."""
+
+    def test_verification_secrets_write_only_and_retained_on_patch(self, config_a):
+        from hmis.apps.billing.serializers import (
+            FacilityBillingConfigCreateSerializer,
+            FacilityBillingConfigSerializer,
+        )
+
+        serializer = FacilityBillingConfigCreateSerializer(
+            config_a,
+            data={
+                "mpesa_initiator_name": "operator-a",
+                "mpesa_security_credential": "credential-a",
+            },
+            partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        config_a.refresh_from_db()
+        assert config_a.mpesa_security_credential == "credential-a"
+        assert "mpesa_security_credential" not in FacilityBillingConfigSerializer(config_a).data
+        patch_serializer = FacilityBillingConfigCreateSerializer(
+            config_a, data={"default_due_days": 7}, partial=True
+        )
+        patch_serializer.is_valid(raise_exception=True)
+        patch_serializer.save()
+        config_a.refresh_from_db()
+        assert config_a.mpesa_security_credential == "credential-a"
 
     def test_mpesa_credential_fields_exist(self, facility_a):
         """Config should have all M-Pesa credential fields."""

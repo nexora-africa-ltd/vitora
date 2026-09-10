@@ -82,6 +82,7 @@ class FacilityBillingConfigSerializer(serializers.ModelSerializer):
             "mpesa_shortcode",
             "mpesa_callback_url",
             "mpesa_environment",
+            "mpesa_initiator_name",
             "has_mpesa_credentials",
             # SHA/DHA ILM (non-secret only — secrets are write-only)
             "sha_agent_code",
@@ -121,6 +122,10 @@ class FacilityBillingConfigCreateSerializer(serializers.ModelSerializer):
         write_only=True, required=False, allow_blank=True, default=""
     )
     # SHA/DHA ILM write-only secret fields
+    mpesa_security_credential = serializers.CharField(
+        write_only=True, required=False, allow_blank=True, default=""
+    )
+
     sha_consumer_key = serializers.CharField(
         write_only=True, required=False, allow_blank=True, default=""
     )
@@ -170,6 +175,8 @@ class FacilityBillingConfigCreateSerializer(serializers.ModelSerializer):
             "mpesa_consumer_key",
             "mpesa_consumer_secret",
             "mpesa_passkey",
+            "mpesa_initiator_name",
+            "mpesa_security_credential",
             "mpesa_shortcode",
             "mpesa_callback_url",
             "mpesa_environment",
@@ -229,7 +236,12 @@ class FacilityBillingConfigCreateSerializer(serializers.ModelSerializer):
         # Pop secrets and set via KMS property setters
         mpesa_secrets = {
             k: validated_data.pop(k, "")
-            for k in ("mpesa_consumer_key", "mpesa_consumer_secret", "mpesa_passkey")
+            for k in (
+                "mpesa_consumer_key",
+                "mpesa_consumer_secret",
+                "mpesa_passkey",
+                "mpesa_security_credential",
+            )
         }
         sha_secrets = {
             k: validated_data.pop(k, "")
@@ -263,7 +275,12 @@ class FacilityBillingConfigCreateSerializer(serializers.ModelSerializer):
         # Pop secrets and set via KMS property setters
         mpesa_secrets = {
             k: validated_data.pop(k, "")
-            for k in ("mpesa_consumer_key", "mpesa_consumer_secret", "mpesa_passkey")
+            for k in (
+                "mpesa_consumer_key",
+                "mpesa_consumer_secret",
+                "mpesa_passkey",
+                "mpesa_security_credential",
+            )
         }
         sha_secrets = {
             k: validated_data.pop(k, "")

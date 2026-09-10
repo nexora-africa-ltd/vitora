@@ -16,6 +16,40 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
+@shared_task(name="hmis.apps.core.tasks.reset_subscription_ai_quotas")
+def reset_subscription_ai_quotas():
+    """Reset AI quotas once per paid subscription-period boundary."""
+    from django.utils import timezone
+
+    from hmis.apps.core.models import Organization
+
+    now = timezone.now()
+    organizations = Organization.objects.filter(
+        subscription_status="ACTIVE",
+        subscription_periods__status="PAID",
+        subscription_periods__period_start__lte=now,
+        subscription_periods__period_end__gt=now,
+    ).distinct()
+    reset_count = 0
+    for organization in organizations:
+        period = (
+            organization.subscription_periods.filter(
+                status="PAID", period_start__lte=now, period_end__gt=now
+            )
+            .order_by("-period_start")
+            .first()
+        )
+        if period and (
+            organization.ai_tokens_reset_at is None
+            or organization.ai_tokens_reset_at < period.period_start
+        ):
+            organization.ai_tokens_used = 0
+            organization.ai_tokens_reset_at = period.period_start
+            organization.save(update_fields=["ai_tokens_used", "ai_tokens_reset_at"])
+            reset_count += 1
+    return {"reset_count": reset_count}
+
+
 def calculate_retry_delay(retry_count: int, base_delay: int = 60) -> int:
     """
     Calculate exponential backoff delay for retries.

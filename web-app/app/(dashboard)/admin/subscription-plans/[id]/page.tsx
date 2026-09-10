@@ -5,28 +5,15 @@
 
 import { use } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Pencil, Trash2, CreditCard, Check, X } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Plus, Pencil, CreditCard, Check, X } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { subscriptionPlansApi } from '@/lib/api/subscription-plans';
 import { usePermissions } from '@/lib/hooks/use-permissions';
-import { toast } from 'sonner';
 import type { TierCode } from '@/lib/types/subscription';
 import { FEATURE_LABELS } from '@/lib/types/subscription';
 
@@ -70,25 +57,11 @@ export default function SubscriptionPlanDetailPage({
 }) {
   const { id } = use(params);
   const planId = parseInt(id, 10);
-  const router = useRouter();
-  const queryClient = useQueryClient();
   const { isSuperuser } = usePermissions();
 
   const { data: plan, isLoading } = useQuery({
     queryKey: ['subscription-plan', planId],
     queryFn: () => subscriptionPlansApi.get(planId),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: () => subscriptionPlansApi.delete(planId),
-    onSuccess: () => {
-      toast.success('Plan deleted');
-      queryClient.invalidateQueries({ queryKey: ['subscription-plans'] });
-      router.push('/admin/subscription-plans');
-    },
-    onError: () => {
-      toast.error('Failed to delete plan');
-    },
   });
 
   if (!isSuperuser) {
@@ -123,41 +96,21 @@ export default function SubscriptionPlanDetailPage({
     <div className="space-y-4 sm:space-y-6">
       <PageHeader
         title={plan.name}
-        helpContent="View subscription plan details including pricing, limits, and feature flags."
+        helpContent="Pricing and hard limits are immutable after assignment. You can update feature flags from Edit; create a new plan version for pricing or limit changes."
         actions={
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <Button asChild size="sm" variant="outline">
               <Link href={`/admin/subscription-plans/${planId}/edit`}>
                 <Pencil className="mr-1 h-4 w-4" />
                 Edit
               </Link>
             </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button size="sm" variant="destructive">
-                  <Trash2 className="mr-1 h-4 w-4" />
-                  Delete
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete plan?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete the &quot;{plan.name}&quot; plan. Organizations
-                    linked to this plan will lose their subscription reference.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => deleteMutation.mutate()}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <Button asChild size="sm">
+              <Link href="/admin/subscription-plans/new">
+                <Plus className="mr-1 h-4 w-4" />
+                New Version
+              </Link>
+            </Button>
           </div>
         }
       />

@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import patch, seal
 
 import pytest
 
@@ -23,6 +23,7 @@ from tests.billing.test_api.test_sha_api import (  # noqa: F401
 )
 
 PX_SVC = "hmis.apps.billing.sha_ilm_prescription_views.IlmPrescriptionService"
+TERMINOLOGY_SVC = "hmis.apps.billing.sha_ilm_prescription_views.IlmTerminologyService"
 
 
 def _ok(payload=None, record_id=None, http=200):
@@ -51,6 +52,10 @@ def _item(**overrides):
     return base
 
 
+def _terminology():
+    return {"owner": "owner-a", "sources": "source-a"}
+
+
 # ===========================================================================
 # Preview
 # ===========================================================================
@@ -64,16 +69,18 @@ class TestPreviewEndpoint:
         assert sha_client.get(self.URL).status_code == 400
 
     def test_calls_service(self, sha_client):
-        with patch(PX_SVC) as M:
+        with patch(PX_SVC, autospec=True) as M:
             M.return_value.preview_prescription.return_value = _ok({"guid": "rx-1"})
+            seal(M.return_value)
             r = sha_client.get(self.URL, {"consent_token": "c-1"})
             assert r.status_code == 200
 
     def test_unauthorized(self, sha_client):
-        with patch(PX_SVC) as M:
+        with patch(PX_SVC, autospec=True) as M:
             M.return_value.preview_prescription.side_effect = DHAUnauthorizedError(
                 "no", status_code=401
             )
+            seal(M.return_value)
             r = sha_client.get(self.URL, {"consent_token": "c-1"})
             assert r.status_code == 502
 
@@ -117,37 +124,93 @@ class TestCreateEndpoint:
         assert r.status_code == 400
 
     def test_calls_service(self, sha_client):
-        with patch(PX_SVC) as M:
+        with (
+            patch(TERMINOLOGY_SVC, autospec=True) as terminology,
+            patch(PX_SVC, autospec=True) as M,
+        ):
             M.return_value.create_prescription.return_value = _ok({"id": 1}, record_id=11, http=201)
+            seal(terminology.return_value)
+            seal(M.return_value)
             r = sha_client.post(
                 self.URL,
                 {
                     "consent_token": "c-1",
                     "intervention_code": "INT-1",
                     "identification_number": "P-1",
+                    "terminology": _terminology(),
                     "items": [_item()],
                 },
                 format="json",
             )
             assert r.status_code == 201
             assert r.data["record_id"] == 11
-
-    def test_validation_error(self, sha_client):
-        with patch(PX_SVC) as M:
-            M.return_value.create_prescription.side_effect = DHAValidationError(
-                "bad", status_code=400
+            terminology.return_value.validate_concept_code.assert_called_once_with(
+                "GCC-1", provenance=_terminology()
             )
+
+    def test_rejects_missing_terminology_provenance(self, sha_client):
+        r = sha_client.post(
+            self.URL,
+            {
+                "consent_token": "c-1",
+                "intervention_code": "INT-1",
+                "identification_number": "P-1",
+                "items": [_item()],
+            },
+            format="json",
+        )
+
+        assert r.status_code == 400
+        assert "terminology" in r.data["error"]
+
+    def test_rejects_a_generic_code_that_fails_server_revalidation(self, sha_client):
+        with (
+            patch(TERMINOLOGY_SVC, autospec=True) as terminology,
+            patch(PX_SVC, autospec=True) as prescription,
+        ):
+            terminology.return_value.validate_concept_code.side_effect = DHAValidationError(
+                "Unknown generic concept code", status_code=400
+            )
+            seal(terminology.return_value)
+            seal(prescription.return_value)
             r = sha_client.post(
                 self.URL,
                 {
                     "consent_token": "c-1",
                     "intervention_code": "INT-1",
                     "identification_number": "P-1",
+                    "terminology": _terminology(),
+                    "items": [_item()],
+                },
+                format="json",
+            )
+
+        assert r.status_code == 400
+        prescription.return_value.create_prescription.assert_not_called()
+
+    def test_validation_error(self, sha_client):
+        with (
+            patch(TERMINOLOGY_SVC, autospec=True) as terminology,
+            patch(PX_SVC, autospec=True) as M,
+        ):
+            M.return_value.create_prescription.side_effect = DHAValidationError(
+                "bad", status_code=400
+            )
+            seal(terminology.return_value)
+            seal(M.return_value)
+            r = sha_client.post(
+                self.URL,
+                {
+                    "consent_token": "c-1",
+                    "intervention_code": "INT-1",
+                    "identification_number": "P-1",
+                    "terminology": _terminology(),
                     "items": [_item()],
                 },
                 format="json",
             )
             assert r.status_code == 400
+            terminology.return_value.validate_concept_code.assert_called_once()
 
 
 # ===========================================================================
@@ -202,8 +265,9 @@ class TestDispenseEndpoint:
         assert r.status_code == 400
 
     def test_calls_service(self, sha_client):
-        with patch(PX_SVC) as M:
+        with patch(PX_SVC, autospec=True) as M:
             M.return_value.create_dispense.return_value = _ok({"id": 5}, record_id=5, http=201)
+            seal(M.return_value)
             r = sha_client.post(
                 self.URL,
                 {
@@ -236,8 +300,9 @@ class TestRemoveDoctorEndpoint:
         assert sha_client.delete(self.URL, {}, format="json").status_code == 400
 
     def test_calls_service(self, sha_client):
-        with patch(PX_SVC) as M:
+        with patch(PX_SVC, autospec=True) as M:
             M.return_value.remove_prescription_doctor.return_value = _ok({"ok": True})
+            seal(M.return_value)
             r = sha_client.delete(
                 self.URL,
                 {
@@ -250,10 +315,11 @@ class TestRemoveDoctorEndpoint:
             assert r.status_code == 200
 
     def test_not_found(self, sha_client):
-        with patch(PX_SVC) as M:
+        with patch(PX_SVC, autospec=True) as M:
             M.return_value.remove_prescription_doctor.side_effect = DHANotFoundError(
                 "no", status_code=404
             )
+            seal(M.return_value)
             r = sha_client.delete(
                 self.URL,
                 {

@@ -16,6 +16,16 @@ from django.utils import timezone
 from rest_framework import status
 
 
+@pytest.fixture(autouse=True)
+def superuser_assignment_client(authenticated_client, test_user):
+    """Use superuser context because assignment endpoints are superuser-restricted."""
+    test_user.is_superuser = True
+    test_user.is_staff = True
+    test_user.save(update_fields=["is_superuser", "is_staff"])
+    authenticated_client.force_authenticate(user=test_user)
+    return authenticated_client
+
+
 class TestAssignmentRuleAPI:
     """Tests for AssignmentRule API endpoints."""
 
@@ -326,6 +336,9 @@ class TestAssignmentOverrideAPI:
         from tests.conftest import ensure_staff_profile
 
         ensure_staff_profile(another_user, sample_facility.organization, sample_facility)
+        another_user.is_superuser = True
+        another_user.is_staff = True
+        another_user.save(update_fields=["is_superuser", "is_staff"])
 
         override = AssignmentOverride.objects.create(
             target_type="Appointment",
@@ -357,6 +370,9 @@ class TestAssignmentOverrideAPI:
         from tests.conftest import ensure_staff_profile
 
         ensure_staff_profile(another_user, sample_facility.organization, sample_facility)
+        another_user.is_superuser = True
+        another_user.is_staff = True
+        another_user.save(update_fields=["is_superuser", "is_staff"])
 
         override = AssignmentOverride.objects.create(
             target_type="Appointment",

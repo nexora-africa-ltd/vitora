@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import json
 from io import BytesIO
-from unittest.mock import patch
+from unittest.mock import patch, seal
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -57,8 +57,9 @@ class TestVisitOtpEndpoint:
         assert sha_client.post(self.URL, {}, format="json").status_code == 400
 
     def test_calls_service(self, sha_client):
-        with patch(LF_SVC) as M:
+        with patch(LF_SVC, autospec=True) as M:
             M.return_value.send_visit_otp.return_value = _ok({"message": "sent"})
+            seal(M.return_value)
             r = sha_client.post(
                 self.URL,
                 {"intervention_codes": ["INT-1"], "patient_id": "CR-1"},
@@ -83,8 +84,9 @@ class TestVisitOtpEndpoint:
             sha_facility_fr_code="FID-BILLING-1",
         )
 
-        with patch(LF_SVC) as M:
+        with patch(LF_SVC, autospec=True) as M:
             M.return_value.send_visit_otp.return_value = _ok({"message": "sent"})
+            seal(M.return_value)
             r = sha_client.post(
                 self.URL,
                 {"intervention_codes": ["INT-1"], "patient_id": "CR-1"},
@@ -102,10 +104,11 @@ class TestDischargeOtpEndpoint:
         assert sha_client.post(self.URL, {}, format="json").status_code == 400
 
     def test_dha_unauthorized_returns_502(self, sha_client):
-        with patch(LF_SVC) as M:
+        with patch(LF_SVC, autospec=True) as M:
             M.return_value.send_discharge_otp.side_effect = DHAUnauthorizedError(
                 "no", status_code=401
             )
+            seal(M.return_value)
             r = sha_client.post(
                 self.URL, {"consent_token": "c-1", "patient_id": "CR-1"}, format="json"
             )
@@ -125,8 +128,9 @@ class TestDischargeEndpoint:
         assert sha_client.post(self.URL, {"consent_token": "c-1"}, format="json").status_code == 400
 
     def test_calls_service(self, sha_client):
-        with patch(LF_SVC) as M:
+        with patch(LF_SVC, autospec=True) as M:
             M.return_value.discharge_inpatient.return_value = _ok({"ok": True})
+            seal(M.return_value)
             r = sha_client.post(
                 self.URL,
                 {
@@ -167,8 +171,9 @@ class TestOtpWhitelistRequestEndpoint:
         assert r.status_code == 400
 
     def test_calls_service(self, sha_client):
-        with patch(LF_SVC) as M:
+        with patch(LF_SVC, autospec=True) as M:
             M.return_value.request_otp_whitelist.return_value = _ok({"guid": "wh-1"}, record_id=99)
+            seal(M.return_value)
             r = sha_client.post(
                 self.URL,
                 {
@@ -183,8 +188,9 @@ class TestOtpWhitelistRequestEndpoint:
             assert r.data["record_id"] == 99
 
     def test_parses_stringified_attachments_in_multipart(self, sha_client):
-        with patch(LF_SVC) as M:
+        with patch(LF_SVC, autospec=True) as M:
             M.return_value.request_otp_whitelist.return_value = _ok({"guid": "wh-1"}, record_id=99)
+            seal(M.return_value)
             uploaded = SimpleUploadedFile("support.pdf", b"hello", content_type="application/pdf")
             r = sha_client.post(
                 self.URL,
@@ -214,8 +220,9 @@ class TestOtpWhitelistRequestEndpoint:
             assert args["files"][0].field_name == "attachments_file_blob"
 
     def test_rejects_invalid_attachment_document_type(self, sha_client):
-        with patch(LF_SVC) as M:
+        with patch(LF_SVC, autospec=True) as M:
             uploaded = SimpleUploadedFile("support.pdf", b"hello", content_type="application/pdf")
+            seal(M.return_value)
             r = sha_client.post(
                 self.URL,
                 {
@@ -240,10 +247,11 @@ class TestOtpWhitelistRequestEndpoint:
             M.return_value.request_otp_whitelist.assert_not_called()
 
     def test_rejects_invalid_attachment_file_type(self, sha_client):
-        with patch(LF_SVC) as M:
+        with patch(LF_SVC, autospec=True) as M:
             uploaded = SimpleUploadedFile(
                 "support.exe", b"hello", content_type="application/octet-stream"
             )
+            seal(M.return_value)
             r = sha_client.post(
                 self.URL,
                 {
@@ -270,12 +278,13 @@ class TestOtpWhitelistRequestEndpoint:
     def test_records_local_pending_when_dha_reports_existing_pending(
         self, sha_client, sample_facility
     ):
-        with patch(LF_SVC) as M:
+        with patch(LF_SVC, autospec=True) as M:
             M.return_value.request_otp_whitelist.side_effect = DHAValidationError(
                 "failed to initiate OTP whitelist request: There is an already existing pending request",
                 status_code=400,
                 response_body={"message": "already pending"},
             )
+            seal(M.return_value)
             r = sha_client.post(
                 self.URL,
                 {
@@ -301,14 +310,16 @@ class TestOtpWhitelistCallbackEndpoint:
         assert sha_client.get(self.URL).status_code == 400
 
     def test_calls_service(self, sha_client):
-        with patch(LF_SVC) as M:
+        with patch(LF_SVC, autospec=True) as M:
             M.return_value.list_otp_whitelist_status.return_value = _ok({"results": []})
+            seal(M.return_value)
             r = sha_client.get(self.URL, {"beneficiary_cr_id": "CR-1"})
             assert r.status_code == 200
 
     def test_passes_resolved_active_facility_to_service(self, sha_client, sample_facility):
-        with patch(LF_SVC) as M:
+        with patch(LF_SVC, autospec=True) as M:
             M.return_value.list_otp_whitelist_status.return_value = _ok({"results": []})
+            seal(M.return_value)
             r = sha_client.get(self.URL, {"beneficiary_cr_id": "CR-1"})
             assert r.status_code == 200
 
@@ -331,8 +342,9 @@ class TestNextOfKinEndpoint:
         assert r.status_code == 400
 
     def test_calls_service(self, sha_client):
-        with patch(LF_SVC) as M:
+        with patch(LF_SVC, autospec=True) as M:
             M.return_value.add_next_of_kin_contact.return_value = _ok({"id": 1})
+            seal(M.return_value)
             r = sha_client.post(
                 self.URL,
                 {
@@ -359,10 +371,11 @@ class TestEmergencyDoctorAddEndpoint:
         assert sha_client.post(self.URL, {}, format="json").status_code == 400
 
     def test_validation_error_returns_400(self, sha_client):
-        with patch(LF_SVC) as M:
+        with patch(LF_SVC, autospec=True) as M:
             M.return_value.add_emergency_claim_doctor.side_effect = DHAValidationError(
                 "bad", status_code=400
             )
+            seal(M.return_value)
             r = sha_client.post(
                 self.URL,
                 {"consent_token": "c-1", "identification_number": "DOC-1"},
@@ -379,8 +392,9 @@ class TestEmergencyDoctorRemoveEndpoint:
         assert sha_client.delete(self.URL, {}, format="json").status_code == 400
 
     def test_calls_service(self, sha_client):
-        with patch(LF_SVC) as M:
+        with patch(LF_SVC, autospec=True) as M:
             M.return_value.remove_emergency_claim_doctor.return_value = _ok({"ok": True})
+            seal(M.return_value)
             r = sha_client.delete(self.URL, {"consent_token": "c-1"}, format="json")
             assert r.status_code == 200
 
@@ -398,8 +412,9 @@ class TestPomsfBalancesEndpoint:
         assert sha_client.get(self.URL).status_code == 400
 
     def test_calls_service(self, sha_client):
-        with patch(LF_SVC) as M:
+        with patch(LF_SVC, autospec=True) as M:
             M.return_value.get_pomsf_balances.return_value = _ok({"firstName": "Jane"})
+            seal(M.return_value)
             r = sha_client.get(self.URL, {"patient_id": "CR-1", "policy_year": "2026"})
             assert r.status_code == 200
 
@@ -418,8 +433,9 @@ class TestFileUploadEndpoint:
         assert r.status_code == 400
 
     def test_calls_service(self, sha_client):
-        with patch(LF_SVC) as M:
+        with patch(LF_SVC, autospec=True) as M:
             M.return_value.upload_file.return_value = _ok({"file_id": "f-1"}, record_id=7, http=201)
+            seal(M.return_value)
             f = SimpleUploadedFile("test.pdf", b"hello", content_type="application/pdf")
             r = sha_client.post(self.URL, {"file": f}, format="multipart")
             assert r.status_code == 201
@@ -429,14 +445,16 @@ class TestFileUploadEndpoint:
 @pytest.mark.django_db
 class TestFileUrlEndpoint:
     def test_calls_service(self, sha_client):
-        with patch(LF_SVC) as M:
+        with patch(LF_SVC, autospec=True) as M:
             M.return_value.get_upload_url.return_value = _ok({"url": "https://x"})
+            seal(M.return_value)
             r = sha_client.get("/api/sha/ilm/uploads/f-1/")
             assert r.status_code == 200
 
     def test_dha_not_found_returns_404(self, sha_client):
-        with patch(LF_SVC) as M:
+        with patch(LF_SVC, autospec=True) as M:
             M.return_value.get_upload_url.side_effect = DHANotFoundError("no", status_code=404)
+            seal(M.return_value)
             r = sha_client.get("/api/sha/ilm/uploads/missing/")
             assert r.status_code == 404
 

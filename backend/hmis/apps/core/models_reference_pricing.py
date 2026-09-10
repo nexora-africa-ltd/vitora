@@ -14,7 +14,9 @@ Supported inputs/args:
 import uuid
 from decimal import Decimal
 
-from django.db import models
+from django.core.exceptions import ValidationError
+from django.db import models, transaction
+from django.utils import timezone
 
 from hmis.apps.core.models_audit_sync import TimeStampedModel
 
@@ -186,6 +188,34 @@ class SubscriptionPlan(TimeStampedModel):
     def __str__(self) -> str:
         return f"{self.name} ({self.get_code_display()})"
 
+    def save(self, *args, **kwargs):
+        """Prevent live commercial edits from rewriting active customer terms."""
+        if self.pk:
+            previous = type(self).objects.get(pk=self.pk)
+            protected = (
+                "monthly_price",
+                "annual_price",
+                "max_facilities",
+                "max_users",
+                "max_patients",
+                "monthly_ai_tokens",
+            )
+            if self.organizations.exists() and any(
+                getattr(previous, field) != getattr(self, field) for field in protected
+            ):
+                raise ValidationError(
+                    "Create a new subscription plan version instead of changing active customer terms."
+                )
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        """Retain plans referenced by subscription billing history."""
+        if self.subscription_periods.exists():
+            raise ValidationError(
+                "Plans with subscription billing history cannot be deleted. Deactivate them."
+            )
+        return super().delete(*args, **kwargs)
+
     @property
     def annual_savings(self) -> Decimal:
         """Return annual savings compared to monthly billing."""
@@ -196,6 +226,87 @@ class SubscriptionPlan(TimeStampedModel):
     def has_trial(self) -> bool:
         """Whether this plan offers a trial period."""
         return self.trial_period_days > 0
+
+
+class SubscriptionPeriod(TimeStampedModel):
+    """Immutable commercial period that grants a plan after verified payment."""
+
+    class BillingInterval(models.TextChoices):
+        MONTHLY = "MONTHLY", "Monthly"
+        ANNUAL = "ANNUAL", "Annual"
+
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pending payment"
+        PAID = "PAID", "Paid"
+        VOID = "VOID", "Void"
+
+    organization = models.ForeignKey(
+        "core.Organization", on_delete=models.PROTECT, related_name="subscription_periods"
+    )
+    plan = models.ForeignKey(
+        SubscriptionPlan, on_delete=models.PROTECT, related_name="subscription_periods"
+    )
+    billing_interval = models.CharField(max_length=10, choices=BillingInterval.choices)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    currency = models.CharField(max_length=3, default="KES")
+    period_start = models.DateTimeField()
+    period_end = models.DateTimeField()
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    payment_reference = models.CharField(max_length=100, blank=True, unique=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    confirmed_by = models.ForeignKey("auth.User", null=True, blank=True, on_delete=models.PROTECT)
+
+    class Meta:
+        ordering = ["-period_end"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(period_end__gt=models.F("period_start")),
+                name="subscription_period_end_after_start",
+            )
+        ]
+
+    def confirm_payment(self, payment_reference: str, confirmed_by=None) -> None:
+        """Idempotently activate the purchased plan after payment verification."""
+        if not payment_reference:
+            raise ValidationError("A verified payment reference is required.")
+        with transaction.atomic():
+            period = type(self).objects.select_for_update().get(pk=self.pk)
+            if period.status == self.Status.PAID:
+                if period.payment_reference != payment_reference:
+                    raise ValidationError(
+                        "Subscription period is already paid with another reference."
+                    )
+                self.refresh_from_db()
+                return
+            period.status = self.Status.PAID
+            period.payment_reference = payment_reference
+            period.confirmed_at = timezone.now()
+            period.confirmed_by = confirmed_by
+            period.save(
+                update_fields=[
+                    "status",
+                    "payment_reference",
+                    "confirmed_at",
+                    "confirmed_by",
+                    "updated_at",
+                ]
+            )
+            org = period.organization
+            org.subscription_plan = period.plan
+            org.subscription_status = "ACTIVE"
+            org.subscription_valid_until = period.period_end
+            org.ai_tokens_used = 0
+            org.ai_tokens_reset_at = period.confirmed_at
+            org.save(
+                update_fields=[
+                    "subscription_plan",
+                    "subscription_status",
+                    "subscription_valid_until",
+                    "ai_tokens_used",
+                    "ai_tokens_reset_at",
+                ]
+            )
+        self.refresh_from_db()
 
 
 class PriceBook(TimeStampedModel):

@@ -428,11 +428,24 @@ class TestMpesaAPIEndpoints:
         assert response.data["code"] == "mpesa_transport_error"
 
     @patch("hmis.apps.billing.services.MpesaService")
-    def test_callback_runtime_error_returns_acknowledged_failure(self, MockService, api_client):
+    def test_callback_runtime_error_returns_acknowledged_failure(
+        self, MockService, api_client, sample_invoice, sample_invoice_item, test_user
+    ):
+        Payment.objects.create(
+            invoice=sample_invoice,
+            amount=Decimal("100.00"),
+            method=Payment.Method.MPESA,
+            mpesa_transaction_id="known-callback",
+            received_by=test_user,
+        )
         mock_instance = MockService.return_value
         mock_instance.process_callback.side_effect = RuntimeError("callback parse failure")
 
-        response = api_client.post("/api/billing/mpesa/callback/", {"Body": {}}, format="json")
+        response = api_client.post(
+            "/api/billing/mpesa/callback/",
+            {"Body": {"stkCallback": {"CheckoutRequestID": "known-callback"}}},
+            format="json",
+        )
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["ResultCode"] == 1

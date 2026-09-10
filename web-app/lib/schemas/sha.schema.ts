@@ -1664,6 +1664,26 @@ export const IlmPrescriptionResponseSchema = z.object({
 });
 export type IlmPrescriptionResponse = z.infer<typeof IlmPrescriptionResponseSchema>;
 
+export const IlmTerminologyConceptSchema = z.object({
+  code: z.string(),
+  display: z.string(),
+  system: z.string(),
+});
+export type IlmTerminologyConcept = z.infer<typeof IlmTerminologyConceptSchema>;
+export const IlmTerminologyConceptListSchema = z.object({
+  count: z.number().optional().default(0),
+  results: z.array(IlmTerminologyConceptSchema),
+  provenance: z.object({
+    owner: z.string(),
+    sources: z.string().optional(),
+    collection: z.string().optional(),
+  }),
+});
+export const IlmTerminologyMappingsSchema = z.object({
+  count: z.number().optional().default(0),
+  results: z.array(z.unknown()),
+});
+
 export const SHADhaPrescriptionSchema = z
   .object({
     id: z.number(),
@@ -1715,6 +1735,15 @@ export const IlmPrescriptionCreateInputSchema = z.object({
   identification_type: z.string().optional(),
   regulation_body: z.string().optional(),
   items: z.array(PrescriptionItemInputSchema).min(1),
+  terminology: z
+    .object({
+      owner: z.string().min(1),
+      sources: z.string().min(1).optional(),
+      collection: z.string().min(1).optional(),
+    })
+    .refine((value) => Boolean(value.sources) !== Boolean(value.collection), {
+      message: 'Specify exactly one terminology source or collection.',
+    }),
   patient_pk: z.number().optional(),
   encounter_pk: z.number().optional(),
 });

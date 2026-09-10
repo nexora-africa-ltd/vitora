@@ -14,7 +14,8 @@ PHC/SHIF/ECCIF UAT checklists:
 
 from datetime import date, timedelta
 from decimal import Decimal
-from unittest.mock import ANY, MagicMock, patch
+from types import SimpleNamespace
+from unittest.mock import ANY, MagicMock, patch, seal
 
 import pytest  # type: ignore
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -30,6 +31,16 @@ from tests.billing.test_api.test_sha_api import (  # noqa: F401
     test_user,
     user_with_sha_permissions,
 )
+
+
+def _ilm_claim_result(*, status_code: int = 200, payload: dict | None = None, ok: bool = True):
+    """Return a concrete IlmClaimService result shape for API action tests."""
+    return SimpleNamespace(
+        status_code=status_code,
+        payload=payload or {},
+        response=SimpleNamespace(ok=ok, status_code=status_code),
+        reconciliation_summary=None,
+    )
 
 
 @pytest.fixture
@@ -106,11 +117,10 @@ class TestPreviewBeforeSubmit:
         claim = sample_sha_claim_for_uat
         assert claim.previewed_at is None
 
-        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
-            mock_result = MagicMock()
-            mock_result.response.ok = True
-            mock_result.status_code = 200
-            mock_result.payload = {"claim_diagnoses": [{"icd_code": "J06.9"}]}
+        with patch(
+            "hmis.apps.billing.services.ilm_claim_service.IlmClaimService", autospec=True
+        ) as svc:
+            mock_result = _ilm_claim_result(payload={"claim_diagnoses": [{"icd_code": "J06.9"}]})
             svc.return_value.reconcile_interventions_from_preview.return_value = {
                 "reconciled": True,
                 "created": 0,
@@ -119,6 +129,7 @@ class TestPreviewBeforeSubmit:
                 "retired": 0,
             }
             svc.return_value.preview.return_value = mock_result
+            seal(svc.return_value)
             response = sha_client.post(f"/api/sha/claims/{claim.id}/ilm/preview/")
 
         assert response.status_code == status.HTTP_200_OK
@@ -137,25 +148,18 @@ class TestPreviewBeforeSubmit:
         """ilm_preview should backfill DHA diagnoses from local claim diagnosis codes."""
         claim = sample_sha_claim_for_uat
 
-        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
-            first_preview = MagicMock()
-            first_preview.response.ok = True
-            first_preview.status_code = 200
-            first_preview.payload = {"claim_diagnoses": []}
-
-            second_preview = MagicMock()
-            second_preview.response.ok = True
-            second_preview.status_code = 200
-            second_preview.payload = {
-                "claim_diagnoses": [{"icd_code": claim.primary_diagnosis_code}]
-            }
-
-            add_diag_result = MagicMock()
-            add_diag_result.status_code = 200
-            add_diag_result.payload = {}
+        with patch(
+            "hmis.apps.billing.services.ilm_claim_service.IlmClaimService", autospec=True
+        ) as svc:
+            first_preview = _ilm_claim_result(payload={"claim_diagnoses": []})
+            second_preview = _ilm_claim_result(
+                payload={"claim_diagnoses": [{"icd_code": claim.primary_diagnosis_code}]}
+            )
+            add_diag_result = _ilm_claim_result(payload={})
 
             svc.return_value.preview.side_effect = [first_preview, second_preview]
             svc.return_value.add_diagnosis.return_value = add_diag_result
+            seal(svc.return_value)
 
             response = sha_client.post(f"/api/sha/claims/{claim.id}/ilm/preview/")
 
@@ -734,11 +738,12 @@ class TestAttachmentLocalValidation:
         claim = sample_sha_claim_for_uat
         valid_file = SimpleUploadedFile("report.pdf", b"%PDF-1.4 test content", "application/pdf")
 
-        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
-            mock_result = MagicMock()
-            mock_result.status_code = 200
-            mock_result.payload = {}
+        with patch(
+            "hmis.apps.billing.services.ilm_claim_service.IlmClaimService", autospec=True
+        ) as svc:
+            mock_result = _ilm_claim_result(payload={})
             svc.return_value.add_attachment.return_value = mock_result
+            seal(svc.return_value)
             response = sha_client.post(
                 f"/api/sha/claims/{claim.id}/ilm/attachments/add/",
                 {
@@ -1030,11 +1035,12 @@ class TestECCIF24hBillingWindow:
         claim.service_date = date.today() - timedelta(days=2)
         claim.save(update_fields=["is_emergency_claim", "service_date"])
 
-        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
-            mock_result = MagicMock()
-            mock_result.status_code = 200
-            mock_result.payload = {}
+        with patch(
+            "hmis.apps.billing.services.ilm_claim_service.IlmClaimService", autospec=True
+        ) as svc:
+            mock_result = _ilm_claim_result(payload={})
             svc.return_value.add_diagnosis.return_value = mock_result
+            seal(svc.return_value)
             response = sha_client.post(
                 f"/api/sha/claims/{claim.id}/ilm/diagnoses/add/",
                 {"icd_code": "J06.9", "intervention_code": "SHA-01-001"},

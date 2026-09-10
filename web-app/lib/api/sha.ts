@@ -55,6 +55,8 @@ import {
   SHAOtpWhitelistListSchema,
   SHAUploadListSchema,
   IlmPrescriptionResponseSchema,
+  IlmTerminologyConceptListSchema,
+  IlmTerminologyMappingsSchema,
   SHADhaPrescriptionListSchema,
 } from '@/lib/schemas/sha.schema';
 import type {
@@ -2574,12 +2576,34 @@ async function ilmPreviewPrescription(params: { consent_token: string; patient_p
   });
 }
 
+async function ilmSearchClinicalConcepts(params: {
+  search?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  const response = await apiClient.get(`${ILM_BASE}/terminology/concepts/`, { params });
+  return parseResponse(IlmTerminologyConceptListSchema, response.data, {
+    context: 'shaApi.ilmSearchClinicalConcepts',
+  });
+}
+
+async function ilmFetchClinicalConceptMappings(params: {
+  from_concept?: string;
+  map_types?: string;
+}) {
+  const response = await apiClient.get(`${ILM_BASE}/terminology/concepts/mappings/`, { params });
+  return parseResponse(IlmTerminologyMappingsSchema, response.data, {
+    context: 'shaApi.ilmFetchClinicalConceptMappings',
+  });
+}
+
 async function ilmCreatePrescription(body: {
   consent_token: string;
   intervention_code: string;
   identification_number: string;
   identification_type?: string;
   regulation_body?: string;
+  terminology: { owner: string; sources?: string; collection?: string };
   items: Array<Record<string, unknown>>;
   patient_pk?: number;
   encounter_pk?: number;
@@ -2782,6 +2806,8 @@ export const shaApi = {
   listLocalUploads,
   // Phase 5 — ePrescriptions
   ilmPreviewPrescription,
+  ilmSearchClinicalConcepts,
+  ilmFetchClinicalConceptMappings,
   ilmCreatePrescription,
   ilmDispensePrescription,
   ilmRemovePrescriptionDoctor,

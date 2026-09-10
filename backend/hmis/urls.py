@@ -38,6 +38,7 @@ from hmis.apps.core.cookie_auth import (
     CookieRefreshView,
 )
 from hmis.apps.core.mfa.views import MFAAwareTokenRefreshView
+from hmis.apps.core.paystack_views import paystack_webhook
 from hmis.apps.core.powersync_tokens import PowerSyncCredentialsView
 from hmis.apps.core.pricing import (
     PricingQuoteSlashAliasView,
@@ -65,6 +66,7 @@ from hmis.apps.core.views import (
     RoleViewSet,
     StaffProfileViewSet,
     SubCountyViewSet,
+    SubscriptionPeriodViewSet,
     SubscriptionPlanViewSet,
     WardViewSet,
     me_permissions,
@@ -882,6 +884,7 @@ router.register(r"organizations", OrganizationViewSet, basename="organization")
 
 # Subscription Plans (SaaS Licensing)
 router.register(r"subscription-plans", SubscriptionPlanViewSet, basename="subscriptionplan")
+router.register(r"subscription-periods", SubscriptionPeriodViewSet, basename="subscriptionperiod")
 
 # Location routes under /api/locations/
 location_router = routers.DefaultRouter()
@@ -895,6 +898,7 @@ terminology_router = routers.DefaultRouter()
 terminology_router.register(r"codesystems", CodeSystemViewSet, basename="codesystem")
 
 urlpatterns = [
+    path("api/payments/paystack/webhook/", paystack_webhook, name="paystack-webhook"),
     path(
         "favicon.ico",
         serve,

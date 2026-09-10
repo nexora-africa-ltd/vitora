@@ -66,6 +66,10 @@ from hmis.apps.billing.sha_ilm_registry_views import (
     IlmUtilizationView,
     PatientContactListCreateView,
 )
+from hmis.apps.billing.sha_ilm_terminology_views import (
+    IlmTerminologyConceptsView,
+    IlmTerminologyMappingsView,
+)
 from hmis.apps.billing.sha_views import (
     BeneficiaryContactsView,
     BiometricAuthorizeStatusView,
@@ -312,6 +316,16 @@ urlpatterns = [
         "ilm/prescriptions/local/",
         SHADhaPrescriptionListView.as_view(),
         name="ilm-prescriptions-local",
+    ),
+    path(
+        "ilm/terminology/concepts/",
+        IlmTerminologyConceptsView.as_view(),
+        name="ilm-terminology-concepts",
+    ),
+    path(
+        "ilm/terminology/mappings/",
+        IlmTerminologyMappingsView.as_view(),
+        name="ilm-terminology-mappings",
     ),
     # ----- SHA Claims Workflow Automation -----
     path(

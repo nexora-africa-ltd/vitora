@@ -112,6 +112,8 @@ MEDIA_SERVE_FROM_DJANGO = True
 ENCRYPTION_KEY = "d6ZDi90GkEDpDprOfhaMGg1xLI62TAhOkGcnKjFLn8E="
 FIELD_ENCRYPTION_KEY = "dGVzdC1maWVsZC1lbmNyeXB0aW9uLWtleS0xMjM0NQ=="
 PII_HMAC_KEY = "test-hmac-key-not-for-production"
+MPESA_SANDBOX_ALLOWED = True
+MPESA_ENVIRONMENT = "sandbox"
 
 # Logging - reduce verbosity in tests
 LOGGING["loggers"]["django"]["level"] = "WARNING"  # noqa: F405

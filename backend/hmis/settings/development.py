@@ -10,12 +10,14 @@ import os
 from .base import *  # noqa: F401, F403
 
 DEBUG = True
+MPESA_SANDBOX_ALLOWED = True
 
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     ".ngrok-free.dev",  # Allow all ngrok subdomains
     ".ngrok.io",  # Legacy ngrok domains
+    ".trycloudflare.com",  # Cloudflare Quick Tunnel development domains
     "*",  # Allow all hosts in development
 ]
 
@@ -52,6 +54,7 @@ CORS_ALLOW_HEADERS = [
 CSRF_TRUSTED_ORIGINS = [
     "https://*.ngrok-free.dev",
     "https://*.ngrok.io",
+    "https://*.trycloudflare.com",
     "http://localhost:3009",
     "http://localhost:3000",
     "http://localhost:8000",

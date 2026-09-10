@@ -43,3 +43,27 @@ export const PaginatedSubscriptionPlanListSchema = z.object({
   previous: z.string().nullable(),
   results: z.array(SubscriptionPlanListItemSchema),
 });
+
+export const SubscriptionPeriodSchema = z.object({
+  id: z.number(),
+  organization: z.number(),
+  plan: z.number(),
+  billing_interval: z.enum(['MONTHLY', 'ANNUAL']),
+  amount: z.string(),
+  currency: z.string(),
+  period_start: z.string(),
+  period_end: z.string(),
+  status: z.enum(['PENDING', 'PAID', 'VOID']),
+  payment_reference: z.string(),
+  confirmed_at: z.string().nullable(),
+  confirmed_by: z.number().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const PaginatedSubscriptionPeriodSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(SubscriptionPeriodSchema),
+});

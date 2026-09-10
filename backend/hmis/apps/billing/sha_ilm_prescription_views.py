@@ -41,6 +41,10 @@ from hmis.apps.billing.services.ilm_prescription_service import (
     PrescriptionItem,
     RemovePrescriptionDoctorParams,
 )
+from hmis.apps.billing.services.ilm_terminology_service import (
+    IlmTerminologyConfigurationError,
+    IlmTerminologyService,
+)
 from hmis.apps.core.events import BillingEvents, publish_event
 from hmis.apps.core.openapi import SchemaFallbackSerializer
 from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
@@ -243,6 +247,14 @@ class IlmPrescriptionCreateView(BillingILMSchemaMixin, APIView):
                 {"error": "items must be a non-empty list."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        provenance = request.data.get("terminology")
+        if not isinstance(provenance, dict):
+            return Response(
+                {
+                    "error": "terminology provenance with owner and sources or collection is required."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         try:
             items = [self._build_item(it) for it in items_raw]
         except (KeyError, TypeError, ValueError) as exc:
@@ -250,6 +262,14 @@ class IlmPrescriptionCreateView(BillingILMSchemaMixin, APIView):
                 {"error": f"Invalid item: {exc}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        try:
+            terminology = IlmTerminologyService()
+            for item in items:
+                terminology.validate_concept_code(item.generic_concept_code, provenance=provenance)
+        except IlmTerminologyConfigurationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except DHAError as exc:
+            return _ilm_handle_error("create-terminology-validation", exc)
         params = CreatePrescriptionParams(
             consent_token=str(request.data["consent_token"]),
             intervention_code=str(request.data["intervention_code"]),

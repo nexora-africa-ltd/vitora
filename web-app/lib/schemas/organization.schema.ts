@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SubscriptionPeriodSchema, SubscriptionPlanDetailSchema } from './subscription.schema';
 
 export const SubscriptionTierSchema = z.enum([
   'FREE',
@@ -73,4 +74,31 @@ export const OrgTokenUsageSchema = z.object({
   ai_tokens_remaining: z.number().nullable(),
   ai_tokens_reset_at: z.string().nullable(),
   facilities: z.array(FacilityTokenUsageSchema),
+});
+
+export const TenantBillingSummarySchema = z.object({
+  organization_id: z.number(),
+  plan: SubscriptionPlanDetailSchema.nullable(),
+  subscription_status: z.enum(['ACTIVE', 'TRIAL', 'EXPIRED', 'SUSPENDED']),
+  subscription_valid_until: z.string().nullable(),
+  ai_tokens: z.object({
+    monthly: z.number().nullable(),
+    used: z.number(),
+    remaining: z.number().nullable(),
+    reset_at: z.string().nullable(),
+  }),
+  periods: z.array(SubscriptionPeriodSchema),
+});
+
+export const PaystackCheckoutResponseSchema = z.object({
+  authorization_url: z.string().url(),
+  reference: z.string(),
+});
+
+export const BillingContactSchema = z.object({
+  contact_name: z.string(),
+  billing_email: z.string(),
+  phone: z.string(),
+  billing_address: z.string(),
+  kra_pin: z.string(),
 });

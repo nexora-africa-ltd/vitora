@@ -168,13 +168,14 @@ def sample_credit_note(db, sample_invoice, sample_invoice_item, test_user):
 
 
 @pytest.fixture
-def sample_payment_point(db, test_user):
+def sample_payment_point(db, test_user, sample_facility):
     """Create a sample M-Pesa payment point (till) for tests."""
     return PaymentPoint.objects.create(
         name="Cashier 1 M-Pesa Till",
         code="MPESA-01",
         method=Payment.Method.MPESA,
         till_number="123456",
+        facility=sample_facility,
         created_by=test_user,
     )
 

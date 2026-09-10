@@ -228,7 +228,7 @@ class TestMpesaVerifyAPI:
         assert "already been used" in response.data["error"]
 
     @patch("hmis.apps.billing.services.MpesaService")
-    def test_successful_verification(self, MockService, authenticated_client):
+    def test_successful_verification(self, MockService, authenticated_client, sample_facility):
         """Should return verified=True from Safaricom."""
         mock_instance = MockService.return_value
         mock_instance.verify_transaction.return_value = {
@@ -244,6 +244,17 @@ class TestMpesaVerifyAPI:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["verified"] is True
+        MockService.assert_called_once_with(facility=sample_facility)
+
+    def test_production_missing_credentials_returns_configuration_error(
+        self, authenticated_client, settings
+    ):
+        settings.MPESA_SANDBOX_ALLOWED = False
+        with patch("hmis.apps.billing.services.mpesa.requests.get") as oauth:
+            response = authenticated_client.post(self._url(), {"transaction_id": "ABC1234567"})
+        assert response.status_code == 503
+        assert response.data["code"] == "mpesa_configuration_error"
+        oauth.assert_not_called()
 
     @patch("hmis.apps.billing.services.MpesaService")
     def test_failed_verification(self, MockService, authenticated_client):

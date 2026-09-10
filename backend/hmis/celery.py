@@ -93,6 +93,10 @@ app.conf.task_routes = {
 
 # Configure periodic tasks (Celery Beat)
 app.conf.beat_schedule = {
+    "reset-subscription-ai-quotas": {
+        "task": "hmis.apps.core.tasks.reset_subscription_ai_quotas",
+        "schedule": 3600.0,
+    },
     "check-connectivity-every-minute": {
         "task": "hmis.apps.core.tasks.check_connectivity",
         "schedule": 60.0,  # Every 60 seconds

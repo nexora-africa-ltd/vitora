@@ -569,7 +569,9 @@ class SubscriptionExpiryMiddleware:
 
         org = profile.organization
 
-        is_expired = org.subscription_status == "EXPIRED" or org.is_subscription_expired
+        is_expired = (
+            org.subscription_status in {"EXPIRED", "SUSPENDED"} or org.is_subscription_expired
+        )
 
         if not is_expired:
             return self.get_response(request)
