@@ -154,6 +154,30 @@ class TestInvoiceAPIEndpoints:
         assert response.data["patient_copay_amount"] == "0.00"
         assert response.data["patient_net_due"] == "11640.00"
 
+    def test_get_invoice_detail_treats_private_insurance_allocation_as_estimate_only(
+        self, authenticated_client, sample_invoice
+    ):
+        """Private insurer allocated_amount should not reduce payable totals before approval/reserve."""
+        sample_invoice.total_amount = Decimal("15000.00")
+        sample_invoice.amount_paid = Decimal("0.00")
+        sample_invoice.save(update_fields=["total_amount", "amount_paid", "updated_at"])
+
+        InvoicePayer.objects.create(
+            invoice=sample_invoice,
+            payer_type=InvoicePayer.PayerType.PRIVATE_INSURANCE,
+            allocated_amount=Decimal("3360.00"),
+            approved_amount=Decimal("0.00"),
+        )
+
+        response = authenticated_client.get(f"/api/billing/invoices/{sample_invoice.id}/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["gross_total"] == "15000.00"
+        assert response.data["insurance_credit_amount"] == "0.00"
+        assert response.data["insurance_estimated_allocation"] == "3360.00"
+        assert response.data["payer_credit_total"] == "0.00"
+        assert response.data["patient_net_due"] == "15000.00"
+
     def test_get_invoice_detail_falls_back_to_item_allocation_when_claim_copay_missing(
         self, authenticated_client, sample_invoice, sample_service
     ):

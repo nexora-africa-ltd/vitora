@@ -433,6 +433,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
     gross_total = serializers.SerializerMethodField()
     sha_credit_amount = serializers.SerializerMethodField()
     insurance_credit_amount = serializers.SerializerMethodField()
+    insurance_estimated_allocation = serializers.SerializerMethodField()
     payer_credit_total = serializers.SerializerMethodField()
     patient_copay_amount = serializers.SerializerMethodField()
     patient_net_due = serializers.SerializerMethodField()
@@ -476,6 +477,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "balance_due",
             "sha_credit_amount",
             "insurance_credit_amount",
+            "insurance_estimated_allocation",
             "payer_credit_total",
             "patient_copay_amount",
             "patient_net_due",
@@ -519,6 +521,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "balance_due",
             "sha_credit_amount",
             "insurance_credit_amount",
+            "insurance_estimated_allocation",
             "payer_credit_total",
             "patient_copay_amount",
             "patient_net_due",
@@ -593,6 +596,17 @@ class InvoiceSerializer(serializers.ModelSerializer):
         return self._money(getattr(claim, "total_amount", None))
 
     def _resolve_payer_credit(self, payer) -> Decimal:
+        if payer.payer_type == payer.PayerType.PRIVATE_INSURANCE:
+            approved = self._money(getattr(payer, "approved_amount", None))
+            if approved > 0:
+                return approved
+
+            reserve_credit = self._insurance_reservation_credit(payer)
+            if reserve_credit > 0:
+                return reserve_credit
+
+            return Decimal("0.00")
+
         approved = self._money(getattr(payer, "approved_amount", None))
         if approved > 0:
             return approved
@@ -601,18 +615,12 @@ class InvoiceSerializer(serializers.ModelSerializer):
         if allocated > 0:
             return allocated
 
-        if payer.payer_type == payer.PayerType.PRIVATE_INSURANCE:
-            reserve_credit = self._insurance_reservation_credit(payer)
-            if reserve_credit > 0:
-                return reserve_credit
-
         return Decimal("0.00")
 
     def _credit_breakdown(self, obj) -> tuple[Decimal, Decimal]:
         payers = getattr(obj, "payers", None)
         if payers is None:
-            item_insurer_total, _ = self._item_allocation_breakdown(obj)
-            return Decimal("0.00"), item_insurer_total
+            return Decimal("0.00"), Decimal("0.00")
 
         sha_total = Decimal("0.00")
         insurance_total = Decimal("0.00")
@@ -628,11 +636,24 @@ class InvoiceSerializer(serializers.ModelSerializer):
         sha_total = sha_total.quantize(Decimal("0.01"))
         insurance_total = insurance_total.quantize(Decimal("0.01"))
 
-        if sha_total == Decimal("0.00") and insurance_total == Decimal("0.00"):
-            item_insurer_total, _ = self._item_allocation_breakdown(obj)
-            insurance_total = item_insurer_total
-
         return (sha_total, insurance_total)
+
+    def _estimated_insurance_allocation(self, obj) -> Decimal:
+        payers = getattr(obj, "payers", None)
+        estimated_total = Decimal("0.00")
+        if payers is not None:
+            for payer in payers.all():
+                if payer.payer_type != payer.PayerType.PRIVATE_INSURANCE:
+                    continue
+                allocated = self._money(getattr(payer, "allocated_amount", None))
+                if allocated > 0:
+                    estimated_total += allocated
+
+        if estimated_total > 0:
+            return estimated_total.quantize(Decimal("0.01"))
+
+        item_insurer_total, _ = self._item_allocation_breakdown(obj)
+        return item_insurer_total
 
     def _item_allocation_breakdown(self, obj) -> tuple[Decimal, Decimal]:
         items = getattr(obj, "items", None)
@@ -666,6 +687,9 @@ class InvoiceSerializer(serializers.ModelSerializer):
     def get_insurance_credit_amount(self, obj) -> str:
         _, insurance_total = self._credit_breakdown(obj)
         return str(insurance_total)
+
+    def get_insurance_estimated_allocation(self, obj) -> str:
+        return str(self._estimated_insurance_allocation(obj))
 
     def get_payer_credit_total(self, obj) -> str:
         sha_total, insurance_total = self._credit_breakdown(obj)

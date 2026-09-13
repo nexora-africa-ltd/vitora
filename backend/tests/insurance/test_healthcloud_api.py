@@ -1,8 +1,9 @@
 """HealthCloud insurance API contract and negative-path tests."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
+from django.utils import timezone
 
 from hmis.apps.insurance.models import InsuranceProvider, InsuranceVisitAuthorization
 from hmis.apps.insurance.payer_mappings import infer_healthcloud_payer_slade_code
@@ -68,6 +69,71 @@ def test_request_otp_contract_success(
     assert response.status_code == 200
     assert response.data["status"] == "otp_requested"
     assert response.data["beneficiary_contact_id"] == 5531
+
+
+@pytest.mark.django_db
+def test_healthcloud_session_start_expires_stale_session_before_restart(
+    admin_client,
+    monkeypatch,
+    patient_insurance,
+    provider_config,
+    sample_facility,
+    sample_organization,
+):
+    _enable_provider_config(provider_config)
+    stale_session = InsuranceVisitAuthorization.objects.create(
+        facility=sample_facility,
+        organization=sample_organization,
+        enrollment=patient_insurance,
+        provider_config=provider_config,
+        patient=patient_insurance.patient,
+        member_number=patient_insurance.member_number,
+        status=InsuranceVisitAuthorization.Status.VALIDATED,
+        authorization_guid="expired-guid",
+        raw_payload={"auth_expiry": (timezone.now() - timedelta(days=1)).isoformat()},
+    )
+
+    def _mock_verify(self, enrollment, *, facility=None):
+        return EligibilityResult(
+            eligible=True,
+            status="ACTIVE",
+            member_number=enrollment.member_number,
+            plan_name="Gold",
+            annual_balance=1000,
+            message="Eligibility refreshed",
+            raw_response={"member": {"id": 123}},
+        )
+
+    def _mock_start_session(self, *, enrollment, facility, organization, eligibility_result):
+        return InsuranceVisitAuthorization.objects.create(
+            facility=facility,
+            organization=organization,
+            enrollment=enrollment,
+            provider_config=provider_config,
+            patient=enrollment.patient,
+            member_number=enrollment.member_number,
+            status=InsuranceVisitAuthorization.Status.PENDING,
+            workflow_step="eligibility_verified",
+            eligibility_payload=eligibility_result.raw_response,
+        )
+
+    monkeypatch.setattr(
+        "hmis.apps.insurance.views_core.InsuranceEligibilityService.verify", _mock_verify
+    )
+    monkeypatch.setattr(
+        "hmis.apps.insurance.views_core.HealthCloudWorkflowService.start_session",
+        _mock_start_session,
+    )
+
+    response = admin_client.post(
+        f"/api/insurance/enrollments/{patient_insurance.pk}/healthcloud-session/start/",
+        format="json",
+    )
+
+    assert response.status_code == 200
+    assert response.data["session"]["id"] != stale_session.id
+    stale_session.refresh_from_db()
+    assert stale_session.status == InsuranceVisitAuthorization.Status.EXPIRED
 
 
 @pytest.mark.django_db

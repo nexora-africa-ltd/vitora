@@ -234,6 +234,18 @@ function formatUpstreamContext(upstream: UpstreamErrorPayload | null): string {
   return parts.length > 0 ? `${parts.join(' ')}.` : '';
 }
 
+function isSessionExpired(session: InsuranceVisitAuthorization | null | undefined): boolean {
+  if (!session) return false;
+  if (session.status === 'expired') return true;
+  const rawExpiry =
+    session.auth_expiry ||
+    (typeof session.raw_payload?.auth_expiry === 'string' ? session.raw_payload.auth_expiry : null);
+  if (!rawExpiry) return false;
+  const expiry = new Date(rawExpiry);
+  if (Number.isNaN(expiry.getTime())) return false;
+  return expiry.getTime() <= Date.now();
+}
+
 export default function InsuranceClaimDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -312,6 +324,7 @@ export default function InsuranceClaimDetailPage() {
   const [uploadingAttachmentType, setUploadingAttachmentType] = useState<string | null>(null);
   const [workflowEvents, setWorkflowEvents] = useState<string[]>([]);
   const [inlineError, setInlineError] = useState<string | null>(null);
+  const [pendingAutoRestart, setPendingAutoRestart] = useState(false);
 
   const contactStepRef = useRef<HTMLDivElement | null>(null);
   const visitStepRef = useRef<HTMLDivElement | null>(null);
@@ -335,13 +348,12 @@ export default function InsuranceClaimDetailPage() {
     () => eligibilityView?.benefits ?? [],
     [eligibilityView?.benefits]
   );
+  const sessionExpired = useMemo(() => isSessionExpired(session), [session]);
 
   useEffect(() => {
     if (session) return;
     const existingSessions = authorizationListData?.results ?? [];
-    const existing = existingSessions.find(
-      (item) => item.status !== 'failed' && item.status !== 'expired'
-    );
+    const existing = existingSessions.find((item) => item.status !== 'failed' && !isSessionExpired(item));
     if (!existing) return;
 
     setSession(existing);
@@ -368,6 +380,20 @@ export default function InsuranceClaimDetailPage() {
       },
     });
   }, [authorizationListData?.results, eligibilityResult, session]);
+
+  useEffect(() => {
+    if (!sessionExpired || !session) return;
+    setInlineError(
+      'Authorization has expired. Restart from eligibility to generate a new OTP and authorization.'
+    );
+    setSession(null);
+    setAuthorizationToken('');
+    setContactId('');
+    setBeneficiaryId('');
+    setBenefitCode('');
+    setPolicyNumber('');
+    setPendingAutoRestart(true);
+  }, [session, sessionExpired]);
 
   useEffect(() => {
     if (!session) return;
@@ -429,9 +455,12 @@ export default function InsuranceClaimDetailPage() {
     }
   }, [claim?.attachments_meta]);
 
-  const canRequestOtp = Boolean(session?.id && session.workflow_step === 'eligibility_verified');
-  const canStartVisit = Boolean(session?.id && session.status === 'otp_requested');
-  const canValidateToken = Boolean(session?.id && session.status === 'authorized');
+  const canRequestOtp = Boolean(
+    session?.id && !sessionExpired && session.workflow_step === 'eligibility_verified'
+  );
+  const canStartVisit = Boolean(session?.id && !sessionExpired && session.status === 'otp_requested');
+  const canValidateToken = Boolean(session?.id && !sessionExpired && session.status === 'authorized');
+  const hasActiveSession = Boolean(session?.id && !sessionExpired);
 
   const showErrorToast = ({
     title,
@@ -448,6 +477,16 @@ export default function InsuranceClaimDetailPage() {
     const action = parsed.action ? ` Next: ${parsed.action}` : '';
     const message = `${context} ${detail}${action}`.trim();
     setInlineError(message);
+    const lower = message.toLowerCase();
+    const expiredAuthError =
+      lower.includes('authorization has expired') ||
+      (parsed.upstream?.status === 401 &&
+        String(parsed.upstream?.path || '').includes('/balances/reservations/reserve_from_authorization/'));
+    if (expiredAuthError) {
+      setSession(null);
+      setAuthorizationToken('');
+      setPendingAutoRestart(true);
+    }
     toast({ title, description: message, variant: 'destructive' });
   };
 
@@ -644,17 +683,19 @@ export default function InsuranceClaimDetailPage() {
     setWorkflowEvents((prev) => [event, ...prev].slice(0, 8));
   };
 
-  const handleStartSession = async () => {
+  const runEligibility = useCallback(async (autoRestart = false) => {
     if (!claim?.patient_insurance) {
       showErrorToast({
         title: 'Missing enrollment',
         description: 'Claim must be linked to a patient insurance enrollment.',
       });
+      setPendingAutoRestart(false);
       return;
     }
     try {
       const response = await startSession.mutateAsync(claim.patient_insurance);
       setInlineError(null);
+      setPendingAutoRestart(false);
       setSession(response.session);
       setEligibilityResult(response.eligibility);
 
@@ -683,15 +724,45 @@ export default function InsuranceClaimDetailPage() {
       }
 
       pushWorkflowEvent('Eligibility session started');
-      toast({ title: 'Eligibility loaded', description: response.eligibility.message });
+      toast({
+        title: autoRestart ? 'Eligibility restarted' : 'Eligibility loaded',
+        description: response.eligibility.message,
+      });
     } catch (error) {
+      setPendingAutoRestart(false);
       showErrorToast({
         title: 'Error',
-        description: 'Failed to start HealthCloud eligibility session.',
+        description: autoRestart
+          ? 'Failed to restart HealthCloud eligibility session.'
+          : 'Failed to start HealthCloud eligibility session.',
         error,
       });
     }
+  }, [
+    claim?.patient_insurance,
+    pickPreferredBenefit,
+    showErrorToast,
+    startSession,
+    toast,
+  ]);
+
+  const handleStartSession = async () => {
+    await runEligibility(false);
   };
+
+  useEffect(() => {
+    if (!pendingAutoRestart) return;
+    if (startSession.isPending) return;
+    if (session) return;
+    if (!claim?.patient_insurance) return;
+    void runEligibility(true);
+  }, [
+    claim?.patient_insurance,
+    pendingAutoRestart,
+    runEligibility,
+    session,
+    startSession.isPending,
+  ]);
 
   const handleRequestOtp = async () => {
     if (!claim || !session?.id) return;
@@ -1068,7 +1139,7 @@ export default function InsuranceClaimDetailPage() {
     ['approved', 'partially_approved'].includes(claim.status) &&
     canAdjudicate;
   const canAppeal = allowManualAdjudication && claim.is_appealable && canSubmitClaims;
-  const hasValidatedAuthorization = session?.status === 'validated';
+  const hasValidatedAuthorization = !sessionExpired && session?.status === 'validated';
   const hasExternalClaim = Boolean(claim.external_claim_id);
   const hasActiveReservation = claim.latest_balance_reservation?.status === 'reserved';
   const hasInvoiceNumber = invoiceNumber.trim().length > 0;
@@ -1485,6 +1556,30 @@ export default function InsuranceClaimDetailPage() {
             ))}
           </div>
 
+          <div className="rounded-md border border-blue-200 bg-blue-50/50 p-3 dark:border-blue-900 dark:bg-blue-950/20">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-medium">1. Eligibility</p>
+                <p className="text-xs text-muted-foreground">
+                  Verify cover and load the member, contact, benefit, and policy details for this claim.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                className="gap-1 self-start sm:self-auto"
+                onClick={handleStartSession}
+                disabled={startSession.isPending}
+              >
+                {startSession.isPending ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Shield className="h-3 w-3" />
+                )}
+                Run
+              </Button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <div ref={contactStepRef}>
               <Label>Contact ID (OTP)</Label>
@@ -1493,6 +1588,7 @@ export default function InsuranceClaimDetailPage() {
                   className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground"
                   value={contactId}
                   onChange={(e) => setContactId(e.target.value)}
+                  disabled={!hasActiveSession}
                 >
                   <option value="" className="bg-background text-foreground">
                     Select contact
@@ -1511,7 +1607,8 @@ export default function InsuranceClaimDetailPage() {
                 <Input
                   value={contactId}
                   onChange={(e) => setContactId(e.target.value)}
-                  placeholder="e.g. 5531"
+                  placeholder={hasActiveSession ? 'e.g. 5531' : 'Run eligibility first'}
+                  disabled
                 />
               )}
               {(canRequestOtp || requestSessionOtp.isPending) && (
@@ -1533,7 +1630,8 @@ export default function InsuranceClaimDetailPage() {
               <Input
                 value={beneficiaryId}
                 onChange={(e) => setBeneficiaryId(e.target.value)}
-                placeholder="Eligibility member.id"
+                placeholder={hasActiveSession ? 'Eligibility member.id' : 'Run eligibility first'}
+                disabled={!hasActiveSession}
               />
             </div>
             <div>
@@ -1561,6 +1659,7 @@ export default function InsuranceClaimDetailPage() {
                 value={benefitType}
                 onChange={(e) => setBenefitType(e.target.value)}
                 placeholder="OUTPATIENT"
+                disabled={!hasActiveSession}
               />
             </div>
             <div>
@@ -1579,6 +1678,7 @@ export default function InsuranceClaimDetailPage() {
                       setBenefitType(selected.benefitType);
                     }
                   }}
+                  disabled={!hasActiveSession}
                 >
                   <option value="" className="bg-background text-foreground">
                     Select benefit
@@ -1597,7 +1697,8 @@ export default function InsuranceClaimDetailPage() {
                 <Input
                   value={benefitCode}
                   onChange={(e) => setBenefitCode(e.target.value)}
-                  placeholder="340"
+                  placeholder={hasActiveSession ? '340' : 'Run eligibility first'}
+                  disabled
                 />
               )}
             </div>
@@ -1606,7 +1707,8 @@ export default function InsuranceClaimDetailPage() {
               <Input
                 value={policyNumber}
                 onChange={(e) => setPolicyNumber(e.target.value)}
-                placeholder="POL/001"
+                placeholder={hasActiveSession ? 'POL/001' : 'Run eligibility first'}
+                disabled={!hasActiveSession}
               />
             </div>
             <div className="md:col-span-2">
@@ -1614,6 +1716,7 @@ export default function InsuranceClaimDetailPage() {
               <Input
                 value={policyEffectiveDate}
                 onChange={(e) => setPolicyEffectiveDate(e.target.value)}
+                disabled={!hasActiveSession}
               />
             </div>
             <div>
@@ -1625,7 +1728,8 @@ export default function InsuranceClaimDetailPage() {
               <Input
                 value={authorizationToken}
                 onChange={(e) => setAuthorizationToken(e.target.value)}
-                placeholder="Token from start visit"
+                placeholder={hasActiveSession ? 'Token from start visit' : 'Run eligibility first'}
+                disabled={!hasActiveSession}
               />
               {(canValidateToken || validateVisit.isPending) && (
                 <div className="mt-2">
@@ -1647,6 +1751,7 @@ export default function InsuranceClaimDetailPage() {
                 value={reservationAmount}
                 onChange={(e) => setReservationAmount(e.target.value)}
                 placeholder={claim.total_amount}
+                disabled={!hasActiveSession}
               />
               {claim.latest_balance_reservation && (
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -1656,6 +1761,11 @@ export default function InsuranceClaimDetailPage() {
               {!hasValidatedAuthorization && (
                 <p className="mt-1 text-xs text-muted-foreground">
                   Validate authorization token first.
+                </p>
+              )}
+              {sessionExpired && (
+                <p className="mt-1 text-xs text-destructive">
+                  Session expired. Restart from eligibility before reserving balance.
                 </p>
               )}
               {(session?.id || reserveBalance.isPending) && (
@@ -1758,18 +1868,6 @@ export default function InsuranceClaimDetailPage() {
                 </div>
               )}
             </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              className="gap-1"
-              onClick={handleStartSession}
-              disabled={startSession.isPending}
-            >
-              <Shield className="h-3 w-3" />{' '}
-              {startSession.isPending ? 'Running...' : '1. Run Eligibility'}
-            </Button>
           </div>
 
           {eligibilityResult && (
