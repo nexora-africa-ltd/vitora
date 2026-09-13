@@ -16,6 +16,16 @@ import type {
 } from '@/lib/types/facility';
 
 const MyFacilitiesSchema = z.array(FacilityListItemSchema);
+const SyncBillingServicesResponseSchema = z.object({
+  created: z.number(),
+  updated: z.number(),
+  skipped: z.number(),
+  processed: z.number(),
+  tariffs_processed: z.number(),
+  facility_level: z.string(),
+});
+
+export type SyncBillingServicesResponse = z.infer<typeof SyncBillingServicesResponseSchema>;
 
 export const facilitiesApi = {
   async list(
@@ -85,6 +95,13 @@ export const facilitiesApi = {
     );
     return parseResponse(FacilityDetailSchema, response.data, {
       context: 'facilitiesApi.syncDhaRegistry',
+    });
+  },
+
+  async syncBillingServices(id: number): Promise<SyncBillingServicesResponse> {
+    const response = await apiClient.post(`/api/facilities/${id}/sync-billing-services/`);
+    return parseResponse(SyncBillingServicesResponseSchema, response.data, {
+      context: 'facilitiesApi.syncBillingServices',
     });
   },
 };

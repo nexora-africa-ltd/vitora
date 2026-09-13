@@ -877,6 +877,21 @@ class InsuranceClaimCreateSerializer(serializers.ModelSerializer):
         copay_amount = min(max(raw_copay_amount, Decimal("0.00")), total_amount)
         insurer_amount = self._to_money(total_amount - copay_amount)
 
+        if copay_amount == Decimal("0.00") and insurer_amount == Decimal("0.00"):
+            item_total = Decimal("0.00")
+            item_insurer = Decimal("0.00")
+            for item in invoice.items.all():
+                line_total = self._to_money(getattr(item, "line_total", None))
+                approved = self._to_money(getattr(item, "insurance_approved_amount", None))
+                insurer_share = min(max(approved, Decimal("0.00")), line_total)
+                item_total += line_total
+                item_insurer += insurer_share
+
+            if item_total > Decimal("0.00") and item_insurer > Decimal("0.00"):
+                total_amount = item_total
+                insurer_amount = item_insurer.quantize(Decimal("0.01"))
+                copay_amount = (item_total - item_insurer).quantize(Decimal("0.01"))
+
         if total_amount > Decimal("0.00"):
             patient_percent = self._to_percent((copay_amount / total_amount) * Decimal("100"))
             insurer_percent = self._to_percent((insurer_amount / total_amount) * Decimal("100"))

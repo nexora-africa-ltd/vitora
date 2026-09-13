@@ -22,16 +22,16 @@ import { shaApi } from '@/lib/api/sha';
 type SearchStatus = 'idle' | 'searching' | 'found' | 'not-found' | 'error';
 
 const IDENTIFIER_TYPES = [
-  { value: 'fr-code', label: 'FR Code / MFL Code' },
+  { value: 'registration-number', label: 'Registration Number (MFL)' },
+  { value: 'fr-code', label: 'FR Code' },
   { value: 'fid', label: 'Facility ID (FID)' },
-  { value: 'registration-number', label: 'Registration Number' },
 ] as const;
 
 export default function FacilityLookupPage() {
   const [status, setStatus] = useState<SearchStatus>('idle');
   const [errors, setErrors] = useState<string[]>([]);
   const [identifier, setIdentifier] = useState('');
-  const [identifierType, setIdentifierType] = useState('fr-code');
+  const [identifierType, setIdentifierType] = useState('registration-number');
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
 
   const resetResults = () => {
@@ -83,7 +83,7 @@ export default function FacilityLookupPage() {
     <div className="space-y-4 sm:space-y-6">
       <PageHeader
         title="Facility Lookup"
-        helpContent="Search the DHA (Digital Health Authority) facility registry by MFL Code, Facility ID, or FR Code. View facility details including licensing, bed capacity, SHA contract status, and contact information."
+        helpContent="Search the DHA (Digital Health Authority) facility registry by registration number (MFL), Facility ID, or FR code. View facility details including licensing, bed capacity, SHA contract status, and contact information."
       />
 
       {/* Search Card */}
@@ -124,11 +124,13 @@ export default function FacilityLookupPage() {
                     }
                   }}
                   placeholder={
-                    identifierType === 'fr-code'
-                      ? 'Enter MFL or FR code (e.g., 24979 or FID-22-107992-6)'
+                    identifierType === 'registration-number'
+                      ? 'Enter registration number / MFL code (e.g., 24979)'
+                      : identifierType === 'fr-code'
+                        ? 'Enter FR code (e.g., FID-22-107992-6)'
                       : identifierType === 'fid'
                         ? 'Enter Facility ID (e.g., 107992)'
-                        : 'Enter Registration Number'
+                        : 'Enter facility identifier'
                   }
                   className="pl-10"
                   autoFocus
@@ -149,7 +151,7 @@ export default function FacilityLookupPage() {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Search the DHA facility registry by MFL code, Facility ID, or FR code.
+            Search the DHA facility registry by registration number (MFL), Facility ID, or FR code.
           </p>
         </CardContent>
       </Card>

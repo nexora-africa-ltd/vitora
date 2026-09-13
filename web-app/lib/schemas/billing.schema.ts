@@ -104,7 +104,7 @@ export const ServiceSchema = z.object({
   code: z.string(),
   name: z.string(),
   description: z.string(),
-  unit_price: z.string(),
+  unit_price: z.string().nullable(),
   currency: z.string(),
   sha_code: z.string(),
   icd10_code: z.string(),
@@ -133,10 +133,11 @@ export const BillingCatalogItemSchema = z.object({
   code: z.string(),
   name: z.string(),
   description: z.string(),
-  unit_price: z.string(),
+  unit_price: z.string().nullable(),
   sha_code: z.string(),
   item_type: z.string(),
   service_id: z.number().nullable(),
+  is_active: z.boolean().optional().default(true),
 });
 
 // =============================================================================

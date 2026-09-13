@@ -58,6 +58,7 @@ import type {
   ServiceCreateData,
   ServiceUpdateData,
   ServiceListParams,
+  ServiceCategoryListParams,
   PaginatedServiceCategories,
   PaginatedServices,
   PaginatedBillingCatalogItems,
@@ -188,9 +189,7 @@ function buildQueryString<T extends object>(params: T): string {
 // Service Categories API
 // ============================================================================
 
-async function getServiceCategories(params?: {
-  is_active?: boolean;
-}): Promise<PaginatedServiceCategories> {
+async function getServiceCategories(params?: ServiceCategoryListParams): Promise<PaginatedServiceCategories> {
   const queryString = params ? buildQueryString(params) : '';
   const url = queryString
     ? `/api/billing/service-categories/?${queryString}`
@@ -245,7 +244,8 @@ async function getServices(params?: ServiceListParams): Promise<PaginatedService
 async function getCatalogItems(params?: {
   search?: string;
   kind?: string;
-  is_active?: boolean;
+  is_active?: boolean | 'all';
+  invoice_id?: number;
   page?: number;
   page_size?: number;
 }): Promise<PaginatedBillingCatalogItems> {

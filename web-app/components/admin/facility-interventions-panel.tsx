@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, useState, useDeferredValue } from 'react';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useMutation, useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   Search,
   FileText,
@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { apiClient } from '@/lib/api/client';
+import { facilitiesApi } from '@/lib/api/facilities';
 
 interface Intervention {
   code: string;
@@ -41,6 +42,7 @@ interface Intervention {
 
 interface Props {
   facilityLevel: string;
+  facilityId: number;
 }
 
 const PAGE_SIZE = 50;
@@ -56,7 +58,7 @@ function paymentMechanismLabel(value?: string | null): string {
   return raw;
 }
 
-export function FacilityInterventionsPanel({ facilityLevel }: Props) {
+export function FacilityInterventionsPanel({ facilityLevel, facilityId }: Props) {
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
   const [page, setPage] = useState(1);
@@ -103,6 +105,10 @@ export function FacilityInterventionsPanel({ facilityLevel }: Props) {
     staleTime: 10 * 60 * 1000, // 10 min
   });
 
+  const syncServicesMutation = useMutation({
+    mutationFn: () => facilitiesApi.syncBillingServices(facilityId),
+  });
+
   const interventions = data?.results ?? [];
   const total = data?.count ?? 0;
 
@@ -139,6 +145,17 @@ export function FacilityInterventionsPanel({ facilityLevel }: Props) {
             <Button
               variant="outline"
               size="sm"
+              onClick={() => syncServicesMutation.mutate()}
+              disabled={syncServicesMutation.isPending}
+            >
+              <RefreshCw
+                className={`mr-1 h-3.5 w-3.5 ${syncServicesMutation.isPending ? 'animate-spin' : ''}`}
+              />
+              Sync to Billing Services
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => {
                 void refetch();
               }}
@@ -152,6 +169,25 @@ export function FacilityInterventionsPanel({ facilityLevel }: Props) {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Search */}
+        {syncServicesMutation.isError && (
+          <div className="flex items-center gap-2 text-sm text-destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <span>
+              Failed to sync billing services:{' '}
+              {syncServicesMutation.error instanceof Error
+                ? syncServicesMutation.error.message
+                : 'Unknown error'}
+            </span>
+          </div>
+        )}
+
+        {syncServicesMutation.isSuccess && (
+          <div className="text-sm text-muted-foreground">
+            Synced billing services: created {syncServicesMutation.data.created}, updated{' '}
+            {syncServicesMutation.data.updated}, skipped {syncServicesMutation.data.skipped}.
+          </div>
+        )}
+
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input

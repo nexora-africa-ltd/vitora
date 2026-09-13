@@ -15,7 +15,7 @@ Supported inputs/args:
 import logging
 import uuid
 from datetime import timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 import requests
 from django.apps import apps
@@ -23,7 +23,7 @@ from django.conf import settings as django_settings
 from django.contrib.auth.models import Permission
 from django.contrib.auth.signals import user_logged_in, user_login_failed
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 from django_filters.rest_framework import DjangoFilterBackend
@@ -1389,7 +1389,7 @@ class FacilityViewSet(viewsets.ModelViewSet):
 
         Identifier priority (DHA accepts: fid, fr-code, registration-number):
         1. sha_facility_code → identifier-type "fr-code" (FID-XX-XXXXXX-X format)
-        2. mfl_code          → identifier-type "fr-code" (numeric MFL code)
+        2. mfl_code          → identifier-type "registration-number" (MFL alias)
 
         Returns the updated facility detail with all cached DHA fields.
         """
@@ -1401,7 +1401,7 @@ class FacilityViewSet(viewsets.ModelViewSet):
         if facility.sha_facility_code:
             candidates.append((facility.sha_facility_code, "fr-code"))
         if facility.mfl_code:
-            candidates.append((facility.mfl_code, "fr-code"))
+            candidates.append((facility.mfl_code, "registration-number"))
 
         if not candidates:
             return Response(
@@ -1483,6 +1483,292 @@ class FacilityViewSet(viewsets.ModelViewSet):
 
         serializer = FacilityDetailSerializer(facility, context={"request": request})
         return Response(serializer.data)
+
+    @extend_schema(
+        summary="Sync SHA interventions/tariffs into billing services",
+        responses={
+            200: inline_serializer(
+                "FacilitySyncBillingServicesResponse",
+                fields={
+                    "created": serializers.IntegerField(),
+                    "updated": serializers.IntegerField(),
+                    "skipped": serializers.IntegerField(),
+                    "processed": serializers.IntegerField(),
+                    "tariffs_processed": serializers.IntegerField(),
+                    "facility_level": serializers.CharField(),
+                },
+            )
+        },
+    )
+    @action(detail=True, methods=["post"], url_path="sync-billing-services")
+    def sync_billing_services(self, request, pk=None):
+        """Materialize SHA intervention/tariff catalog rows into billable services.
+
+        This endpoint is idempotent and safe to run repeatedly:
+        - creates missing services by SHA code
+        - updates mutable fields when upstream tariff/name/description change
+        - skips rows without a usable positive tariff
+        """
+        facility = self.get_object()
+
+        from hmis.apps.billing.models import Service, ServiceCategory, SHATariff
+        from hmis.apps.billing.services.intervention_fallback import search_local_interventions
+
+        try:
+            facility_level_int = int(str(facility.level or "").strip())
+        except ValueError:
+            return Response(
+                {"detail": "Facility level is invalid; cannot sync tariff services."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        tariff_level = f"L{facility_level_int}"
+
+        intervention_category, _ = ServiceCategory.objects.get_or_create(
+            code="SHA_INTV",
+            defaults={
+                "name": "SHA Interventions",
+                "description": "Materialized billable services from SHA intervention terminology.",
+                "display_order": 900,
+                "is_active": True,
+            },
+        )
+        tariff_category, _ = ServiceCategory.objects.get_or_create(
+            code="SHA_TARIFF",
+            defaults={
+                "name": "SHA Tariffs",
+                "description": "Materialized billable services from SHA tariff catalog.",
+                "display_order": 901,
+                "is_active": True,
+            },
+        )
+        intervention_category_cache: dict[str, ServiceCategory] = {}
+
+        def _to_price(value) -> Decimal | None:
+            if value in (None, ""):
+                return None
+            try:
+                amount = Decimal(str(value))
+            except (InvalidOperation, TypeError, ValueError):
+                return None
+            if amount <= 0:
+                return None
+            return amount
+
+        def _get_intervention_category(raw_category: object) -> ServiceCategory:
+            raw = str(raw_category or "").strip()
+            if not raw:
+                return intervention_category
+
+            key = raw.lower()
+            cached = intervention_category_cache.get(key)
+            if cached is not None:
+                return cached
+
+            token = "".join(ch if ch.isalnum() else "_" for ch in raw.upper()).strip("_")
+            while "__" in token:
+                token = token.replace("__", "_")
+            if not token:
+                return intervention_category
+
+            code = f"SI_{token}"[:20]
+            name = " ".join(part.capitalize() for part in raw.replace("_", " ").split()) or raw
+
+            category = ServiceCategory.objects.filter(code=code).first()
+            if category is None:
+                # Name is unique too; reuse an existing category by name if present
+                # to avoid UNIQUE(name) collisions when a different code already exists.
+                category = ServiceCategory.objects.filter(name__iexact=name[:100]).first()
+
+            if category is None:
+                category = ServiceCategory.objects.create(
+                    code=code,
+                    name=name[:100],
+                    description="Auto-created SHA intervention category.",
+                    display_order=905,
+                    is_active=True,
+                )
+            elif category.name != name[:100] and category.code == code:
+                # Only normalize the name when we own the code mapping.
+                category.name = name[:100]
+                category.save(update_fields=["name", "updated_at"])
+
+            intervention_category_cache[key] = category
+            return category
+
+        created = 0
+        updated = 0
+        skipped = 0
+        processed = 0
+
+        with transaction.atomic():
+            # 1) Facility-level interventions (already filtered by KEPH level)
+            offset = 0
+            limit = 250
+            while True:
+                rows, total = search_local_interventions(
+                    query="",
+                    facility_level=facility_level_int,
+                    limit=limit,
+                    offset=offset,
+                    active_only=True,
+                )
+                if not rows:
+                    break
+
+                for row in rows:
+                    code = str(row.get("code") or "").strip().upper()
+                    name = str(row.get("name") or "").strip()
+                    if not code or not name or len(code) > 20:
+                        skipped += 1
+                        continue
+
+                    category = _get_intervention_category(row.get("category"))
+                    unit_price = _to_price(row.get("price"))
+                    is_pending_tariff = unit_price is None
+                    description = str(row.get("description") or "").strip()
+                    if is_pending_tariff and "pending tariff" not in description.lower():
+                        description = f"{description} [Pending tariff]".strip()
+
+                    processed += 1
+                    defaults = {
+                        "category": category,
+                        "name": name[:200],
+                        "description": description,
+                        "unit_price": unit_price,
+                        "currency": "KES",
+                        "sha_code": code,
+                        "is_active": bool(row.get("is_active", True)) and not is_pending_tariff,
+                        "requires_quantity": False,
+                        "is_taxable": False,
+                        "created_by": request.user,
+                    }
+                    service, was_created = Service.objects.get_or_create(
+                        code=code, defaults=defaults
+                    )
+                    if was_created:
+                        created += 1
+                        continue
+
+                    changed = False
+                    for field in [
+                        "name",
+                        "description",
+                        "unit_price",
+                        "currency",
+                        "sha_code",
+                        "is_active",
+                    ]:
+                        next_value = defaults[field]
+                        if getattr(service, field) != next_value:
+                            setattr(service, field, next_value)
+                            changed = True
+                    if changed:
+                        service.save(
+                            update_fields=[
+                                "name",
+                                "description",
+                                "unit_price",
+                                "currency",
+                                "sha_code",
+                                "is_active",
+                                "updated_at",
+                            ]
+                        )
+                        updated += 1
+
+                offset += len(rows)
+                if offset >= total:
+                    break
+
+            # 2) Tariff catalog rows for the same facility level
+            tariffs = SHATariff.get_active_tariffs(facility_level=tariff_level)
+            tariffs_processed = 0
+            for tariff in tariffs:
+                code = str(tariff.code or "").strip().upper()
+                if not code or len(code) > 20:
+                    skipped += 1
+                    continue
+                if tariff.sha_amount is None or tariff.sha_amount <= 0:
+                    skipped += 1
+                    continue
+
+                tariffs_processed += 1
+                processed += 1
+                defaults = {
+                    "category": tariff_category,
+                    "name": str(tariff.name or code)[:200],
+                    "description": str(tariff.description or "").strip(),
+                    "unit_price": tariff.sha_amount,
+                    "currency": str(tariff.currency or "KES"),
+                    "sha_code": code,
+                    "is_active": bool(tariff.is_active),
+                    "requires_quantity": False,
+                    "is_taxable": False,
+                    "created_by": request.user,
+                }
+                service, was_created = Service.objects.get_or_create(code=code, defaults=defaults)
+                if was_created:
+                    created += 1
+                else:
+                    changed = False
+                    for field in [
+                        "name",
+                        "description",
+                        "unit_price",
+                        "currency",
+                        "sha_code",
+                        "is_active",
+                    ]:
+                        next_value = defaults[field]
+                        if getattr(service, field) != next_value:
+                            setattr(service, field, next_value)
+                            changed = True
+                    if changed:
+                        service.save(
+                            update_fields=[
+                                "name",
+                                "description",
+                                "unit_price",
+                                "currency",
+                                "sha_code",
+                                "is_active",
+                                "updated_at",
+                            ]
+                        )
+                        updated += 1
+
+                if tariff.internal_service_id != service.id:
+                    tariff.internal_service = service
+                    tariff.save(update_fields=["internal_service", "updated_at"])
+
+        AuditLog.log(
+            action="facility_billing_services_synced",
+            user=request.user,
+            resource_type="Facility",
+            resource_id=facility.id,
+            ip_address=_get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "created": created,
+                "updated": updated,
+                "skipped": skipped,
+                "processed": processed,
+                "facility_level": facility.level,
+                "tariff_level": tariff_level,
+            },
+        )
+
+        return Response(
+            {
+                "created": created,
+                "updated": updated,
+                "skipped": skipped,
+                "processed": processed,
+                "tariffs_processed": tariffs_processed,
+                "facility_level": str(facility.level),
+            }
+        )
 
 
 # =============================================================================

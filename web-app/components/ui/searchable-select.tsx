@@ -37,6 +37,7 @@ interface SearchableSelectProps
   isLoading?: boolean;
   maxVisibleOptions?: number;
   onSearchChange?: (query: string) => void;
+  footer?: React.ReactNode;
 }
 
 export function SearchableSelect({
@@ -49,8 +50,9 @@ export function SearchableSelect({
   className,
   disabled,
   isLoading = false,
-  maxVisibleOptions = 150,
+  maxVisibleOptions = 500,
   onSearchChange,
+  footer,
   id,
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
@@ -61,18 +63,20 @@ export function SearchableSelect({
 
   const selected = options.find((o) => o.value === value);
 
-  const filteredOptions = React.useMemo(() => {
+  const { filteredOptions, isTruncated } = React.useMemo(() => {
     const q = deferredQuery.trim().toLowerCase();
-    if (!q) return options.slice(0, maxVisibleOptions);
-    return options
-      .filter((option) => {
-        const haystack = `${option.label} ${option.sublabel || ''} ${option.value}`.toLowerCase();
-        return haystack.includes(q);
-      })
-      .slice(0, maxVisibleOptions);
+    const matching = (q
+      ? options.filter((option) => {
+          const haystack = `${option.label} ${option.sublabel || ''} ${option.value}`.toLowerCase();
+          return haystack.includes(q);
+        })
+      : options);
+    const visible = matching.slice(0, maxVisibleOptions);
+    return {
+      filteredOptions: visible,
+      isTruncated: matching.length > maxVisibleOptions,
+    };
   }, [deferredQuery, options, maxVisibleOptions]);
-
-  const truncated = filteredOptions.length < options.length;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -115,7 +119,7 @@ export function SearchableSelect({
               onSearchChange?.(nextQuery);
             }}
           />
-          <CommandList>
+          <CommandList className="max-h-72 overflow-y-auto">
             <CommandEmpty>{emptyMessage}</CommandEmpty>
             <CommandGroup>
               {filteredOptions.map((option) => (
@@ -143,13 +147,14 @@ export function SearchableSelect({
                   </div>
                 </CommandItem>
               ))}
-              {truncated && (
+              {isTruncated && (
                 <CommandItem disabled value="__searchable_select_truncated__">
                   Showing first {maxVisibleOptions} matches. Keep typing to narrow results.
                 </CommandItem>
               )}
             </CommandGroup>
           </CommandList>
+          {footer ? <div className="border-t p-2">{footer}</div> : null}
         </Command>
       </PopoverContent>
     </Popover>

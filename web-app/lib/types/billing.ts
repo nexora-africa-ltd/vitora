@@ -339,6 +339,14 @@ export interface ServiceCategoryCreateData {
 
 export interface ServiceCategoryUpdateData extends Partial<ServiceCategoryCreateData> {}
 
+export interface ServiceCategoryListParams {
+  page?: number;
+  page_size?: number;
+  is_active?: boolean;
+  search?: string;
+  ordering?: string;
+}
+
 // =============================================================================
 // PAYMENT POINT INPUT TYPES
 // =============================================================================

@@ -12,7 +12,7 @@ import pytest  # type: ignore
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from hmis.apps.billing.models import Invoice, InvoicePayer
+from hmis.apps.billing.models import Invoice, InvoiceItem, InvoicePayer
 from hmis.apps.procedures.models import ProcedureCatalog
 from tests.conftest import ensure_staff_profile
 
@@ -153,6 +153,33 @@ class TestInvoiceAPIEndpoints:
         assert response.data["payer_credit_total"] == "3360.00"
         assert response.data["patient_copay_amount"] == "0.00"
         assert response.data["patient_net_due"] == "11640.00"
+
+    def test_get_invoice_detail_falls_back_to_item_allocation_when_claim_copay_missing(
+        self, authenticated_client, sample_invoice, sample_service
+    ):
+        """Patient copay/insurer totals should derive from line allocation when claim split is absent."""
+        sample_invoice.total_amount = Decimal("1000.00")
+        sample_invoice.amount_paid = Decimal("0.00")
+        sample_invoice.save(update_fields=["total_amount", "amount_paid", "updated_at"])
+
+        InvoiceItem.objects.create(
+            invoice=sample_invoice,
+            service=sample_service,
+            description="Allocated service",
+            quantity=Decimal("1.00"),
+            unit_price=Decimal("1000.00"),
+            discount_amount=Decimal("0.00"),
+            line_total=Decimal("1000.00"),
+            is_covered_by_insurance=True,
+            insurance_approved_amount=Decimal("200.00"),
+        )
+
+        response = authenticated_client.get(f"/api/billing/invoices/{sample_invoice.id}/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["insurance_credit_amount"] == "200.00"
+        assert response.data["payer_credit_total"] == "200.00"
+        assert response.data["patient_copay_amount"] == "800.00"
 
     def test_get_invoice_detail_by_public_id(self, authenticated_client, sample_invoice):
         """Test GET /api/billing/invoices/{public_id}/ - Get invoice by UUID."""

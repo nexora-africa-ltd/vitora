@@ -31,6 +31,7 @@ import type {
   ServiceUpdateData,
   ServiceListParams,
   ServiceCategory,
+  ServiceCategoryListParams,
   ServiceCategoryCreateData,
   ServiceCategoryUpdateData,
   CreditNote,
@@ -99,14 +100,16 @@ export const billingKeys = {
   catalogItemsList: (params?: {
     search?: string;
     kind?: string;
-    is_active?: boolean;
+    is_active?: boolean | 'all';
+    invoice_id?: number;
     page?: number;
     page_size?: number;
   }) => [...billingKeys.catalogItems(), 'list', params] as const,
 
   // Categories
   categories: () => [...billingKeys.all, 'categories'] as const,
-  categoriesList: () => [...billingKeys.categories(), 'list'] as const,
+  categoriesList: (params?: ServiceCategoryListParams) =>
+    [...billingKeys.categories(), 'list', params] as const,
 
   // Credit Notes
   creditNotes: () => [...billingKeys.all, 'credit-notes'] as const,
@@ -667,7 +670,8 @@ export function useServices(params?: ServiceListParams) {
 export function useBillingCatalogItems(params?: {
   search?: string;
   kind?: string;
-  is_active?: boolean;
+  is_active?: boolean | 'all';
+  invoice_id?: number;
   page?: number;
   page_size?: number;
 }) {
@@ -691,9 +695,9 @@ export function useService(id: number | undefined) {
 /**
  * Fetch service categories
  */
-export function useServiceCategories(params?: { is_active?: boolean }) {
+export function useServiceCategories(params?: ServiceCategoryListParams) {
   return useQuery({
-    queryKey: billingKeys.categoriesList(),
+    queryKey: billingKeys.categoriesList(params),
     queryFn: () => billingApi.getServiceCategories(params),
   });
 }

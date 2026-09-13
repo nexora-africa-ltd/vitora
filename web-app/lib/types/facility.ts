@@ -35,12 +35,19 @@ export interface FacilityListItem {
 }
 
 export interface FacilityDetail extends FacilityListItem {
+  facility_registry_code: string;
+  country_code: string;
   ward?: number | null;
   ward_name?: string | null;
+  region_state: string;
+  district: string;
+  locality: string;
   logo: string | null;
   effective_logo_url: string | null;
   sha_contract_expiry: string | null;
   sha_facility_code: string;
+  operating_mode: FacilityOperatingMode;
+  deployment_profile: FacilityDeploymentProfile;
   /** DHIS2 Organisation Unit UID for this facility */
   dhis2_org_unit: string;
   modules: FacilityModules;
@@ -102,9 +109,11 @@ export interface FacilityDetail extends FacilityListItem {
   dha_icu_beds: number;
   dha_hdu_beds: number;
   dha_facility_type: string;
+  dha_facility_type_normalized: string;
   dha_keph_level: string;
   dha_ownership: string;
   dha_regulatory_body: string;
+  dha_contract_types: string[];
   dha_admin_name: string;
   dha_admin_phone: string;
   dha_admin_email: string;

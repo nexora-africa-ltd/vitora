@@ -99,10 +99,16 @@ class BillingPriceResolver:
         service = Service.objects.filter(id=req.catalog_id).first()
         if not service:
             raise CatalogItemNotFound("Billing service not found.")
-        if not service.is_active:
+        pending_tariff_override = (
+            req.price_mode == "override"
+            and req.unit_price_override is not None
+            and service.unit_price in (None, "")
+        )
+        if not service.is_active and not pending_tariff_override:
             raise CatalogItemInactive("Billing service is inactive.")
 
-        unit_price = self._finalize_price(req, Decimal(str(service.unit_price)))
+        default_price = Decimal(str(service.unit_price or 0))
+        unit_price = self._finalize_price(req, default_price)
         line_total = (unit_price * req.quantity).quantize(Decimal("0.01"))
         return ResolvePriceResult(
             item_type=InvoiceItem.ItemType.SERVICE,

@@ -21,7 +21,7 @@ from rest_framework import filters, serializers, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from hmis.apps.billing.models import InvoiceItem, Service, ServiceCategory
+from hmis.apps.billing.models import Invoice, InvoiceItem, Service, ServiceCategory
 from hmis.apps.billing.serializers import (
     BillingCatalogItemSerializer,
     ServiceCategorySerializer,
@@ -103,9 +103,15 @@ class CatalogItemViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
             ),
             OpenApiParameter(
                 "is_active",
-                OpenApiTypes.BOOL,
+                OpenApiTypes.STR,
                 location="query",
-                description="Filter active/inactive rows (defaults to true).",
+                description=("Filter rows by active status: true|false|all (defaults to true)."),
+            ),
+            OpenApiParameter(
+                "invoice_id",
+                OpenApiTypes.INT,
+                location="query",
+                description="Optional invoice id; when provided, catalog is scoped to that invoice facility.",
             ),
         ],
         responses=inline_serializer(
@@ -138,11 +144,26 @@ class CatalogItemViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
             requested_kinds = allowed_kinds
 
         is_active_raw = request.query_params.get("is_active")
-        only_active = True
+        active_filter: bool | None = True
         if is_active_raw is not None:
-            only_active = str(is_active_raw).strip().lower() in {"1", "true", "yes"}
+            normalized_active = str(is_active_raw).strip().lower()
+            if normalized_active == "all":
+                active_filter = None
+            else:
+                active_filter = normalized_active in {"1", "true", "yes"}
 
         facility = getattr(request, "facility", None)
+        invoice_id_raw = request.query_params.get("invoice_id")
+        if invoice_id_raw not in (None, ""):
+            try:
+                invoice_id = int(invoice_id_raw)
+            except (TypeError, ValueError):
+                return Response({"invoice_id": "invoice_id must be an integer."}, status=400)
+
+            invoice = Invoice.objects.filter(pk=invoice_id).first()
+            if invoice is None:
+                return Response({"invoice_id": "Invoice not found."}, status=404)
+            facility = getattr(invoice, "facility", None)
         rows = []
 
         def _matches(code: str, name: str) -> bool:
@@ -152,8 +173,8 @@ class CatalogItemViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
 
         if "service" in requested_kinds:
             services = Service.objects.all()
-            if only_active:
-                services = services.filter(is_active=True)
+            if active_filter is not None:
+                services = services.filter(is_active=active_filter)
             for service in services:
                 if not _matches(service.code, service.name):
                     continue
@@ -168,15 +189,18 @@ class CatalogItemViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
                         "sha_code": service.sha_code or "",
                         "item_type": InvoiceItem.ItemType.SERVICE,
                         "service_id": service.id,
+                        "is_active": service.is_active,
                     }
                 )
 
         if "procedure_catalog" in requested_kinds:
-            procedures = ProcedureCatalog.objects.select_related("billing_service").all()
+            procedures = ProcedureCatalog.objects.select_related("billing_service").filter(
+                facility__isnull=False
+            )
             if facility is not None:
                 procedures = procedures.filter(facility=facility)
-            if only_active:
-                procedures = procedures.filter(is_active=True)
+            if active_filter is not None:
+                procedures = procedures.filter(is_active=active_filter)
             for procedure in procedures:
                 if not _matches(procedure.code, procedure.name):
                     continue
@@ -203,15 +227,16 @@ class CatalogItemViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
                         ),
                         "item_type": InvoiceItem.ItemType.SERVICE,
                         "service_id": linked_service.id if linked_service else None,
+                        "is_active": procedure.is_active,
                     }
                 )
 
         if "lab_test_catalog" in requested_kinds:
-            tests = TestCatalog.objects.all()
+            tests = TestCatalog.objects.filter(facility__isnull=False)
             if facility is not None:
                 tests = tests.filter(facility=facility)
-            if only_active:
-                tests = tests.filter(is_active=True)
+            if active_filter is not None:
+                tests = tests.filter(is_active=active_filter)
             for test in tests:
                 if not _matches(test.code, test.name):
                     continue
@@ -226,15 +251,16 @@ class CatalogItemViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
                         "sha_code": test.loinc_code or "",
                         "item_type": InvoiceItem.ItemType.LAB,
                         "service_id": None,
+                        "is_active": test.is_active,
                     }
                 )
 
         if "imaging_procedure" in requested_kinds:
-            imaging = ImagingProcedure.objects.all()
+            imaging = ImagingProcedure.objects.filter(facility__isnull=False)
             if facility is not None:
                 imaging = imaging.filter(facility=facility)
-            if only_active:
-                imaging = imaging.filter(is_active=True)
+            if active_filter is not None:
+                imaging = imaging.filter(is_active=active_filter)
             for procedure in imaging:
                 if not _matches(procedure.code, procedure.name):
                     continue
@@ -249,6 +275,7 @@ class CatalogItemViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
                         "sha_code": procedure.sha_intervention_code or "",
                         "item_type": InvoiceItem.ItemType.IMAGING,
                         "service_id": None,
+                        "is_active": procedure.is_active,
                     }
                 )
 

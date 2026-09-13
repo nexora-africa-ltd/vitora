@@ -375,6 +375,12 @@ class Facility(TimeStampedModel):
         default="",
         help_text="Facility type from DHA.",
     )
+    dha_facility_type_normalized = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Normalized facility type token derived from DHA facilityType.",
+    )
     dha_keph_level = models.CharField(
         max_length=50,
         blank=True,
@@ -392,6 +398,11 @@ class Facility(TimeStampedModel):
         blank=True,
         default="",
         help_text="Regulatory body from DHA.",
+    )
+    dha_contract_types = models.JSONField(
+        blank=True,
+        default=list,
+        help_text="List of DHA contract types/services linked to this facility.",
     )
 
     # DHA PII fields — encrypted (admin contact, facility contact)
@@ -1137,6 +1148,37 @@ class Facility(TimeStampedModel):
         valid_values = {choice for choice, _ in cls.OwnershipType.choices}
         return key if key in valid_values else ""
 
+    @staticmethod
+    def _normalize_dha_facility_type(value: str) -> str:
+        """Normalize DHA facility type to a stable uppercase token."""
+        import re
+
+        token = re.sub(r"[^A-Z0-9]+", "_", str(value or "").strip().upper()).strip("_")
+        return token[:100]
+
+    @staticmethod
+    def _normalize_dha_contract_types(value) -> list[str]:
+        """Normalize DHA contract type payloads to a de-duplicated list of strings."""
+        if isinstance(value, str):
+            candidates = [value]
+        elif isinstance(value, (list, tuple, set)):
+            candidates = list(value)
+        else:
+            return []
+
+        normalized: list[str] = []
+        seen: set[str] = set()
+        for item in candidates:
+            text = str(item or "").strip()
+            if not text:
+                continue
+            key = text.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            normalized.append(text)
+        return normalized
+
     def update_from_dha_response(self, data: dict) -> list[str]:
         """
         Populate cached DHA registry fields from a DHA API response dict.
@@ -1163,6 +1205,10 @@ class Facility(TimeStampedModel):
         official_name = str(data.get("officialName", "") or "").strip()
         if official_name:
             set_local_field("name", official_name)
+
+        registration_number = str(data.get("registrationNumber", "") or "").strip()
+        if registration_number:
+            set_local_field("mfl_code", registration_number)
 
         fr_code = str(data.get("frCode", "") or "").strip()
         if fr_code:
@@ -1192,6 +1238,55 @@ class Facility(TimeStampedModel):
             if contract_expiry:
                 set_local_field("sha_contract_expiry", contract_expiry)
 
+        # Address/location mapping
+        address = data.get("address") or {}
+        if isinstance(address, dict):
+            county_name = str(address.get("county", "") or "").strip()
+            sub_county_name = str(address.get("subCounty", "") or "").strip()
+            town = str(address.get("town", "") or "").strip()
+            physical_location = str(address.get("physicalLocation", "") or "").strip()
+
+            if county_name:
+                set_local_field("region_state", county_name)
+            if sub_county_name:
+                set_local_field("district", sub_county_name)
+
+            locality_value = town or physical_location
+            if locality_value:
+                set_local_field("locality", locality_value)
+
+            if county_name or sub_county_name:
+                from django.apps import apps
+
+                County = apps.get_model("core", "County")
+                SubCounty = apps.get_model("core", "SubCounty")
+
+                resolved_county = None
+                if county_name:
+                    resolved_county = County.objects.filter(name__iexact=county_name).first()
+                    if resolved_county is not None:
+                        set_local_field("county", resolved_county)
+
+                resolved_sub_county = None
+                if sub_county_name:
+                    target_county = resolved_county or self.county
+                    sub_county_qs = SubCounty.objects.filter(name__iexact=sub_county_name)
+                    if target_county is not None:
+                        sub_county_qs = sub_county_qs.filter(county=target_county)
+                    resolved_sub_county = sub_county_qs.first()
+
+                    if resolved_sub_county is not None:
+                        set_local_field("sub_county", resolved_sub_county)
+                        if resolved_county is None:
+                            set_local_field("county", resolved_sub_county.county)
+
+                # Guard against location FK mismatches after county/sub-county updates.
+                if self.sub_county and self.county and self.sub_county.county_id != self.county_id:
+                    set_local_field("sub_county", None)
+
+                if self.ward and self.sub_county and self.ward.sub_county_id != self.sub_county_id:
+                    set_local_field("ward", None)
+
         # Non-PII columns
         self.dha_fid_code = str(data.get("fidCode", "") or "")
         self.dha_fr_code = str(data.get("frCode", "") or "")
@@ -1200,9 +1295,15 @@ class Facility(TimeStampedModel):
         self.dha_license_issue_date = str(data.get("facilityLicenseStartDate", "") or "")
         self.dha_license_expiry = str(data.get("facilityLicenseEndDate", "") or "")
         self.dha_facility_type = str(data.get("facilityType", "") or "")
+        self.dha_facility_type_normalized = self._normalize_dha_facility_type(
+            self.dha_facility_type
+        )
         self.dha_keph_level = str(data.get("kephLevel", "") or "")
         self.dha_ownership = str(data.get("facilityOwnership", "") or "")
         self.dha_regulatory_body = str(data.get("regulatoryBody", "") or "")
+        self.dha_contract_types = self._normalize_dha_contract_types(
+            data.get("contractTypes") or data.get("shaContractedServices")
+        )
 
         # Operational / SHA status
         reg_ops = data.get("regulatoryOperationalStatus") or {}

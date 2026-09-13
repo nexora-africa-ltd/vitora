@@ -102,10 +102,16 @@ class BillingCatalogItemSerializer(serializers.Serializer):
     code = serializers.CharField()
     name = serializers.CharField()
     description = serializers.CharField(allow_blank=True)
-    unit_price = serializers.DecimalField(max_digits=10, decimal_places=2, coerce_to_string=True)
+    unit_price = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        coerce_to_string=True,
+        allow_null=True,
+    )
     sha_code = serializers.CharField(allow_blank=True)
     item_type = serializers.CharField()
     service_id = serializers.IntegerField(allow_null=True)
+    is_active = serializers.BooleanField(required=False)
 
 
 class InvoiceItemSerializer(serializers.ModelSerializer):
@@ -310,6 +316,25 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
                 validated_data["sha_code"] = resolution.sha_code
             if resolution.service_id and not validated_data.get("service"):
                 validated_data["service_id"] = resolution.service_id
+
+            if (
+                catalog_ref.get("kind") == "service"
+                and price_mode == "override"
+                and unit_price_override is not None
+                and resolution.service_id
+            ):
+                service_obj = Service.objects.filter(pk=resolution.service_id).first()
+                if service_obj and service_obj.unit_price is None:
+                    service_obj.unit_price = unit_price_override
+                    service_obj.is_active = True
+                    pending_marker = "[Pending tariff]"
+                    if pending_marker in (service_obj.description or ""):
+                        service_obj.description = (
+                            (service_obj.description or "").replace(pending_marker, "").strip()
+                        )
+                    service_obj.save(
+                        update_fields=["unit_price", "is_active", "description", "updated_at"]
+                    )
 
         service = validated_data.get("service")
         if service is not None:
@@ -586,7 +611,8 @@ class InvoiceSerializer(serializers.ModelSerializer):
     def _credit_breakdown(self, obj) -> tuple[Decimal, Decimal]:
         payers = getattr(obj, "payers", None)
         if payers is None:
-            return Decimal("0.00"), Decimal("0.00")
+            item_insurer_total, _ = self._item_allocation_breakdown(obj)
+            return Decimal("0.00"), item_insurer_total
 
         sha_total = Decimal("0.00")
         insurance_total = Decimal("0.00")
@@ -599,9 +625,35 @@ class InvoiceSerializer(serializers.ModelSerializer):
             elif payer.payer_type == payer.PayerType.PRIVATE_INSURANCE:
                 insurance_total += credit
 
+        sha_total = sha_total.quantize(Decimal("0.01"))
+        insurance_total = insurance_total.quantize(Decimal("0.01"))
+
+        if sha_total == Decimal("0.00") and insurance_total == Decimal("0.00"):
+            item_insurer_total, _ = self._item_allocation_breakdown(obj)
+            insurance_total = item_insurer_total
+
+        return (sha_total, insurance_total)
+
+    def _item_allocation_breakdown(self, obj) -> tuple[Decimal, Decimal]:
+        items = getattr(obj, "items", None)
+        if items is None:
+            return Decimal("0.00"), Decimal("0.00")
+
+        insurer_total = Decimal("0.00")
+        patient_total = Decimal("0.00")
+        for item in items.all():
+            line_total = self._money(getattr(item, "line_total", None))
+            approved = self._money(getattr(item, "insurance_approved_amount", None))
+            insurer_share = min(max(approved, Decimal("0.00")), line_total)
+            patient_share = line_total - insurer_share
+            if patient_share < 0:
+                patient_share = Decimal("0.00")
+            insurer_total += insurer_share
+            patient_total += patient_share
+
         return (
-            sha_total.quantize(Decimal("0.01")),
-            insurance_total.quantize(Decimal("0.01")),
+            insurer_total.quantize(Decimal("0.01")),
+            patient_total.quantize(Decimal("0.01")),
         )
 
     def get_gross_total(self, obj) -> str:
@@ -655,7 +707,13 @@ class InvoiceSerializer(serializers.ModelSerializer):
                     insurance_claim_ids.add(claim_id)
                 total_copay += self._money(getattr(claim, "copay_amount", None))
 
-        return total_copay.quantize(Decimal("0.01"))
+        total_copay = total_copay.quantize(Decimal("0.01"))
+        if total_copay == Decimal("0.00"):
+            _, item_patient_total = self._item_allocation_breakdown(obj)
+            if item_patient_total > Decimal("0.00"):
+                return item_patient_total
+
+        return total_copay
 
     def get_patient_copay_amount(self, obj) -> str:
         return str(self._patient_copay_total(obj))
