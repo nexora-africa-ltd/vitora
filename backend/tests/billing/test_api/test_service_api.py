@@ -6,6 +6,7 @@ Reference: Deliverables spec § 8, lines 847-889 (Invoice API pattern)
 """
 
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest  # type: ignore
 from rest_framework import status
@@ -124,6 +125,20 @@ class TestServiceAPIEndpoints:
 
         # Should either be 204 NO CONTENT or mark as unavailable
         assert response.status_code in [status.HTTP_204_NO_CONTENT, status.HTTP_200_OK]
+
+    @patch("hmis.apps.billing.views_catalog.call_command")
+    def test_seed_default_catalog_uses_active_facility(
+        self, mock_call_command, authenticated_client, sample_facility
+    ):
+        """Default services must only be seeded into the active facility."""
+        response = authenticated_client.post("/api/billing/services/seed-defaults/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data == {"status": "seeded"}
+        mock_call_command.assert_called_once_with(
+            "seed_service_catalog",
+            facility=str(sample_facility.id),
+        )
 
 
 class TestServiceCategoryAPIEndpoints:

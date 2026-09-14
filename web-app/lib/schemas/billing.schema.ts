@@ -120,6 +120,10 @@ export const ServiceSchema = z.object({
 
 export type ServiceSchemaType = z.infer<typeof ServiceSchema>;
 
+export const SeedDefaultServiceCatalogSchema = z.object({
+  status: z.literal('seeded'),
+});
+
 export const BillingCatalogItemKindSchema = z.enum([
   'service',
   'procedure_catalog',

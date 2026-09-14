@@ -16,6 +16,7 @@ import { z } from 'zod';
 import {
   ServiceCategorySchema,
   ServiceSchema,
+  SeedDefaultServiceCatalogSchema,
   InvoiceSchema,
   InvoiceItemSchema,
   PaymentSchema,
@@ -276,6 +277,13 @@ async function updateService(id: number, data: ServiceUpdateData): Promise<Servi
 
 async function deleteService(id: number): Promise<void> {
   await apiClient.delete(`/api/billing/services/${id}/`);
+}
+
+async function seedDefaultServiceCatalog(): Promise<{ status: 'seeded' }> {
+  const response = await apiClient.post('/api/billing/services/seed-defaults/');
+  return parseResponse(SeedDefaultServiceCatalogSchema, response.data, {
+    context: 'billingApi.seedDefaultServiceCatalog',
+  });
 }
 
 // ============================================================================
@@ -816,6 +824,7 @@ export const billingApi = {
   createService,
   updateService,
   deleteService,
+  seedDefaultServiceCatalog,
 
   // Invoices
   getInvoices,

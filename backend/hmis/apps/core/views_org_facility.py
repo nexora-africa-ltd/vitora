@@ -1525,6 +1525,7 @@ class FacilityViewSet(viewsets.ModelViewSet):
         tariff_level = f"L{facility_level_int}"
 
         intervention_category, _ = ServiceCategory.objects.get_or_create(
+            facility=facility,
             code="SHA_INTV",
             defaults={
                 "name": "SHA Interventions",
@@ -1534,6 +1535,7 @@ class FacilityViewSet(viewsets.ModelViewSet):
             },
         )
         tariff_category, _ = ServiceCategory.objects.get_or_create(
+            facility=facility,
             code="SHA_TARIFF",
             defaults={
                 "name": "SHA Tariffs",
@@ -1574,14 +1576,17 @@ class FacilityViewSet(viewsets.ModelViewSet):
             code = f"SI_{token}"[:20]
             name = " ".join(part.capitalize() for part in raw.replace("_", " ").split()) or raw
 
-            category = ServiceCategory.objects.filter(code=code).first()
+            category = ServiceCategory.objects.filter(facility=facility, code=code).first()
             if category is None:
                 # Name is unique too; reuse an existing category by name if present
                 # to avoid UNIQUE(name) collisions when a different code already exists.
-                category = ServiceCategory.objects.filter(name__iexact=name[:100]).first()
+                category = ServiceCategory.objects.filter(
+                    facility=facility, name__iexact=name[:100]
+                ).first()
 
             if category is None:
                 category = ServiceCategory.objects.create(
+                    facility=facility,
                     code=code,
                     name=name[:100],
                     description="Auto-created SHA intervention category.",
@@ -1632,6 +1637,7 @@ class FacilityViewSet(viewsets.ModelViewSet):
 
                     processed += 1
                     defaults = {
+                        "facility": facility,
                         "category": category,
                         "name": name[:200],
                         "description": description,
@@ -1644,7 +1650,7 @@ class FacilityViewSet(viewsets.ModelViewSet):
                         "created_by": request.user,
                     }
                     service, was_created = Service.objects.get_or_create(
-                        code=code, defaults=defaults
+                        facility=facility, code=code, defaults=defaults
                     )
                     if was_created:
                         created += 1
@@ -1696,6 +1702,7 @@ class FacilityViewSet(viewsets.ModelViewSet):
                 tariffs_processed += 1
                 processed += 1
                 defaults = {
+                    "facility": facility,
                     "category": tariff_category,
                     "name": str(tariff.name or code)[:200],
                     "description": str(tariff.description or "").strip(),
@@ -1707,7 +1714,9 @@ class FacilityViewSet(viewsets.ModelViewSet):
                     "is_taxable": False,
                     "created_by": request.user,
                 }
-                service, was_created = Service.objects.get_or_create(code=code, defaults=defaults)
+                service, was_created = Service.objects.get_or_create(
+                    facility=facility, code=code, defaults=defaults
+                )
                 if was_created:
                     created += 1
                 else:

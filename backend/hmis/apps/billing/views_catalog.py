@@ -14,10 +14,12 @@ Supported inputs/args:
 
 import logging
 
+from django.core.management import call_command
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from rest_framework import filters, serializers, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -34,14 +36,15 @@ from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequire
 logger = logging.getLogger(__name__)
 
 
-class ServiceCategoryViewSet(AuditedMutationMixin, viewsets.ModelViewSet):
+class ServiceCategoryViewSet(TenantScopedViewMixin, AuditedMutationMixin, viewsets.ModelViewSet):
     """
     ViewSet for ServiceCategory model.
 
     Provides CRUD operations for service categories.
     """
 
-    queryset = ServiceCategory.objects.all()
+    queryset = ServiceCategory.objects.select_related("facility").all()
+    tenant_scope = "facility"
     audit_resource_type = "ServiceCategory"
     audit_action_prefix = "billing.service_category"
     audit_source = "billing_api"
@@ -52,15 +55,20 @@ class ServiceCategoryViewSet(AuditedMutationMixin, viewsets.ModelViewSet):
     ordering_fields = ["display_order", "name", "created_at"]
     ordering = ["display_order"]
 
+    def perform_create(self, serializer):
+        """Create service categories for the active facility only."""
+        serializer.save(**self.get_tenant_save_kwargs())
 
-class ServiceViewSet(AuditedMutationMixin, viewsets.ModelViewSet):
+
+class ServiceViewSet(TenantScopedViewMixin, AuditedMutationMixin, viewsets.ModelViewSet):
     """
     ViewSet for Service model.
 
     Provides CRUD operations for billable services with filtering.
     """
 
-    queryset = Service.objects.select_related("category", "created_by").all()
+    queryset = Service.objects.select_related("facility", "category", "created_by").all()
+    tenant_scope = "facility"
     audit_resource_type = "Service"
     audit_action_prefix = "billing.service"
     audit_source = "billing_api"
@@ -71,6 +79,21 @@ class ServiceViewSet(AuditedMutationMixin, viewsets.ModelViewSet):
     search_fields = ["name", "code", "description", "sha_code"]
     ordering_fields = ["name", "unit_price", "created_at"]
     ordering = ["name"]
+
+    def perform_create(self, serializer):
+        """Create billing services for the active facility only."""
+        serializer.save(**self.get_tenant_save_kwargs())
+
+    @action(detail=False, methods=["post"], url_path="seed-defaults")
+    def seed_defaults(self, request):
+        """Seed the standard service catalogue for the active facility."""
+        self._resolve_tenant_context()
+        facility = getattr(request, "facility", None)
+        if facility is None:
+            return Response({"detail": "An active facility is required."}, status=400)
+
+        call_command("seed_service_catalog", facility=str(facility.id))
+        return Response({"status": "seeded"})
 
     def perform_destroy(self, instance):
         """Soft delete - mark service as unavailable instead of deleting."""
@@ -172,7 +195,7 @@ class CatalogItemViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
             return search in (code or "").lower() or search in (name or "").lower()
 
         if "service" in requested_kinds:
-            services = Service.objects.all()
+            services = Service.objects.filter(facility=facility)
             if active_filter is not None:
                 services = services.filter(is_active=active_filter)
             for service in services:

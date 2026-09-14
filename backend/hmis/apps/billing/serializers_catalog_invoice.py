@@ -33,6 +33,7 @@ class ServiceCategorySerializer(serializers.ModelSerializer):
         model = ServiceCategory
         fields = [
             "id",
+            "facility",
             "code",
             "name",
             "description",
@@ -41,7 +42,7 @@ class ServiceCategorySerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id", "facility", "created_at", "updated_at"]
 
 
 class ServiceSerializer(serializers.ModelSerializer):
@@ -55,6 +56,7 @@ class ServiceSerializer(serializers.ModelSerializer):
         model = Service
         fields = [
             "id",
+            "facility",
             "code",
             "name",
             "description",
@@ -75,6 +77,7 @@ class ServiceSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "facility",
             "created_by",
             "created_by_username",
             "is_available",
