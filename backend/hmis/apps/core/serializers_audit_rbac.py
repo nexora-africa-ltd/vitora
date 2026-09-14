@@ -576,6 +576,7 @@ class StaffProfileCreateSerializer(serializers.Serializer):
     employee_id = serializers.CharField(
         max_length=20, required=False, allow_blank=True, allow_null=True
     )
+    title = serializers.CharField(max_length=20, required=False, allow_blank=True)
     must_change_password = serializers.BooleanField(required=False, default=True)
     middle_name = serializers.CharField(max_length=100, required=False, allow_blank=True)
     department = serializers.PrimaryKeyRelatedField(

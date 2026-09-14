@@ -310,6 +310,27 @@ class TestStaffFacilityAPI:
         assert response.data["primary_facility"] == primary_facility.id
         assert response.data["primary_facility_name"] == "Primary Health Centre"
 
+    def test_create_staff_with_title(
+        self, admin_client_sf, sf_role, sf_department, primary_facility
+    ):
+        """Admin can set a professional title while directly creating staff."""
+        data = {
+            "username": "drnewstaff",
+            "email": "dr.new@example.com",
+            "first_name": "New",
+            "last_name": "Doctor",
+            "employee_id": "VH-NEW-DR-001",
+            "title": "Dr.",
+            "role": sf_role.id,
+            "department": sf_department.id,
+            "primary_facility": primary_facility.id,
+        }
+
+        response = admin_client_sf.post("/api/staff/", data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["title"] == "Dr."
+
     def test_create_staff_without_facility(self, admin_client_sf, sf_role, sf_department):
         """Admin can create a staff profile without a facility (legacy mode)."""
         data = {
