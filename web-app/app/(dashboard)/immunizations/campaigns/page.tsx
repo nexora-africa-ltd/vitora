@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { useFacility } from '@/lib/context/facility-context';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDate } from '@/lib/utils/format';
 import { vaccineCampaignsApi, vaccineDefinitionsApi } from '@/lib/api/immunizations';
@@ -55,6 +56,7 @@ const POPULATION_OPTIONS: { value: TargetPopulation; label: string }[] = [
 ];
 
 export default function CampaignsPage() {
+  const { facility } = useFacility();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { refresh, isRefreshing } = usePageRefresh();
@@ -81,7 +83,7 @@ export default function CampaignsPage() {
   });
 
   const { data: vaccines } = useQuery({
-    queryKey: ['vaccine-defs-campaign'],
+    queryKey: ['vaccine-defs-campaign', facility?.id],
     queryFn: () => vaccineDefinitionsApi.list({ program: 'CAMPAIGN', offered: true }),
   });
 
