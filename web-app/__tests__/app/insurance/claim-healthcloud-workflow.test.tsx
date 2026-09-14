@@ -224,7 +224,7 @@ describe('Claim HealthCloud Workflow UI', () => {
     render(<ClaimDetailPage />);
 
     expect(screen.getByText('HealthCloud Workflow')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /run eligibility/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^run$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /submit claim to healthcloud/i })).toBeInTheDocument();
   });
 
@@ -232,7 +232,7 @@ describe('Claim HealthCloud Workflow UI', () => {
     const user = userEvent.setup();
     render(<ClaimDetailPage />);
 
-    await user.click(screen.getByRole('button', { name: /run eligibility/i }));
+    await user.click(screen.getByRole('button', { name: /^run$/i }));
     await user.click(screen.getByRole('button', { name: /request otp/i }));
 
     await waitFor(() => {

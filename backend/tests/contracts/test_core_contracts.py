@@ -461,6 +461,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "role",
                 "specialization",
                 "subspecialty",
+                "title",
                 "username",
             }
         ),

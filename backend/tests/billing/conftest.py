@@ -31,9 +31,10 @@ def billing_user(db):
 
 
 @pytest.fixture
-def service_category(db):
+def service_category(db, sample_facility):
     """Create a service category."""
     return ServiceCategory.objects.create(
+        facility=sample_facility,
         name="Consultation",
         code="CONS",
         description="Doctor consultation services",
@@ -42,9 +43,10 @@ def service_category(db):
 
 
 @pytest.fixture
-def consultation_service(db, service_category, billing_user):
+def consultation_service(db, service_category, billing_user, sample_facility):
     """Create a consultation service."""
     return Service.objects.create(
+        facility=sample_facility,
         category=service_category,
         code="CONS-GEN",
         name="General Consultation",
@@ -84,9 +86,10 @@ def sample_invoice(db, sample_patient, billing_user, sample_facility, sample_org
 
 
 @pytest.fixture
-def sample_category(db):
+def sample_category(db, sample_facility):
     """Alias for service_category for consistency."""
     return ServiceCategory.objects.create(
+        facility=sample_facility,
         name="Consultation",
         code="CONS",
         description="Doctor consultation services",
@@ -95,9 +98,10 @@ def sample_category(db):
 
 
 @pytest.fixture
-def sample_service(db, sample_category, test_user):
+def sample_service(db, sample_category, test_user, sample_facility):
     """Create a sample service."""
     return Service.objects.create(
+        facility=sample_facility,
         category=sample_category,
         code="CONS-GEN",
         name="General Consultation",

@@ -17,9 +17,12 @@ from hmis.apps.immunizations.serializers import (
     AEFISubmitToAuthoritiesSerializer,
     ColdChainEquipmentListSerializer,
     ColdChainEquipmentSerializer,
+    FacilityCustomVaccineSerializer,
+    FacilityVaccineConfigSerializer,
     GenerateAdultScheduleSerializer,
     ImmunizationRecordListSerializer,
     ImmunizationRecordSerializer,
+    OrganizationVaccineConfigSerializer,
     StockIssueSerializer,
     StockReceiveSerializer,
     StockTransactionSerializer,
@@ -211,6 +214,43 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
+        FacilityCustomVaccineSerializer,
+        frozenset(
+            {
+                "base_fee",
+                "billing_service",
+                "billing_service_name",
+                "code",
+                "created_at",
+                "description",
+                "disease_target",
+                "facility",
+                "id",
+                "is_active",
+                "name",
+                "route",
+                "sha_tariff_code",
+                "target_population",
+                "updated_at",
+                "workflow",
+            }
+        ),
+    ),
+    (
+        FacilityVaccineConfigSerializer,
+        frozenset(
+            {
+                "base_fee",
+                "billing_service",
+                "facility",
+                "id",
+                "is_offered",
+                "sha_tariff_code",
+                "vaccine",
+            }
+        ),
+    ),
+    (
         GenerateAdultScheduleSerializer,
         frozenset(
             {
@@ -226,6 +266,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             {
                 "administered_date",
                 "created_at",
+                "custom_vaccine",
                 "dose_number",
                 "id",
                 "is_overdue",
@@ -249,6 +290,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "batch_number",
                 "campaign",
                 "created_at",
+                "custom_vaccine",
                 "days_overdue",
                 "diluent_batch_number",
                 "diluent_expiry_date",
@@ -274,6 +316,19 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "vaccine_manufacturer",
                 "vaccine_name",
                 "vaccine_program",
+            }
+        ),
+    ),
+    (
+        OrganizationVaccineConfigSerializer,
+        frozenset(
+            {
+                "base_fee",
+                "id",
+                "is_enabled",
+                "organization",
+                "sha_tariff_code",
+                "vaccine",
             }
         ),
     ),
@@ -365,6 +420,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "created_at",
+                "custom_vaccines",
                 "description",
                 "end_date",
                 "id",

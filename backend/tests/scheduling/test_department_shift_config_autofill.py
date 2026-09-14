@@ -494,12 +494,13 @@ class TestAutofillPlanAPI:
             for draft in response.data["draft_shifts"]
             if draft["staff_resource"] == nursing_resources[0].id
         ]
-        assert first_resource_shifts == [
-            "DAY",
-            "NIGHT",
-            "DAY",
-            "NIGHT",
+        rota_anchor_date = date(2000, 1, 3)
+        pattern = ["DAY", "NIGHT"]
+        expected = [
+            pattern[((monday + timedelta(days=index)) - rota_anchor_date).days % len(pattern)]
+            for index in range(4)
         ]
+        assert first_resource_shifts == expected
 
     def test_department_pattern_respects_shift_max_staff_cap(
         self, authenticated_client, nursing_department, nursing_resources, sample_facility

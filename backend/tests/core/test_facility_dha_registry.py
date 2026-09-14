@@ -519,9 +519,14 @@ class TestSyncBillingServicesAPI:
         """Existing services should be updated idempotently when prices/names change."""
         from hmis.apps.billing.models import Service, ServiceCategory
 
-        category = ServiceCategory.objects.create(code="GEN", name="General")
+        category = ServiceCategory.objects.create(
+            facility=self.facility,
+            code="GEN",
+            name="General",
+        )
         user = self.client.handler._force_user
         Service.objects.create(
+            facility=self.facility,
             code="SHA-01-OPD",
             name="Old Name",
             description="Old",
@@ -597,7 +602,11 @@ class TestSyncBillingServicesAPI:
         """Should reuse existing category by name to avoid UNIQUE(name) collisions."""
         from hmis.apps.billing.models import Service, ServiceCategory
 
-        ServiceCategory.objects.create(code="CONS", name="Consultation")
+        ServiceCategory.objects.create(
+            facility=self.facility,
+            code="CONS",
+            name="Consultation",
+        )
 
         mock_search.side_effect = [
             (
