@@ -509,7 +509,7 @@ class BillingAgentService:
         encounter = immunization_record.encounter
         invoice = cls.get_or_create_draft_invoice(patient, encounter)
 
-        vaccine = immunization_record.vaccine
+        vaccine = immunization_record.vaccine_reference
 
         # Check for duplicate billing (idempotency)
         already_billed = invoice.items.filter(
@@ -521,6 +521,33 @@ class BillingAgentService:
                 immunization_record.id,
                 invoice.invoice_number,
             )
+            return
+
+        if immunization_record.custom_vaccine_id:
+            if vaccine.billing_service_id:
+                cls.add_line_item(
+                    invoice,
+                    service=vaccine.billing_service,
+                    quantity=1,
+                    description=f"Vaccination: {vaccine.name} (dose {immunization_record.dose_number})",
+                    item_type=InvoiceItem.ItemType.VACCINATION,
+                    immunization_record=immunization_record,
+                    sha_code=vaccine.billing_service.sha_code,
+                )
+            elif vaccine.base_fee:
+                cls.add_line_item(
+                    invoice,
+                    service=None,
+                    quantity=1,
+                    unit_price=vaccine.base_fee,
+                    description=f"Vaccination: {vaccine.name} (dose {immunization_record.dose_number})",
+                    item_type=InvoiceItem.ItemType.VACCINATION,
+                    immunization_record=immunization_record,
+                )
+            else:
+                logger.warning(
+                    "Billing agent: no billing service or fee for custom vaccine %s.", vaccine.code
+                )
             return
 
         from hmis.apps.immunizations.services.vaccine_billing import resolve_vaccine_billing

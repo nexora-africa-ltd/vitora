@@ -1289,8 +1289,8 @@ class VitaminASupplementSerializer(serializers.ModelSerializer):
 class AEFISerializer(serializers.ModelSerializer):
     """Full serializer for AEFI report (MCH compatibility layer)."""
 
-    vaccine_code = serializers.CharField(source="immunization_record.vaccine.code", read_only=True)
-    vaccine_name = serializers.CharField(source="immunization_record.vaccine.name", read_only=True)
+    vaccine_code = serializers.CharField(source="immunization_record.vaccine_code", read_only=True)
+    vaccine_name = serializers.CharField(source="immunization_record.vaccine_name", read_only=True)
     patient_name = serializers.SerializerMethodField()
     investigated_by_name = serializers.SerializerMethodField()
 
@@ -1332,7 +1332,7 @@ class AEFISerializer(serializers.ModelSerializer):
 class AEFIListSerializer(serializers.ModelSerializer):
     """Lean serializer for AEFI list (MCH compatibility layer)."""
 
-    vaccine_code = serializers.CharField(source="immunization_record.vaccine.code", read_only=True)
+    vaccine_code = serializers.CharField(source="immunization_record.vaccine_code", read_only=True)
 
     class Meta:
         model = AEFI

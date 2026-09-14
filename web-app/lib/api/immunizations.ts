@@ -11,7 +11,9 @@ import {
   VaccineDefinitionArraySchema,
   VaccineDefinitionSchema,
   FacilityVaccineConfigSchema,
+  FacilityCustomVaccineSchema,
   PaginatedFacilityVaccineConfigSchema,
+  PaginatedFacilityCustomVaccineSchema,
   PaginatedImmunizationRecordListSchema,
   ImmunizationRecordSchema,
   ImmunizationRecordListItemArraySchema,
@@ -24,7 +26,10 @@ import {
 import type {
   VaccineDefinition,
   FacilityVaccineConfig,
+  FacilityCustomVaccine,
+  FacilityCustomVaccineInput,
   ImmunizationRecord,
+  CreateImmunizationRecordData,
   ImmunizationRecordListItem,
   AdministerVaccineData,
   ImmunizationRecordListParams,
@@ -94,6 +99,27 @@ export const facilityVaccineConfigsApi = {
   },
 };
 
+export const facilityCustomVaccinesApi = {
+  list: async (params?: { workflow?: string; is_active?: boolean }): Promise<{ count: number; results: FacilityCustomVaccine[] }> => {
+    const response = await apiClient.get(`${BASE_URL}/custom-vaccines/`, { params });
+    return parseResponse(PaginatedFacilityCustomVaccineSchema, response.data, {
+      context: 'facilityCustomVaccinesApi.list',
+    });
+  },
+  create: async (data: FacilityCustomVaccineInput): Promise<FacilityCustomVaccine> => {
+    const response = await apiClient.post(`${BASE_URL}/custom-vaccines/`, data);
+    return parseResponse(FacilityCustomVaccineSchema, response.data, {
+      context: 'facilityCustomVaccinesApi.create',
+    });
+  },
+  update: async (id: number, data: Partial<FacilityCustomVaccineInput>): Promise<FacilityCustomVaccine> => {
+    const response = await apiClient.patch(`${BASE_URL}/custom-vaccines/${id}/`, data);
+    return parseResponse(FacilityCustomVaccineSchema, response.data, {
+      context: 'facilityCustomVaccinesApi.update',
+    });
+  },
+};
+
 // =============================================================================
 // IMMUNIZATION RECORDS API
 // =============================================================================
@@ -113,13 +139,7 @@ export const immunizationRecordsApi = {
     });
   },
 
-  create: async (data: {
-    patient: number;
-    vaccine: number;
-    dose_number: number;
-    scheduled_date: string;
-    status?: string;
-  }): Promise<ImmunizationRecord> => {
+  create: async (data: CreateImmunizationRecordData): Promise<ImmunizationRecord> => {
     const response = await apiClient.post(`${BASE_URL}/records/`, data);
     return parseResponse(ImmunizationRecordSchema, response.data, {
       context: 'immunizationRecordsApi.create',
@@ -434,6 +454,7 @@ export const incidentApi = {
 
 export const immunizationsModule = {
   vaccines: vaccineDefinitionsApi,
+  customVaccines: facilityCustomVaccinesApi,
   records: immunizationRecordsApi,
   campaigns: vaccineCampaignsApi,
   aefi: aefiApi,

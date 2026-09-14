@@ -872,7 +872,7 @@ class AEFI(HistoryMixin, TimeStampedModel):
     def __str__(self):
         return (
             f"AEFI {self.get_event_type_display()} - "
-            f"{self.immunization_record.vaccine.code} ({self.event_date})"
+            f"{self.immunization_record.vaccine_code} ({self.event_date})"
         )
 
 

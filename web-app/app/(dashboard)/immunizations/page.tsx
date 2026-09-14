@@ -38,6 +38,7 @@ import { useToast } from '@/lib/hooks/use-toast';
 import { formatDate } from '@/lib/utils/format';
 import {
   immunizationRecordsApi,
+  facilityCustomVaccinesApi,
   vaccineDefinitionsApi,
   vaccineStockApi,
 } from '@/lib/api/immunizations';
@@ -114,6 +115,7 @@ export default function ImmunizationsPage() {
   const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null);
   const [selectedRecordLabel, setSelectedRecordLabel] = useState('');
   const [selectedVaccineForAdmin, setSelectedVaccineForAdmin] = useState<number | null>(null);
+  const [selectedCustomVaccineForManualAdmin, setSelectedCustomVaccineForManualAdmin] = useState<number | null>(null);
   const [selectedStockBatchId, setSelectedStockBatchId] = useState<number | null>(null);
   const [adminDate, setAdminDate] = useState(new Date().toISOString().split('T')[0]!);
   const [batchNumber, setBatchNumber] = useState('');
@@ -224,6 +226,40 @@ export default function ImmunizationsPage() {
       });
     },
   });
+  const { data: manualCustomVaccines } = useQuery({
+    queryKey: ['custom-vaccines-manual', facility?.id],
+    queryFn: () => facilityCustomVaccinesApi.list({ is_active: true }),
+  });
+  const manualAdministerMutation = useMutation({
+    mutationFn: async () => {
+      const record = await immunizationRecordsApi.create({
+        patient: selectedPatientId!,
+        custom_vaccine: selectedCustomVaccineForManualAdmin!,
+        dose_number: 1,
+        scheduled_date: adminDate,
+        status: 'SCHEDULED',
+      });
+      return immunizationRecordsApi.administer(record.id, {
+        administered_date: adminDate,
+        batch_number: batchNumber || undefined,
+        lot_number: lotNumber || undefined,
+        expiry_date: expiryDate || undefined,
+        site: site || undefined,
+        vaccine_manufacturer: vaccineManufacturer || undefined,
+        diluent_batch_number: diluentBatchNumber || undefined,
+        diluent_manufacturer: diluentManufacturer || undefined,
+        diluent_expiry_date: diluentExpiryDate || undefined,
+        notes: adminNotes || undefined,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['imm-records', selectedPatientId] });
+      toast({ title: 'Custom Vaccine Administered', description: 'Manual administration recorded.' });
+      setAdministerDialogOpen(false);
+      resetAdminForm();
+    },
+    onError: () => toast({ title: 'Error', description: 'Failed to administer custom vaccine.', variant: 'destructive' }),
+  });
 
   // Fetch available stock batches for the selected vaccine
   const { data: availableBatches } = useQuery({
@@ -262,6 +298,7 @@ export default function ImmunizationsPage() {
     setSelectedRecordId(null);
     setSelectedRecordLabel('');
     setSelectedVaccineForAdmin(null);
+    setSelectedCustomVaccineForManualAdmin(null);
     setSelectedStockBatchId(null);
     setAdminDate(new Date().toISOString().split('T')[0]!);
     setBatchNumber('');
@@ -275,12 +312,18 @@ export default function ImmunizationsPage() {
     setAdminNotes('');
   }
 
-  function openAdministerDialog(recordId: number, vaccineId: number, label: string) {
+  function openAdministerDialog(recordId: number, vaccineId: number | null, label: string) {
     setSelectedRecordId(recordId);
     setSelectedVaccineForAdmin(vaccineId);
     setSelectedRecordLabel(label);
     setSelectedStockBatchId(null);
     setAdminDate(new Date().toISOString().split('T')[0]!);
+    setAdministerDialogOpen(true);
+  }
+
+  function openManualCustomAdministerDialog() {
+    resetAdminForm();
+    setSelectedRecordLabel('Select an active facility custom vaccine');
     setAdministerDialogOpen(true);
   }
 
@@ -424,6 +467,16 @@ export default function ImmunizationsPage() {
                   size="sm"
                   variant="outline"
                   className="w-full sm:w-auto"
+                  onClick={openManualCustomAdministerDialog}
+                >
+                  <Syringe className="mr-1 h-4 w-4" />
+                  <span className="hidden sm:inline">Manual Custom Vaccine</span>
+                  <span className="sm:hidden">Custom</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full sm:w-auto"
                   onClick={() => setAdultScheduleDialogOpen(true)}
                 >
                   <Users className="mr-1 h-4 w-4" />
@@ -549,6 +602,24 @@ export default function ImmunizationsPage() {
               </div>
             )}
             <div className="space-y-3 sm:space-y-4">
+              {!selectedRecordId && (
+                <div>
+                  <Label>Facility Custom Vaccine</Label>
+                  <Select
+                    value={selectedCustomVaccineForManualAdmin?.toString() || ''}
+                    onValueChange={(value) => setSelectedCustomVaccineForManualAdmin(Number(value))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Select a facility custom vaccine" /></SelectTrigger>
+                    <SelectContent>
+                      {(manualCustomVaccines?.results || []).map((vaccine) => (
+                        <SelectItem key={vaccine.id} value={vaccine.id.toString()}>
+                          {vaccine.name} ({vaccine.workflow})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               {/* Date & Site */}
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
                 <div>
@@ -715,10 +786,10 @@ export default function ImmunizationsPage() {
                   Cancel
                 </Button>
                 <Button
-                  onClick={() => administerMutation.mutate()}
-                  disabled={administerMutation.isPending}
+                  onClick={() => selectedRecordId ? administerMutation.mutate() : manualAdministerMutation.mutate()}
+                  disabled={selectedRecordId ? administerMutation.isPending : !selectedCustomVaccineForManualAdmin || manualAdministerMutation.isPending}
                 >
-                  {administerMutation.isPending && (
+                  {(administerMutation.isPending || manualAdministerMutation.isPending) && (
                     <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                   )}
                   Administer

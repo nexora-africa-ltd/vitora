@@ -31,6 +31,7 @@ from hmis.apps.immunizations.models import (
     AEFI,
     AEFIReportType,
     ColdChainEquipment,
+    FacilityCustomVaccine,
     FacilityVaccineConfig,
     ImmunizationRecord,
     OrganizationVaccineConfig,
@@ -50,6 +51,7 @@ from hmis.apps.immunizations.serializers import (
     AEFISubmitToAuthoritiesSerializer,
     ColdChainEquipmentListSerializer,
     ColdChainEquipmentSerializer,
+    FacilityCustomVaccineSerializer,
     FacilityVaccineConfigSerializer,
     GenerateAdultScheduleSerializer,
     ImmunizationRecordListSerializer,
@@ -134,11 +136,43 @@ class FacilityVaccineConfigViewSet(TenantScopedViewMixin, viewsets.ModelViewSet)
     tenant_scope = "facility"
 
 
+class FacilityCustomVaccineViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    """Manage active facility-only vaccines for non-KEPI administration workflows."""
+
+    queryset = FacilityCustomVaccine.objects.select_related("facility", "billing_service")
+    serializer_class = FacilityCustomVaccineSerializer
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
+    tenant_scope = "facility"
+    filter_backends = [django_filters.rest_framework.DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["workflow", "is_active"]
+    ordering_fields = ["name", "code", "workflow", "created_at"]
+    ordering = ["name", "code"]
+
+    def perform_create(self, serializer):
+        instance = serializer.save(**self.get_tenant_save_kwargs())
+        AuditLog.log(
+            action="facility_custom_vaccine_create",
+            user=self.request.user,
+            resource_type="FacilityCustomVaccine",
+            resource_id=instance.id,
+            details={"code": instance.code, "workflow": instance.workflow},
+            ip_address=get_client_ip(self.request),
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        if not request.user.has_perm("immunizations.delete_facilitycustomvaccine"):
+            return Response(
+                {"detail": "You do not have permission to delete this resource."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().destroy(request, *args, **kwargs)
+
+
 class ImmunizationRecordViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """ViewSet for immunization records (all ages, all programs)."""
 
     queryset = ImmunizationRecord.objects.select_related(
-        "patient", "vaccine", "administered_by", "campaign"
+        "patient", "vaccine", "custom_vaccine", "administered_by", "campaign"
     )
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     tenant_scope = "facility"
@@ -268,7 +302,7 @@ class ImmunizationRecordViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             resource_id=record.id,
             details={
                 "patient_id": record.patient_id,
-                "vaccine_code": record.vaccine.code,
+                "vaccine_code": record.vaccine_code,
                 "dose_number": record.dose_number,
                 "stock_batch_id": stock_batch_id,
             },
@@ -333,7 +367,7 @@ class ImmunizationRecordViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 class VaccineCampaignViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """ViewSet for vaccine campaigns."""
 
-    queryset = VaccineCampaign.objects.prefetch_related("vaccines")
+    queryset = VaccineCampaign.objects.prefetch_related("vaccines", "custom_vaccines")
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     tenant_scope = "facility"
     filter_backends = [django_filters.rest_framework.DjangoFilterBackend, filters.OrderingFilter]

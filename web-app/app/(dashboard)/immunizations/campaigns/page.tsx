@@ -25,7 +25,7 @@ import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useFacility } from '@/lib/context/facility-context';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDate } from '@/lib/utils/format';
-import { vaccineCampaignsApi, vaccineDefinitionsApi } from '@/lib/api/immunizations';
+import { facilityCustomVaccinesApi, vaccineCampaignsApi, vaccineDefinitionsApi } from '@/lib/api/immunizations';
 import type {
   CampaignStatus,
   TargetPopulation,
@@ -72,6 +72,7 @@ export default function CampaignsPage() {
   const [targetPopulation, setTargetPopulation] = useState<TargetPopulation>('ALL');
   const [targetCount, setTargetCount] = useState('');
   const [selectedVaccineIds, setSelectedVaccineIds] = useState<number[]>([]);
+  const [selectedCustomVaccineIds, setSelectedCustomVaccineIds] = useState<number[]>([]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['campaigns', statusFilter],
@@ -86,6 +87,10 @@ export default function CampaignsPage() {
     queryKey: ['vaccine-defs-campaign', facility?.id],
     queryFn: () => vaccineDefinitionsApi.list({ program: 'CAMPAIGN', offered: true }),
   });
+  const { data: customVaccines } = useQuery({
+    queryKey: ['custom-vaccines-campaign', facility?.id],
+    queryFn: () => facilityCustomVaccinesApi.list({ workflow: 'CAMPAIGN', is_active: true }),
+  });
 
   const createMutation = useMutation({
     mutationFn: () =>
@@ -97,6 +102,7 @@ export default function CampaignsPage() {
         target_population: targetPopulation,
         target_count: targetCount ? parseInt(targetCount, 10) : undefined,
         vaccines: selectedVaccineIds.length > 0 ? selectedVaccineIds : undefined,
+        custom_vaccines: selectedCustomVaccineIds.length > 0 ? selectedCustomVaccineIds : undefined,
         status: 'PLANNED',
       }),
     onSuccess: () => {
@@ -122,6 +128,7 @@ export default function CampaignsPage() {
     setTargetPopulation('ALL');
     setTargetCount('');
     setSelectedVaccineIds([]);
+    setSelectedCustomVaccineIds([]);
   }
 
   const campaigns = data?.results || [];
@@ -363,6 +370,31 @@ export default function CampaignsPage() {
                   </div>
                 </div>
               )}
+              {customVaccines?.results.length ? (
+                <div>
+                  <Label>Facility Custom Vaccines</Label>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Only active campaign vaccines configured for this facility are available.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {customVaccines.results.map((vaccine) => {
+                      const selected = selectedCustomVaccineIds.includes(vaccine.id);
+                      return (
+                        <Badge
+                          key={vaccine.id}
+                          variant={selected ? 'default' : 'outline'}
+                          className="cursor-pointer"
+                          onClick={() => setSelectedCustomVaccineIds((previous) =>
+                            selected ? previous.filter((id) => id !== vaccine.id) : [...previous, vaccine.id]
+                          )}
+                        >
+                          {vaccine.name}
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancel

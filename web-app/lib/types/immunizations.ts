@@ -106,6 +106,31 @@ export interface FacilityVaccineConfig {
   sha_tariff_code: string;
 }
 
+export type CustomVaccineWorkflow = 'MANUAL' | 'CAMPAIGN' | 'OCCUPATIONAL' | 'TRAVEL' | 'PRIVATE';
+
+export interface FacilityCustomVaccine {
+  id: number;
+  facility: number;
+  code: string;
+  name: string;
+  description: string;
+  disease_target: string;
+  route: VaccineRoute;
+  target_population: TargetPopulation;
+  workflow: CustomVaccineWorkflow;
+  is_active: boolean;
+  billing_service: number | null;
+  billing_service_name: string | null;
+  base_fee: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type FacilityCustomVaccineInput = Omit<
+  FacilityCustomVaccine,
+  'id' | 'facility' | 'billing_service_name' | 'created_at' | 'updated_at'
+>;
+
 // =============================================================================
 // IMMUNIZATION RECORD
 // =============================================================================
@@ -113,7 +138,8 @@ export interface FacilityVaccineConfig {
 export interface ImmunizationRecordListItem {
   id: number;
   patient: number;
-  vaccine: number;
+  vaccine: number | null;
+  custom_vaccine: number | null;
   vaccine_code: string;
   vaccine_name: string;
   vaccine_program: string;
@@ -140,6 +166,15 @@ export interface ImmunizationRecord extends ImmunizationRecordListItem {
   campaign: number | null;
   notes: string;
   updated_at: string;
+}
+
+export interface CreateImmunizationRecordData {
+  patient: number;
+  vaccine?: number;
+  custom_vaccine?: number;
+  dose_number: number;
+  scheduled_date: string;
+  status?: ImmunizationStatus;
 }
 
 export interface AdministerVaccineData {
@@ -193,6 +228,7 @@ export interface VaccineCampaignListItem {
 export interface VaccineCampaign extends VaccineCampaignListItem {
   description: string;
   vaccines: number[];
+  custom_vaccines: number[];
   vaccine_names: string[];
   updated_at: string;
 }
@@ -204,6 +240,7 @@ export interface VaccineCampaignCreateData {
   end_date: string;
   target_population: TargetPopulation;
   vaccines?: number[];
+  custom_vaccines?: number[];
   status?: CampaignStatus;
   target_count?: number;
 }

@@ -49,12 +49,12 @@ def create_vaccination_appointment(
         appointment_type="VACCINATION",
         scheduled_start__date=record.scheduled_date,
         status__in=["CREATED", "CONFIRMED", "CHECKED_IN", "IN_PROGRESS"],
-        reason__contains=record.vaccine.code,
+        reason__contains=record.vaccine_code,
     ).exists()
     if existing:
         logger.debug(
             "Vaccination appointment already exists for %s on %s",
-            record.vaccine.code,
+            record.vaccine_code,
             record.scheduled_date,
         )
         return None
@@ -91,7 +91,7 @@ def create_vaccination_appointment(
         scheduled_start=start_dt,
         scheduled_end=end_dt,
         priority="ROUTINE",
-        reason=f"{record.vaccine.code} dose {record.dose_number}",
+        reason=f"{record.vaccine_code} dose {record.dose_number}",
         notes=f"Auto-generated for {record.vaccine.name}",
         created_by=created_by,
         facility=record.facility,
@@ -101,7 +101,7 @@ def create_vaccination_appointment(
     logger.info(
         "Created vaccination appointment %s for %s on %s",
         appointment.appointment_number,
-        record.vaccine.code,
+        record.vaccine_code,
         record.scheduled_date,
     )
     return appointment

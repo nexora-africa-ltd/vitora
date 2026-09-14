@@ -13,6 +13,7 @@ from hmis.apps.immunizations.models import (
     AEFIReportType,
     AEFISeverity,
     ColdChainEquipment,
+    FacilityCustomVaccine,
     FacilityVaccineConfig,
     ImmunizationRecord,
     OrganizationVaccineConfig,
@@ -90,6 +91,46 @@ class FacilityVaccineConfigSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "facility"]
 
 
+class FacilityCustomVaccineSerializer(serializers.ModelSerializer):
+    """Facility-local vaccine for non-KEPI workflows."""
+
+    billing_service_name = serializers.CharField(
+        source="billing_service.name", read_only=True, default=None
+    )
+
+    class Meta:
+        model = FacilityCustomVaccine
+        fields = [
+            "id",
+            "facility",
+            "code",
+            "name",
+            "description",
+            "disease_target",
+            "route",
+            "target_population",
+            "workflow",
+            "is_active",
+            "billing_service",
+            "billing_service_name",
+            "base_fee",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "facility", "created_at", "updated_at"]
+
+    def validate_billing_service(self, service):
+        request = self.context.get("request")
+        if request:
+            from hmis.apps.core.mixins import resolve_request_tenant
+
+            resolve_request_tenant(request)
+        facility = getattr(request, "facility", None) if request else None
+        if service and facility and service.facility_id != facility.id:
+            raise serializers.ValidationError("Billing service must belong to the active facility.")
+        return service
+
+
 # =============================================================================
 # ImmunizationRecord Serializers
 # =============================================================================
@@ -100,9 +141,9 @@ class ImmunizationRecordSerializer(serializers.ModelSerializer):
 
     patient_name = serializers.SerializerMethodField()
     patient_mrn = serializers.CharField(source="patient.mrn", read_only=True)
-    vaccine_code = serializers.CharField(source="vaccine.code", read_only=True)
-    vaccine_name = serializers.CharField(source="vaccine.name", read_only=True)
-    vaccine_program = serializers.CharField(source="vaccine.program", read_only=True)
+    vaccine_code = serializers.CharField(read_only=True)
+    vaccine_name = serializers.CharField(read_only=True)
+    vaccine_program = serializers.CharField(read_only=True)
     administered_by_name = serializers.SerializerMethodField()
     is_overdue = serializers.BooleanField(read_only=True)
     days_overdue = serializers.IntegerField(read_only=True)
@@ -115,6 +156,7 @@ class ImmunizationRecordSerializer(serializers.ModelSerializer):
             "patient_name",
             "patient_mrn",
             "vaccine",
+            "custom_vaccine",
             "vaccine_code",
             "vaccine_name",
             "vaccine_program",
@@ -143,6 +185,25 @@ class ImmunizationRecordSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+    def validate(self, attrs):
+        vaccine = attrs.get("vaccine", getattr(self.instance, "vaccine", None))
+        custom_vaccine = attrs.get("custom_vaccine", getattr(self.instance, "custom_vaccine", None))
+        if bool(vaccine) == bool(custom_vaccine):
+            raise serializers.ValidationError(
+                "Choose exactly one global or facility custom vaccine."
+            )
+        request = self.context.get("request")
+        if request:
+            from hmis.apps.core.mixins import resolve_request_tenant
+
+            resolve_request_tenant(request)
+        facility = getattr(request, "facility", None) if request else None
+        if custom_vaccine and facility and custom_vaccine.facility_id != facility.id:
+            raise serializers.ValidationError(
+                {"custom_vaccine": "Custom vaccine is not available at this facility."}
+            )
+        return attrs
+
     def get_patient_name(self, obj):
         return f"{obj.patient.first_name} {obj.patient.last_name}"
 
@@ -156,9 +217,9 @@ class ImmunizationRecordSerializer(serializers.ModelSerializer):
 class ImmunizationRecordListSerializer(serializers.ModelSerializer):
     """Lean serializer for immunization record list."""
 
-    vaccine_code = serializers.CharField(source="vaccine.code", read_only=True)
-    vaccine_name = serializers.CharField(source="vaccine.name", read_only=True)
-    vaccine_program = serializers.CharField(source="vaccine.program", read_only=True)
+    vaccine_code = serializers.CharField(read_only=True)
+    vaccine_name = serializers.CharField(read_only=True)
+    vaccine_program = serializers.CharField(read_only=True)
     is_overdue = serializers.BooleanField(read_only=True)
 
     class Meta:
@@ -167,6 +228,7 @@ class ImmunizationRecordListSerializer(serializers.ModelSerializer):
             "id",
             "patient",
             "vaccine",
+            "custom_vaccine",
             "vaccine_code",
             "vaccine_name",
             "vaccine_program",
@@ -237,6 +299,7 @@ class VaccineCampaignSerializer(serializers.ModelSerializer):
             "end_date",
             "target_population",
             "vaccines",
+            "custom_vaccines",
             "status",
             "target_count",
             "is_running",
@@ -244,6 +307,17 @@ class VaccineCampaignSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+    def validate_custom_vaccines(self, vaccines):
+        request = self.context.get("request")
+        if request:
+            from hmis.apps.core.mixins import resolve_request_tenant
+
+            resolve_request_tenant(request)
+        facility = getattr(request, "facility", None) if request else None
+        if facility and any(vaccine.facility_id != facility.id for vaccine in vaccines):
+            raise serializers.ValidationError("Custom vaccines must belong to the active facility.")
+        return vaccines
 
     def get_vaccine_names(self, obj):
         return list(obj.vaccines.values_list("name", flat=True))
@@ -278,8 +352,8 @@ class AEFISerializer(serializers.ModelSerializer):
     """Full serializer for AEFI report — aligned with MOH AEFI Reporting Form."""
 
     # Vaccine context
-    vaccine_code = serializers.CharField(source="immunization_record.vaccine.code", read_only=True)
-    vaccine_name = serializers.CharField(source="immunization_record.vaccine.name", read_only=True)
+    vaccine_code = serializers.CharField(source="immunization_record.vaccine_code", read_only=True)
+    vaccine_name = serializers.CharField(source="immunization_record.vaccine_name", read_only=True)
 
     # Patient context
     patient_name = serializers.SerializerMethodField()
@@ -397,7 +471,7 @@ class AEFISerializer(serializers.ModelSerializer):
             "lot_number": record.lot_number,
             "expiry_date": record.expiry_date,
             "vaccine_manufacturer": record.vaccine_manufacturer,
-            "route": record.vaccine.route if record.vaccine else "",
+            "route": record.vaccine_reference.route if record.vaccine_reference else "",
             "site": record.site,
             "diluent_batch_number": record.diluent_batch_number,
             "diluent_manufacturer": record.diluent_manufacturer,
@@ -506,7 +580,7 @@ class AEFIFollowUpSerializer(serializers.Serializer):
 class AEFIListSerializer(serializers.ModelSerializer):
     """Lean serializer for AEFI list."""
 
-    vaccine_code = serializers.CharField(source="immunization_record.vaccine.code", read_only=True)
+    vaccine_code = serializers.CharField(source="immunization_record.vaccine_code", read_only=True)
     patient_name = serializers.SerializerMethodField()
 
     class Meta:
