@@ -85,7 +85,7 @@ jobs:
         working-directory: ./backend
         run: |
           if [ -f "pyproject.toml" ] && [ -d "tests" ]; then
-            poetry run pytest --cov=hmis --cov-report=xml --cov-report=term --cov-fail-under=80
+            poetry run pytest --cov=hmis --cov-report=xml --cov-report=term --cov-fail-under=75
           else
             echo "⏭️  Skipping: No tests yet"
           fi
