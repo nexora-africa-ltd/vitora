@@ -118,6 +118,9 @@ export const facilityCustomVaccinesApi = {
       context: 'facilityCustomVaccinesApi.update',
     });
   },
+  delete: async (id: number): Promise<void> => {
+    await apiClient.delete(`${BASE_URL}/custom-vaccines/${id}/`);
+  },
 };
 
 // =============================================================================

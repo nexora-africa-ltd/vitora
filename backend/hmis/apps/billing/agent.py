@@ -532,7 +532,7 @@ class BillingAgentService:
                     description=f"Vaccination: {vaccine.name} (dose {immunization_record.dose_number})",
                     item_type=InvoiceItem.ItemType.VACCINATION,
                     immunization_record=immunization_record,
-                    sha_code=vaccine.billing_service.sha_code,
+                    sha_code=vaccine.sha_tariff_code or vaccine.billing_service.sha_code,
                 )
             elif vaccine.base_fee:
                 cls.add_line_item(
@@ -543,6 +543,7 @@ class BillingAgentService:
                     description=f"Vaccination: {vaccine.name} (dose {immunization_record.dose_number})",
                     item_type=InvoiceItem.ItemType.VACCINATION,
                     immunization_record=immunization_record,
+                    sha_code=vaccine.sha_tariff_code,
                 )
             else:
                 logger.warning(

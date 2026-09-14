@@ -122,6 +122,7 @@ export interface FacilityCustomVaccine {
   billing_service: number | null;
   billing_service_name: string | null;
   base_fee: string | null;
+  sha_tariff_code: string;
   created_at: string;
   updated_at: string;
 }

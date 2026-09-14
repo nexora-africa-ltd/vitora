@@ -147,6 +147,7 @@ export const FacilityCustomVaccineSchema = z.object({
   billing_service: z.number().nullable(),
   billing_service_name: z.string().nullable(),
   base_fee: z.string().nullable(),
+  sha_tariff_code: z.string(),
   created_at: z.string(),
   updated_at: z.string(),
 });

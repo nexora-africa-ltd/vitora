@@ -359,6 +359,7 @@ class FacilityCustomVaccine(FacilityScopedModel, TimeStampedModel):
         related_name="custom_vaccines",
     )
     base_fee = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    sha_tariff_code = models.CharField(max_length=50, blank=True, default="")
 
     class Meta:
         ordering = ["name", "code"]

@@ -114,6 +114,7 @@ class FacilityCustomVaccineSerializer(serializers.ModelSerializer):
             "billing_service",
             "billing_service_name",
             "base_fee",
+            "sha_tariff_code",
             "created_at",
             "updated_at",
         ]
