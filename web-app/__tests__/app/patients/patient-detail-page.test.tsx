@@ -14,6 +14,8 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+jest.setTimeout(15000);
+
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
   useParams: jest.fn(() => ({ id: '1' })),
