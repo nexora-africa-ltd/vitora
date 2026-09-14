@@ -152,6 +152,8 @@ class CatalogItemViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
         from hmis.apps.laboratory.models import TestCatalog
         from hmis.apps.procedures.models import ProcedureCatalog
 
+        self._resolve_tenant_context()
+
         search = str(request.query_params.get("search") or "").strip().lower()
         raw_kinds = str(request.query_params.get("kind") or "").strip().lower()
         requested_kinds = {token.strip() for token in raw_kinds.split(",") if token.strip()}
