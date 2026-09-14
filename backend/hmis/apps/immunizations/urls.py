@@ -8,7 +8,9 @@ from hmis.apps.immunizations.views import (
     AEFIViewSet,
     ColdChainEquipmentViewSet,
     CoverageView,
+    FacilityVaccineConfigViewSet,
     ImmunizationRecordViewSet,
+    OrganizationVaccineConfigViewSet,
     TemperatureLogViewSet,
     VaccineCampaignViewSet,
     VaccineDefinitionViewSet,
@@ -20,6 +22,14 @@ app_name = "immunizations"
 
 router = DefaultRouter()
 router.register(r"vaccines", VaccineDefinitionViewSet, basename="vaccine-definition")
+router.register(
+    r"organization-vaccine-configs",
+    OrganizationVaccineConfigViewSet,
+    basename="organization-vaccine-config",
+)
+router.register(
+    r"facility-vaccine-configs", FacilityVaccineConfigViewSet, basename="facility-vaccine-config"
+)
 router.register(r"records", ImmunizationRecordViewSet, basename="immunization-record")
 router.register(r"campaigns", VaccineCampaignViewSet, basename="vaccine-campaign")
 router.register(r"aefi", AEFIViewSet, basename="aefi")

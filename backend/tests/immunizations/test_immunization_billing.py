@@ -15,7 +15,11 @@ import pytest  # type: ignore
 
 from hmis.apps.billing.agent import BillingAgentService
 from hmis.apps.billing.models import Invoice, InvoiceItem, Service, ServiceCategory
-from hmis.apps.immunizations.models import ImmunizationRecord, VaccineDefinition
+from hmis.apps.immunizations.models import (
+    FacilityVaccineConfig,
+    ImmunizationRecord,
+    VaccineDefinition,
+)
 
 
 @pytest.fixture
@@ -56,22 +60,34 @@ def child_patient(
 
 
 @pytest.fixture
-def imm_service_category(db):
+def imm_service_category(db, sample_facility):
     return ServiceCategory.objects.create(
+        facility=sample_facility,
         code="IMM",
         name="Immunization",
     )
 
 
 @pytest.fixture
-def bcg_billing_service(bcg_vaccine, imm_service_category, test_user):
+def bcg_billing_service(bcg_vaccine, imm_service_category, test_user, sample_facility):
     return Service.objects.create(
+        facility=sample_facility,
         code=bcg_vaccine.code,
         name=f"Vaccine: {bcg_vaccine.name}",
         unit_price=Decimal("150.00"),  # Administration fee
         category=imm_service_category,
         is_active=True,
         created_by=test_user,
+    )
+
+
+@pytest.fixture
+def bcg_facility_config(bcg_vaccine, bcg_billing_service, sample_facility):
+    return FacilityVaccineConfig.objects.create(
+        facility=sample_facility,
+        vaccine=bcg_vaccine,
+        is_offered=True,
+        billing_service=bcg_billing_service,
     )
 
 
@@ -96,6 +112,7 @@ class TestImmunizationBilling:
         self,
         scheduled_record,
         bcg_billing_service,
+        bcg_facility_config,
     ):
         """Agent handler should create a VACCINATION line item."""
         # Simulate administration
@@ -123,6 +140,7 @@ class TestImmunizationBilling:
         self,
         scheduled_record,
         bcg_billing_service,
+        bcg_facility_config,
     ):
         """Should not create duplicate line items for the same record."""
         scheduled_record.status = "ADMINISTERED"
@@ -149,12 +167,13 @@ class TestImmunizationBilling:
         with caplog.at_level(logging.WARNING):
             BillingAgentService.handle_immunization_administered(scheduled_record)
 
-        assert "no billing Service or base_fee found" in caplog.text
+        assert "is not offered" in caplog.text
 
     def test_signal_triggers_on_administration(
         self,
         scheduled_record,
         bcg_billing_service,
+        bcg_facility_config,
     ):
         """post_save signal should trigger billing when status becomes ADMINISTERED."""
         # The signal in billing/apps.py connects to ImmunizationRecord post_save.
@@ -176,6 +195,7 @@ class TestImmunizationBilling:
         self,
         scheduled_record,
         bcg_billing_service,
+        bcg_facility_config,
     ):
         """Should not create billing for non-ADMINISTERED status."""
         # Record stays SCHEDULED — signal should skip
@@ -194,12 +214,14 @@ class TestImmunizationBilling:
         self,
         scheduled_record,
         bcg_billing_service,
+        bcg_facility_config,
         imm_service_category,
         test_user,
     ):
         """billing_service FK on VaccineDefinition should take priority over code lookup."""
         # Create a different Service and link it explicitly via FK
         explicit_service = Service.objects.create(
+            facility=scheduled_record.facility,
             code="IMM-BCG-SPECIAL",
             name="BCG Special Rate",
             unit_price=Decimal("200.00"),
@@ -207,9 +229,8 @@ class TestImmunizationBilling:
             is_active=True,
             created_by=test_user,
         )
-        vaccine = scheduled_record.vaccine
-        vaccine.billing_service = explicit_service
-        vaccine.save()
+        bcg_facility_config.billing_service = explicit_service
+        bcg_facility_config.save()
 
         scheduled_record.status = "ADMINISTERED"
         scheduled_record.administered_date = date.today()
@@ -226,11 +247,15 @@ class TestImmunizationBilling:
     def test_base_fee_fallback_when_no_service(
         self,
         scheduled_record,
+        sample_facility,
     ):
         """Should use VaccineDefinition.base_fee when no billing Service is found."""
-        vaccine = scheduled_record.vaccine
-        vaccine.base_fee = Decimal("100.00")
-        vaccine.save()
+        FacilityVaccineConfig.objects.create(
+            facility=sample_facility,
+            vaccine=scheduled_record.vaccine,
+            is_offered=True,
+            base_fee=Decimal("100.00"),
+        )
 
         scheduled_record.status = "ADMINISTERED"
         scheduled_record.administered_date = date.today()

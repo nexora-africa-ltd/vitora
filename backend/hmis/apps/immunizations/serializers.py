@@ -13,7 +13,9 @@ from hmis.apps.immunizations.models import (
     AEFIReportType,
     AEFISeverity,
     ColdChainEquipment,
+    FacilityVaccineConfig,
     ImmunizationRecord,
+    OrganizationVaccineConfig,
     StockTransaction,
     TemperatureLog,
     VaccineCampaign,
@@ -60,6 +62,32 @@ class VaccineDefinitionSerializer(serializers.ModelSerializer):
             "base_fee",
             "sha_tariff_code",
         ]
+
+
+class OrganizationVaccineConfigSerializer(serializers.ModelSerializer):
+    """Organization default configuration for a global vaccine definition."""
+
+    class Meta:
+        model = OrganizationVaccineConfig
+        fields = ["id", "organization", "vaccine", "is_enabled", "base_fee", "sha_tariff_code"]
+        read_only_fields = ["id", "organization"]
+
+
+class FacilityVaccineConfigSerializer(serializers.ModelSerializer):
+    """Facility-specific availability and billing overrides for a vaccine."""
+
+    class Meta:
+        model = FacilityVaccineConfig
+        fields = [
+            "id",
+            "facility",
+            "vaccine",
+            "is_offered",
+            "billing_service",
+            "base_fee",
+            "sha_tariff_code",
+        ]
+        read_only_fields = ["id", "facility"]
 
 
 # =============================================================================

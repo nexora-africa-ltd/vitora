@@ -16,11 +16,16 @@ Replaces the MCH-only vaccine models with a facility-wide solution.
 from datetime import date
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from simple_history.models import HistoricalRecords
 
 from hmis.apps.core.history import HistoryMixin
-from hmis.apps.core.mixins import FacilityScopedModel, resolve_tenant_from_related
+from hmis.apps.core.mixins import (
+    FacilityScopedModel,
+    OrganizationScopedModel,
+    resolve_tenant_from_related,
+)
 from hmis.apps.core.models import TimeStampedModel
 
 # =============================================================================
@@ -262,6 +267,61 @@ class VaccineDefinition(TimeStampedModel):
         if self.billing_service_id:
             return self.billing_service.unit_price
         return self.base_fee
+
+
+class OrganizationVaccineConfig(OrganizationScopedModel, TimeStampedModel):
+    """Organization-wide defaults for offering and billing a global vaccine definition."""
+
+    vaccine = models.ForeignKey(
+        VaccineDefinition,
+        on_delete=models.CASCADE,
+        related_name="organization_configs",
+    )
+    is_enabled = models.BooleanField(default=True)
+    base_fee = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    sha_tariff_code = models.CharField(max_length=50, blank=True, default="")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "vaccine"],
+                name="unique_organization_vaccine_config",
+            )
+        ]
+
+
+class FacilityVaccineConfig(FacilityScopedModel, TimeStampedModel):
+    """Facility-specific vaccine availability and billing overrides."""
+
+    vaccine = models.ForeignKey(
+        VaccineDefinition,
+        on_delete=models.CASCADE,
+        related_name="facility_configs",
+    )
+    is_offered = models.BooleanField(null=True, blank=True)
+    billing_service = models.ForeignKey(
+        "billing.Service",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="facility_vaccine_configs",
+    )
+    base_fee = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    sha_tariff_code = models.CharField(max_length=50, blank=True, default="")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "vaccine"],
+                name="unique_facility_vaccine_config",
+            )
+        ]
+
+    def clean(self):
+        if self.billing_service_id and self.billing_service.facility_id != self.facility_id:
+            raise ValidationError(
+                {"billing_service": "Billing service must belong to this facility."}
+            )
 
 
 # =============================================================================

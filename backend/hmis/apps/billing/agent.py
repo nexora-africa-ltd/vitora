@@ -114,6 +114,7 @@ class BillingAgentService:
         immunization_record=None,
         drug=None,
         inpatient_consumable_usage=None,
+        sha_code: str = "",
     ) -> InvoiceItem:
         """Add a billable line item to an invoice.
 
@@ -145,6 +146,7 @@ class BillingAgentService:
             immunization_record=immunization_record,
             drug=drug,
             inpatient_consumable_usage=inpatient_consumable_usage,
+            sha_code=sha_code,
         )
 
     @staticmethod
@@ -521,62 +523,53 @@ class BillingAgentService:
             )
             return
 
-        # 1) Explicit billing_service FK on VaccineDefinition (preferred)
-        service = getattr(vaccine, "billing_service", None)
-        if service and not service.is_active:
-            service = None
+        from hmis.apps.immunizations.services.vaccine_billing import resolve_vaccine_billing
 
-        # 2) Fallback: vaccine code → billing Service (e.g., Service.code == "BCG")
-        if not service:
-            service = Service.objects.filter(
-                code=vaccine.code,
-                is_active=True,
-            ).first()
+        resolved = resolve_vaccine_billing(invoice.facility, vaccine)
+        if not resolved.is_offered:
+            logger.info(
+                "Billing agent: skipped vaccination %s because it is not offered at facility %s",
+                vaccine.code,
+                invoice.facility_id,
+            )
+            return
 
-        # 3) Fallback: match by name within IMM category
-        if not service:
-            service = Service.objects.filter(
-                category__code="IMM",
-                name__icontains=vaccine.name,
-                is_active=True,
-            ).first()
-
-        if service:
+        if resolved.service:
             cls.add_line_item(
                 invoice,
-                service=service,
+                service=resolved.service,
                 quantity=1,
                 description=f"Vaccination: {vaccine.name} (dose {immunization_record.dose_number})",
                 item_type=InvoiceItem.ItemType.VACCINATION,
                 immunization_record=immunization_record,
+                sha_code=resolved.sha_tariff_code or resolved.service.sha_code,
             )
             logger.info(
                 "Billing agent: added vaccination %s to invoice %s (service %s)",
                 vaccine.code,
                 invoice.invoice_number,
-                service.code,
+                resolved.service.code,
             )
-        elif vaccine.base_fee:
-            # 4) Last resort: use base_fee from VaccineDefinition (no Service link)
+        elif resolved.unit_price:
             cls.add_line_item(
                 invoice,
                 service=None,
                 quantity=1,
-                unit_price=vaccine.base_fee,
+                unit_price=resolved.unit_price,
                 description=f"Vaccination: {vaccine.name} (dose {immunization_record.dose_number})",
                 item_type=InvoiceItem.ItemType.VACCINATION,
                 immunization_record=immunization_record,
+                sha_code=resolved.sha_tariff_code,
             )
             logger.info(
-                "Billing agent: added vaccination %s to invoice %s using base_fee %s",
+                "Billing agent: added vaccination %s to invoice %s using configured fee %s",
                 vaccine.code,
                 invoice.invoice_number,
-                vaccine.base_fee,
+                resolved.unit_price,
             )
         else:
             logger.warning(
-                "Billing agent: no billing Service or base_fee found for vaccine %s "
-                "(code=%s). Link a billing Service or set base_fee to enable auto-billing.",
+                "Billing agent: no configured billing service or fee for vaccine %s (code=%s).",
                 vaccine.name,
                 vaccine.code,
             )

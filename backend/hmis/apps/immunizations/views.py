@@ -27,7 +27,9 @@ from hmis.apps.immunizations.models import (
     AEFI,
     AEFIReportType,
     ColdChainEquipment,
+    FacilityVaccineConfig,
     ImmunizationRecord,
+    OrganizationVaccineConfig,
     StockTransaction,
     TemperatureLog,
     VaccineCampaign,
@@ -44,9 +46,11 @@ from hmis.apps.immunizations.serializers import (
     AEFISubmitToAuthoritiesSerializer,
     ColdChainEquipmentListSerializer,
     ColdChainEquipmentSerializer,
+    FacilityVaccineConfigSerializer,
     GenerateAdultScheduleSerializer,
     ImmunizationRecordListSerializer,
     ImmunizationRecordSerializer,
+    OrganizationVaccineConfigSerializer,
     StockIssueSerializer,
     StockReceiveSerializer,
     StockTransactionSerializer,
@@ -77,6 +81,26 @@ class VaccineDefinitionViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_class = VaccineDefinitionFilter
     ordering_fields = ["standard_age_days", "code", "program"]
     ordering = ["standard_age_days", "code"]
+
+
+class OrganizationVaccineConfigViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    """Organization defaults for offering global vaccine definitions."""
+
+    queryset = OrganizationVaccineConfig.objects.select_related("organization", "vaccine")
+    serializer_class = OrganizationVaccineConfigSerializer
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
+    tenant_scope = "organization"
+
+
+class FacilityVaccineConfigViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    """Facility overrides for vaccine availability and billing."""
+
+    queryset = FacilityVaccineConfig.objects.select_related(
+        "facility", "vaccine", "billing_service"
+    )
+    serializer_class = FacilityVaccineConfigSerializer
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
+    tenant_scope = "facility"
 
 
 class ImmunizationRecordViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
