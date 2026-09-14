@@ -10,6 +10,8 @@ import { parseResponse } from '@/lib/schemas/validation';
 import {
   VaccineDefinitionArraySchema,
   VaccineDefinitionSchema,
+  FacilityVaccineConfigSchema,
+  PaginatedFacilityVaccineConfigSchema,
   PaginatedImmunizationRecordListSchema,
   ImmunizationRecordSchema,
   ImmunizationRecordListItemArraySchema,
@@ -21,6 +23,7 @@ import {
 } from '@/lib/schemas/immunizations.schema';
 import type {
   VaccineDefinition,
+  FacilityVaccineConfig,
   ImmunizationRecord,
   ImmunizationRecordListItem,
   AdministerVaccineData,
@@ -51,6 +54,7 @@ export const vaccineDefinitionsApi = {
     program?: string;
     target_population?: string;
     series_name?: string;
+    offered?: boolean;
   }): Promise<VaccineDefinition[]> => {
     const response = await apiClient.get(`${BASE_URL}/vaccines/`, { params });
     return parseResponse(VaccineDefinitionArraySchema, response.data, {
@@ -62,6 +66,30 @@ export const vaccineDefinitionsApi = {
     const response = await apiClient.get(`${BASE_URL}/vaccines/${id}/`);
     return parseResponse(VaccineDefinitionSchema, response.data, {
       context: 'vaccineDefinitionsApi.get',
+    });
+  },
+};
+
+export const facilityVaccineConfigsApi = {
+  list: async (): Promise<{ count: number; results: FacilityVaccineConfig[] }> => {
+    const response = await apiClient.get(`${BASE_URL}/facility-vaccine-configs/`);
+    return parseResponse(PaginatedFacilityVaccineConfigSchema, response.data, {
+      context: 'facilityVaccineConfigsApi.list',
+    });
+  },
+  create: async (data: Omit<FacilityVaccineConfig, 'id' | 'facility'>): Promise<FacilityVaccineConfig> => {
+    const response = await apiClient.post(`${BASE_URL}/facility-vaccine-configs/`, data);
+    return parseResponse(FacilityVaccineConfigSchema, response.data, {
+      context: 'facilityVaccineConfigsApi.create',
+    });
+  },
+  update: async (
+    id: number,
+    data: Partial<Omit<FacilityVaccineConfig, 'id' | 'facility' | 'vaccine'>>
+  ): Promise<FacilityVaccineConfig> => {
+    const response = await apiClient.patch(`${BASE_URL}/facility-vaccine-configs/${id}/`, data);
+    return parseResponse(FacilityVaccineConfigSchema, response.data, {
+      context: 'facilityVaccineConfigsApi.update',
     });
   },
 };

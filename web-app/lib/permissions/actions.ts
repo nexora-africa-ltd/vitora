@@ -320,6 +320,7 @@ export const ACTION_PERMISSIONS = {
     'CHW',
   ],
   'immunizations.administer': ['NURSE', 'MIDWIFE', 'CLINICAL_OFFICER', 'DOCTOR'],
+  'immunizations.manage_vaccine_config': ['ADMIN', 'ORG-ADMIN'],
   'immunizations.manage_campaigns': ['NURSE', 'ADMIN', 'SURVEILLANCE_OFFICER'],
   'immunizations.manage_stock': ['NURSE', 'PHARMACIST', 'PHARMACY_TECH', 'ADMIN', 'STORE_KEEPER'],
   'immunizations.manage_cold_chain': [

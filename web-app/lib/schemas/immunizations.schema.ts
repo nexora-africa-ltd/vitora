@@ -114,6 +114,21 @@ export const VaccineDefinitionSchema = z.object({
 
 export const VaccineDefinitionArraySchema = z.array(VaccineDefinitionSchema);
 
+export const FacilityVaccineConfigSchema = z.object({
+  id: z.number(),
+  facility: z.number(),
+  vaccine: z.number(),
+  is_offered: z.boolean().nullable(),
+  billing_service: z.number().nullable(),
+  base_fee: z.string().nullable(),
+  sha_tariff_code: z.string(),
+});
+
+export const PaginatedFacilityVaccineConfigSchema = z.object({
+  count: z.number(),
+  results: z.array(FacilityVaccineConfigSchema),
+});
+
 // =============================================================================
 // IMMUNIZATION RECORD SCHEMAS
 // =============================================================================

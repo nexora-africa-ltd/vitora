@@ -10,7 +10,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
+from hmis.apps.core.mixins import (
+    NestedTenantScopeMixin,
+    TenantScopedViewMixin,
+    resolve_request_tenant,
+)
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import (
     ReadRequiresModelPermission,
@@ -81,6 +85,33 @@ class VaccineDefinitionViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_class = VaccineDefinitionFilter
     ordering_fields = ["standard_age_days", "code", "program"]
     ordering = ["standard_age_days", "code"]
+
+    def get_queryset(self):
+        """Optionally limit global definitions to vaccines offered at the active facility."""
+        queryset = super().get_queryset()
+        if self.request.query_params.get("offered") != "true":
+            return queryset
+
+        resolve_request_tenant(self.request)
+        facility = getattr(self.request, "facility", None)
+        if facility is None:
+            return queryset.none()
+
+        organization_vaccine_ids = set(
+            OrganizationVaccineConfig.objects.filter(
+                organization=facility.organization, is_enabled=True
+            ).values_list("vaccine_id", flat=True)
+        )
+        facility_configs = FacilityVaccineConfig.objects.filter(facility=facility).values_list(
+            "vaccine_id", "is_offered"
+        )
+        offered_ids = set(organization_vaccine_ids)
+        for vaccine_id, is_offered in facility_configs:
+            if is_offered is True:
+                offered_ids.add(vaccine_id)
+            elif is_offered is False:
+                offered_ids.discard(vaccine_id)
+        return queryset.filter(id__in=offered_ids)
 
 
 class OrganizationVaccineConfigViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):

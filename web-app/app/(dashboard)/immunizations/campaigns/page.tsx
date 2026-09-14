@@ -82,7 +82,7 @@ export default function CampaignsPage() {
 
   const { data: vaccines } = useQuery({
     queryKey: ['vaccine-defs-campaign'],
-    queryFn: () => vaccineDefinitionsApi.list({ program: 'CAMPAIGN' }),
+    queryFn: () => vaccineDefinitionsApi.list({ program: 'CAMPAIGN', offered: true }),
   });
 
   const createMutation = useMutation({

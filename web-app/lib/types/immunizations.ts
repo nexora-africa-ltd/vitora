@@ -96,6 +96,16 @@ export interface VaccineDefinition {
   sha_tariff_code: string;
 }
 
+export interface FacilityVaccineConfig {
+  id: number;
+  facility: number;
+  vaccine: number;
+  is_offered: boolean | null;
+  billing_service: number | null;
+  base_fee: string | null;
+  sha_tariff_code: string;
+}
+
 // =============================================================================
 // IMMUNIZATION RECORD
 // =============================================================================
