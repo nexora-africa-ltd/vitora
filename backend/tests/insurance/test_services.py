@@ -424,7 +424,7 @@ class TestSlade360Adapter:
         assert captured["data"]["password"] == "env-pass"
 
     @pytest.mark.django_db
-    def test_slade_auth_prefers_env_over_provider_credentials(self, provider_config, monkeypatch):
+    def test_slade_auth_prefers_provider_credentials_over_env(self, provider_config, monkeypatch):
         provider_config.api_key = "config-client-id"
         provider_config.api_secret = "config-secret"
         provider_config.api_username = "config-user"
@@ -459,10 +459,10 @@ class TestSlade360Adapter:
         service.get_access_token(force_refresh=True)
 
         assert captured["data"]["grant_type"] == "password"
-        assert captured["data"]["client_id"] == "env-client-id"
-        assert captured["data"]["client_secret"] == "env-client-secret"
-        assert captured["data"]["username"] == "env-user"
-        assert captured["data"]["password"] == "env-pass"
+        assert captured["data"]["client_id"] == "config-client-id"
+        assert captured["data"]["client_secret"] == "config-secret"
+        assert captured["data"]["username"] == "config-user"
+        assert captured["data"]["password"] == "config-pass"
 
     @pytest.mark.django_db
     def test_slade_auth_uses_password_grant_payload(
@@ -504,7 +504,7 @@ class TestSlade360Adapter:
         assert captured["headers"] == {"Content-Type": "application/x-www-form-urlencoded"}
 
     @pytest.mark.django_db
-    def test_slade_auth_uses_facility_credentials_when_provider_credentials_missing(
+    def test_slade_auth_prefers_facility_credentials_over_env_and_provider_credentials(
         self,
         provider_config,
         monkeypatch,
@@ -556,6 +556,11 @@ class TestSlade360Adapter:
                 "updated_at",
             ]
         )
+
+        monkeypatch.setenv("SLADE_CLIENT_ID", "env-client-id")
+        monkeypatch.setenv("SLADE_SECRET_KEY", "env-secret")
+        monkeypatch.setenv("SLADE_USERNAME", "env-user")
+        monkeypatch.setenv("SLADE_PASSWORD", "env-pass")
 
         service = SladeAuthService(provider_config)
         captured: dict = {}
