@@ -6,26 +6,27 @@ by billing workflows. Existing rows are preserved by default unless
 ``--force`` is supplied.
 
 How to run:
-    python manage.py seed_service_catalog [--force] [--dry-run]
+    python manage.py seed_service_catalog --facility <id|mfl_code> [--force] [--dry-run]
 
 Arguments:
-    None.
+    --facility: Target facility database ID or MFL code (required).
 
 Options:
     --force: Update existing categories/services to match seeded defaults.
     --dry-run: Show what would be created/updated without database writes.
 
 Behavior notes:
-- Creates missing categories/services by code (with name fallback lookup).
+ - Creates missing categories/services within the selected facility.
 - Uses a superuser or creates a disabled ``system`` user for ``created_by``.
 """
 
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 from hmis.apps.billing.models import Service, ServiceCategory
+from hmis.apps.core.models import Facility
 
 User = get_user_model()
 
@@ -362,6 +363,11 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
+            "--facility",
+            required=True,
+            help="Target facility database ID or MFL code.",
+        )
+        parser.add_argument(
             "--force",
             action="store_true",
             help="Overwrite existing services (updates price, SHA code, name)",
@@ -375,6 +381,12 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         force = options["force"]
         dry_run = options["dry_run"]
+        facility_identifier = str(options["facility"]).strip()
+        facility = Facility.objects.filter(mfl_code=facility_identifier).first()
+        if facility is None and facility_identifier.isdigit():
+            facility = Facility.objects.filter(pk=int(facility_identifier)).first()
+        if facility is None:
+            raise CommandError(f"No facility found for '{facility_identifier}'.")
 
         if dry_run:
             self.stdout.write(self.style.WARNING("DRY RUN — no changes will be saved\n"))
@@ -393,10 +405,14 @@ class Command(BaseCommand):
         cat_map: dict[str, ServiceCategory] = {}
 
         for cat_data in CATEGORIES:
-            # Check by code first, then fall back to name (both are unique)
-            existing = ServiceCategory.objects.filter(code=cat_data["code"]).first()
+            # Check by code first, then fall back to name within the target facility.
+            existing = ServiceCategory.objects.filter(
+                facility=facility, code=cat_data["code"]
+            ).first()
             if not existing:
-                existing = ServiceCategory.objects.filter(name=cat_data["name"]).first()
+                existing = ServiceCategory.objects.filter(
+                    facility=facility, name=cat_data["name"]
+                ).first()
             if existing:
                 cat_map[cat_data["code"]] = existing
                 cat_skipped += 1
@@ -409,7 +425,7 @@ class Command(BaseCommand):
                 if dry_run:
                     cat_map[cat_data["code"]] = None  # placeholder so services aren't skipped
                 else:
-                    obj = ServiceCategory.objects.create(**cat_data)
+                    obj = ServiceCategory.objects.create(facility=facility, **cat_data)
                     cat_map[cat_data["code"]] = obj
                 cat_created += 1
                 self.stdout.write(
@@ -434,9 +450,9 @@ class Command(BaseCommand):
                 continue
             category = cat_map[cat_code]
 
-            existing = Service.objects.filter(code=svc_data["code"]).first()
+            existing = Service.objects.filter(facility=facility, code=svc_data["code"]).first()
             if not existing:
-                existing = Service.objects.filter(name=svc_data["name"]).first()
+                existing = Service.objects.filter(facility=facility, name=svc_data["name"]).first()
             if existing:
                 if force:
                     if not dry_run:
@@ -455,6 +471,7 @@ class Command(BaseCommand):
             else:
                 if not dry_run:
                     Service.objects.create(
+                        facility=facility,
                         code=svc_data["code"],
                         category=category,
                         name=svc_data["name"],

@@ -118,6 +118,7 @@ export default function EditStaffPage() {
     first_name: '',
     middle_name: '',
     last_name: '',
+    title: '',
     employee_id: '',
     department: '',
     role: '',
@@ -181,6 +182,7 @@ export default function EditStaffPage() {
         first_name: staff.user_first_name || '',
         middle_name: staff.middle_name || '',
         last_name: staff.user_last_name || '',
+        title: staff.title || '',
         employee_id: staff.employee_id || '',
         department: staff.primary_department?.toString() || '',
         role: staff.primary_role?.toString() || '',
@@ -306,6 +308,7 @@ export default function EditStaffPage() {
           first_name: formData.first_name,
           last_name: formData.last_name,
           middle_name: formData.middle_name || undefined,
+          title: formData.title || undefined,
           employee_id: formData.employee_id,
           department: parseInt(formData.department),
           role: parseInt(formData.role),
@@ -841,6 +844,17 @@ export default function EditStaffPage() {
             <Card>
               <CardContent className="space-y-4 pt-6">
                 <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Professional Title</Label>
+                    <Input
+                      autoComplete="honorific-prefix"
+                      id="title"
+                      name="title"
+                      value={formData.title}
+                      onChange={(e) => handleChange('title', e.target.value)}
+                      placeholder="e.g., Dr., Nurse"
+                    />
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="first_name">First Name *</Label>
                     <Input

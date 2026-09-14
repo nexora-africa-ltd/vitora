@@ -134,6 +134,7 @@ export default function NewStaffPage() {
     first_name: '',
     middle_name: '',
     last_name: '',
+    title: '',
     employee_id: '',
     department: '',
     role: '',
@@ -476,6 +477,7 @@ export default function NewStaffPage() {
         first_name: formData.first_name,
         last_name: formData.last_name,
         middle_name: formData.middle_name || undefined,
+        title: formData.title || undefined,
         employee_id: formData.employee_id || undefined,
         department: parseInt(formData.department),
         role: parseInt(formData.role),
@@ -974,7 +976,18 @@ export default function NewStaffPage() {
                 <CardDescription>Basic account information for the staff member</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Professional Title</Label>
+                    <Input
+                      autoComplete="honorific-prefix"
+                      id="title"
+                      name="title"
+                      value={formData.title}
+                      onChange={(e) => handleChange('title', e.target.value)}
+                      placeholder="e.g., Dr., Nurse"
+                    />
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="first_name">
                       First Name <span className="text-destructive">*</span>

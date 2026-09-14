@@ -449,6 +449,12 @@ const _allNavItems: NavItemType[] = [
         actionKey: 'immunizations.view_records',
       },
       {
+        label: 'Vaccine Configuration',
+        href: '/immunizations/configuration',
+        icon: Settings,
+        actionKey: 'immunizations.manage_vaccine_config',
+      },
+      {
         label: 'Campaigns',
         href: '/immunizations/campaigns',
         icon: Target,

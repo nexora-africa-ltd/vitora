@@ -16,11 +16,16 @@ Replaces the MCH-only vaccine models with a facility-wide solution.
 from datetime import date
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from simple_history.models import HistoricalRecords
 
 from hmis.apps.core.history import HistoryMixin
-from hmis.apps.core.mixins import FacilityScopedModel, resolve_tenant_from_related
+from hmis.apps.core.mixins import (
+    FacilityScopedModel,
+    OrganizationScopedModel,
+    resolve_tenant_from_related,
+)
 from hmis.apps.core.models import TimeStampedModel
 
 # =============================================================================
@@ -43,6 +48,16 @@ class VaccineProgram(models.TextChoices):
     OCCUPATIONAL = "OCCUPATIONAL", "Occupational"
     TRAVEL = "TRAVEL", "Travel"
     CATCH_UP = "CATCH_UP", "Catch-Up"
+
+
+class CustomVaccineWorkflow(models.TextChoices):
+    """Supported workflows for a facility's locally managed vaccine."""
+
+    MANUAL = "MANUAL", "Manual administration"
+    CAMPAIGN = "CAMPAIGN", "Mass campaign"
+    OCCUPATIONAL = "OCCUPATIONAL", "Occupational health"
+    TRAVEL = "TRAVEL", "Travel health"
+    PRIVATE = "PRIVATE", "Private service"
 
 
 class VaccineRoute(models.TextChoices):
@@ -264,6 +279,106 @@ class VaccineDefinition(TimeStampedModel):
         return self.base_fee
 
 
+class OrganizationVaccineConfig(OrganizationScopedModel, TimeStampedModel):
+    """Organization-wide defaults for offering and billing a global vaccine definition."""
+
+    vaccine = models.ForeignKey(
+        VaccineDefinition,
+        on_delete=models.CASCADE,
+        related_name="organization_configs",
+    )
+    is_enabled = models.BooleanField(default=True)
+    base_fee = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    sha_tariff_code = models.CharField(max_length=50, blank=True, default="")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "vaccine"],
+                name="unique_organization_vaccine_config",
+            )
+        ]
+
+
+class FacilityVaccineConfig(FacilityScopedModel, TimeStampedModel):
+    """Facility-specific vaccine availability and billing overrides."""
+
+    vaccine = models.ForeignKey(
+        VaccineDefinition,
+        on_delete=models.CASCADE,
+        related_name="facility_configs",
+    )
+    is_offered = models.BooleanField(null=True, blank=True)
+    billing_service = models.ForeignKey(
+        "billing.Service",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="facility_vaccine_configs",
+    )
+    base_fee = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    sha_tariff_code = models.CharField(max_length=50, blank=True, default="")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "vaccine"],
+                name="unique_facility_vaccine_config",
+            )
+        ]
+
+    def clean(self):
+        if self.billing_service_id and self.billing_service.facility_id != self.facility_id:
+            raise ValidationError(
+                {"billing_service": "Billing service must belong to this facility."}
+            )
+
+
+class FacilityCustomVaccine(FacilityScopedModel, TimeStampedModel):
+    """A facility-only vaccine for manual, campaign, occupational, travel, or private care.
+
+    This deliberately does not extend ``VaccineDefinition``: global definitions remain
+    shared clinical reference data and only they may participate in KEPI scheduling.
+    """
+
+    code = models.CharField(max_length=30)
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True, default="")
+    disease_target = models.CharField(max_length=200, blank=True, default="")
+    route = models.CharField(max_length=5, choices=VaccineRoute.choices, blank=True, default="")
+    target_population = models.CharField(
+        max_length=20, choices=TargetPopulation.choices, default=TargetPopulation.ALL
+    )
+    workflow = models.CharField(max_length=20, choices=CustomVaccineWorkflow.choices)
+    is_active = models.BooleanField(default=True)
+    billing_service = models.ForeignKey(
+        "billing.Service",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="custom_vaccines",
+    )
+    base_fee = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    sha_tariff_code = models.CharField(max_length=50, blank=True, default="")
+
+    class Meta:
+        ordering = ["name", "code"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "code"], name="unique_facility_custom_vaccine_code"
+            )
+        ]
+
+    def clean(self):
+        if self.billing_service_id and self.billing_service.facility_id != self.facility_id:
+            raise ValidationError(
+                {"billing_service": "Billing service must belong to this facility."}
+            )
+
+    def __str__(self):
+        return f"{self.code} - {self.name} ({self.facility})"
+
+
 # =============================================================================
 # VaccineCampaign
 # =============================================================================
@@ -302,6 +417,12 @@ class VaccineCampaign(FacilityScopedModel, TimeStampedModel):
         blank=True,
         related_name="campaigns",
         help_text="Vaccines administered in this campaign",
+    )
+    custom_vaccines = models.ManyToManyField(
+        FacilityCustomVaccine,
+        blank=True,
+        related_name="campaigns",
+        help_text="Facility custom vaccines administered in this campaign",
     )
     status = models.CharField(
         max_length=20,
@@ -355,8 +476,18 @@ class ImmunizationRecord(HistoryMixin, FacilityScopedModel, TimeStampedModel):
     vaccine = models.ForeignKey(
         VaccineDefinition,
         on_delete=models.PROTECT,
+        null=True,
+        blank=True,
         related_name="immunization_records",
         help_text="Vaccine administered/scheduled",
+    )
+    custom_vaccine = models.ForeignKey(
+        FacilityCustomVaccine,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="immunization_records",
+        help_text="Facility custom vaccine administered manually or through a campaign",
     )
 
     # Schedule
@@ -489,13 +620,55 @@ class ImmunizationRecord(HistoryMixin, FacilityScopedModel, TimeStampedModel):
         ordering = ["patient", "scheduled_date"]
         verbose_name = "Immunization Record"
         verbose_name_plural = "Immunization Records"
-        unique_together = ["patient", "vaccine", "dose_number"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["patient", "vaccine", "dose_number"],
+                condition=models.Q(vaccine__isnull=False),
+                name="unique_patient_global_vaccine_dose",
+            ),
+            models.UniqueConstraint(
+                fields=["patient", "custom_vaccine", "dose_number"],
+                condition=models.Q(custom_vaccine__isnull=False),
+                name="unique_patient_custom_vaccine_dose",
+            ),
+        ]
 
     def __str__(self):
         return (
-            f"{self.vaccine.code} dose {self.dose_number} - "
+            f"{self.vaccine_code} dose {self.dose_number} - "
             f"{self.patient} ({self.get_status_display()})"
         )
+
+    @property
+    def vaccine_reference(self):
+        """Return the global or facility-local vaccine attached to this record."""
+        return self.vaccine or self.custom_vaccine
+
+    @property
+    def vaccine_code(self):
+        return self.vaccine_reference.code if self.vaccine_reference else ""
+
+    @property
+    def vaccine_name(self):
+        return self.vaccine_reference.name if self.vaccine_reference else ""
+
+    @property
+    def vaccine_program(self):
+        if self.vaccine_id:
+            return self.vaccine.program
+        return self.custom_vaccine.workflow if self.custom_vaccine_id else ""
+
+    def clean(self):
+        if bool(self.vaccine_id) == bool(self.custom_vaccine_id):
+            raise ValidationError("Choose exactly one global or facility custom vaccine.")
+        if (
+            self.custom_vaccine_id
+            and self.facility_id
+            and self.custom_vaccine.facility_id != self.facility_id
+        ):
+            raise ValidationError(
+                {"custom_vaccine": "Custom vaccine must belong to this facility."}
+            )
 
     def save(self, *args, **kwargs):
         resolve_tenant_from_related(self, encounter_field="encounter", patient_field="patient")
@@ -736,7 +909,7 @@ class AEFI(HistoryMixin, FacilityScopedModel, TimeStampedModel):
     def __str__(self):
         types_display = ", ".join(self.event_types) if self.event_types else "Unknown"
         return (
-            f"AEFI [{types_display}] - {self.immunization_record.vaccine.code} ({self.event_date})"
+            f"AEFI [{types_display}] - {self.immunization_record.vaccine_code} ({self.event_date})"
         )
 
     def save(self, *args, **kwargs):

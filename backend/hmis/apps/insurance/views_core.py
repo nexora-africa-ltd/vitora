@@ -20,6 +20,7 @@ from django.core.exceptions import ValidationError
 from django.db import DatabaseError, IntegrityError
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
@@ -511,6 +512,17 @@ class PatientInsuranceViewSet(
             .order_by("-created_at")
             .first()
         )
+        if existing_session:
+            expiry = HealthCloudWorkflowService._resolve_authorization_expiry(existing_session)
+            if expiry is not None and expiry <= timezone.now():
+                existing_session.status = InsuranceVisitAuthorization.Status.EXPIRED
+                existing_session.workflow_step = "authorization_expired"
+                existing_session.last_error = "Authorization expired; restart eligibility required."
+                existing_session.save(
+                    update_fields=["status", "workflow_step", "last_error", "updated_at"]
+                )
+                existing_session = None
+
         if existing_session:
             eligibility_payload = existing_session.eligibility_payload
             if not isinstance(eligibility_payload, dict):

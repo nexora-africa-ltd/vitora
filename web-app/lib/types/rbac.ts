@@ -263,6 +263,7 @@ export interface StaffProfileCreateData {
   middle_name?: string;
   password?: string; // Auto-generated if not provided
   employee_id?: string; // Auto-generated if not provided
+  title?: string;
   department?: number | null;
   role?: number | null;
   primary_facility?: number | null;

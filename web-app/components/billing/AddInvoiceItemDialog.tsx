@@ -4,7 +4,7 @@
  */
 'use client';
 
-import React, { useState } from 'react';
+import React, { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -16,24 +16,17 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Loader2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/format';
+import { SearchableSelect, SearchableSelectOption } from '@/components/ui/searchable-select';
+import { useBillingCatalogItems } from '@/lib/hooks/billing';
 import type { BillingCatalogItem, InvoiceItemCreateData } from '@/lib/types/billing';
 
 interface AddInvoiceItemDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   catalogItems: BillingCatalogItem[];
+  invoiceId?: number;
   onSubmit: (data: InvoiceItemCreateData) => void;
   isLoading?: boolean;
 }
@@ -42,20 +35,46 @@ export function AddInvoiceItemDialog({
   open,
   onOpenChange,
   catalogItems,
+  invoiceId,
   onSubmit,
   isLoading = false,
 }: AddInvoiceItemDialogProps) {
-  const [serviceOpen, setServiceOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<BillingCatalogItem | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [unitPrice, setUnitPrice] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [loadedItems, setLoadedItems] = useState<BillingCatalogItem[]>([]);
+  const deferredSearchQuery = useDeferredValue(searchQuery.trim());
+
+  const { data: remoteCatalogItemsData, isLoading: isCatalogLoading } = useBillingCatalogItems({
+    search: deferredSearchQuery || undefined,
+    is_active: 'all',
+    invoice_id: invoiceId,
+    page,
+    page_size: 150,
+  });
+
+  const kindLabel: Record<BillingCatalogItem['kind'], string> = {
+    service: 'Service',
+    procedure_catalog: 'Procedure',
+    lab_test_catalog: 'Lab',
+    imaging_procedure: 'Imaging',
+  };
 
   const handleCatalogItemSelect = (item: BillingCatalogItem) => {
     setSelectedItem(item);
-    setUnitPrice(item.unit_price);
-    setServiceOpen(false);
+    setUnitPrice(item.unit_price || '');
   };
+
+  const resetDialogState = useCallback(() => {
+    setSelectedItem(null);
+    setQuantity(1);
+    setUnitPrice('');
+    setSearchQuery('');
+    setPage(1);
+    setLoadedItems([]);
+  }, []);
 
   const defaultUnitPrice = selectedItem ? parseFloat(selectedItem.unit_price || '0') : 0;
   const typedUnitPrice = parseFloat(unitPrice || '0');
@@ -85,27 +104,80 @@ export function AddInvoiceItemDialog({
   };
 
   const handleClose = () => {
-    setSelectedItem(null);
-    setQuantity(1);
-    setUnitPrice('');
-    setSearchQuery('');
+    resetDialogState();
     onOpenChange(false);
   };
 
-  const filteredCatalogItems = catalogItems.filter(
-    (item) =>
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.code?.toLowerCase().includes(searchQuery.toLowerCase())
+  useEffect(() => {
+    if (!open) {
+      resetDialogState();
+    }
+  }, [open, resetDialogState]);
+
+  useEffect(() => {
+    setPage(1);
+    setLoadedItems([]);
+  }, [deferredSearchQuery, open]);
+
+  useEffect(() => {
+    const incoming = remoteCatalogItemsData?.results ?? [];
+    if (incoming.length === 0) {
+      if (!deferredSearchQuery && page === 1 && catalogItems.length > 0) {
+        setLoadedItems(catalogItems);
+      }
+      return;
+    }
+
+    if (page === 1) {
+      setLoadedItems(incoming);
+      return;
+    }
+
+    setLoadedItems((prev) => {
+      const seen = new Set(prev.map((item) => `${item.kind}:${item.id}`));
+      const merged = [...prev];
+      for (const item of incoming) {
+        const key = `${item.kind}:${item.id}`;
+        if (!seen.has(key)) {
+          merged.push(item);
+          seen.add(key);
+        }
+      }
+      return merged;
+    });
+  }, [catalogItems, deferredSearchQuery, page, remoteCatalogItemsData?.results]);
+
+  const availableCatalogItems = useMemo(() => {
+    return loadedItems;
+  }, [loadedItems]);
+
+  const selectableItems = availableCatalogItems.filter(
+    (item) => item.is_active || (item.kind === 'service' && item.unit_price === null)
   );
 
-  const totalAmount = selectedItem ? parseFloat(unitPrice || '0') * quantity : 0;
+  const options: SearchableSelectOption[] = selectableItems.map((item) => ({
+    value: `${item.kind}:${item.id}`,
+    label: item.name,
+    sublabel: `${kindLabel[item.kind]}${item.code ? ` - ${item.code}` : ''}${item.unit_price === null ? ' - Pending tariff' : ''}`,
+  }));
 
-  const kindLabel: Record<BillingCatalogItem['kind'], string> = {
-    service: 'Service',
-    procedure_catalog: 'Procedure',
-    lab_test_catalog: 'Lab',
-    imaging_procedure: 'Imaging',
+  const selectedValue = selectedItem ? `${selectedItem.kind}:${selectedItem.id}` : undefined;
+
+  const handleSelectValue = (value: string) => {
+    const [kind, idText] = value.split(':');
+    const id = Number(idText);
+    const match = selectableItems.find((item) => item.kind === kind && item.id === id);
+    if (match) {
+      handleCatalogItemSelect(match);
+    }
   };
+
+  const selectedPendingTariff = selectedItem?.kind === 'service' && selectedItem.unit_price === null;
+  const hasPendingPrice = Number(unitPrice) > 0;
+  const canLoadMore = !!remoteCatalogItemsData?.next;
+  const totalMatchingResults = remoteCatalogItemsData?.count ?? selectableItems.length;
+
+  const totalAmount = selectedItem ? parseFloat(unitPrice || '0') * quantity : 0;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -121,62 +193,57 @@ export function AddInvoiceItemDialog({
           {/* Catalog Selector */}
           <div className="space-y-2">
             <Label>Catalog Item *</Label>
-            <Popover open={serviceOpen} onOpenChange={setServiceOpen}>
-              <PopoverTrigger asChild>
+            <SearchableSelect
+              options={options}
+              value={selectedValue}
+              onValueChange={handleSelectValue}
+              placeholder="Select catalog item..."
+              searchPlaceholder="Search services, procedures, lab, imaging..."
+              emptyMessage="No catalog items found."
+              isLoading={isCatalogLoading}
+              maxVisibleOptions={500}
+              onSearchChange={(nextQuery) => {
+                setSearchQuery(nextQuery);
+              }}
+              footer={
                 <Button
+                  type="button"
                   variant="outline"
-                  role="combobox"
-                  aria-expanded={serviceOpen}
-                  className="w-full justify-between"
+                  size="sm"
+                  className="w-full"
+                  disabled={!canLoadMore || isCatalogLoading}
+                  onClick={() => setPage((prev) => prev + 1)}
                 >
-                  {selectedItem ? (
-                    <span className="truncate">{selectedItem.name}</span>
+                  {isCatalogLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading...
+                    </>
+                  ) : canLoadMore ? (
+                    'Load more results'
                   ) : (
-                    <span className="text-secondary-foreground">Select catalog item...</span>
+                    'No more results'
                   )}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[400px] p-0" align="start">
-                <Command>
-                  <CommandInput
-                    placeholder="Search services, procedures, lab, imaging..."
-                    value={searchQuery}
-                    onValueChange={setSearchQuery}
-                  />
-                  <CommandList>
-                    <CommandEmpty>No catalog items found.</CommandEmpty>
-                    <CommandGroup>
-                      {filteredCatalogItems.map((item) => (
-                        <CommandItem
-                          key={`${item.kind}-${item.id}`}
-                          value={`${item.name} ${item.code}`}
-                          onSelect={() => handleCatalogItemSelect(item)}
-                        >
-                          <Check
-                            className={cn(
-                              'mr-2 h-4 w-4',
-                              selectedItem?.id === item.id && selectedItem?.kind === item.kind
-                                ? 'opacity-100'
-                                : 'opacity-0'
-                            )}
-                          />
-                          <div className="flex-1">
-                            <div className="font-medium">{item.name}</div>
-                            <div className="text-xs text-primary-foreground">
-                              {kindLabel[item.kind]} {item.code ? `- ${item.code}` : ''}
-                            </div>
-                          </div>
-                          <div className="text-sm text-secondary-foreground">
-                            {formatCurrency(parseFloat(item.unit_price))}
-                          </div>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              Showing {selectableItems.length.toLocaleString()} of{' '}
+              {totalMatchingResults.toLocaleString()} matching results
+            </p>
+            {selectedItem && (
+              <p className="text-xs text-muted-foreground">
+                {kindLabel[selectedItem.kind]} {selectedItem.code ? `- ${selectedItem.code} - ` : ''}
+                {selectedItem.unit_price
+                  ? formatCurrency(parseFloat(selectedItem.unit_price))
+                  : 'Pending tariff'}
+              </p>
+            )}
+            {selectedPendingTariff && (
+              <p className="text-xs text-amber-700">
+                This service is pending tariff. Set a unit price to activate and bill it.
+              </p>
+            )}
           </div>
 
           {/* Quantity */}
@@ -224,7 +291,10 @@ export function AddInvoiceItemDialog({
             <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!selectedItem || isLoading}>
+            <Button
+              type="submit"
+              disabled={!selectedItem || isLoading || (selectedPendingTariff && !hasPendingPrice)}
+            >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Add Item
             </Button>

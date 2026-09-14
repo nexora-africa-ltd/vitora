@@ -119,6 +119,7 @@ type InvoiceTotalsView = Invoice & {
   gross_total?: string | null;
   sha_credit_amount?: string | null;
   insurance_credit_amount?: string | null;
+  insurance_estimated_allocation?: string | null;
   payer_credit_total?: string | null;
   patient_copay_amount?: string | null;
   patient_net_due?: string | null;
@@ -397,6 +398,7 @@ export function InvoiceDetail({
   const grossTotal = toAmount(invoiceTotals.gross_total, toAmount(invoice.total_amount));
   const shaCredit = toAmount(invoiceTotals.sha_credit_amount, 0);
   const insuranceCredit = toAmount(invoiceTotals.insurance_credit_amount, 0);
+  const insuranceEstimatedAllocation = toAmount(invoiceTotals.insurance_estimated_allocation, 0);
   const payerCreditTotal = toAmount(
     invoiceTotals.payer_credit_total,
     Math.max(0, shaCredit + insuranceCredit)
@@ -918,6 +920,20 @@ export function InvoiceDetail({
                     </TableCell>
                     <TableCell className="text-right text-emerald-700 dark:text-emerald-300">
                       -{formatKES(insuranceCredit)}
+                    </TableCell>
+                    {canEdit && onRemoveItem && <TableCell />}
+                  </TableRow>
+                )}
+                {insuranceEstimatedAllocation > insuranceCredit && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={showShaPanels ? 7 : 3}
+                      className="text-slate-600 dark:text-slate-300"
+                    >
+                      Estimated insurer allocation (unconfirmed)
+                    </TableCell>
+                    <TableCell className="text-right text-slate-600 dark:text-slate-300">
+                      {formatKES(insuranceEstimatedAllocation)}
                     </TableCell>
                     {canEdit && onRemoveItem && <TableCell />}
                   </TableRow>

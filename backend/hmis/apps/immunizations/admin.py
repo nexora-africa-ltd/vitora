@@ -7,6 +7,7 @@ from django.utils.html import format_html
 from hmis.apps.immunizations.models import (
     AEFI,
     ColdChainEquipment,
+    FacilityCustomVaccine,
     ImmunizationRecord,
     StockTransaction,
     TemperatureLog,
@@ -32,6 +33,16 @@ class VaccineDefinitionAdmin(admin.ModelAdmin):
     list_filter = ["program", "target_population", "is_active", "route"]
     search_fields = ["code", "name", "disease_target"]
     ordering = ["standard_age_days", "code"]
+
+
+@admin.register(FacilityCustomVaccine)
+class FacilityCustomVaccineAdmin(admin.ModelAdmin):
+    """Platform administration for facility-local, non-KEPI vaccine catalogues."""
+
+    list_display = ["code", "name", "workflow", "is_active", "facility"]
+    list_filter = ["workflow", "is_active", "facility"]
+    search_fields = ["code", "name", "disease_target"]
+    raw_id_fields = ["facility", "organization", "billing_service"]
 
 
 @admin.register(ImmunizationRecord)
@@ -64,7 +75,7 @@ class ImmunizationRecordAdmin(admin.ModelAdmin):
     ordering = ["-scheduled_date"]
 
     def vaccine_code(self, obj):
-        return obj.vaccine.code
+        return obj.vaccine_code
 
     vaccine_code.short_description = "Vaccine"
 
@@ -237,7 +248,7 @@ class AEFIAdmin(admin.ModelAdmin):
     )
 
     def vaccine_code(self, obj):
-        return obj.immunization_record.vaccine.code
+        return obj.immunization_record.vaccine_code
 
     vaccine_code.short_description = "Vaccine"
 

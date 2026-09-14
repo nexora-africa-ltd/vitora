@@ -181,7 +181,7 @@ export function InvoiceForm({
     const service = services.find((s) => s.id === serviceId);
     if (service) {
       form.setValue(`items.${index}.service_id`, serviceId);
-      form.setValue(`items.${index}.unit_price`, parseFloat(service.unit_price));
+      form.setValue(`items.${index}.unit_price`, parseFloat(service.unit_price || '0'));
     }
   };
 
@@ -463,7 +463,10 @@ export function InvoiceForm({
                             <SelectContent>
                               {services.map((service) => (
                                 <SelectItem key={service.id} value={service.id.toString()}>
-                                  {service.name} - {formatCurrency(parseFloat(service.unit_price))}
+                                  {service.name} -{' '}
+                                  {service.unit_price
+                                    ? formatCurrency(parseFloat(service.unit_price))
+                                    : 'Pending tariff'}
                                 </SelectItem>
                               ))}
                             </SelectContent>

@@ -1,6 +1,7 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Serializers for the insurance app."""
 
+import re
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.core.files.storage import default_storage
@@ -877,6 +878,25 @@ class InsuranceClaimCreateSerializer(serializers.ModelSerializer):
         copay_amount = min(max(raw_copay_amount, Decimal("0.00")), total_amount)
         insurer_amount = self._to_money(total_amount - copay_amount)
 
+        if copay_amount == Decimal("0.00") and insurer_amount == Decimal("0.00"):
+            item_total = Decimal("0.00")
+            item_insurer = Decimal("0.00")
+            for item in invoice.items.all():
+                line_total = self._to_money(getattr(item, "line_total", None))
+                approved = self._to_money(getattr(item, "insurance_approved_amount", None))
+                insurer_share = min(max(approved, Decimal("0.00")), line_total)
+                item_total += line_total
+                item_insurer += insurer_share
+
+            if item_total > Decimal("0.00"):
+                total_amount = item_total
+                if raw_copay_amount > Decimal("0.00"):
+                    copay_amount = min(raw_copay_amount, item_total).quantize(Decimal("0.01"))
+                    insurer_amount = (item_total - copay_amount).quantize(Decimal("0.01"))
+                else:
+                    insurer_amount = item_insurer.quantize(Decimal("0.01"))
+                    copay_amount = (item_total - item_insurer).quantize(Decimal("0.01"))
+
         if total_amount > Decimal("0.00"):
             patient_percent = self._to_percent((copay_amount / total_amount) * Decimal("100"))
             insurer_percent = self._to_percent((insurer_amount / total_amount) * Decimal("100"))
@@ -905,10 +925,15 @@ class InsuranceClaimCreateSerializer(serializers.ModelSerializer):
             f"Estimated copay KES {copay_amount} ({copay_purpose}); "
             f"insurer allocation KES {insurer_amount}. Source claim {claim.claim_number}."
         )
-        if allocation_note not in invoice.notes:
-            invoice.notes = (
-                f"{invoice.notes}\n{allocation_note}".strip() if invoice.notes else allocation_note
-            )
+        claim_note_pattern = re.compile(
+            rf"^Estimated copay KES .* Source claim {re.escape(claim.claim_number)}\.$"
+        )
+        existing_notes = [line for line in str(invoice.notes or "").splitlines() if line.strip()]
+        existing_notes = [
+            line for line in existing_notes if not claim_note_pattern.match(line.strip())
+        ]
+        existing_notes.append(allocation_note)
+        invoice.notes = "\n".join(existing_notes)
 
         invoice.save(
             update_fields=[

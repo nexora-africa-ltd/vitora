@@ -124,22 +124,28 @@ class InvoiceAdmin(admin.ModelAdmin):
     list_display = [
         "invoice_number",
         "patient",
+        "facility",
+        "organization",
         "status",
         "invoice_date",
         "due_date",
         "subtotal",
         "balance_display",
     ]
-    list_filter = ["status", "invoice_date", "due_date"]
+    list_filter = ["status", "facility", "organization", "invoice_date", "due_date"]
     search_fields = [
         "invoice_number",
         "patient__mrn",
         "patient__first_name",
         "patient__last_name",
+        "facility__name",
+        "organization__name",
         "sha_claim_number",
     ]
     readonly_fields = [
         "invoice_number",
+        "facility",
+        "organization",
         "subtotal",
         "discount_amount",
         "insurance_amount",
@@ -157,7 +163,17 @@ class InvoiceAdmin(admin.ModelAdmin):
     fieldsets = (
         (
             "Invoice Information",
-            {"fields": ("invoice_number", "patient", "encounter", "invoice_date", "due_date")},
+            {
+                "fields": (
+                    "invoice_number",
+                    "patient",
+                    "encounter",
+                    "facility",
+                    "organization",
+                    "invoice_date",
+                    "due_date",
+                )
+            },
         ),
         (
             "Amounts",

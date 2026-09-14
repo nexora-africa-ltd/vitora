@@ -114,6 +114,48 @@ export const VaccineDefinitionSchema = z.object({
 
 export const VaccineDefinitionArraySchema = z.array(VaccineDefinitionSchema);
 
+export const FacilityVaccineConfigSchema = z.object({
+  id: z.number(),
+  facility: z.number(),
+  vaccine: z.number(),
+  is_offered: z.boolean().nullable(),
+  billing_service: z.number().nullable(),
+  base_fee: z.string().nullable(),
+  sha_tariff_code: z.string(),
+});
+
+export const PaginatedFacilityVaccineConfigSchema = z.object({
+  count: z.number(),
+  results: z.array(FacilityVaccineConfigSchema),
+});
+
+export const CustomVaccineWorkflowSchema = z.enum([
+  'MANUAL', 'CAMPAIGN', 'OCCUPATIONAL', 'TRAVEL', 'PRIVATE',
+]);
+
+export const FacilityCustomVaccineSchema = z.object({
+  id: z.number(),
+  facility: z.number(),
+  code: z.string(),
+  name: z.string(),
+  description: z.string(),
+  disease_target: z.string(),
+  route: VaccineRouteSchema,
+  target_population: TargetPopulationSchema,
+  workflow: CustomVaccineWorkflowSchema,
+  is_active: z.boolean(),
+  billing_service: z.number().nullable(),
+  billing_service_name: z.string().nullable(),
+  base_fee: z.string().nullable(),
+  sha_tariff_code: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const PaginatedFacilityCustomVaccineSchema = createPaginatedSchema(
+  FacilityCustomVaccineSchema
+);
+
 // =============================================================================
 // IMMUNIZATION RECORD SCHEMAS
 // =============================================================================
@@ -121,7 +163,8 @@ export const VaccineDefinitionArraySchema = z.array(VaccineDefinitionSchema);
 export const ImmunizationRecordListItemSchema = z.object({
   id: z.number(),
   patient: z.number(),
-  vaccine: z.number(),
+  vaccine: z.number().nullable(),
+  custom_vaccine: z.number().nullable(),
   vaccine_code: z.string(),
   vaccine_name: z.string(),
   vaccine_program: z.string(),
@@ -138,7 +181,8 @@ export const ImmunizationRecordSchema = z.object({
   patient: z.number(),
   patient_name: z.string(),
   patient_mrn: z.string(),
-  vaccine: z.number(),
+  vaccine: z.number().nullable(),
+  custom_vaccine: z.number().nullable(),
   vaccine_code: z.string(),
   vaccine_name: z.string(),
   vaccine_program: z.string(),
@@ -192,6 +236,7 @@ export const VaccineCampaignSchema = z.object({
   end_date: z.string(),
   target_population: TargetPopulationSchema,
   vaccines: z.array(z.number()),
+  custom_vaccines: z.array(z.number()),
   status: CampaignStatusSchema,
   target_count: z.number(),
   is_running: z.boolean(),

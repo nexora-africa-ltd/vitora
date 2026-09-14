@@ -17,14 +17,16 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from hmis.apps.core.mixins import FacilityScopedModel
 
-class ServiceCategory(models.Model):
+
+class ServiceCategory(FacilityScopedModel):
     """Category for billable services."""
 
     id = models.BigAutoField(primary_key=True)
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
-    code = models.CharField(max_length=20, unique=True)  # e.g., "CONS", "LAB", "PHARM"
+    code = models.CharField(max_length=20)  # e.g., "CONS", "LAB", "PHARM"
     is_active = models.BooleanField(default=True)
     display_order = models.IntegerField(default=0)
 
@@ -35,6 +37,16 @@ class ServiceCategory(models.Model):
         verbose_name = "Service Category"
         verbose_name_plural = "Service Categories"
         ordering = ["display_order", "name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "code"],
+                name="unique_service_category_code_per_facility",
+            ),
+            models.UniqueConstraint(
+                fields=["facility", "name"],
+                name="unique_service_category_name_per_facility",
+            ),
+        ]
 
     def __str__(self):
         return self.name
@@ -77,19 +89,19 @@ class ICD11CodeReference(models.Model):
         super().save(*args, **kwargs)
 
 
-class Service(models.Model):
+class Service(FacilityScopedModel):
     """Billable service with pricing."""
 
     id = models.BigAutoField(primary_key=True)
     category = models.ForeignKey(ServiceCategory, on_delete=models.PROTECT, related_name="services")
 
     # Service identification
-    code = models.CharField(max_length=20, unique=True)  # e.g., "CONS-001", "LAB-CBC"
+    code = models.CharField(max_length=20)  # e.g., "CONS-001", "LAB-CBC"
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
 
     # Pricing
-    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     currency = models.CharField(max_length=3, default="KES")
 
     # SHA/Insurance coding
@@ -110,9 +122,15 @@ class Service(models.Model):
 
     class Meta:
         ordering = ["category", "name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "code"],
+                name="unique_service_code_per_facility",
+            )
+        ]
         indexes = [
-            models.Index(fields=["code"]),
-            models.Index(fields=["sha_code"]),
+            models.Index(fields=["facility", "code"]),
+            models.Index(fields=["facility", "sha_code"]),
         ]
 
     def __str__(self):
@@ -125,6 +143,10 @@ class Service(models.Model):
 
     def clean(self):
         """Validate service data."""
+        if self.facility_id and self.category.facility_id != self.facility_id:
+            raise ValidationError(
+                {"category": "Service category must belong to the same facility."}
+            )
         if self.unit_price is not None and self.unit_price <= 0:
             raise ValidationError({"unit_price": "Unit price must be greater than 0."})
 

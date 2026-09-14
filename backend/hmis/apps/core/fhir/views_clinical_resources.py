@@ -664,8 +664,8 @@ class FHIRImmunizationView(PublicFHIRReadAPIView):
             "id": str(record.id),
             "status": self.STATUS_MAP.get(record.status, "completed"),
             "vaccineCode": {
-                "coding": [{"system": "urn:vitora:vaccine", "code": record.vaccine.code}],
-                "text": record.vaccine.name,
+                "coding": [{"system": "urn:vitora:vaccine", "code": record.vaccine_code}],
+                "text": record.vaccine_name,
             },
             "patient": {"reference": f"Patient/{record.patient_id}"},
             "occurrenceDateTime": format_date(record.administered_date or record.scheduled_date),

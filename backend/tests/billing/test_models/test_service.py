@@ -18,6 +18,38 @@ from hmis.apps.billing.models import Service, ServiceCategory
 class TestServiceCategory:
     """Test ServiceCategory model."""
 
+    def test_category_code_is_unique_per_facility(
+        self,
+        sample_facility,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
+    ):
+        """Facilities may maintain categories with the same local code."""
+        from hmis.apps.core.models import Facility
+
+        other_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Second Health Centre",
+            mfl_code="88888",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        ServiceCategory.objects.create(
+            facility=sample_facility,
+            name="Consultation",
+            code="CONS",
+        )
+        category = ServiceCategory.objects.create(
+            facility=other_facility,
+            name="Consultation",
+            code="CONS",
+        )
+
+        assert category.facility_id == other_facility.id
+
     def test_service_category_creation(self):
         """Test basic service category creation."""
         category = ServiceCategory.objects.create(
@@ -32,12 +64,17 @@ class TestServiceCategory:
         assert category.is_active is True
         assert str(category) == "Consultation"
 
-    def test_service_category_code_uniqueness(self):
-        """Test that category codes must be unique."""
-        ServiceCategory.objects.create(name="Consultation", code="CONS")
+    def test_service_category_code_uniqueness(self, sample_facility):
+        """Test that category codes must be unique within a facility."""
+        ServiceCategory.objects.create(
+            facility=sample_facility,
+            name="Consultation",
+            code="CONS",
+        )
 
         with pytest.raises(IntegrityError):
             ServiceCategory.objects.create(
+                facility=sample_facility,
                 name="Consultation Services",
                 code="CONS",  # Duplicate code
             )
@@ -46,6 +83,53 @@ class TestServiceCategory:
 @pytest.mark.django_db
 class TestService:
     """Test Service model following deliverables spec requirements."""
+
+    def test_service_code_is_unique_per_facility(
+        self,
+        service_category,
+        billing_user,
+        sample_facility,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
+    ):
+        """The same service code may exist at different facility branches."""
+        from hmis.apps.core.models import Facility
+
+        other_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Second Health Centre",
+            mfl_code="88888",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        service_category.facility = sample_facility
+        service_category.save(update_fields=["facility", "organization"])
+        other_category = ServiceCategory.objects.create(
+            facility=other_facility,
+            name="Consultation",
+            code="CONS-OTHER",
+        )
+        Service.objects.create(
+            facility=sample_facility,
+            category=service_category,
+            code="CONS-GEN",
+            name="General Consultation",
+            unit_price=Decimal("500.00"),
+            created_by=billing_user,
+        )
+        other_service = Service.objects.create(
+            facility=other_facility,
+            category=other_category,
+            code="CONS-GEN",
+            name="General Consultation",
+            unit_price=Decimal("650.00"),
+            created_by=billing_user,
+        )
+
+        assert other_service.facility_id == other_facility.id
 
     def test_service_creation_with_required_fields(self, service_category, billing_user):
         """Test service created with category, code, name, price."""
@@ -65,9 +149,12 @@ class TestService:
         assert service.is_active is True
         assert str(service) == "CONS-GEN - General Consultation"
 
-    def test_service_code_uniqueness(self, service_category, billing_user):
-        """Test that duplicate service codes are rejected."""
+    def test_service_code_uniqueness(self, service_category, billing_user, sample_facility):
+        """Test that duplicate service codes are rejected within a facility."""
+        service_category.facility = sample_facility
+        service_category.save(update_fields=["facility", "organization"])
         Service.objects.create(
+            facility=sample_facility,
             category=service_category,
             code="CONS-GEN",
             name="General Consultation",
@@ -77,6 +164,7 @@ class TestService:
 
         with pytest.raises((IntegrityError, ValidationError)):
             Service.objects.create(
+                facility=sample_facility,
                 category=service_category,
                 code="CONS-GEN",  # Duplicate code
                 name="Another Consultation",

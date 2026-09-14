@@ -60,8 +60,8 @@ class SladeAuthService:
                 organization_id=getattr(config, "organization_id", None),
             ).first()
             if facility_creds is not None:
-                for key, value in facility_creds.get_credentials_dict().items():
-                    self.creds.setdefault(key, value)
+                # The dedicated facility record is the most specific credential source.
+                self.creds.update(facility_creds.get_credentials_dict())
 
     def get_access_token(self, *, force_refresh: bool = False) -> SladeAccessToken:
         cache_key = self._cache_key()
@@ -93,27 +93,27 @@ class SladeAuthService:
 
     def _request_new_token(self) -> SladeAccessToken:
         client_id = (
-            os.getenv("SLADE_CLIENT_ID", "")
-            or self.creds.get("slade_client_id", "")
+            self.creds.get("slade_client_id", "")
             or self.creds.get("api_key", "")
+            or os.getenv("SLADE_CLIENT_ID", "")
         )
         client_secret = (
-            os.getenv("SLADE_SECRET_KEY", "")
-            or os.getenv("SLADE_CLIENT_SECRET", "")
-            or self.creds.get("slade_client_secret", "")
+            self.creds.get("slade_client_secret", "")
             or self.creds.get("api_secret", "")
+            or os.getenv("SLADE_SECRET_KEY", "")
+            or os.getenv("SLADE_CLIENT_SECRET", "")
         )
         username = (
-            os.getenv("SLADE_USERNAME", "")
-            or os.getenv("SLADE_API_USERNAME", "")
-            or self.creds.get("slade_username", "")
+            self.creds.get("slade_username", "")
             or self.creds.get("username", "")
+            or os.getenv("SLADE_USERNAME", "")
+            or os.getenv("SLADE_API_USERNAME", "")
         )
         password = (
-            os.getenv("SLADE_PASSWORD", "")
-            or os.getenv("SLADE_API_PASSWORD", "")
-            or self.creds.get("slade_password", "")
+            self.creds.get("slade_password", "")
             or self.creds.get("password", "")
+            or os.getenv("SLADE_PASSWORD", "")
+            or os.getenv("SLADE_API_PASSWORD", "")
         )
 
         payload: dict[str, Any] = {

@@ -104,7 +104,7 @@ export const ServiceSchema = z.object({
   code: z.string(),
   name: z.string(),
   description: z.string(),
-  unit_price: z.string(),
+  unit_price: z.string().nullable(),
   currency: z.string(),
   sha_code: z.string(),
   icd10_code: z.string(),
@@ -120,6 +120,10 @@ export const ServiceSchema = z.object({
 
 export type ServiceSchemaType = z.infer<typeof ServiceSchema>;
 
+export const SeedDefaultServiceCatalogSchema = z.object({
+  status: z.literal('seeded'),
+});
+
 export const BillingCatalogItemKindSchema = z.enum([
   'service',
   'procedure_catalog',
@@ -133,10 +137,11 @@ export const BillingCatalogItemSchema = z.object({
   code: z.string(),
   name: z.string(),
   description: z.string(),
-  unit_price: z.string(),
+  unit_price: z.string().nullable(),
   sha_code: z.string(),
   item_type: z.string(),
   service_id: z.number().nullable(),
+  is_active: z.boolean().optional().default(true),
 });
 
 // =============================================================================
@@ -205,6 +210,7 @@ export const InvoiceSchema = z.object({
   balance: z.string().optional().nullable(),
   sha_credit_amount: z.string().optional().nullable(),
   insurance_credit_amount: z.string().optional().nullable(),
+  insurance_estimated_allocation: z.string().optional().nullable(),
   payer_credit_total: z.string().optional().nullable(),
   patient_copay_amount: z.string().optional().nullable(),
   patient_net_due: z.string().optional().nullable(),

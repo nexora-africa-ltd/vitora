@@ -18,6 +18,7 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest  # type: ignore
+from django.utils import timezone
 
 from hmis.apps.insurance.models import (
     FacilitySladeCredential,
@@ -423,7 +424,7 @@ class TestSlade360Adapter:
         assert captured["data"]["password"] == "env-pass"
 
     @pytest.mark.django_db
-    def test_slade_auth_prefers_env_over_provider_credentials(self, provider_config, monkeypatch):
+    def test_slade_auth_prefers_provider_credentials_over_env(self, provider_config, monkeypatch):
         provider_config.api_key = "config-client-id"
         provider_config.api_secret = "config-secret"
         provider_config.api_username = "config-user"
@@ -458,10 +459,10 @@ class TestSlade360Adapter:
         service.get_access_token(force_refresh=True)
 
         assert captured["data"]["grant_type"] == "password"
-        assert captured["data"]["client_id"] == "env-client-id"
-        assert captured["data"]["client_secret"] == "env-client-secret"
-        assert captured["data"]["username"] == "env-user"
-        assert captured["data"]["password"] == "env-pass"
+        assert captured["data"]["client_id"] == "config-client-id"
+        assert captured["data"]["client_secret"] == "config-secret"
+        assert captured["data"]["username"] == "config-user"
+        assert captured["data"]["password"] == "config-pass"
 
     @pytest.mark.django_db
     def test_slade_auth_uses_password_grant_payload(
@@ -503,7 +504,7 @@ class TestSlade360Adapter:
         assert captured["headers"] == {"Content-Type": "application/x-www-form-urlencoded"}
 
     @pytest.mark.django_db
-    def test_slade_auth_uses_facility_credentials_when_provider_credentials_missing(
+    def test_slade_auth_prefers_facility_credentials_over_env_and_provider_credentials(
         self,
         provider_config,
         monkeypatch,
@@ -555,6 +556,11 @@ class TestSlade360Adapter:
                 "updated_at",
             ]
         )
+
+        monkeypatch.setenv("SLADE_CLIENT_ID", "env-client-id")
+        monkeypatch.setenv("SLADE_SECRET_KEY", "env-secret")
+        monkeypatch.setenv("SLADE_USERNAME", "env-user")
+        monkeypatch.setenv("SLADE_PASSWORD", "env-pass")
 
         service = SladeAuthService(provider_config)
         captured: dict = {}
@@ -1050,6 +1056,101 @@ class TestHealthCloudWorkflowService:
         assert auth.selected_beneficiary_contact_value == "+254119***369"
         assert auth.eligibility_payload == patient_insurance.last_eligibility_payload
         assert auth.workflow_step == "otp_requested"
+
+    @pytest.mark.django_db
+    def test_validate_authorization_persists_auth_expiry(
+        self,
+        provider_config,
+        patient_insurance,
+        sample_facility,
+        sample_organization,
+        monkeypatch,
+    ):
+        from hmis.apps.insurance.services.insurance_services import HealthCloudWorkflowService
+
+        auth = InsuranceVisitAuthorization.objects.create(
+            facility=sample_facility,
+            organization=sample_organization,
+            enrollment=patient_insurance,
+            provider_config=provider_config,
+            patient=patient_insurance.patient,
+            member_number=patient_insurance.member_number,
+            status=InsuranceVisitAuthorization.Status.AUTHORIZED,
+            authorization_guid="guid-123",
+        )
+
+        class _Adapter:
+            def validate_authorization(self, payload):
+                return {
+                    "authorization_guid": "guid-123",
+                    "auth_status": "AUTHORIZED",
+                    "authorization_date": "2026-08-10T19:44:22.776484Z",
+                    "auth_expiry": "2099-08-17T22:44:22.293591+03:00",
+                }
+
+        monkeypatch.setattr(
+            "hmis.apps.insurance.services.insurance_services.get_adapter",
+            lambda cfg: _Adapter(),
+        )
+
+        service = HealthCloudWorkflowService()
+        service.validate_authorization(
+            authorization=auth,
+            facility=sample_facility,
+            organization=sample_organization,
+            payload={"auth_token": "123456"},
+        )
+
+        auth.refresh_from_db()
+        assert auth.auth_expiry is not None
+        assert auth.authorization_date is not None
+
+    @pytest.mark.django_db
+    def test_reserve_balance_rejects_expired_authorization(
+        self,
+        provider_config,
+        insurance_claim,
+        patient_insurance,
+        sample_facility,
+        sample_organization,
+        monkeypatch,
+    ):
+        from hmis.apps.insurance.services.insurance_services import HealthCloudWorkflowService
+
+        expired_iso = (timezone.now() - timedelta(days=1)).isoformat()
+        auth = InsuranceVisitAuthorization.objects.create(
+            facility=sample_facility,
+            organization=sample_organization,
+            enrollment=patient_insurance,
+            provider_config=provider_config,
+            patient=patient_insurance.patient,
+            member_number=patient_insurance.member_number,
+            status=InsuranceVisitAuthorization.Status.VALIDATED,
+            authorization_guid="guid-expired",
+            raw_payload={"auth_expiry": expired_iso},
+        )
+
+        class _Adapter:
+            def reserve_balance(self, payload):
+                raise AssertionError(
+                    "reserve_balance should not be called for expired authorization"
+                )
+
+        monkeypatch.setattr(
+            "hmis.apps.insurance.services.insurance_services.get_adapter",
+            lambda cfg: _Adapter(),
+        )
+
+        service = HealthCloudWorkflowService()
+        with pytest.raises(InsuranceValidationError, match="Authorization has expired"):
+            service.reserve_balance(
+                claim=insurance_claim,
+                authorization=auth,
+                facility=sample_facility,
+                organization=sample_organization,
+                amount=Decimal("1000.00"),
+                invoice_number="INV-TEST-001",
+            )
 
 
 # ===================================================================

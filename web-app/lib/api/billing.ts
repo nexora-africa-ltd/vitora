@@ -16,6 +16,7 @@ import { z } from 'zod';
 import {
   ServiceCategorySchema,
   ServiceSchema,
+  SeedDefaultServiceCatalogSchema,
   InvoiceSchema,
   InvoiceItemSchema,
   PaymentSchema,
@@ -58,6 +59,7 @@ import type {
   ServiceCreateData,
   ServiceUpdateData,
   ServiceListParams,
+  ServiceCategoryListParams,
   PaginatedServiceCategories,
   PaginatedServices,
   PaginatedBillingCatalogItems,
@@ -188,9 +190,7 @@ function buildQueryString<T extends object>(params: T): string {
 // Service Categories API
 // ============================================================================
 
-async function getServiceCategories(params?: {
-  is_active?: boolean;
-}): Promise<PaginatedServiceCategories> {
+async function getServiceCategories(params?: ServiceCategoryListParams): Promise<PaginatedServiceCategories> {
   const queryString = params ? buildQueryString(params) : '';
   const url = queryString
     ? `/api/billing/service-categories/?${queryString}`
@@ -245,7 +245,8 @@ async function getServices(params?: ServiceListParams): Promise<PaginatedService
 async function getCatalogItems(params?: {
   search?: string;
   kind?: string;
-  is_active?: boolean;
+  is_active?: boolean | 'all';
+  invoice_id?: number;
   page?: number;
   page_size?: number;
 }): Promise<PaginatedBillingCatalogItems> {
@@ -276,6 +277,13 @@ async function updateService(id: number, data: ServiceUpdateData): Promise<Servi
 
 async function deleteService(id: number): Promise<void> {
   await apiClient.delete(`/api/billing/services/${id}/`);
+}
+
+async function seedDefaultServiceCatalog(): Promise<{ status: 'seeded' }> {
+  const response = await apiClient.post('/api/billing/services/seed-defaults/');
+  return parseResponse(SeedDefaultServiceCatalogSchema, response.data, {
+    context: 'billingApi.seedDefaultServiceCatalog',
+  });
 }
 
 // ============================================================================
@@ -816,6 +824,7 @@ export const billingApi = {
   createService,
   updateService,
   deleteService,
+  seedDefaultServiceCatalog,
 
   // Invoices
   getInvoices,

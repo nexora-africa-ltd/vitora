@@ -20,6 +20,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from prometheus_client import Counter, Histogram
 
 if TYPE_CHECKING:
@@ -950,6 +951,10 @@ class HealthCloudWorkflowService:
         authorization.authorization_guid = str(
             response.get("edi_auth_guid") or response.get("authorization_guid") or ""
         )
+        authorization.authorization_date = self._parse_optional_datetime(
+            response.get("authorization_date")
+        )
+        authorization.auth_expiry = self._parse_optional_datetime(response.get("auth_expiry"))
         authorization.auth_status = str(response.get("auth_status") or "AUTHORIZED")
         authorization.raw_payload = response
         authorization.save(
@@ -969,6 +974,8 @@ class HealthCloudWorkflowService:
                 "status",
                 "auth_token",
                 "authorization_guid",
+                "authorization_date",
+                "auth_expiry",
                 "auth_status",
                 "raw_payload",
                 "updated_at",
@@ -1075,6 +1082,8 @@ class HealthCloudWorkflowService:
             status=InsuranceVisitAuthorization.Status.AUTHORIZED,
             auth_token=str(response.get("auth_token") or ""),
             authorization_guid=str(response.get("edi_auth_guid") or ""),
+            authorization_date=self._parse_optional_datetime(response.get("authorization_date")),
+            auth_expiry=self._parse_optional_datetime(response.get("auth_expiry")),
             auth_status="AUTHORIZED",
             raw_payload=response,
         )
@@ -1107,6 +1116,17 @@ class HealthCloudWorkflowService:
         authorization.authorization_guid = str(
             response.get("authorization_guid") or authorization.authorization_guid
         )
+        authorization.authorization_date = (
+            self._parse_optional_datetime(response.get("authorization_date"))
+            or authorization.authorization_date
+        )
+        authorization.auth_expiry = self._parse_optional_datetime(
+            response.get("auth_expiry")
+        ) or getattr(
+            authorization,
+            "auth_expiry",
+            None,
+        )
         authorization.auth_status = str(response.get("auth_status") or authorization.auth_status)
         authorization.raw_payload = response
         authorization.workflow_step = "authorization_validated"
@@ -1114,6 +1134,8 @@ class HealthCloudWorkflowService:
             update_fields=[
                 "status",
                 "authorization_guid",
+                "authorization_date",
+                "auth_expiry",
                 "auth_status",
                 "workflow_step",
                 "raw_payload",
@@ -1133,6 +1155,18 @@ class HealthCloudWorkflowService:
         invoice_number: str,
     ) -> Any:
         from hmis.apps.insurance.models import InsuranceBalanceReservation
+
+        expiry = self._resolve_authorization_expiry(authorization)
+        provider_code = getattr(
+            getattr(getattr(authorization, "provider_config", None), "provider", None),
+            "code",
+            None,
+        )
+        if expiry is not None and expiry <= timezone.now():
+            raise InsuranceValidationError(
+                "Authorization has expired. Request OTP/start visit and validate authorization again before reserving balance.",
+                provider_code=provider_code,
+            )
 
         adapter = get_adapter(authorization.provider_config)
         self._require_operation(adapter, "reserve_balance")
@@ -1163,6 +1197,38 @@ class HealthCloudWorkflowService:
             status=InsuranceBalanceReservation.Status.RESERVED,
             raw_payload=response,
         )
+
+    @staticmethod
+    def _resolve_authorization_expiry(authorization: Any):
+        expiry = getattr(authorization, "auth_expiry", None)
+        if expiry:
+            return expiry
+
+        raw_payload = getattr(authorization, "raw_payload", None)
+        if not isinstance(raw_payload, dict):
+            return None
+
+        raw_expiry = raw_payload.get("auth_expiry")
+        if not raw_expiry:
+            return None
+
+        parsed = parse_datetime(str(raw_expiry))
+        if parsed is None:
+            return None
+        if timezone.is_naive(parsed):
+            parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+        return parsed
+
+    @staticmethod
+    def _parse_optional_datetime(value: Any):
+        if not value:
+            return None
+        parsed = parse_datetime(str(value))
+        if parsed is None:
+            return None
+        if timezone.is_naive(parsed):
+            parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+        return parsed
 
     def submit_claim(self, *, claim: Any, facility: Any, organization: Any) -> dict[str, Any]:
         config = _get_config(claim.provider, facility)

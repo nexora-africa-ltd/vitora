@@ -8,6 +8,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   BadgeCent,
   CheckCircle2,
@@ -20,6 +21,7 @@ import {
   XCircle,
   Filter,
   Tag,
+  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/shared/page-header';
@@ -60,6 +62,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { billingApi } from '@/lib/api/billing';
 import {
   useServices,
   useServiceCategories,
@@ -425,7 +428,9 @@ export default function ServicesConfigPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
+  const [categoryPage, setCategoryPage] = useState(1);
   const pageSize = 20;
+  const categoryPageSize = 20;
 
   // Data
   const {
@@ -443,13 +448,25 @@ export default function ServicesConfigPage() {
     data: categoriesData,
     isLoading: categoriesLoading,
     refetch: refetchCategories,
-  } = useServiceCategories();
+  } = useServiceCategories({ page: categoryPage, page_size: categoryPageSize });
+  const { data: categoriesLookupData } = useServiceCategories({ page: 1, page_size: 500 });
 
   const services = servicesData?.results ?? [];
-  const categories = categoriesData?.results ?? [];
+  const categories = categoriesLookupData?.results ?? [];
+  const categoriesTable = categoriesData?.results ?? [];
 
   const deleteService = useDeleteService();
   const deleteCategory = useDeleteServiceCategory();
+  const seedDefaults = useMutation({
+    mutationFn: billingApi.seedDefaultServiceCatalog,
+    onSuccess: async () => {
+      await Promise.all([refetchServices(), refetchCategories()]);
+      toast.success('Default services and categories seeded for the active facility');
+    },
+    onError: () => {
+      toast.error('Failed to seed default services');
+    },
+  });
 
   // Dialog state
   const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
@@ -461,6 +478,7 @@ export default function ServicesConfigPage() {
     id: number;
     name: string;
   } | null>(null);
+  const [seedConfirmOpen, setSeedConfirmOpen] = useState(false);
 
   // Stats
   const activeServices = services.filter((s) => s.is_active).length;
@@ -477,6 +495,11 @@ export default function ServicesConfigPage() {
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const hasPrev = page > 1;
   const hasNext = page < totalPages;
+  const totalCategories = categoriesData?.count ?? 0;
+  const totalCategoryPages = Math.max(1, Math.ceil(totalCategories / categoryPageSize));
+  const hasPrevCategories = categoryPage > 1;
+  const hasNextCategories = categoryPage < totalCategoryPages;
+  const canSeedDefaults = (servicesData?.count ?? 0) === 0 || totalCategories === 0;
 
   const handleRefresh = async () => {
     await refresh();
@@ -525,6 +548,12 @@ export default function ServicesConfigPage() {
         <PageHeader
           title="Service Catalog"
           helpContent="Manage billable services and service categories. Services define what can be added to invoices, including pricing and SHA codes."
+          actions={canSeedDefaults ? (
+            <Button variant="outline" onClick={() => setSeedConfirmOpen(true)}>
+              <Sparkles className="mr-2 h-4 w-4" />
+              Seed Defaults
+            </Button>
+          ) : undefined}
         />
 
         {/* Stats */}
@@ -544,7 +573,7 @@ export default function ServicesConfigPage() {
           />
           <AdminStatCard
             title="Categories"
-            value={categories.length}
+            value={totalCategories}
             description={`${activeCategories} active`}
             icon={<FolderOpen className="h-4 w-4 text-muted-foreground" />}
           />
@@ -672,7 +701,7 @@ export default function ServicesConfigPage() {
                         <div className="mt-2 flex items-center justify-between text-sm">
                           <span className="text-muted-foreground">{s.category_name}</span>
                           <span className="font-medium">
-                            KES {Number(s.unit_price).toLocaleString()}
+                            {s.unit_price ? `KES ${Number(s.unit_price).toLocaleString()}` : 'Pending tariff'}
                           </span>
                         </div>
                         <div className="mt-3 flex gap-2">
@@ -719,7 +748,8 @@ export default function ServicesConfigPage() {
                         sortable: true,
                         sortType: 'number',
                         sortFn: (a, b) => Number(a.unit_price) - Number(b.unit_price),
-                        cell: (s) => Number(s.unit_price).toLocaleString(),
+                        cell: (s) =>
+                          s.unit_price ? Number(s.unit_price).toLocaleString() : 'Pending tariff',
                       },
                       {
                         key: 'sha_code',
@@ -807,7 +837,7 @@ export default function ServicesConfigPage() {
                   <FolderOpen className="h-5 w-5" />
                   Service Categories
                   <Badge variant="secondary" className="ml-1">
-                    {categories.length}
+                    {totalCategories}
                   </Badge>
                 </CardTitle>
               </CardHeader>
@@ -820,7 +850,7 @@ export default function ServicesConfigPage() {
                   </div>
                 ) : (
                   <ResponsiveTable
-                    data={categories}
+                    data={categoriesTable}
                     emptyMessage="No categories yet. Create one to organize your services."
                     keyExtractor={(c) => c.id}
                     defaultSortColumn="display_order"
@@ -928,6 +958,30 @@ export default function ServicesConfigPage() {
                 )}
               </CardContent>
             </Card>
+
+            {totalCategoryPages > 1 && (
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCategoryPage((p) => p - 1)}
+                  disabled={!hasPrevCategories}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Page {categoryPage} of {totalCategoryPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCategoryPage((p) => p + 1)}
+                  disabled={!hasNextCategories}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
 
@@ -973,6 +1027,31 @@ export default function ServicesConfigPage() {
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={seedConfirmOpen} onOpenChange={setSeedConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Seed default services?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This adds the standard default categories and services to the active facility. Existing
+                services are preserved unless their codes already match a default.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={seedDefaults.isPending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={seedDefaults.isPending}
+                onClick={() => {
+                  seedDefaults.mutate();
+                  setSeedConfirmOpen(false);
+                }}
+              >
+                {seedDefaults.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Seed Defaults
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
