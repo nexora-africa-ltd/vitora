@@ -762,10 +762,10 @@ class TestFlagOverdueInvoices:
 class TestSubmitPendingSHAClaims:
     """Tests for BillingAgentService.submit_pending_sha_claims."""
 
-    def test_submits_draft_claims(
+    def test_submits_valid_claims_when_explicitly_invoked(
         self, db, sample_patient, sample_encounter, sha_member, test_user
     ):
-        """Should submit validated draft SHA claims."""
+        """Should submit validated draft SHA claims when explicitly invoked."""
         from hmis.apps.billing.agent import BillingAgentService
 
         invoice = Invoice.objects.create(
@@ -874,13 +874,17 @@ class TestBillingCeleryTasks:
             mock.assert_called_once()
 
     def test_submit_pending_sha_claims_task(self, db):
-        """Task should call BillingAgentService.submit_pending_sha_claims."""
+        """Legacy task should not submit claims without an explicit user action."""
         from hmis.apps.billing.tasks import submit_pending_sha_claims
 
         with patch("hmis.apps.billing.agent.BillingAgentService.submit_pending_sha_claims") as mock:
-            mock.return_value = 0
             result = submit_pending_sha_claims()
-            mock.assert_called_once()
+
+        assert result == {
+            "status": "disabled",
+            "reason": "Automatic SHA claim submission is disabled.",
+        }
+        mock.assert_not_called()
 
 
 # ============================================================================
@@ -907,13 +911,13 @@ class TestBillingBeatSchedule:
         task_names = [v["task"] for v in schedule.values()]
         assert "hmis.apps.billing.tasks.flag_overdue_invoices" in task_names
 
-    def test_submit_sha_claims_in_beat_schedule(self):
-        """Submit SHA claims task should be in Celery beat schedule."""
+    def test_submit_sha_claims_not_in_beat_schedule(self):
+        """Automatic SHA claim submission must not be scheduled."""
         from hmis.celery import app
 
         schedule = app.conf.beat_schedule
         task_names = [v["task"] for v in schedule.values()]
-        assert "hmis.apps.billing.tasks.submit_pending_sha_claims" in task_names
+        assert "hmis.apps.billing.tasks.submit_pending_sha_claims" not in task_names
 
     def test_poll_sha_claim_statuses_in_beat_schedule(self):
         """Poll SHA claim statuses task should be in Celery beat schedule."""

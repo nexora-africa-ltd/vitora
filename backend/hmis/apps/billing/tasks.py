@@ -5,7 +5,6 @@ Billing Celery tasks for scheduled automation.
 Tasks:
 - apply_daily_bed_charges: Midnight — charge active IPD admissions
 - flag_overdue_invoices: 6 AM daily — mark past-due invoices
-- submit_pending_sha_claims: Hourly — batch submit SHA claims to SHA API
 - poll_preauth_statuses: Every 5 min — poll DHA for preauth decision updates
 - refresh_sha_interventions: Weekly — re-scrape OCL intervention catalog
 """
@@ -61,10 +60,11 @@ def flag_overdue_invoices():
 
 @shared_task(name="hmis.apps.billing.tasks.submit_pending_sha_claims")
 def submit_pending_sha_claims():
-    """Batch-submit draft SHA claims to the SHA API."""
-    from hmis.apps.billing.agent import BillingAgentService
-
-    return BillingAgentService.submit_pending_sha_claims()
+    """Keep legacy queued tasks from submitting SHA claims automatically."""
+    return {
+        "status": "disabled",
+        "reason": "Automatic SHA claim submission is disabled.",
+    }
 
 
 @shared_task(name="hmis.apps.billing.tasks.poll_sha_claim_statuses")

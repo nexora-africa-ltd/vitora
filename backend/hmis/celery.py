@@ -168,11 +168,6 @@ app.conf.beat_schedule = {
         "task": "hmis.apps.billing.tasks.flag_overdue_invoices",
         "schedule": crontab(minute=0, hour=6),
     },
-    # Billing agent: Submit pending SHA claims hourly
-    "billing-submit-pending-sha-claims": {
-        "task": "hmis.apps.billing.tasks.submit_pending_sha_claims",
-        "schedule": crontab(minute=30, hour="*/1"),
-    },
     # Billing agent: Poll SHA API for claim status updates every 15 minutes
     "billing-poll-sha-claim-statuses": {
         "task": "hmis.apps.billing.tasks.poll_sha_claim_statuses",
