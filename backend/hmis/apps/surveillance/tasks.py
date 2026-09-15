@@ -69,8 +69,10 @@ def generate_idsr_weekly_report(
             report = IDSRReportingService.generate_previous_week_report()
 
         logger.info(
-            f"Generated IDSR report: W{report.epi_week:02d}/{report.epi_year} - "
-            f"{report.total_cases} cases"
+            "Generated IDSR report: W%02d/%s - %s cases",
+            report.epi_week,
+            report.epi_year,
+            report.total_cases,
         )
 
         return {
@@ -92,7 +94,7 @@ def generate_idsr_weekly_report(
         AssertionError,
         ImportError,
     ) as e:
-        logger.error(f"Failed to generate IDSR report: {e}")
+        logger.error("Failed to generate IDSR report: %s", e)
         raise
 
 
@@ -112,7 +114,7 @@ def check_overdue_notifications() -> dict:
         overdue_cases = SurveillanceService.check_overdue_cases()
 
         if overdue_cases:
-            logger.warning(f"Found {len(overdue_cases)} overdue notifications")
+            logger.warning("Found %s overdue notifications", len(overdue_cases))
 
         return {
             "overdue_count": len(overdue_cases),
@@ -128,7 +130,7 @@ def check_overdue_notifications() -> dict:
         AssertionError,
         ImportError,
     ) as e:
-        logger.error(f"Failed to check overdue notifications: {e}")
+        logger.error("Failed to check overdue notifications: %s", e)
         raise
 
 
@@ -164,7 +166,7 @@ def check_outbreak_thresholds() -> dict:
                 SurveillanceService.check_outbreak_thresholds(threshold.disease, threshold.county)
 
         if exceeded:
-            logger.warning(f"Outbreak thresholds exceeded: {len(exceeded)}")
+            logger.warning("Outbreak thresholds exceeded: %s", len(exceeded))
 
         return {
             "thresholds_checked": thresholds.count(),
@@ -180,7 +182,7 @@ def check_outbreak_thresholds() -> dict:
         AssertionError,
         ImportError,
     ) as e:
-        logger.error(f"Failed to check outbreak thresholds: {e}")
+        logger.error("Failed to check outbreak thresholds: %s", e)
         raise
 
 
@@ -216,7 +218,7 @@ def submit_idsr_to_dhis2(report_id: int) -> dict:
         }
 
     except IDSRWeeklyReport.DoesNotExist:
-        logger.error(f"IDSR report {report_id} not found")
+        logger.error("IDSR report %s not found", report_id)
         return {"success": False, "error": f"Report {report_id} not found"}
     except (
         AttributeError,
@@ -227,5 +229,5 @@ def submit_idsr_to_dhis2(report_id: int) -> dict:
         AssertionError,
         ImportError,
     ) as e:
-        logger.error(f"Failed to submit IDSR report to DHIS2: {e}")
+        logger.error("Failed to submit IDSR report to DHIS2: %s", e)
         raise

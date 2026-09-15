@@ -216,8 +216,11 @@ class SocialWorkReferralViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        ):
+            return Response(
+                {"error": "Unable to update referral status."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         AuditLog.log(
             action="sw_referral_status_change",
@@ -259,8 +262,11 @@ class SocialWorkReferralViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        ):
+            return Response(
+                {"error": "Unable to accept referral."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         AuditLog.log(
             action="sw_referral_accepted",
@@ -576,8 +582,11 @@ class SocialWorkCaseViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        ):
+            return Response(
+                {"error": "Unable to update case status."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         AuditLog.log(
             action="sw_case_status_change",

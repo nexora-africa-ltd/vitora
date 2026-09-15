@@ -45,6 +45,11 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_log_field(value: object) -> str:
+    text = str(value)
+    return text.replace("\r", " ").replace("\n", " ")
+
+
 def _azure_kms_handled_exceptions() -> tuple[type[Exception], ...]:
     """Exceptions expected from Azure SDK/KMS operations."""
     base: tuple[type[Exception], ...] = (
@@ -122,7 +127,11 @@ class AzureKeyVaultProvider(KMSProvider):
             self._EncryptionAlgorithm,
         ) = _get_azure_imports()
 
-        logger.info(f"AzureKeyVaultProvider initialized for vault: {vault_url}, key: {key_name}")
+        logger.info(
+            "AzureKeyVaultProvider initialized for vault: %s, key: %s",
+            _sanitize_log_field(vault_url),
+            _sanitize_log_field(key_name),
+        )
 
     @cached_property
     def _credential(self):
@@ -204,7 +213,7 @@ class AzureKeyVaultProvider(KMSProvider):
             return result
 
         except _azure_kms_handled_exceptions() as e:
-            logger.error(f"Azure encryption failed: {e}")
+            logger.error("Azure encryption failed (%s)", type(e).__name__)
             raise EncryptionError(f"Azure Key Vault encryption failed: {e}") from e
 
     def decrypt(self, ciphertext: bytes, context: dict[str, str] | None = None) -> bytes:
@@ -268,7 +277,7 @@ class AzureKeyVaultProvider(KMSProvider):
         except DecryptionError:
             raise
         except _azure_kms_handled_exceptions() as e:
-            logger.error(f"Azure decryption failed: {e}")
+            logger.error("Azure decryption failed (%s)", type(e).__name__)
             raise DecryptionError(f"Azure Key Vault decryption failed: {e}") from e
 
     def encrypt_string(self, plaintext: str, context: dict[str, str] | None = None) -> str:
@@ -319,13 +328,15 @@ class AzureKeyVaultProvider(KMSProvider):
             new_key = self._key_client.rotate_key(self._key_name)
 
             logger.info(
-                f"Azure key rotated: {self._key_name}, new version: {new_key.properties.version}"
+                "Azure key rotated: %s, new version: %s",
+                _sanitize_log_field(self._key_name),
+                _sanitize_log_field(new_key.properties.version),
             )
 
             return self._key_to_metadata(new_key)
 
         except _azure_kms_handled_exceptions() as e:
-            logger.error(f"Azure key rotation failed: {e}")
+            logger.error("Azure key rotation failed (%s)", type(e).__name__)
             raise KeyRotationError(f"Failed to rotate Azure key: {e}") from e
 
     def get_key_metadata(self) -> KeyMetadata:
@@ -339,7 +350,7 @@ class AzureKeyVaultProvider(KMSProvider):
             key = self._key_client.get_key(self._key_name, self._key_version)
             return self._key_to_metadata(key)
         except _azure_kms_handled_exceptions() as e:
-            logger.error(f"Failed to get key metadata: {e}")
+            logger.error("Failed to get key metadata (%s)", type(e).__name__)
             raise KeyNotFoundError(f"Key not found: {self._key_name}") from e
 
     def _key_to_metadata(self, key) -> KeyMetadata:
@@ -375,7 +386,7 @@ class AzureKeyVaultProvider(KMSProvider):
             key = self._key_client.get_key(self._key_name)
             return key.properties.enabled
         except _azure_kms_handled_exceptions() as e:
-            logger.error(f"Azure health check failed: {e}")
+            logger.error("Azure health check failed (%s)", type(e).__name__)
             return False
 
     def supports_automatic_rotation(self) -> bool:
@@ -415,10 +426,11 @@ class AzureKeyVaultProvider(KMSProvider):
 
             self._key_client.update_key_rotation_policy(self._key_name, policy)
             logger.info(
-                f"Configured rotation policy for {self._key_name}: "
-                f"rotate every {rotate_after_days} days"
+                "Configured rotation policy for %s: rotate every %d days",
+                _sanitize_log_field(self._key_name),
+                rotate_after_days,
             )
 
         except _azure_kms_handled_exceptions() as e:
-            logger.error(f"Failed to configure rotation policy: {e}")
+            logger.error("Failed to configure rotation policy (%s)", type(e).__name__)
             raise KeyRotationError(f"Failed to configure rotation policy: {e}") from e

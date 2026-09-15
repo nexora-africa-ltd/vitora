@@ -471,9 +471,9 @@ class AllergyViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                     ],
                 }
             )
-        except TerminologyError as e:
+        except TerminologyError:
             return Response(
-                {"error": str(e)},
+                {"error": "Unable to search HPT substances at this time."},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 

@@ -33,7 +33,7 @@ async def broadcast_ward_event(ward_id: int, event_type: str, data: dict) -> Non
             "data": data,
         },
     )
-    logger.info(f"Broadcasted {event_type} event to ward {ward_id}")
+    logger.info("Broadcasted %s event to ward %s", event_type, ward_id)
 
 
 async def broadcast_supervisor_alert(event_type: str, data: dict) -> None:
@@ -55,7 +55,7 @@ async def broadcast_supervisor_alert(event_type: str, data: dict) -> None:
             "data": data,
         },
     )
-    logger.info(f"Broadcasted supervisor alert: {event_type}")
+    logger.info("Broadcasted supervisor alert: %s", event_type)
 
 
 def broadcast_ward_event_sync(ward_id: int, event_type: str, data: dict) -> None:

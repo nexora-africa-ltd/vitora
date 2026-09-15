@@ -24,6 +24,11 @@ from urllib3.util.retry import Retry
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_log_field(value: object) -> str:
+    text = str(value)
+    return text.replace("\r", " ").replace("\n", " ")
+
+
 # Standard FHIR media types
 FHIR_JSON_CONTENT_TYPE = "application/fhir+json"
 FHIR_XML_CONTENT_TYPE = "application/fhir+xml"
@@ -261,9 +266,9 @@ class FHIRClient:
             if self.check_health():
                 logger.info("FHIR server is available")
                 return True
-            logger.debug(f"Waiting for FHIR server... ({poll_interval}s)")
+            logger.debug("Waiting for FHIR server... (%ss)", poll_interval)
             time.sleep(poll_interval)
-        logger.error(f"FHIR server not available after {max_wait_seconds}s")
+        logger.error("FHIR server not available after %ss", max_wait_seconds)
         return False
 
     def _build_url(self, *parts: str) -> str:
@@ -311,23 +316,23 @@ class FHIRClient:
 
         except requests.exceptions.ConnectionError as e:
             elapsed_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"FHIR connection error: {e}")
+            logger.error("FHIR connection error (%s)", type(e).__name__)
             raise FHIRConnectionError(f"Failed to connect to FHIR server: {e}")
 
         except requests.exceptions.Timeout as e:
             elapsed_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"FHIR request timeout: {e}")
+            logger.error("FHIR request timeout (%s)", type(e).__name__)
             raise FHIRConnectionError(f"FHIR request timed out after {self.timeout}s")
 
         except requests.exceptions.RetryError as e:
             elapsed_ms = (time.perf_counter() - start_time) * 1000
             # RetryError wraps connection failures after max retries
-            logger.error(f"FHIR connection error (max retries exceeded): {e}")
+            logger.error("FHIR connection error (max retries exceeded: %s)", type(e).__name__)
             raise FHIRConnectionError(f"Failed to connect to FHIR server after retries: {e}")
 
         except requests.exceptions.RequestException as e:
             elapsed_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"FHIR request error: {e}")
+            logger.error("FHIR request error (%s)", type(e).__name__)
             raise FHIRClientError(f"FHIR request failed: {e}")
 
     def _parse_response(self, response: requests.Response, elapsed_ms: float) -> FHIRResponse:
@@ -419,7 +424,7 @@ class FHIRClient:
         if if_none_exist:
             headers["If-None-Exist"] = if_none_exist
 
-        logger.debug(f"Creating {resource_type} resource")
+        logger.debug("Creating %s resource", _sanitize_log_field(resource_type))
         result = self._make_request("POST", url, data=resource, headers=headers)
 
         if result.status_code == 201:
@@ -428,7 +433,11 @@ class FHIRClient:
             )
         elif result.status_code == 200:
             # Conditional create - resource already exists
-            logger.info(f"Resource already exists: {resource_type}/{result.resource_id}")
+            logger.info(
+                "Resource already exists: %s/%s",
+                _sanitize_log_field(resource_type),
+                _sanitize_log_field(result.resource_id),
+            )
         elif result.status_code == 400:
             raise FHIRValidationError(f"Validation failed: {result.get_error_message()}", result)
         elif result.status_code == 409:
@@ -462,14 +471,23 @@ class FHIRClient:
         else:
             url = self._build_url(resource_type, resource_id)
 
-        logger.debug(f"Reading {resource_type}/{resource_id}")
+        logger.debug(
+            "Reading %s/%s",
+            _sanitize_log_field(resource_type),
+            _sanitize_log_field(resource_id),
+        )
         result = self._make_request("GET", url)
 
         if result.status_code == 404:
             raise FHIRNotFoundError(f"{resource_type}/{resource_id} not found", result)
 
         if result.success:
-            logger.debug(f"Read {resource_type}/{resource_id} in {result.response_time_ms:.1f}ms")
+            logger.debug(
+                "Read %s/%s in %.1fms",
+                _sanitize_log_field(resource_type),
+                _sanitize_log_field(resource_id),
+                result.response_time_ms,
+            )
 
         return result
 
@@ -509,7 +527,11 @@ class FHIRClient:
         # Ensure resource has correct ID
         resource = {**resource, "id": resource_id}
 
-        logger.debug(f"Updating {resource_type}/{resource_id}")
+        logger.debug(
+            "Updating %s/%s",
+            _sanitize_log_field(resource_type),
+            _sanitize_log_field(resource_id),
+        )
         result = self._make_request("PUT", url, data=resource, headers=headers)
 
         if result.status_code == 404:
@@ -518,7 +540,12 @@ class FHIRClient:
             raise FHIRConflictError(f"Version conflict: {result.get_error_message()}", result)
 
         if result.success:
-            logger.info(f"Updated {resource_type}/{resource_id} in {result.response_time_ms:.1f}ms")
+            logger.info(
+                "Updated %s/%s in %.1fms",
+                _sanitize_log_field(resource_type),
+                _sanitize_log_field(resource_id),
+                result.response_time_ms,
+            )
 
         return result
 
@@ -552,7 +579,11 @@ class FHIRClient:
         if if_match:
             headers["If-Match"] = if_match
 
-        logger.debug(f"Patching {resource_type}/{resource_id}")
+        logger.debug(
+            "Patching %s/%s",
+            _sanitize_log_field(resource_type),
+            _sanitize_log_field(resource_id),
+        )
         result = self._make_request("PATCH", url, data=patch_operations, headers=headers)
 
         if result.status_code == 404:
@@ -577,11 +608,20 @@ class FHIRClient:
         """
         url = self._build_url(resource_type, resource_id)
 
-        logger.debug(f"Deleting {resource_type}/{resource_id}")
+        logger.debug(
+            "Deleting %s/%s",
+            _sanitize_log_field(resource_type),
+            _sanitize_log_field(resource_id),
+        )
         result = self._make_request("DELETE", url)
 
         if result.success:
-            logger.info(f"Deleted {resource_type}/{resource_id} in {result.response_time_ms:.1f}ms")
+            logger.info(
+                "Deleted %s/%s in %.1fms",
+                _sanitize_log_field(resource_type),
+                _sanitize_log_field(resource_id),
+                result.response_time_ms,
+            )
 
         return result
 
@@ -617,7 +657,11 @@ class FHIRClient:
         if count:
             search_params["_count"] = count
 
-        logger.debug(f"Searching {resource_type} with params: {search_params}")
+        logger.debug(
+            "Searching %s with params: %s",
+            _sanitize_log_field(resource_type),
+            _sanitize_log_field(search_params),
+        )
         result = self._make_request("GET", url, params=search_params)
 
         search_result = FHIRSearchResult(
@@ -643,8 +687,10 @@ class FHIRClient:
                     search_result.link[relation] = url
 
         logger.debug(
-            f"Search returned {len(search_result.resources)} of {search_result.total} "
-            f"resources in {search_result.response_time_ms:.1f}ms"
+            "Search returned %d of %s resources in %.1fms",
+            len(search_result.resources),
+            search_result.total,
+            search_result.response_time_ms,
         )
 
         return search_result
@@ -673,16 +719,22 @@ class FHIRClient:
         """
         if bundle.get("type") != bundle_type:
             logger.warning(
-                f"Bundle type mismatch: expected {bundle_type}, got {bundle.get('type')}"
+                "Bundle type mismatch: expected %s, got %s",
+                _sanitize_log_field(bundle_type),
+                _sanitize_log_field(bundle.get("type")),
             )
 
         url = self.base_url
 
-        logger.debug(f"Submitting {bundle_type} bundle")
+        logger.debug("Submitting %s bundle", _sanitize_log_field(bundle_type))
         result = self._make_request("POST", url, data=bundle)
 
         if result.success:
-            logger.info(f"Submitted {bundle_type} bundle in {result.response_time_ms:.1f}ms")
+            logger.info(
+                "Submitted %s bundle in %.1fms",
+                _sanitize_log_field(bundle_type),
+                result.response_time_ms,
+            )
 
         return result
 
@@ -817,7 +869,7 @@ class FHIRClient:
             "_cascade": "delete",
         }
 
-        logger.warning(f"Expunging all {resource_type or 'resources'}")
+        logger.warning("Expunging all %s", _sanitize_log_field(resource_type or "resources"))
         return self._make_request("POST", url, data={}, params=params)
 
 

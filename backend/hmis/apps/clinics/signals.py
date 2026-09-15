@@ -64,7 +64,7 @@ def clinic_visit_post_save(sender, instance, created, **kwargs):
         if created:
             # New patient added to queue
             broadcast_patient_added(instance)
-            logger.debug(f"Broadcasted patient_added for visit {instance.id}")
+            logger.debug("Broadcasted patient_added for visit %s", instance.id)
 
             publish_event(
                 event_type=ClinicalEvents.CLINIC_VISIT_CREATED,
@@ -94,7 +94,7 @@ def clinic_visit_post_save(sender, instance, created, **kwargs):
                     logger.debug("SHA consent/claim trigger skipped (billing module unavailable)")
     except _clinic_signal_handled_exceptions() as e:
         # Don't let WebSocket errors break the save operation
-        logger.error(f"Error broadcasting clinic visit event: {e}")
+        logger.error("Error broadcasting clinic visit event: %s", e)
 
 
 @receiver(pre_save, sender=ClinicVisit)
@@ -143,20 +143,20 @@ def clinic_visit_status_change(sender, instance, created, **kwargs):
         # Broadcast based on new status
         if instance.status == "CALLED":
             broadcast_patient_called(instance)
-            logger.debug(f"Broadcasted patient_called for visit {instance.id}")
+            logger.debug("Broadcasted patient_called for visit %s", instance.id)
 
         elif instance.status == "IN_CONSULTATION":
             broadcast_consultation_started(instance)
-            logger.debug(f"Broadcasted consultation_started for visit {instance.id}")
+            logger.debug("Broadcasted consultation_started for visit %s", instance.id)
 
         elif instance.status == "COMPLETED":
             broadcast_visit_completed(instance)
-            logger.debug(f"Broadcasted visit_completed for visit {instance.id}")
+            logger.debug("Broadcasted visit_completed for visit %s", instance.id)
 
         elif instance.status in ("CANCELLED", "NO_SHOW"):
             reason = "cancelled" if instance.status == "CANCELLED" else "no_show"
             broadcast_patient_removed(instance, reason=reason)
-            logger.debug(f"Broadcasted patient_removed for visit {instance.id}")
+            logger.debug("Broadcasted patient_removed for visit %s", instance.id)
 
         publish_event(
             event_type=ClinicalEvents.CLINIC_VISIT_STATUS_CHANGED,
@@ -173,7 +173,7 @@ def clinic_visit_status_change(sender, instance, created, **kwargs):
 
     except _clinic_signal_handled_exceptions() as e:
         # Don't let WebSocket errors break the save operation
-        logger.error(f"Error broadcasting clinic visit status change: {e}")
+        logger.error("Error broadcasting clinic visit status change: %s", e)
 
 
 # =============================================================================
@@ -236,7 +236,7 @@ def clinic_session_publish_event(sender, instance, created, **kwargs):
                 facility_id=getattr(instance, "facility_id", None),
             )
     except _clinic_signal_handled_exceptions() as e:
-        logger.error(f"Error publishing clinic session event: {e}")
+        logger.error("Error publishing clinic session event: %s", e)
 
 
 # =============================================================================
@@ -324,8 +324,10 @@ def _sync_clinic_schedule_to_scheduling(clinic_schedule):
         )
 
     logger.info(
-        f"Synced ClinicSchedule {clinic_schedule.pk} -> scheduling.Schedule "
-        f"for {clinic.name} ({clinic_schedule.get_day_of_week_display()})"
+        "Synced ClinicSchedule %s -> scheduling.Schedule for %s (%s)",
+        clinic_schedule.pk,
+        clinic.name,
+        clinic_schedule.get_day_of_week_display(),
     )
 
 
@@ -342,7 +344,7 @@ def sync_clinic_schedule_on_save(sender, instance, **kwargs):
     try:
         _sync_clinic_schedule_to_scheduling(instance)
     except _clinic_signal_handled_exceptions() as e:
-        logger.error(f"Error syncing ClinicSchedule {instance.pk}: {e}")
+        logger.error("Error syncing ClinicSchedule %s: %s", instance.pk, e)
 
 
 @receiver(post_delete, sender=ClinicSchedule)
@@ -366,4 +368,4 @@ def sync_clinic_schedule_on_delete(sender, instance, **kwargs):
     ).update(is_active=False)
 
     if updated:
-        logger.info(f"Deactivated scheduling.Schedule for deleted ClinicSchedule {instance.pk}")
+        logger.info("Deactivated scheduling.Schedule for deleted ClinicSchedule %s", instance.pk)

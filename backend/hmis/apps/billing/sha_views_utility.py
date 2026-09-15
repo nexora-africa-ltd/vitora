@@ -196,9 +196,12 @@ class TerminologySearchView(APIView):
 
             return Response({"results": data, "count": len(data)})
 
-        except TerminologyError as e:
+        except TerminologyError as exc:
             return Response(
-                {"error": str(e), "status_code": e.status_code},
+                {
+                    "error": "Terminology service is currently unavailable.",
+                    "status_code": exc.status_code,
+                },
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except _sha_utility_handled_exceptions() as exc:
@@ -442,9 +445,9 @@ class ClientRegistryView(APIView):
 
         except ClientNotFoundError:
             return Response({"found": False})
-        except ClientRegistryError as e:
+        except ClientRegistryError:
             return Response(
-                {"error": str(e), "found": False},
+                {"error": "Client Registry service is currently unavailable.", "found": False},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except _sha_utility_handled_exceptions() as exc:
@@ -830,9 +833,9 @@ class FacilitySearchView(APIView):
                 )
             return Response({"found": False})
 
-        except SearchError as e:
+        except SearchError:
             return Response(
-                {"error": str(e), "found": False},
+                {"error": "Facility search service is currently unavailable.", "found": False},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except _sha_utility_handled_exceptions() as exc:

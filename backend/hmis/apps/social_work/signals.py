@@ -64,8 +64,9 @@ def route_to_sw_clinic_on_acceptance(sender, instance, created, **kwargs):
 
         if not sw_clinic:
             logger.info(
-                f"No Social Work clinic found for referral {instance.referral_number}. "
-                f"Patient will need to be manually routed."
+                "No Social Work clinic found for referral %s. "
+                "Patient will need to be manually routed.",
+                instance.referral_number,
             )
             return
 
@@ -83,8 +84,9 @@ def route_to_sw_clinic_on_acceptance(sender, instance, created, **kwargs):
 
         if not clinic_session:
             logger.info(
-                f"No active social work clinic session for today. "
-                f"Referral {instance.referral_number} will need manual scheduling."
+                "No active social work clinic session for today. "
+                "Referral %s will need manual scheduling.",
+                instance.referral_number,
             )
             return
 
@@ -125,8 +127,10 @@ def route_to_sw_clinic_on_acceptance(sender, instance, created, **kwargs):
         instance.save(update_fields=["clinic_visit"])
 
         logger.info(
-            f"Created clinic visit {clinic_visit.id} for SW referral {instance.referral_number} "
-            f"(Clinic: {sw_clinic.name})"
+            "Created clinic visit %s for SW referral %s (Clinic: %s)",
+            clinic_visit.id,
+            instance.referral_number,
+            sw_clinic.name,
         )
 
     except (
@@ -139,7 +143,9 @@ def route_to_sw_clinic_on_acceptance(sender, instance, created, **kwargs):
         ImportError,
     ) as e:
         logger.error(
-            f"Failed to create clinic visit for SW referral {instance.referral_number}: {e}"
+            "Failed to create clinic visit for SW referral %s: %s",
+            instance.referral_number,
+            e,
         )
 
 
@@ -167,8 +173,8 @@ def notify_urgent_referral(sender, instance, created, **kwargs):
         # Only create notification if there's an assigned worker
         if not instance.assigned_worker_id:
             logger.info(
-                f"No assigned worker for SW referral {instance.referral_number}. "
-                f"Skipping notification."
+                "No assigned worker for SW referral %s. Skipping notification.",
+                instance.referral_number,
             )
             return
 
@@ -188,7 +194,7 @@ def notify_urgent_referral(sender, instance, created, **kwargs):
             related_id=instance.id,
         )
 
-        logger.info(f"Created notification for urgent SW referral {instance.referral_number}")
+        logger.info("Created notification for urgent SW referral %s", instance.referral_number)
 
     except (
         AttributeError,
@@ -200,7 +206,9 @@ def notify_urgent_referral(sender, instance, created, **kwargs):
         ImportError,
     ) as e:
         logger.error(
-            f"Failed to create notification for SW referral {instance.referral_number}: {e}"
+            "Failed to create notification for SW referral %s: %s",
+            instance.referral_number,
+            e,
         )
 
 
@@ -223,7 +231,9 @@ def mark_patient_sensitive_for_gbv(sender, instance, created, **kwargs):
             patient.is_sensitive = True
             patient.save(update_fields=["is_sensitive"])
             logger.info(
-                f"Marked patient {patient.mrn} as sensitive due to SW case {instance.case_number}"
+                "Marked patient %s as sensitive due to SW case %s",
+                patient.mrn,
+                instance.case_number,
             )
     except (
         AttributeError,
@@ -234,7 +244,7 @@ def mark_patient_sensitive_for_gbv(sender, instance, created, **kwargs):
         AssertionError,
         ImportError,
     ) as e:
-        logger.error(f"Failed to mark patient as sensitive for case {instance.case_number}: {e}")
+        logger.error("Failed to mark patient as sensitive for case %s: %s", instance.case_number, e)
 
 
 @receiver(post_save, sender=SocialWorkCase)
@@ -278,4 +288,6 @@ def notify_case_review_due(sender, instance, **kwargs):
             AssertionError,
             ImportError,
         ) as e:
-            logger.error(f"Failed to create review reminder for case {instance.case_number}: {e}")
+            logger.error(
+                "Failed to create review reminder for case %s: %s", instance.case_number, e
+            )

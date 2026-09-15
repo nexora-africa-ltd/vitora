@@ -47,7 +47,7 @@ def notify_supervisors_critical_violation(self, admission_id: int) -> dict:  # n
             "patient", "ward", "bed", "admitting_officer"
         ).get(id=admission_id)
     except Admission.DoesNotExist:
-        logger.error(f"Admission {admission_id} not found for critical violation notification")
+        logger.error("Admission %s not found for critical violation notification", admission_id)
         return {"status": "error", "message": f"Admission {admission_id} not found"}
 
     # Get all users with receive_critical_alerts permission
@@ -63,7 +63,8 @@ def notify_supervisors_critical_violation(self, admission_id: int) -> dict:  # n
 
     if not supervisors.exists():
         logger.warning(
-            f"No supervisors with receive_critical_alerts permission found for admission {admission_id}"
+            "No supervisors with receive_critical_alerts permission found for admission %s",
+            admission_id,
         )
         return {"status": "warning", "message": "No supervisors to notify", "emails_sent": 0}
 
@@ -73,7 +74,7 @@ def notify_supervisors_critical_violation(self, admission_id: int) -> dict:  # n
     ]
 
     if not critical_violations:
-        logger.info(f"Admission {admission_id} has no CRITICAL violations, skipping notification")
+        logger.info("Admission %s has no CRITICAL violations, skipping notification", admission_id)
         return {"status": "skipped", "message": "No critical violations", "emails_sent": 0}
 
     # Build email content
@@ -123,7 +124,9 @@ This is an automated notification. Do not reply to this email.
             fail_silently=False,
         )
         logger.info(
-            f"Sent critical violation email for admission {admission_id} to {len(supervisor_emails)} supervisors"
+            "Sent critical violation email for admission %s to %s supervisors",
+            admission_id,
+            len(supervisor_emails),
         )
         return {"status": "success", "emails_sent": len(supervisor_emails)}
     except (
@@ -135,5 +138,5 @@ This is an automated notification. Do not reply to this email.
         AssertionError,
         ImportError,
     ) as e:
-        logger.exception(f"Failed to send critical violation email: {e}")
+        logger.exception("Failed to send critical violation email: %s", e)
         raise  # Let Celery retry

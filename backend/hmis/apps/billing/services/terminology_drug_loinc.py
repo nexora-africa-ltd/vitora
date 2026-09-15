@@ -22,6 +22,11 @@ from .sha_auth import SHAAuthError
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_log_field(value: object) -> str:
+    text = str(value)
+    return text.replace("\r", " ").replace("\n", " ")
+
+
 from hmis.apps.billing.services.terminology_models import *  # noqa: F403
 
 
@@ -50,7 +55,7 @@ class TerminologyDrugLoincMixin:
         Returns:
             List of matching DrugProduct objects
         """
-        logger.info(f"Searching drug products: query='{query}'")
+        logger.info("Searching drug products: query=%s", _sanitize_log_field(query))
 
         params: dict[str, str | int] = {}
         if query:
@@ -99,7 +104,7 @@ class TerminologyDrugLoincMixin:
         Raises:
             CodeNotFoundError: If product not found
         """
-        logger.info(f"Fetching drug product: {product_id}")
+        logger.info("Fetching drug product: %s", _sanitize_log_field(product_id))
 
         try:
             results = self.search_drug_products(product_id=product_id)
@@ -139,7 +144,7 @@ class TerminologyDrugLoincMixin:
         Returns:
             List of matching ActiveComponent objects
         """
-        logger.info(f"Searching active components: query='{query}'")
+        logger.info("Searching active components: query=%s", _sanitize_log_field(query))
 
         params: dict[str, str | int | bool] = {}
         if query:
@@ -192,13 +197,13 @@ class TerminologyDrugLoincMixin:
         Returns:
             List of RemoteLOINCCode objects
         """
-        logger.info(f"Searching LOINC codes: query='{query}'")
+        logger.info("Searching LOINC codes: query=%s", _sanitize_log_field(query))
 
         # Try remote SHA/DHA API first
         try:
             return self._search_loinc_remote(query, limit)
-        except TerminologyError as e:
-            logger.warning(f"Remote LOINC search failed: {e}")
+        except TerminologyError as exc:
+            logger.warning("Remote LOINC search failed (%s)", type(exc).__name__)
 
         # Try FHIR server as secondary fallback
         if self.fhir_enabled:
@@ -215,8 +220,8 @@ class TerminologyDrugLoincMixin:
                 OSError,
                 AssertionError,
                 ImportError,
-            ) as e:
-                logger.warning(f"FHIR LOINC search failed: {e}")
+            ) as exc:
+                logger.warning("FHIR LOINC search failed (%s)", type(exc).__name__)
 
         # Final fallback: local database
         if self.use_local_fallback:
@@ -304,8 +309,8 @@ class TerminologyDrugLoincMixin:
             if self._is_loinc_code_format(query):
                 return self._lookup_loinc_code_fhir(query)
 
-        except requests.RequestException as e:
-            logger.warning(f"FHIR LOINC $expand failed: {e}")
+        except requests.RequestException as exc:
+            logger.warning("FHIR LOINC $expand failed (%s)", type(exc).__name__)
             raise
 
         return []
@@ -395,8 +400,8 @@ class TerminologyDrugLoincMixin:
                     )
                 ]
 
-        except requests.RequestException as e:
-            logger.warning(f"FHIR LOINC $lookup failed: {e}")
+        except requests.RequestException as exc:
+            logger.warning("FHIR LOINC $lookup failed (%s)", type(exc).__name__)
 
         return []
 
@@ -438,8 +443,8 @@ class TerminologyDrugLoincMixin:
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
-            logger.error(f"Local LOINC fallback failed: {e}")
+        ) as exc:
+            logger.error("Local LOINC fallback failed (%s)", type(exc).__name__)
             return []
 
     def get_loinc(self, loinc_num: str) -> RemoteLOINCCode:
@@ -457,7 +462,7 @@ class TerminologyDrugLoincMixin:
         Raises:
             CodeNotFoundError: If code not found in all sources
         """
-        logger.info(f"Fetching LOINC code: {loinc_num}")
+        logger.info("Fetching LOINC code: %s", _sanitize_log_field(loinc_num))
 
         # Try remote SHA/DHA API first
         try:
@@ -481,8 +486,8 @@ class TerminologyDrugLoincMixin:
 
         except CodeNotFoundError:
             pass  # Continue to fallbacks
-        except (SHAAuthError, requests.RequestException) as e:
-            logger.warning(f"Remote LOINC fetch failed: {e}")
+        except (SHAAuthError, requests.RequestException) as exc:
+            logger.warning("Remote LOINC fetch failed (%s)", type(exc).__name__)
 
         # Try FHIR server as secondary fallback
         if self.fhir_enabled:
@@ -498,8 +503,8 @@ class TerminologyDrugLoincMixin:
                 OSError,
                 AssertionError,
                 ImportError,
-            ) as e:
-                logger.warning(f"FHIR LOINC lookup failed: {e}")
+            ) as exc:
+                logger.warning("FHIR LOINC lookup failed (%s)", type(exc).__name__)
 
         # Final fallback: local database
         if self.use_local_fallback:

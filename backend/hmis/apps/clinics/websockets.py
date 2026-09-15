@@ -51,7 +51,7 @@ async def broadcast_queue_event(
                 "data": data,
             },
         )
-        logger.debug(f"Broadcasted {event_type} to {group_name}")
+        logger.debug("Broadcasted %s to %s", event_type, group_name)
     except (
         AttributeError,
         TypeError,
@@ -61,7 +61,7 @@ async def broadcast_queue_event(
         AssertionError,
         ImportError,
     ) as e:
-        logger.error(f"Failed to broadcast {event_type} to {group_name}: {e}")
+        logger.error("Failed to broadcast %s to %s: %s", event_type, group_name, e)
 
 
 def broadcast_queue_event_sync(
@@ -95,7 +95,7 @@ def broadcast_queue_event_sync(
                 "data": data,
             },
         )
-        logger.debug(f"Broadcasted {event_type} to {group_name}")
+        logger.debug("Broadcasted %s to %s", event_type, group_name)
     except (
         AttributeError,
         TypeError,
@@ -105,7 +105,7 @@ def broadcast_queue_event_sync(
         AssertionError,
         ImportError,
     ) as e:
-        logger.error(f"Failed to broadcast {event_type} to {group_name}: {e}")
+        logger.error("Failed to broadcast %s to %s: %s", event_type, group_name, e)
 
 
 def broadcast_patient_added(visit) -> None:

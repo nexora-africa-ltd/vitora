@@ -21,6 +21,11 @@ from .sha_auth import SHAAuthError
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_log_field(value: object) -> str:
+    text = str(value)
+    return text.replace("\r", " ").replace("\n", " ")
+
+
 from hmis.apps.billing.services.terminology_models import *  # noqa: F403
 
 
@@ -40,7 +45,7 @@ class TerminologyIchiUtilsMixin:
         Returns:
             List of matching ICHICode objects
         """
-        logger.info(f"Searching ICHI codes: query='{query}'")
+        logger.info("Searching ICHI codes: query=%s", _sanitize_log_field(query))
 
         params = {
             "search": query,
@@ -82,7 +87,7 @@ class TerminologyIchiUtilsMixin:
         Raises:
             CodeNotFoundError: If code not found
         """
-        logger.info(f"Fetching ICHI code: {code}")
+        logger.info("Fetching ICHI code: %s", _sanitize_log_field(code))
 
         try:
             headers = self.auth_service.get_terminology_headers()

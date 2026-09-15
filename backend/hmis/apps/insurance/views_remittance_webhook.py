@@ -89,8 +89,12 @@ class InsuranceRemittanceViewSet(
         remittance = self.get_object()
         try:
             remittance.reconcile()
-        except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except ValidationError as exc:
+            messages = list(exc.messages)
+            return Response(
+                {"error": str(messages[0]) if messages else "Unable to reconcile remittance."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return Response(InsuranceRemittanceSerializer(remittance).data)
 
     @action(detail=True, methods=["get"], url_path="claims-drilldown")

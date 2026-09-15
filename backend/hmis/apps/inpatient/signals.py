@@ -131,10 +131,10 @@ def notify_ward_constraints_updated(sender, instance, created, **kwargs):
                 "updated_at": datetime.now().isoformat(),
             },
         )
-        logger.info(f"Broadcasted constraint update for ward {instance.id}")
+        logger.info("Broadcasted constraint update for ward %s", instance.id)
     except _inpatient_signal_handled_exceptions() as e:
         # Don't fail the save operation if broadcast fails
-        logger.exception(f"Failed to broadcast ward constraint update: {e}")
+        logger.exception("Failed to broadcast ward constraint update: %s", e)
 
     # Publish domain event
     publish_event(
@@ -203,7 +203,11 @@ def notify_compatibility_violation(sender, instance, created, **kwargs):
             event_type="compatibility_violation",
             data=event_data,
         )
-        logger.info(f"Broadcasted violation event for admission {instance.id} to ward {ward.id}")
+        logger.info(
+            "Broadcasted violation event for admission %s to ward %s",
+            instance.id,
+            ward.id,
+        )
 
         # For CRITICAL violations, escalate to supervisors
         if has_critical:
@@ -216,15 +220,15 @@ def notify_compatibility_violation(sender, instance, created, **kwargs):
                 event_type="critical_violation",
                 data=supervisor_data,
             )
-            logger.info(f"Broadcasted CRITICAL violation alert for admission {instance.id}")
+            logger.info("Broadcasted CRITICAL violation alert for admission %s", instance.id)
 
             # Queue email notification
             notify_supervisors_critical_violation.delay(instance.id)
-            logger.info(f"Queued supervisor email notification for admission {instance.id}")
+            logger.info("Queued supervisor email notification for admission %s", instance.id)
 
     except _inpatient_signal_handled_exceptions() as e:
         # Don't fail admission creation if notifications fail
-        logger.exception(f"Failed to send violation notifications: {e}")
+        logger.exception("Failed to send violation notifications: %s", e)
 
     # Publish domain events for admission + violation
     publish_event(

@@ -93,16 +93,19 @@ def _load_json_mappings() -> dict:
     json_path = Path(settings.BASE_DIR) / "data" / "dhis2_element_mappings.json"
 
     if not json_path.exists():
-        logger.warning(f"DHIS2 mappings JSON not found: {json_path}")
+        logger.warning("DHIS2 mappings JSON not found: %s", json_path)
         return {"data_elements": {}}
 
     try:
         with open(json_path, encoding="utf-8") as f:
             data = json.load(f)
-            logger.debug(f"Loaded {len(data.get('data_elements', {}))} disease mappings from JSON")
+            logger.debug(
+                "Loaded %s disease mappings from JSON",
+                len(data.get("data_elements", {})),
+            )
             return data
     except json.JSONDecodeError as e:
-        logger.error(f"Error parsing DHIS2 mappings JSON: {e}")
+        logger.error("Error parsing DHIS2 mappings JSON: %s", e)
         return {"data_elements": {}}
 
 
@@ -145,7 +148,7 @@ def _get_db_mapping(
         ImportError,
     ) as e:
         # Table might not exist yet (pre-migration)
-        logger.debug(f"Database mapping lookup failed: {e}")
+        logger.debug("Database mapping lookup failed: %s", e)
         return None
 
 
@@ -192,7 +195,7 @@ def get_data_element_uid(
 
     # Validate indicator type
     if indicator_type not in INDICATOR_TYPES:
-        logger.warning(f"Invalid indicator_type: {indicator_type}")
+        logger.warning("Invalid indicator_type: %s", indicator_type)
         return None
 
     # Try database first (allows runtime updates)
@@ -208,7 +211,10 @@ def get_data_element_uid(
         return json_uid
 
     logger.warning(
-        f"No DHIS2 mapping found for {disease_name}/{indicator_type} in environment '{environment}'"
+        "No DHIS2 mapping found for %s/%s in environment '%s'",
+        disease_name,
+        indicator_type,
+        environment,
     )
     return None
 
@@ -261,7 +267,7 @@ def get_all_mappings(environment: str | None = None) -> dict[str, IndicatorMappi
         AssertionError,
         ImportError,
     ) as e:
-        logger.debug(f"Database mapping lookup failed (may not be migrated): {e}")
+        logger.debug("Database mapping lookup failed (may not be migrated): %s", e)
 
     return result
 
@@ -327,7 +333,7 @@ def validate_mappings(environment: str | None = None) -> dict:
         AssertionError,
         ImportError,
     ) as e:
-        logger.error(f"Error validating mappings: {e}")
+        logger.error("Error validating mappings: %s", e)
         return {
             "valid": False,
             "missing": [f"Error: {e}"],

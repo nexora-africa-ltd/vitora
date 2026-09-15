@@ -22,6 +22,11 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_log_field(value: object) -> str:
+    text = str(value)
+    return text.replace("\r", " ").replace("\n", " ")
+
+
 @dataclass
 class ICD11Code:
     """ICD-11 code data structure."""
@@ -108,7 +113,7 @@ class ICD11LocalService:
             AssertionError,
             ImportError,
         ) as exc:
-            logger.debug(f"Failed to detect MMS release version: {exc}")
+            logger.debug("Failed to detect MMS release version (%s)", type(exc).__name__)
         return None
 
     def search(
@@ -183,8 +188,8 @@ class ICD11LocalService:
 
             return results
 
-        except requests.exceptions.RequestException as e:
-            logger.error(f"ICD-11 local API request failed: {e}")
+        except requests.exceptions.RequestException as exc:
+            logger.error("ICD-11 local API request failed (%s)", type(exc).__name__)
             return []
         except (
             AttributeError,
@@ -194,8 +199,8 @@ class ICD11LocalService:
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
-            logger.error(f"ICD-11 local search error: {e}")
+        ) as exc:
+            logger.error("ICD-11 local search error (%s)", type(exc).__name__)
             return []
 
     def get_by_code(self, code: str) -> ICD11Code | None:
@@ -233,8 +238,12 @@ class ICD11LocalService:
                 browser_url=data.get("browserUrl"),
             )
 
-        except requests.exceptions.RequestException as e:
-            logger.error(f"ICD-11 local API request failed for code {code}: {e}")
+        except requests.exceptions.RequestException as exc:
+            logger.error(
+                "ICD-11 local API request failed for code %s (%s)",
+                _sanitize_log_field(code),
+                type(exc).__name__,
+            )
             return None
         except (
             AttributeError,
@@ -244,8 +253,8 @@ class ICD11LocalService:
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
-            logger.error(f"ICD-11 local get_by_code error: {e}")
+        ) as exc:
+            logger.error("ICD-11 local get_by_code error (%s)", type(exc).__name__)
             return None
 
     def is_available(self) -> bool:

@@ -22,6 +22,11 @@ from hmis.apps.core.events.bus import get_event_bus
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_log_field(value: object) -> str:
+    text = str(value)
+    return text.replace("\r", " ").replace("\n", " ")
+
+
 def handles_event(event_type: str):
     """
     Decorator that registers a function as an event handler.
@@ -43,7 +48,11 @@ def handles_event(event_type: str):
     def decorator(func):
         bus = get_event_bus()
         bus.subscribe(event_type, func)
-        logger.debug(f"Registered handler {func.__name__} for '{event_type}'")
+        logger.debug(
+            "Registered handler %s for '%s'",
+            _sanitize_log_field(func.__name__),
+            _sanitize_log_field(event_type),
+        )
         return func
 
     return decorator

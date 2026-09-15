@@ -14,6 +14,11 @@ from channels.layers import get_channel_layer
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_log_field(value: object) -> str:
+    text = str(value)
+    return text.replace("\r", " ").replace("\n", " ")
+
+
 # =============================================================================
 # Core broadcast functions
 # =============================================================================
@@ -48,7 +53,11 @@ async def broadcast_billing_event(
                 "data": data,
             },
         )
-        logger.debug(f"Broadcasted {event_type} to {group_name}")
+        logger.debug(
+            "Broadcasted %s to %s",
+            _sanitize_log_field(event_type),
+            _sanitize_log_field(group_name),
+        )
     except (
         AttributeError,
         TypeError,
@@ -57,8 +66,13 @@ async def broadcast_billing_event(
         OSError,
         AssertionError,
         ImportError,
-    ) as e:
-        logger.error(f"Failed to broadcast {event_type} to {group_name}: {e}")
+    ) as exc:
+        logger.error(
+            "Failed to broadcast %s to %s (%s)",
+            _sanitize_log_field(event_type),
+            _sanitize_log_field(group_name),
+            type(exc).__name__,
+        )
 
 
 def broadcast_billing_event_sync(
@@ -87,7 +101,11 @@ def broadcast_billing_event_sync(
                 "data": data,
             },
         )
-        logger.debug(f"Broadcasted {event_type} to {group_name}")
+        logger.debug(
+            "Broadcasted %s to %s",
+            _sanitize_log_field(event_type),
+            _sanitize_log_field(group_name),
+        )
     except (
         AttributeError,
         TypeError,
@@ -96,8 +114,13 @@ def broadcast_billing_event_sync(
         OSError,
         AssertionError,
         ImportError,
-    ) as e:
-        logger.error(f"Failed to broadcast {event_type} to {group_name}: {e}")
+    ) as exc:
+        logger.error(
+            "Failed to broadcast %s to %s (%s)",
+            _sanitize_log_field(event_type),
+            _sanitize_log_field(group_name),
+            type(exc).__name__,
+        )
 
 
 async def broadcast_sha_event(
@@ -129,7 +152,11 @@ async def broadcast_sha_event(
                 "data": data,
             },
         )
-        logger.debug(f"Broadcasted {event_type} to {group_name}")
+        logger.debug(
+            "Broadcasted %s to %s",
+            _sanitize_log_field(event_type),
+            _sanitize_log_field(group_name),
+        )
     except (
         AttributeError,
         TypeError,
@@ -138,8 +165,13 @@ async def broadcast_sha_event(
         OSError,
         AssertionError,
         ImportError,
-    ) as e:
-        logger.error(f"Failed to broadcast {event_type} to {group_name}: {e}")
+    ) as exc:
+        logger.error(
+            "Failed to broadcast %s to %s (%s)",
+            _sanitize_log_field(event_type),
+            _sanitize_log_field(group_name),
+            type(exc).__name__,
+        )
 
 
 def broadcast_sha_event_sync(
@@ -168,7 +200,11 @@ def broadcast_sha_event_sync(
                 "data": data,
             },
         )
-        logger.debug(f"Broadcasted {event_type} to {group_name}")
+        logger.debug(
+            "Broadcasted %s to %s",
+            _sanitize_log_field(event_type),
+            _sanitize_log_field(group_name),
+        )
     except (
         AttributeError,
         TypeError,
@@ -177,8 +213,13 @@ def broadcast_sha_event_sync(
         OSError,
         AssertionError,
         ImportError,
-    ) as e:
-        logger.error(f"Failed to broadcast {event_type} to {group_name}: {e}")
+    ) as exc:
+        logger.error(
+            "Failed to broadcast %s to %s (%s)",
+            _sanitize_log_field(event_type),
+            _sanitize_log_field(group_name),
+            type(exc).__name__,
+        )
 
 
 # =============================================================================

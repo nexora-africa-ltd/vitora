@@ -221,8 +221,11 @@ class OccupationalTherapyOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewS
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        ):
+            return Response(
+                {"error": "Unable to update occupational therapy order status."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         AuditLog.log(
             action="ot_order_status_change",
@@ -264,8 +267,11 @@ class OccupationalTherapyOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewS
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        ):
+            return Response(
+                {"error": "Unable to approve occupational therapy order."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         AuditLog.log(
             action="ot_order_approved",
@@ -436,8 +442,11 @@ class OccupationalTherapyOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewS
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        ):
+            return Response(
+                {"error": "Unable to start occupational therapy order."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         AuditLog.log(
             action="ot_order_started",
@@ -476,8 +485,11 @@ class OccupationalTherapyOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewS
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        ):
+            return Response(
+                {"error": "Unable to complete occupational therapy order."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         AuditLog.log(
             action="ot_order_completed",
@@ -519,8 +531,11 @@ class OccupationalTherapyOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewS
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        ):
+            return Response(
+                {"error": "Unable to cancel occupational therapy order."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         AuditLog.log(
             action="ot_order_cancelled",
@@ -559,8 +574,11 @@ class OccupationalTherapyOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewS
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        ):
+            return Response(
+                {"error": "Unable to put occupational therapy order on hold."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         AuditLog.log(
             action="ot_order_on_hold",

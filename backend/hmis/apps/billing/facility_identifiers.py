@@ -50,7 +50,7 @@ def resolve_fr_code(
         except (AttributeError, TypeError, ValueError) as exc:
             logger.warning(
                 "Unable to read billing-config FR code; continuing with fallback chain",
-                extra={"error": str(exc)},
+                extra={"error_type": type(exc).__name__},
             )
             billing_fr = ""
         if billing_fr:

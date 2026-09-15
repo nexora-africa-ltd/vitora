@@ -169,9 +169,12 @@ class ExternalPrescriptionRequestViewSet(TenantScopedViewMixin, viewsets.ModelVi
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
+        ):
             logger.exception("Error processing external prescription %s", ext_req.id)
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Unable to process external prescription."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     @action(detail=True, methods=["post"])
     def reject(self, request, pk=None):

@@ -78,13 +78,13 @@ class EmergencyQueueConsumer(AsyncJsonWebsocketConsumer):
                 content = json.loads(text_data)
                 await self.receive_json(content)
             except json.JSONDecodeError as e:
-                logger.warning(f"Invalid JSON received: {e}")
+                logger.warning("Invalid JSON received: %s", e)
                 await self.send_json({"error": "Invalid JSON format", "detail": str(e)})
 
     async def receive_json(self, content):
         """Handle incoming WebSocket messages."""
         message_type = content.get("type", "unknown")
-        logger.debug(f"Received WebSocket message: {message_type}")
+        logger.debug("Received WebSocket message: %s", message_type)
 
         if message_type == "ping":
             await self.send_json({"type": "pong", "timestamp": content.get("timestamp")})
@@ -109,7 +109,7 @@ class EmergencyQueueConsumer(AsyncJsonWebsocketConsumer):
                 AssertionError,
                 ImportError,
             ) as e:
-                logger.error(f"Error in periodic broadcast: {e}")
+                logger.error("Error in periodic broadcast: %s", e)
 
     async def _send_current_state(self):
         """Send current critical patients and zone stats."""
@@ -136,7 +136,7 @@ class EmergencyQueueConsumer(AsyncJsonWebsocketConsumer):
             AssertionError,
             ImportError,
         ) as e:
-            logger.error(f"Error sending state: {e}")
+            logger.error("Error sending state: %s", e)
 
     @database_sync_to_async
     def _get_critical_patients(self) -> dict[str, Any]:

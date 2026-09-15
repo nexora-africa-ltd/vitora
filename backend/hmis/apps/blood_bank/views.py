@@ -41,6 +41,14 @@ from .serializers import (
     CrossMatchSerializer,
 )
 
+
+def _validation_error_message(exc: ValidationError, fallback: str) -> str:
+    messages = list(exc.messages)
+    if messages:
+        return str(messages[0])
+    return fallback
+
+
 # =============================================================================
 # Filters
 # =============================================================================
@@ -152,7 +160,15 @@ class BloodUnitViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelV
                 source=UnitStatusChangeSource.MANUAL,
             )
         except ValidationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {
+                    "error": _validation_error_message(
+                        exc,
+                        "Unable to mark blood unit as available.",
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return Response(BloodUnitDetailSerializer(unit).data)
 
     @action(detail=True, methods=["post"])
@@ -168,7 +184,15 @@ class BloodUnitViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelV
                 source=UnitStatusChangeSource.MANUAL,
             )
         except ValidationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {
+                    "error": _validation_error_message(
+                        exc,
+                        "Unable to quarantine blood unit.",
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return Response(BloodUnitDetailSerializer(unit).data)
 
     @action(detail=True, methods=["post"])
@@ -186,7 +210,15 @@ class BloodUnitViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelV
                 source=UnitStatusChangeSource.MANUAL,
             )
         except ValidationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {
+                    "error": _validation_error_message(
+                        exc,
+                        "Unable to transition blood unit status.",
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         return Response(BloodUnitDetailSerializer(unit).data)
 

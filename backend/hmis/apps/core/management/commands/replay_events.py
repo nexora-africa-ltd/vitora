@@ -28,6 +28,11 @@ from django.utils.dateparse import parse_datetime
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_log_field(value: object) -> str:
+    text = str(value)
+    return text.replace("\r", " ").replace("\n", " ")
+
+
 class Command(BaseCommand):
     help = "Replay domain events from the EventStore through the EventBus."
 
@@ -158,7 +163,10 @@ class Command(BaseCommand):
                 ImportError,
             ):
                 errors += 1
-                logger.exception(f"Failed to replay event {record.event_id}")
+                logger.exception(
+                    "Failed to replay event %s",
+                    _sanitize_log_field(record.event_id),
+                )
 
         self.stdout.write(
             self.style.SUCCESS(f"Replay complete: {dispatched} dispatched, {errors} errors.")

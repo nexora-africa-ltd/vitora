@@ -891,8 +891,9 @@ class ERBedViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
                 triage_assessment=serializer.validated_data.get("triage_assessment"),
                 user=request.user,
             )
-        except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except ValueError as exc:
+            message = str(exc.args[0]) if exc.args else "Unable to assign patient to ER bed."
+            return Response({"error": message}, status=status.HTTP_400_BAD_REQUEST)
 
         # Audit log
         AuditLog.log(
@@ -930,8 +931,9 @@ class ERBedViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
                 user=request.user,
                 mark_cleaning=serializer.validated_data.get("mark_cleaning", True),
             )
-        except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except ValueError as exc:
+            message = str(exc.args[0]) if exc.args else "Unable to release patient from ER bed."
+            return Response({"error": message}, status=status.HTTP_400_BAD_REQUEST)
 
         AuditLog.log(
             action="er_bed_release",
@@ -970,8 +972,9 @@ class ERBedViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
                 bed.mark_available(user=request.user)
             elif new_status == "OUT_OF_SERVICE":
                 bed.mark_out_of_service(user=request.user, reason=reason)
-        except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except ValueError as exc:
+            message = str(exc.args[0]) if exc.args else "Unable to update ER bed status."
+            return Response({"error": message}, status=status.HTTP_400_BAD_REQUEST)
 
         AuditLog.log(
             action="er_bed_status_change",

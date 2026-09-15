@@ -77,7 +77,8 @@ class BedAssignmentRequestViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         try:
             assignment_request.assign(serializer.validated_data["bed"], request.user)
         except ValueError as error:
-            return Response({"error": str(error)}, status=status.HTTP_400_BAD_REQUEST)
+            message = str(error.args[0]) if error.args else "Unable to assign bed."
+            return Response({"error": message}, status=status.HTTP_400_BAD_REQUEST)
 
         AuditLog.log(
             action="bed_assignment_request_assign",
@@ -96,7 +97,10 @@ class BedAssignmentRequestViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         try:
             assignment_request.cancel()
         except ValueError as error:
-            return Response({"error": str(error)}, status=status.HTTP_400_BAD_REQUEST)
+            message = (
+                str(error.args[0]) if error.args else "Unable to cancel bed assignment request."
+            )
+            return Response({"error": message}, status=status.HTTP_400_BAD_REQUEST)
 
         AuditLog.log(
             action="bed_assignment_request_cancel",

@@ -816,7 +816,8 @@ class AdmissionViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.Mode
         try:
             usage.reverse(user=request.user, reason=serializer.validated_data["reason"])
         except ValueError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            message = str(exc.args[0]) if exc.args else "Unable to reverse consumable usage entry."
+            return Response({"error": message}, status=status.HTTP_400_BAD_REQUEST)
 
         AuditLog.log(
             action="inpatient_consumable_usage_reverse",

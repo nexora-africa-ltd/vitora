@@ -280,12 +280,14 @@ def _create_allied_health_order(referral):
         elif service == "SOCIAL_WORK":
             _create_sw_referral(referral)
         else:
-            logger.warning(f"Unknown allied health service: {service}")
+            logger.warning("Unknown allied health service: %s", service)
     except ImportError:
-        logger.warning(f"Module for {service} not available. Skipping order creation.")
+        logger.warning("Module for %s not available. Skipping order creation.", service)
     except _referral_signal_handled_exceptions() as e:
         logger.error(
-            f"Error creating allied health order for referral {referral.referral_number}: {e}"
+            "Error creating allied health order for referral %s: %s",
+            referral.referral_number,
+            e,
         )
 
 
@@ -308,7 +310,9 @@ def _create_physio_order(referral):
     referral.save(update_fields=["linked_module", "linked_model", "linked_object_id"])
 
     logger.info(
-        f"Created PhysiotherapyOrder {order.order_number} from referral {referral.referral_number}"
+        "Created PhysiotherapyOrder %s from referral %s",
+        order.order_number,
+        referral.referral_number,
     )
 
 
@@ -333,8 +337,9 @@ def _create_nutrition_consultation(referral):
     referral.save(update_fields=["linked_module", "linked_model", "linked_object_id"])
 
     logger.info(
-        f"Created NutritionConsultation {consultation.consultation_number} "
-        f"from referral {referral.referral_number}"
+        "Created NutritionConsultation %s from referral %s",
+        consultation.consultation_number,
+        referral.referral_number,
     )
 
 
@@ -356,7 +361,9 @@ def _create_ot_order(referral):
     referral.linked_object_id = order.id
     referral.save(update_fields=["linked_module", "linked_model", "linked_object_id"])
 
-    logger.info(f"Created OT Order {order.order_number} from referral {referral.referral_number}")
+    logger.info(
+        "Created OT Order %s from referral %s", order.order_number, referral.referral_number
+    )
 
 
 def _create_counselling_referral(referral):
@@ -380,7 +387,9 @@ def _create_counselling_referral(referral):
     referral.save(update_fields=["linked_module", "linked_model", "linked_object_id"])
 
     logger.info(
-        f"Created CounsellingReferral {cr.referral_number} from referral {referral.referral_number}"
+        "Created CounsellingReferral %s from referral %s",
+        cr.referral_number,
+        referral.referral_number,
     )
 
 
@@ -405,7 +414,9 @@ def _create_sw_referral(referral):
     referral.save(update_fields=["linked_module", "linked_model", "linked_object_id"])
 
     logger.info(
-        f"Created SocialWorkReferral {swr.referral_number} from referral {referral.referral_number}"
+        "Created SocialWorkReferral %s from referral %s",
+        swr.referral_number,
+        referral.referral_number,
     )
 
 
@@ -417,8 +428,8 @@ def _create_admission_recommendation(referral):
         # Check if recommendation already exists for this encounter
         if hasattr(referral.encounter, "admission_recommendation"):
             logger.info(
-                f"AdmissionRecommendation already exists for encounter "
-                f"{referral.encounter.id}. Skipping."
+                "AdmissionRecommendation already exists for encounter %s. Skipping.",
+                referral.encounter.id,
             )
             return
 
@@ -439,13 +450,15 @@ def _create_admission_recommendation(referral):
         referral.save(update_fields=["linked_module", "linked_model", "linked_object_id"])
 
         logger.info(
-            f"Created AdmissionRecommendation {rec.id} from referral {referral.referral_number}"
+            "Created AdmissionRecommendation %s from referral %s",
+            rec.id,
+            referral.referral_number,
         )
 
     except ImportError:
         logger.warning("Inpatient module not available. Skipping admission recommendation.")
     except _referral_signal_handled_exceptions() as e:
-        logger.error(f"Error creating admission recommendation: {e}")
+        logger.error("Error creating admission recommendation: %s", e)
 
 
 def _create_clinic_visit(referral):
@@ -464,8 +477,8 @@ def _create_clinic_visit(referral):
         clinic_type = referral.get_clinic_type()
         if not clinic_type:
             logger.info(
-                f"No clinic type mapping for service {referral.target_service}. "
-                f"Skipping queue routing."
+                "No clinic type mapping for service %s. Skipping queue routing.",
+                referral.target_service,
             )
             return
 
@@ -502,8 +515,9 @@ def _create_clinic_visit(referral):
 
         if not clinic:
             logger.warning(
-                f"No active {clinic_type} clinic found in tenant scope. "
-                f"Skipping queue routing for referral {referral.referral_number}."
+                "No active %s clinic found in tenant scope. Skipping queue routing for referral %s.",
+                clinic_type,
+                referral.referral_number,
             )
             return
 
@@ -530,14 +544,16 @@ def _create_clinic_visit(referral):
         referral.save(update_fields=["clinic_visit"])
 
         logger.info(
-            f"Created ClinicVisit {visit.id} for referral {referral.referral_number} "
-            f"in clinic {clinic.name}"
+            "Created ClinicVisit %s for referral %s in clinic %s",
+            visit.id,
+            referral.referral_number,
+            clinic.name,
         )
 
     except ImportError:
         logger.warning("Clinics module not available. Skipping queue routing.")
     except _referral_signal_handled_exceptions() as e:
-        logger.error(f"Error creating clinic visit for referral: {e}")
+        logger.error("Error creating clinic visit for referral: %s", e)
 
 
 def _build_clinical_notes(referral):

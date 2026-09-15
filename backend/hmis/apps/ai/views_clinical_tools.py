@@ -1210,10 +1210,10 @@ class InvestigationSuggestView(AIFeatureGatedMixin, APIView):
                 {"error": "TibaBot AI service is currently unavailable."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError as e:
-            logger.error("TibaBot error for investigation suggestions: %s", e)
+        except TibaBotError as exc:
+            logger.error("TibaBot error for investigation suggestions: %s", exc)
             return Response(
-                {"error": str(e)},
+                {"error": "Unable to fetch investigation suggestions from TibaBot."},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 

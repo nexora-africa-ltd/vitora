@@ -85,10 +85,12 @@ class SHAClaimsSubmissionMixin:
 
             return response
 
-        except requests.RequestException as e:
-            claim.submission_response = {"error": str(e)}
+        except requests.RequestException:
+            claim.submission_response = {
+                "error": "Claim submission request failed.",
+            }
             claim.save(update_fields=["submission_response", "updated_at"])
-            raise ValidationError(f"Submission failed: {str(e)}")
+            raise ValidationError("Submission failed due to an upstream service error.")
 
     def _queue_claim_for_submission(self, claim: SHAClaim, user) -> dict:
         """

@@ -54,7 +54,8 @@ class SHRBaseView(APIView):
                 {"error": exc.message, "code": "dha_error"}, status=exc.status_code or 502
             )
         return Response(
-            {"error": str(exc), "code": "shr_consent_error"}, status=status.HTTP_400_BAD_REQUEST
+            {"error": "Unable to process SHR consent request.", "code": "shr_consent_error"},
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
 

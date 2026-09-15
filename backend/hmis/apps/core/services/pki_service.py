@@ -26,6 +26,11 @@ from cryptography.x509.oid import NameOID
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_log_field(value: object) -> str:
+    text = str(value)
+    return text.replace("\r", " ").replace("\n", " ")
+
+
 @dataclass
 class CertificateVerifyResult:
     """Result of a certificate verification."""
@@ -83,7 +88,7 @@ class PKIService:
         # Check if an active root CA already exists
         existing = CertificateAuthority.objects.filter(is_root=True, is_active=True).first()
         if existing:
-            logger.info(f"Active root CA already exists: {existing.name}")
+            logger.info("Active root CA already exists: %s", _sanitize_log_field(existing.name))
             return existing
 
         # Generate RSA key pair
@@ -171,7 +176,11 @@ class PKIService:
             key_size=key_size,
         )
 
-        logger.info(f"Root CA initialized: {ca.name} (serial: {ca.serial_number})")
+        logger.info(
+            "Root CA initialized: %s (serial: %s)",
+            _sanitize_log_field(ca.name),
+            _sanitize_log_field(ca.serial_number),
+        )
         return ca
 
     def create_intermediate_ca(
@@ -229,7 +238,10 @@ class PKIService:
                 is_active=True,
             ).first()
         if existing:
-            logger.info(f"Active intermediate CA already exists: {existing.name}")
+            logger.info(
+                "Active intermediate CA already exists: %s",
+                _sanitize_log_field(existing.name),
+            )
             return existing
 
         # Cap validity to not exceed parent
@@ -351,8 +363,10 @@ class PKIService:
         )
 
         logger.info(
-            f"Intermediate CA initialized: {ca.name} "
-            f"(serial: {ca.serial_number}, parent: {parent_ca.name})"
+            "Intermediate CA initialized: %s (serial: %s, parent: %s)",
+            _sanitize_log_field(ca.name),
+            _sanitize_log_field(ca.serial_number),
+            _sanitize_log_field(parent_ca.name),
         )
         return ca
 
@@ -525,7 +539,11 @@ class PKIService:
             valid_to=valid_to,
         )
 
-        logger.info(f"User certificate issued: {user.username} (serial: {user_cert.serial_number})")
+        logger.info(
+            "User certificate issued: %s (serial: %s)",
+            _sanitize_log_field(user.username),
+            _sanitize_log_field(user_cert.serial_number),
+        )
         return user_cert
 
     def revoke_certificate(self, cert, reason: str, user=None):
@@ -557,7 +575,11 @@ class PKIService:
             revoked_by=user,
         )
 
-        logger.info(f"Certificate revoked: {cert.serial_number} (reason: {reason})")
+        logger.info(
+            "Certificate revoked: %s (reason: %s)",
+            _sanitize_log_field(cert.serial_number),
+            _sanitize_log_field(reason),
+        )
         return revocation
 
     def _build_chain(self, ca) -> list[str]:
