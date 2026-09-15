@@ -196,7 +196,12 @@ class ShiftVacancyViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mod
                 )
                 vacancy.fill(request.user)
         except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(
+                action="shift_vacancy_fill",
+                exc=exc,
+                logger=logger,
+                fallback="Unable to fill vacancy.",
+            )
         return Response(
             {
                 "vacancy": self.get_serializer(vacancy).data,
@@ -211,7 +216,12 @@ class ShiftVacancyViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mod
         try:
             vacancy.cancel()
         except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(
+                action="shift_vacancy_cancel",
+                exc=exc,
+                logger=logger,
+                fallback="Unable to cancel vacancy.",
+            )
         return Response(self.get_serializer(vacancy).data)
 
 

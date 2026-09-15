@@ -27,6 +27,13 @@ from .sha_pii import SHADecryptionError, maybe_decrypt_client_registry_item
 logger = logging.getLogger(__name__)
 
 
+def _mask_identifier(value: str | None) -> str:
+    text = str(value or "").strip()
+    if len(text) <= 4:
+        return "****"
+    return f"****{text[-4:]}"
+
+
 # =============================================================================
 # Data Classes
 # =============================================================================
@@ -373,7 +380,11 @@ class ClientRegistryService:
             params["identification_type"] = "passport_number"
             params["identification_number"] = passport_number
 
-        logger.info(f"Fetching client from CR with params: {params}")
+        logger.info(
+            "Fetching client from CR (type=%s, id=%s)",
+            params.get("identification_type"),
+            _mask_identifier(params.get("identification_number", "")),
+        )
 
         try:
             # First attempt with cached token
@@ -386,7 +397,7 @@ class ClientRegistryService:
                 timeout=self.timeout,
             )
 
-            logger.debug(f"CR fetch response status: {response.status_code}")
+            logger.debug("CR fetch response status: %d", response.status_code)
 
             # Token may be expired. Force refresh and retry once
             # before surfacing 401 to the caller.
@@ -399,7 +410,7 @@ class ClientRegistryService:
                     headers=headers,
                     timeout=self.timeout,
                 )
-                logger.debug(f"CR fetch retry response status: {response.status_code}")
+                logger.debug("CR fetch retry response status: %d", response.status_code)
 
             if response.status_code == 404:
                 return None
@@ -746,22 +757,14 @@ class ClientRegistryService:
                 timeout=self.timeout,
             )
 
-            logger.debug(f"CR registration response status: {response.status_code}")
+            logger.debug("CR registration response status: %d", response.status_code)
 
-            # Log response body for debugging (truncate if too long)
-            try:
-                response_text = response.text[:1000] if response.text else "(empty)"
-                logger.debug(f"CR registration response body: {response_text}")
-            except (
-                AttributeError,
-                TypeError,
-                ValueError,
-                RuntimeError,
-                OSError,
-                AssertionError,
-                ImportError,
-            ) as exc:
-                logger.debug(f"Unable to read CR registration response body: {exc}")
+            response_text = response.text if isinstance(response.text, str) else ""
+            logger.debug(
+                "CR registration response body present=%s length=%d",
+                bool(response_text),
+                len(response_text),
+            )
 
             if response.status_code == 409:
                 # Duplicate client
@@ -786,7 +789,7 @@ class ClientRegistryService:
             if response.status_code >= 500:
                 # Server error - include response body for debugging
                 error_body = response.text[:500] if response.text else "No response body"
-                logger.error(f"DHA server error ({response.status_code}): {error_body}")
+                logger.error("DHA server error (%d)", response.status_code)
                 raise ClientRegistryError(
                     f"DHA server error: {error_body}",
                     status_code=response.status_code,
@@ -881,7 +884,7 @@ class ClientRegistryService:
             **{k: v for k, v in updates.items() if k in allowed_fields},
         }
 
-        logger.info(f"Updating client {client_number} in CR")
+        logger.info("Updating client %s in CR", _mask_identifier(client_number))
 
         try:
             headers = self.auth_service.get_auth_headers()
@@ -893,7 +896,7 @@ class ClientRegistryService:
                 timeout=self.timeout,
             )
 
-            logger.debug(f"CR update response status: {response.status_code}")
+            logger.debug("CR update response status: %d", response.status_code)
 
             if response.status_code == 404:
                 raise ClientNotFoundError(

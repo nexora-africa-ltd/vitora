@@ -431,7 +431,7 @@ def auto_trigger_consent(patient_id: int, facility_id: int):
 
     result = SHAClaimAutomationService.auto_trigger_consent(patient_id, facility_id)
     logger = logging.getLogger(__name__)
-    logger.info("Auto-consent for patient %s: %s", patient_id, result.get("status"))
+    logger.info("Auto-consent completed: status=%s", result.get("status"))
     return result
 
 
@@ -521,7 +521,7 @@ def cache_patient_eligibility(patient_id: int, facility_id: int | None = None):
 
     result = SHAClaimAutomationService.cache_patient_eligibility(patient_id, facility_id)
     logger = logging.getLogger(__name__)
-    logger.info("Eligibility cache for patient %s: %s", patient_id, result.get("status"))
+    logger.info("Eligibility cache completed: status=%s", result.get("status"))
     return result
 
 
@@ -560,7 +560,7 @@ def verify_patient_sha_eligibility(patient_id: int, facility_id: int | None = No
     try:
         patient = Patient.objects.get(pk=patient_id)
     except Patient.DoesNotExist:
-        logger.warning("verify_patient_sha_eligibility: patient %s not found", patient_id)
+        logger.warning("verify_patient_sha_eligibility: patient not found")
         return {"status": "skipped", "reason": "patient_not_found"}
 
     # Check if patient has a national_id to verify against
@@ -583,8 +583,7 @@ def verify_patient_sha_eligibility(patient_id: int, facility_id: int | None = No
             facility=facility,
         )
         logger.info(
-            "SHA eligibility refreshed for patient %s (member %s): eligible=%s",
-            patient_id,
+            "SHA eligibility refreshed for member %s: eligible=%s",
             _mask_sha_number(sha_member.sha_number),
             result.is_eligible,
         )
@@ -606,9 +605,8 @@ def verify_patient_sha_eligibility(patient_id: int, facility_id: int | None = No
 
     if direct_result.get("error"):
         logger.warning(
-            "Direct eligibility check failed for patient %s: %s",
-            patient_id,
-            direct_result["error"],
+            "Direct eligibility check failed: %s",
+            str(direct_result["error"])[:120],
         )
         return {"status": "error", "reason": direct_result["error"]}
 
@@ -616,8 +614,7 @@ def verify_patient_sha_eligibility(patient_id: int, facility_id: int | None = No
         sha_number = direct_result.get("sha_number")
         if not sha_number:
             logger.warning(
-                "SHA eligible but no sha_number returned for patient %s",
-                patient_id,
+                "SHA eligible but no sha_number returned",
             )
             return {"status": "error", "reason": "no_sha_number_in_response"}
 
