@@ -287,6 +287,7 @@ class SMSGateway:
         """
         success = self.send(phone, message)
         if not success:
+            logger.error("SMS reminder delivery failed for %s", _mask_phone(phone))
             raise RuntimeError("SMS reminder delivery failed")
 
     def send_surveillance_alert(
