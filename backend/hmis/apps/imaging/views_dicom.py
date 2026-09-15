@@ -762,9 +762,14 @@ class DICOMUploadView(APIView):
                 else:
                     duplicates_skipped += 1
 
-            except _imaging_action_exceptions() as exc:
+            except _imaging_action_exceptions():
                 logger.exception("Error processing DICOM file %s", uploaded_file.name)
-                errors.append({"file": uploaded_file.name, "errors": [str(exc)]})
+                errors.append(
+                    {
+                        "file": uploaded_file.name,
+                        "errors": ["DICOM file could not be processed."],
+                    }
+                )
                 # Clean up temp file
                 if "tmp_path" in locals() and os.path.exists(tmp_path):
                     os.unlink(tmp_path)

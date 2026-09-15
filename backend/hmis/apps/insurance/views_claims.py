@@ -280,11 +280,18 @@ class InsuranceClaimViewSet(
     ) -> Response:
         """Normalize upstream errors into a structured payload for UI consumption."""
         if isinstance(exc, InsuranceApiError):
-            message = cls._extract_upstream_message(exc.response_body or exc.message)
+            message = fallback
             provider = str(exc.provider_code or "")
             method = str(exc.method or "")
             path = str(exc.path or "")
             status_code = int(exc.status_code) if isinstance(exc.status_code, int) else None
+
+            if status_code in (400, 404, 409, 422):
+                message = "Insurance provider request was rejected."
+            elif status_code in (401, 403):
+                message = "Insurance provider authentication failed."
+            elif status_code == 429:
+                message = "Insurance provider rate limit reached. Retry shortly."
 
             action_hint = ""
             if status_code == 404 and "/remittances/claim_remittance" in path:
@@ -305,7 +312,7 @@ class InsuranceClaimViewSet(
                     "method": method,
                     "path": path,
                     "status": status_code,
-                    "message": message or fallback,
+                    "message": message,
                 },
             }
             if action_hint:

@@ -241,9 +241,8 @@ def _sync_claim_diagnosis_on_close(encounter):
             claim.primary_diagnosis_description = description[:255]
             claim.save(update_fields=["primary_diagnosis_code", "primary_diagnosis_description"])
             logger.info(
-                "Updated SHA claim %s diagnosis to %s on encounter close",
+                "Updated SHA claim %s diagnosis on encounter close",
                 claim.claim_number,
-                code,
             )
     except _encounter_signal_handled_exceptions():
         logger.exception("Failed to sync SHA claim diagnosis on encounter %s close", encounter.id)

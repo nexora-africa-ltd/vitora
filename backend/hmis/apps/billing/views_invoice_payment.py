@@ -829,8 +829,12 @@ class PaymentViewSet(AuditedMutationMixin, NestedTenantScopeMixin, viewsets.Mode
         try:
             payment.reverse(reason)
         except ValidationError as e:
-            msg = e.message if hasattr(e, "message") else str(e)
-            return Response({"error": msg}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(
+                action="billing.payment_reverse",
+                exc=e,
+                logger=logger,
+                expose_message_for=(ValidationError,),
+            )
 
         AuditLog.log(
             action="payment_reverse",

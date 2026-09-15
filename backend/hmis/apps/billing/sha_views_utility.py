@@ -65,10 +65,18 @@ def _stringify_error(exc: Exception) -> str:
     detail = getattr(exc, "detail", None)
     if detail is not None:
         try:
-            return str(detail)
+            text = str(detail).strip()
+            if text:
+                return text[:300]
         except (TypeError, ValueError, RuntimeError):
-            return exc.__class__.__name__
-    return str(exc)
+            pass
+    return "Request could not be processed."
+
+
+def _sanitize_log_value(value: object, *, max_len: int = 80) -> str:
+    """Normalize dynamic values before writing to logs."""
+    text = str(value or "").replace("\r", " ").replace("\n", " ").strip()
+    return text[:max_len]
 
 
 class TerminologySearchView(APIView):
@@ -1008,9 +1016,9 @@ class PractitionerSearchView(APIView):
                 continue
 
         if last_error:
-            logger.exception("Practitioner search failed via ILM: %s", last_error)
+            logger.exception("Practitioner search failed via ILM")
             return Response(
-                {"error": str(last_error), "message": None},
+                {"error": "Practitioner search failed.", "message": None},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
@@ -1126,9 +1134,16 @@ class SHAWebhookView(APIView):
                 response_payload=payload,
             )
             if updated:
-                webhook_logger.info("Updated claim %s to status %s", claim_id, new_status)
+                webhook_logger.info(
+                    "Updated claim %s to status %s",
+                    _sanitize_log_value(claim_id),
+                    _sanitize_log_value(new_status),
+                )
             else:
-                webhook_logger.warning("Could not find claim with reference %s", claim_id)
+                webhook_logger.warning(
+                    "Could not find claim with reference %s",
+                    _sanitize_log_value(claim_id),
+                )
 
         return Response(
             {
@@ -1157,9 +1172,16 @@ class SHAWebhookView(APIView):
         )
 
         if updated:
-            webhook_logger.info("Updated claim %s to status %s", claim_reference, new_status)
+            webhook_logger.info(
+                "Updated claim %s to status %s",
+                _sanitize_log_value(claim_reference),
+                _sanitize_log_value(new_status),
+            )
         else:
-            webhook_logger.warning("Could not find claim with reference %s", claim_reference)
+            webhook_logger.warning(
+                "Could not find claim with reference %s",
+                _sanitize_log_value(claim_reference),
+            )
 
         return Response(
             {"status": "processed", "claim_reference": claim_reference, "updated": updated}
@@ -1301,8 +1323,8 @@ class SHAHealthCheckView(APIView):
             try:
                 auth_service.get_token(force_refresh=True)
                 token_valid = True
-            except SHAAuthError as exc:
-                token_error = str(exc)
+            except SHAAuthError:
+                token_error = "Auth check failed"  # noqa: S105 - operational status text
             except _sha_utility_handled_exceptions() as exc:
                 token_error = f"Unexpected error: {type(exc).__name__}"
 

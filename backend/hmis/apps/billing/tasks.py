@@ -626,8 +626,8 @@ def verify_patient_sha_eligibility(patient_id: int, facility_id: int | None = No
 
     if direct_result.get("error"):
         logger.warning(
-            "Direct eligibility check failed: %s",
-            str(direct_result["error"])[:120],
+            "Direct eligibility check failed for patient %s",
+            patient_id,
         )
         return {"status": "error", "reason": direct_result["error"]}
 

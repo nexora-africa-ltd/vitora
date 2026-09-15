@@ -75,4 +75,4 @@ def check_diagnosis_for_surveillance(sender, instance, created, **kwargs):
             AssertionError,
             ImportError,
         ) as e:
-            logger.error(f"Failed to create notifiable case for diagnosis {instance.id}: {e}")
+            logger.error("Failed to create notifiable case for diagnosis %s: %s", instance.id, e)

@@ -549,8 +549,8 @@ class SurgicalPreOpAssessView(AIFeatureGatedMixin, APIView):
                 {"error": "TibaBot AI service is currently unavailable."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError as e:
-            logger.error("TibaBot error for surgical pre-op assessment: %s", e)
+        except TibaBotError:
+            logger.error("TibaBot error for surgical pre-op assessment")
             return Response(
                 {"error": "Upstream AI service request failed."},
                 status=status.HTTP_502_BAD_GATEWAY,
@@ -609,8 +609,8 @@ class SurgicalChecklistStartView(AIFeatureGatedMixin, APIView):
                 {"error": "TibaBot AI service is currently unavailable."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError as e:
-            logger.error("TibaBot error for surgical checklist start: %s", e)
+        except TibaBotError:
+            logger.error("TibaBot error for surgical checklist start")
             return Response(
                 {"error": "Upstream AI service request failed."},
                 status=status.HTTP_502_BAD_GATEWAY,
@@ -686,8 +686,8 @@ class SurgicalChecklistAdvanceView(AIFeatureGatedMixin, APIView):
                 {"error": "TibaBot AI service is currently unavailable."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError as e:
-            logger.error("TibaBot error for surgical checklist advance: %s", e)
+        except TibaBotError:
+            logger.error("TibaBot error for surgical checklist advance")
             return Response(
                 {"error": "Upstream AI service request failed."},
                 status=status.HTTP_502_BAD_GATEWAY,
@@ -770,8 +770,8 @@ class SurgicalChecklistStatusView(AIFeatureGatedMixin, APIView):
                 {"error": "TibaBot AI service is currently unavailable."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError as e:
-            logger.error("TibaBot error for surgical checklist status: %s", e)
+        except TibaBotError:
+            logger.error("TibaBot error for surgical checklist status")
             return Response(
                 {"error": "Upstream AI service request failed."},
                 status=status.HTTP_502_BAD_GATEWAY,
@@ -816,8 +816,8 @@ class SurgicalPostOpCarePlanView(AIFeatureGatedMixin, APIView):
                 {"error": "TibaBot AI service is currently unavailable."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError as e:
-            logger.error("TibaBot error for surgical post-op care plan: %s", e)
+        except TibaBotError:
+            logger.error("TibaBot error for surgical post-op care plan")
             return Response(
                 {"error": "Upstream AI service request failed."},
                 status=status.HTTP_502_BAD_GATEWAY,
@@ -862,8 +862,8 @@ class SurgicalProcedureListView(AIFeatureGatedMixin, APIView):
                 {"error": "TibaBot AI service is currently unavailable."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError as e:
-            logger.error("TibaBot error for surgical procedures list: %s", e)
+        except TibaBotError:
+            logger.error("TibaBot error for surgical procedures list")
             return Response(
                 {"error": "Upstream AI service request failed."},
                 status=status.HTTP_502_BAD_GATEWAY,
@@ -891,8 +891,8 @@ class SurgicalProcedureDetailView(AIFeatureGatedMixin, APIView):
                 {"error": "TibaBot AI service is currently unavailable."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError as e:
-            logger.error("TibaBot error for surgical procedure detail: %s", e)
+        except TibaBotError:
+            logger.error("TibaBot error for surgical procedure detail")
             return Response(
                 {"error": "Upstream AI service request failed."},
                 status=status.HTTP_502_BAD_GATEWAY,

@@ -119,7 +119,7 @@ class MpesaViewSet(viewsets.ViewSet):
                     return Response(
                         {
                             "ResultCode": 1,
-                            "ResultDesc": str(exc) if code == "validation_error" else message,
+                            "ResultDesc": message,
                         },
                         status=status.HTTP_200_OK,
                     )

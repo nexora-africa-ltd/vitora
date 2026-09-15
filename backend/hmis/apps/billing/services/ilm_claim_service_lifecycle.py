@@ -488,8 +488,7 @@ class IlmClaimLifecycleMixin:
             ImportError,
         ):
             logger.exception(
-                "Failed to persist intervention %s for claim %s",
-                intervention_code,
+                "Failed to persist intervention for claim %s",
                 getattr(claim, "pk", None),
             )
 
@@ -796,9 +795,8 @@ class IlmClaimLifecycleMixin:
             ImportError,
         ):
             logger.warning(
-                "Intervention metadata enrichment failed (fail-open) for claim=%s code=%s",
+                "Intervention metadata enrichment failed (fail-open) for claim=%s",
                 getattr(claim, "pk", None),
-                intervention_code,
                 exc_info=True,
             )
         return None

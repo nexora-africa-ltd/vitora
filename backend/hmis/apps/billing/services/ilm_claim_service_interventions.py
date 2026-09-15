@@ -27,8 +27,7 @@ class IlmClaimInterventionsMixin:
         CAPITATED_PREFIXES = ("SHA-12-", "SHA-08-001", "SHA-08-002", "SHA-08-003")
         if any(intervention_code.startswith(p) for p in CAPITATED_PREFIXES):
             logger.info(
-                "Redirecting capitated code %s to virtual claim line endpoint for claim %s.",
-                intervention_code,
+                "Redirecting capitated intervention code to virtual claim line endpoint for claim %s.",
                 getattr(claim, "pk", None),
             )
             return self.add_virtual_claim_line(

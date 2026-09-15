@@ -732,8 +732,7 @@ def auto_create_immunization_appointment(sender, instance, created, **kwargs):
 
         if not resource:
             logger.warning(
-                "No scheduling resource found for immunization appointment (patient %s)",
-                patient.id,
+                "No scheduling resource found for immunization appointment",
             )
             return
 
@@ -765,9 +764,8 @@ def auto_create_immunization_appointment(sender, instance, created, **kwargs):
             patient.id,
         )
 
-    except _mch_signal_handled_exceptions() as exc:
+    except _mch_signal_handled_exceptions():
         logger.warning(
-            "Failed to auto-create immunization appointment for record %s: %s",
+            "Failed to auto-create immunization appointment for record %s",
             instance.id,
-            exc,
         )

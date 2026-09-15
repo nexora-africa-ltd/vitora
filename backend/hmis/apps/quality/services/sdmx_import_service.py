@@ -124,7 +124,7 @@ class SDMXImportService:
             )
             stored += 1
 
-        logger.info(f"Imported {stored} SDMX observations from {source}")
+        logger.info("Imported %s SDMX observations from %s", stored, source)
         return stored
 
     # --- Internal parsing methods ---

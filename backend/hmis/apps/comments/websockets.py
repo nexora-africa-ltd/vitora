@@ -59,4 +59,4 @@ def broadcast_comment_event(
         AssertionError,
         ImportError,
     ):
-        logger.exception(f"Failed to broadcast comment event to group {group_name}")
+        logger.exception("Failed to broadcast comment event to group %s", group_name)

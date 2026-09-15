@@ -237,7 +237,12 @@ class ShiftSwapViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelV
         try:
             swap.accept(user=request.user, offered_shift=offered_shift)
         except ValueError as e:
-            return safe_error_response(action="scheduling.swap_accept", exc=e, logger=logger)
+            return safe_error_response(
+                action="scheduling.swap_accept",
+                exc=e,
+                logger=logger,
+                expose_message_for=(),
+            )
 
         AuditLog.log(
             action="shift_swap_accept",
@@ -265,7 +270,12 @@ class ShiftSwapViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelV
         try:
             swap.reject(user=request.user, reason=serializer.validated_data.get("reason", ""))
         except ValueError as e:
-            return safe_error_response(action="scheduling.swap_reject", exc=e, logger=logger)
+            return safe_error_response(
+                action="scheduling.swap_reject",
+                exc=e,
+                logger=logger,
+                expose_message_for=(),
+            )
 
         AuditLog.log(
             action="shift_swap_reject",
@@ -302,7 +312,12 @@ class ShiftSwapViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelV
         try:
             swap.approve(user=request.user, notes=serializer.validated_data.get("notes", ""))
         except ValueError as e:
-            return safe_error_response(action="scheduling.swap_approve", exc=e, logger=logger)
+            return safe_error_response(
+                action="scheduling.swap_approve",
+                exc=e,
+                logger=logger,
+                expose_message_for=(),
+            )
 
         AuditLog.log(
             action="shift_swap_approve",
@@ -332,7 +347,12 @@ class ShiftSwapViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelV
         try:
             swap.cancel()
         except ValueError as e:
-            return safe_error_response(action="scheduling.swap_cancel", exc=e, logger=logger)
+            return safe_error_response(
+                action="scheduling.swap_cancel",
+                exc=e,
+                logger=logger,
+                expose_message_for=(),
+            )
 
         AuditLog.log(
             action="shift_swap_cancel",

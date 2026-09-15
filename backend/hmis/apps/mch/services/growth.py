@@ -64,7 +64,7 @@ class WHOGrowthCalculator:
 
         filepath = DATA_DIR / filename
         if not filepath.exists():
-            logger.warning(f"WHO growth data file not found: {filepath}")
+            logger.warning("WHO growth data file not found: %s", filepath)
             return []
 
         try:
@@ -73,7 +73,7 @@ class WHOGrowthCalculator:
             cls._cache[filename] = data
             return data
         except (json.JSONDecodeError, OSError) as e:
-            logger.error(f"Error loading WHO growth data from {filepath}: {e}")
+            logger.error("Error loading WHO growth data from %s: %s", filepath, e)
             return []
 
     @staticmethod
