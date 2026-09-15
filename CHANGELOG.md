@@ -15,6 +15,15 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Desktop 1.0.12] - 2026-09-15
+
+### Desktop
+
+- Added a desktop-only Application Updates card in Settings with manual availability checks, release notes, an explicit Install and Restart confirmation, and a Later deferral action.
+- Added native update availability checks after packaged sidecar/UI startup and every 24 hours. Available updates notify users but never install without confirmation.
+- Kept the tray menu update check as a second explicit install path.
+- Bumped desktop app version metadata to `1.0.12` across `desktop-app/package.json`, `desktop-app/src-tauri/Cargo.toml`, `desktop-app/src-tauri/tauri.conf.json`, `desktop-app/package-lock.json`, and `desktop-app/src-tauri/Cargo.lock`.
+
 ## [1.0.19] - 2026-09-15
 
 ### Hub

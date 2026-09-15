@@ -231,6 +231,7 @@ export function onDeepLink(callback: (urls: string[]) => void): (() => void) | n
 
 export interface UpdateInfo {
   available: boolean;
+  current_version: string;
   version?: string;
   body?: string;
 }
@@ -241,16 +242,8 @@ export interface UpdateInfo {
  */
 export async function checkForUpdates(): Promise<UpdateInfo> {
   const invoke = getInvoke();
-  if (!invoke) return { available: false };
-
-  try {
-    const result = await invoke<{ available: boolean; version?: string; body?: string }>(
-      'plugin:updater|check'
-    );
-    return result;
-  } catch {
-    return { available: false };
-  }
+  if (!invoke) return { available: false, current_version: '' };
+  return invoke<UpdateInfo>('get_update_status');
 }
 
 /**
@@ -260,7 +253,7 @@ export async function checkForUpdates(): Promise<UpdateInfo> {
 export async function installUpdate(): Promise<void> {
   const invoke = getInvoke();
   if (!invoke) return;
-  await invoke('plugin:updater|download_and_install');
+  await invoke('install_available_update');
 }
 
 // ---------------------------------------------------------------------------

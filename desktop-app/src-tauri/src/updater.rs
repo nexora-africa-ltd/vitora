@@ -15,11 +15,52 @@
 //   - A Tauri command `check_for_updates` exposed to the frontend so a
 //     Settings page can offer the same action.
 
+use serde::Serialize;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_updater::UpdaterExt;
 
 use crate::SidecarState;
+
+const BACKGROUND_CHECK_INTERVAL: std::time::Duration = std::time::Duration::from_secs(24 * 60 * 60);
+
+#[derive(Debug, Serialize)]
+pub struct UpdateInfo {
+    pub available: bool,
+    pub current_version: String,
+    pub version: Option<String>,
+    pub body: Option<String>,
+}
+
+fn current_version(app: &AppHandle) -> String {
+    app.config()
+        .version
+        .clone()
+        .unwrap_or_else(|| "unknown".to_string())
+}
+
+async fn fetch_update_info(app: &AppHandle) -> Result<UpdateInfo, String> {
+    let current_version = current_version(app);
+    let updater = app
+        .updater()
+        .map_err(|error| format!("Updater unavailable: {error}"))?;
+
+    match updater.check().await.map_err(|error| error.to_string())? {
+        Some(update) => Ok(UpdateInfo {
+            available: true,
+            current_version,
+            version: Some(update.version),
+            body: update.body,
+        }),
+        None => Ok(UpdateInfo {
+            available: false,
+            current_version,
+            version: None,
+            body: None,
+        }),
+    }
+}
 
 /// Run a manual update check, prompting the user via native dialogs.
 ///
@@ -27,11 +68,7 @@ use crate::SidecarState;
 /// dialog — useful for the background auto-check, but the tray/UI entry
 /// points always pass `false` so the user gets feedback.
 pub async fn check_and_install(app: AppHandle, silent_when_uptodate: bool) {
-    let current = app
-        .config()
-        .version
-        .clone()
-        .unwrap_or_else(|| "unknown".to_string());
+    let current = current_version(&app);
 
     // Build the updater handle. If the plugin is misconfigured this fails
     // before any network I/O.
@@ -191,4 +228,71 @@ fn show_error(app: &AppHandle, title: &str, message: &str) {
 #[tauri::command]
 pub async fn check_for_updates(app: AppHandle) {
     check_and_install(app, false).await;
+}
+
+/// Return update availability for the desktop Settings screen without prompting
+/// or downloading anything.
+#[tauri::command]
+pub async fn get_update_status(app: AppHandle) -> Result<UpdateInfo, String> {
+    fetch_update_info(&app).await
+}
+
+/// Download and install an update only after the Settings UI has confirmed it.
+#[tauri::command]
+pub async fn install_available_update(app: AppHandle) -> Result<(), String> {
+    let updater = app
+        .updater()
+        .map_err(|error| format!("Updater unavailable: {error}"))?;
+    let update = updater
+        .check()
+        .await
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "No update is currently available.".to_string())?;
+
+    update
+        .download_and_install(|_, _| {}, || {})
+        .await
+        .map_err(|error| error.to_string())?;
+
+    app.state::<SidecarState>().kill();
+    std::thread::sleep(std::time::Duration::from_millis(500));
+    app.restart();
+}
+
+/// Check after the packaged sidecar is healthy, then once every 24 hours.
+/// Availability is surfaced as a native notification; installation always needs
+/// an explicit user action from Settings or the tray menu.
+pub fn start_background_update_checks(app: AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        loop {
+            match fetch_update_info(&app).await {
+                Ok(update) if update.available => {
+                    let version = update.version.as_deref().unwrap_or("a new version");
+                    if let Err(error) = app
+                        .notification()
+                        .builder()
+                        .title("Vitora update available")
+                        .body(format!("Version {version} is ready to install. Open Settings or the tray menu to update."))
+                        .show()
+                    {
+                        log::warn!("Could not show update notification: {}", error);
+                    }
+                }
+                Ok(_) => log::debug!("Desktop update check found no newer version"),
+                Err(error) => log::warn!("Background update check failed: {}", error),
+            }
+
+            tokio::time::sleep(BACKGROUND_CHECK_INTERVAL).await;
+        }
+    });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::BACKGROUND_CHECK_INTERVAL;
+
+    #[test]
+    fn background_checks_run_daily() {
+        assert_eq!(BACKGROUND_CHECK_INTERVAL.as_secs(), 24 * 60 * 60);
+    }
 }

@@ -32,7 +32,7 @@ use config::{
     set_fernet_key, set_hub_url, set_organization_id, set_sync_interval, store_credentials,
     store_license_token, AppConfig,
 };
-use updater::check_for_updates;
+use updater::{check_for_updates, get_update_status, install_available_update};
 
 const SIDECAR_READY_TIMEOUT: Duration = Duration::from_secs(10 * 60);
 const SIDECAR_READY_POLL_INTERVAL: Duration = Duration::from_millis(250);
@@ -952,6 +952,8 @@ pub fn run() {
             get_credentials,
             clear_credentials,
             check_for_updates,
+            get_update_status,
+            install_available_update,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
@@ -1074,6 +1076,15 @@ pub fn run() {
                                         }
                                     });
                                 }
+
+                                // Let the desktop login UI settle before the first background
+                                // update request. This keeps update checks out of the critical
+                                // sidecar and WebView startup path.
+                                let updater_handle = handle_clone.clone();
+                                std::thread::spawn(move || {
+                                    std::thread::sleep(Duration::from_secs(10));
+                                    updater::start_background_update_checks(updater_handle);
+                                });
 
                                 // Keep watching for a late sidecar crash after the
                                 // initial health check. If Node exits after navigation,

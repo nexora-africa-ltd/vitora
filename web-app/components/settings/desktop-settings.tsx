@@ -14,6 +14,7 @@ import {
   Wifi,
   HardDrive,
   Server,
+  Download,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { HelpPopover } from '@/components/shared/help-popover';
@@ -21,6 +22,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Select,
   SelectContent,
@@ -39,6 +50,9 @@ import {
   setHubUrl,
   getInstallationId,
   clearCredentials,
+  checkForUpdates,
+  installUpdate,
+  type UpdateInfo,
 } from '@/lib/desktop';
 import { apiClient } from '@/lib/api/client';
 import { aiApi } from '@/lib/api/ai';
@@ -166,6 +180,10 @@ export function DesktopSettingsTab() {
   const [healthLoading, setHealthLoading] = useState(false);
   const [syncingNow, setSyncingNow] = useState(false);
   const [manualCheckIning, setManualCheckIning] = useState(false);
+  const [checkingUpdates, setCheckingUpdates] = useState(false);
+  const [installingUpdate, setInstallingUpdate] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [installDialogOpen, setInstallDialogOpen] = useState(false);
   const [lastLicenseCheckInAt, setLastLicenseCheckInAt] = useState<number | null>(null);
   const [lastManualCheckInResult, setLastManualCheckInResult] =
     useState<ActivationResponse | null>(null);
@@ -360,6 +378,43 @@ export function DesktopSettingsTab() {
     }
   };
 
+  const handleCheckForUpdates = async () => {
+    setCheckingUpdates(true);
+    try {
+      const update = await checkForUpdates();
+      setUpdateInfo(update);
+      toast({
+        title: update.available ? 'Update available' : 'Vitora is up to date',
+        description: update.available
+          ? `Version ${update.version || 'new'} is ready to install.`
+          : `You are running the latest version${update.current_version ? ` (${update.current_version})` : ''}.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Update check failed',
+        description: extractApiErrorDetail(error).message,
+        variant: 'destructive',
+      });
+    } finally {
+      setCheckingUpdates(false);
+    }
+  };
+
+  const handleInstallUpdate = async () => {
+    setInstallingUpdate(true);
+    try {
+      await installUpdate();
+    } catch (error) {
+      setInstallingUpdate(false);
+      setInstallDialogOpen(false);
+      toast({
+        title: 'Update installation failed',
+        description: extractApiErrorDetail(error).message,
+        variant: 'destructive',
+      });
+    }
+  };
+
   const hasChanges =
     config &&
     (apiUrl !== config.api_url ||
@@ -438,6 +493,81 @@ export function DesktopSettingsTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* Application Updates */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-base sm:text-lg">Application Updates</CardTitle>
+              <HelpPopover content="Vitora checks for updates after startup and once every 24 hours. Updates are never installed automatically; choose Install and Restart when you are ready." />
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCheckForUpdates}
+                disabled={checkingUpdates || installingUpdate}
+              >
+                {checkingUpdates ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-1.5 h-4 w-4" />
+                )}
+                Check for Updates
+              </Button>
+              {updateInfo?.available && (
+                <Button size="sm" onClick={() => setInstallDialogOpen(true)} disabled={installingUpdate}>
+                  <Download className="mr-1.5 h-4 w-4" />
+                  Install and Restart
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-muted-foreground">
+              {updateInfo
+                ? `Current version: ${updateInfo.current_version || 'Unknown'}`
+                : 'Check for updates to view this device\'s release status.'}
+            </span>
+            {updateInfo && (
+              <Badge
+                variant={updateInfo.available ? 'default' : 'secondary'}
+                className="w-fit self-start sm:self-auto"
+              >
+                {updateInfo.available ? `Version ${updateInfo.version || 'new'} ready` : 'Up to date'}
+              </Badge>
+            )}
+          </div>
+          {updateInfo?.available && updateInfo.body && (
+            <div className="rounded-md border bg-muted/30 p-3">
+              <p className="text-xs font-medium text-muted-foreground">Release notes</p>
+              <p className="mt-1 whitespace-pre-wrap text-sm">{updateInfo.body}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <AlertDialog open={installDialogOpen} onOpenChange={setInstallDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Install update and restart?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vitora will download version {updateInfo?.version || 'the available update'}, install it, and
+              restart. Any unsaved work should be completed first.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={installingUpdate}>Later</AlertDialogCancel>
+            <AlertDialogAction onClick={handleInstallUpdate} disabled={installingUpdate}>
+              {installingUpdate && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+              Install and Restart
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Hub Operations */}
       {isHubMode && (
