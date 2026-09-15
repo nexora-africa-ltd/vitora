@@ -28,6 +28,11 @@ from hmis.apps.core.oauth.scopes import SMARTScopes
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_log_field(value: object) -> str:
+    text = str(value)
+    return text.replace("\r", " ").replace("\n", " ")
+
+
 def get_base_url(request) -> str:
     """Get the base URL for the FHIR server."""
     if hasattr(settings, "FHIR_BASE_URL") and settings.FHIR_BASE_URL:
@@ -488,7 +493,7 @@ class SMARTLaunchView(APIView):
         # Validate iss matches our server
         base_url = get_base_url(request)
         if not iss.startswith(base_url):
-            logger.warning(f"Invalid iss parameter: {iss}")
+            logger.warning("Invalid iss parameter: %s", _sanitize_log_field(iss))
             return Response(
                 {"error": "Invalid iss parameter"},
                 status=status.HTTP_400_BAD_REQUEST,

@@ -854,7 +854,8 @@ class LabOrderViewSet(AuditedMutationMixin, TenantScopedViewMixin, viewsets.Mode
             )
             return response
         except ValueError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            message = str(exc.args[0]) if exc.args else "Unable to generate requisition PDF."
+            return Response({"error": message}, status=status.HTTP_400_BAD_REQUEST)
         except (AttributeError, TypeError, RuntimeError, OSError, AssertionError, ImportError):
             logger.exception("Error generating requisition PDF for order %s", order.pk)
             return Response(
@@ -1279,7 +1280,12 @@ class LabResultViewSet(AuditedMutationMixin, NestedTenantScopeMixin, viewsets.Mo
             AssertionError,
             ImportError,
         ) as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            message = "Attachment validation failed."
+            if isinstance(exc, (ValidationError, DjangoValidationError)):
+                messages = list(getattr(exc, "messages", []) or [])
+                if messages:
+                    message = str(messages[0])
+            return Response({"error": message}, status=status.HTTP_400_BAD_REQUEST)
 
         attachment_type = (
             request.data.get("attachment_type")

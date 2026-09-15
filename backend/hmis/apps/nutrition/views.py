@@ -496,9 +496,9 @@ class DietPlanViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
+        ):
             return Response(
-                {"error": str(e)},
+                {"error": "Unable to activate diet plan."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -539,9 +539,9 @@ class DietPlanViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
+        ):
             return Response(
-                {"error": str(e)},
+                {"error": "Unable to discontinue diet plan."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

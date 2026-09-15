@@ -86,7 +86,8 @@ class AdmissionRecommendationViewSet(NestedTenantScopeMixin, viewsets.ModelViewS
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         except ValueError as error:
-            return Response({"error": str(error)}, status=status.HTTP_400_BAD_REQUEST)
+            message = str(error.args[0]) if error.args else "Unable to accept recommendation."
+            return Response({"error": message}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=["post"])
     def decline(self, request, pk=None):
@@ -122,7 +123,8 @@ class AdmissionRecommendationViewSet(NestedTenantScopeMixin, viewsets.ModelViewS
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         except ValueError as error:
-            return Response({"error": str(error)}, status=status.HTTP_400_BAD_REQUEST)
+            message = str(error.args[0]) if error.args else "Unable to decline recommendation."
+            return Response({"error": message}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["get"], url_path="pending-admissions")
     def pending_admissions(self, request):

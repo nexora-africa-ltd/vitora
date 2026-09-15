@@ -51,8 +51,8 @@ def create_invoice_item_for_completed_session(sender, instance, created, **kwarg
             if not invoice:
                 # No existing invoice - skip billing (will be handled manually)
                 logger.info(
-                    f"No invoice found for OT session {instance.id}. "
-                    f"Billing will need to be done manually."
+                    "No invoice found for OT session %s. Billing will need to be done manually.",
+                    instance.id,
                 )
                 return
 
@@ -93,8 +93,10 @@ def create_invoice_item_for_completed_session(sender, instance, created, **kwarg
         instance.save(update_fields=["invoice_item", "is_billed"])
 
         logger.info(
-            f"Created invoice item {invoice_item.id} for OT session {instance.id} "
-            f"(Order: {order.order_number})"
+            "Created invoice item %s for OT session %s (Order: %s)",
+            invoice_item.id,
+            instance.id,
+            order.order_number,
         )
 
     except (
@@ -106,7 +108,7 @@ def create_invoice_item_for_completed_session(sender, instance, created, **kwarg
         AssertionError,
         ImportError,
     ) as e:
-        logger.error(f"Failed to create invoice item for OT session {instance.id}: {e}")
+        logger.error("Failed to create invoice item for OT session %s: %s", instance.id, e)
 
 
 @receiver(post_save, sender=OccupationalTherapyOrder)
@@ -149,8 +151,8 @@ def route_to_ot_clinic_on_approval(sender, instance, created, **kwargs):
 
         if not ot_clinic:
             logger.info(
-                f"No OT clinic found for order {instance.order_number}. "
-                f"Patient will need to be manually queued."
+                "No OT clinic found for order %s. Patient will need to be manually queued.",
+                instance.order_number,
             )
             return
 
@@ -166,8 +168,8 @@ def route_to_ot_clinic_on_approval(sender, instance, created, **kwargs):
 
         if not clinic_session:
             logger.info(
-                f"No active OT clinic session for today. "
-                f"Order {instance.order_number} will need manual scheduling."
+                "No active OT clinic session for today. Order %s will need manual scheduling.",
+                instance.order_number,
             )
             return
 
@@ -184,7 +186,9 @@ def route_to_ot_clinic_on_approval(sender, instance, created, **kwargs):
         instance.clinic_visit = clinic_visit
         instance.save(update_fields=["clinic_visit"])
 
-        logger.info(f"Created clinic visit {clinic_visit.id} for OT order {instance.order_number}")
+        logger.info(
+            "Created clinic visit %s for OT order %s", clinic_visit.id, instance.order_number
+        )
 
     except (
         AttributeError,
@@ -195,4 +199,4 @@ def route_to_ot_clinic_on_approval(sender, instance, created, **kwargs):
         AssertionError,
         ImportError,
     ) as e:
-        logger.error(f"Failed to route OT order {instance.order_number} to clinic: {e}")
+        logger.error("Failed to route OT order %s to clinic: %s", instance.order_number, e)

@@ -43,7 +43,7 @@ class PharmacyQueueConsumer(AsyncJsonWebsocketConsumer):
         # Validate facility exists
         facility_exists = await self._facility_exists(self.facility_id)
         if not facility_exists:
-            logger.warning(f"WebSocket connection rejected: facility {self.facility_id} not found")
+            logger.warning("WebSocket connection rejected: facility %s not found", self.facility_id)
             await self.close()
             return
 
@@ -51,14 +51,15 @@ class PharmacyQueueConsumer(AsyncJsonWebsocketConsumer):
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
 
         await self.accept()
-        logger.info(f"WebSocket connected to pharmacy queue for facility {self.facility_id}")
+        logger.info("WebSocket connected to pharmacy queue for facility %s", self.facility_id)
 
     async def disconnect(self, _close_code):
         """Handle WebSocket disconnection."""
         if hasattr(self, "room_group_name"):
             await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
             logger.info(
-                f"WebSocket disconnected from pharmacy queue for facility {self.facility_id}"
+                "WebSocket disconnected from pharmacy queue for facility %s",
+                self.facility_id,
             )
 
     async def receive(self, text_data=None, _bytes_data=None):
@@ -68,7 +69,7 @@ class PharmacyQueueConsumer(AsyncJsonWebsocketConsumer):
                 content = json.loads(text_data)
                 await self.receive_json(content)
             except json.JSONDecodeError as e:
-                logger.warning(f"Invalid JSON received: {e}")
+                logger.warning("Invalid JSON received: %s", e)
                 await self.send_json(
                     {
                         "error": "Invalid JSON format",
@@ -79,7 +80,7 @@ class PharmacyQueueConsumer(AsyncJsonWebsocketConsumer):
     async def receive_json(self, content):
         """Handle incoming WebSocket messages (read-only channel, ping/pong only)."""
         message_type = content.get("type", "unknown")
-        logger.debug(f"Received WebSocket message: {message_type}")
+        logger.debug("Received WebSocket message: %s", message_type)
 
         if message_type == "ping":
             await self.send_json({"type": "pong", "timestamp": content.get("timestamp")})

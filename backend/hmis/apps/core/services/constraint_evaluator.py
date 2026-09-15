@@ -31,6 +31,11 @@ from hmis.apps.core.services.sha_profile_validator import ProfileViolation
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_log_field(value: object) -> str:
+    text = str(value)
+    return text.replace("\r", " ").replace("\n", " ")
+
+
 # Try to import fhirpath for expression evaluation
 try:
     from fhirpath import evaluate as fhirpath_evaluate
@@ -415,8 +420,12 @@ class ConstraintEvaluator:
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
-            logger.warning(f"FHIRPath evaluation failed for {constraint.id}: {e}")
+        ) as exc:
+            logger.warning(
+                "FHIRPath evaluation failed for %s (%s)",
+                _sanitize_log_field(constraint.id),
+                type(exc).__name__,
+            )
             # Don't fail validation on FHIRPath errors
             return None
 

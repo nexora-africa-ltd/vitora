@@ -57,10 +57,10 @@ def check_all_channel_health() -> dict:
             AssertionError,
             ImportError,
         ) as e:
-            logger.error(f"Error checking channel {channel.id} health: {e}")
+            logger.error("Error checking channel %s health: %s", channel.id, e)
             results["errors"] += 1
 
-    logger.info(f"Channel health check complete: {results}")
+    logger.info("Channel health check complete: %s", results)
     return results
 
 
@@ -98,7 +98,7 @@ def retry_failed_messages(max_retries: int = 3, batch_size: int = 50) -> dict:
     results["dispatch"] = dispatch_result
     results["failed"] = dispatch_result["failed"] + dispatch_result["timeouts"]
 
-    logger.info(f"Message retry complete: {results}")
+    logger.info("Message retry complete: %s", results)
     return results
 
 
@@ -153,5 +153,5 @@ def broadcast_work_orders(facility_id: int = None) -> dict:
                 if msg:
                     results["orders_created"] += 1
 
-    logger.info(f"Work order broadcast complete: {results}")
+    logger.info("Work order broadcast complete: %s", results)
     return results

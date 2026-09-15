@@ -106,7 +106,11 @@ def poll_preauth_statuses():
             logger.exception("Failed to poll preauth %s", preauth.preauth_reference)
 
     result = f"Polled {polled} preauth request(s), {errors} error(s)"
-    logger.info(result)
+    logger.info(
+        "Preauth polling completed: polled=%d errors=%d",
+        polled,
+        errors,
+    )
     return result
 
 
@@ -172,7 +176,12 @@ def poll_ilm_preauth_statuses():
             logger.exception("Failed to poll ILM preauth %s", preauth.pk)
 
     result_msg = f"ILM preauths: polled {polled}, updated {updated}, errors {errors}"
-    logger.info(result_msg)
+    logger.info(
+        "ILM preauth polling completed: polled=%d updated=%d errors=%d",
+        polled,
+        updated,
+        errors,
+    )
     return result_msg
 
 
@@ -263,7 +272,11 @@ def flag_time_barring_claims():
             )
 
     result = f"Time-barring check: {warned} warning(s), {time_barred} time-barred"
-    logger.info(result)
+    logger.info(
+        "Time-barring check completed: warnings=%d time_barred=%d",
+        warned,
+        time_barred,
+    )
     return result
 
 
@@ -330,13 +343,21 @@ def refresh_otp_whitelist_statuses():
                 )
         except _billing_task_handled_exceptions():
             errors += 1
-            logger.exception("Failed to poll whitelist status for %s", request.beneficiary_cr_id)
+            logger.exception(
+                "Failed to poll whitelist status for beneficiary %s",
+                _mask_sha_number(request.beneficiary_cr_id),
+            )
 
+    pending_count = pending.count()
     result_msg = (
-        f"OTP whitelist refresh: {updated} updated, {errors} error(s) "
-        f"(of {pending.count()} pending)"
+        f"OTP whitelist refresh: {updated} updated, {errors} error(s) (of {pending_count} pending)"
     )
-    logger.info(result_msg)
+    logger.info(
+        "OTP whitelist refresh completed: updated=%d errors=%d pending=%d",
+        updated,
+        errors,
+        pending_count,
+    )
     return result_msg
 
 

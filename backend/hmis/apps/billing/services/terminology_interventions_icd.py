@@ -23,6 +23,11 @@ from .sha_auth import SHAAuthError
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_log_field(value: object) -> str:
+    text = str(value)
+    return text.replace("\r", " ").replace("\n", " ")
+
+
 from hmis.apps.billing.services.terminology_models import *  # noqa: F403
 
 
@@ -98,7 +103,7 @@ class TerminologyInterventionsICDMixin:
             >>> results = service.search_interventions('consultation')
             >>> print(f"Found {len(results)} interventions")
         """
-        logger.info(f"Searching SHA interventions: query='{query}'")
+        logger.info("Searching SHA interventions: query=%s", _sanitize_log_field(query))
 
         # Local-first: serve from JSONL unless forced remote
         if not force_remote:
@@ -186,7 +191,7 @@ class TerminologyInterventionsICDMixin:
             CodeNotFoundError: If code not found in local or remote
             TerminologyError: If remote request fails and code not available locally
         """
-        logger.info(f"Fetching SHA intervention: {code}")
+        logger.info("Fetching SHA intervention: %s", _sanitize_log_field(code))
 
         # Local-first: check JSONL store
         if not force_remote:
@@ -266,12 +271,12 @@ class TerminologyInterventionsICDMixin:
         Raises:
             TerminologyError: If search fails
         """
-        logger.info(f"Searching ICD-11: query='{query}'")
+        logger.info("Searching ICD-11: query=%s", _sanitize_log_field(query))
 
         try:
             return self._search_icd11_remote(query, chapter, limit)
-        except TerminologyError as e:
-            logger.warning(f"Remote ICD-11 search failed: {e}")
+        except TerminologyError as exc:
+            logger.warning("Remote ICD-11 search failed (%s)", type(exc).__name__)
 
         if self.use_local_fallback:
             logger.info("Using local database fallback for ICD-11")
@@ -371,8 +376,8 @@ class TerminologyInterventionsICDMixin:
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
-            logger.error(f"Local ICD-11 fallback failed: {e}")
+        ) as exc:
+            logger.error("Local ICD-11 fallback failed (%s)", type(exc).__name__)
             return []
 
     def get_icd11(self, code: str) -> ICD11Code:
@@ -388,14 +393,14 @@ class TerminologyInterventionsICDMixin:
         Raises:
             CodeNotFoundError: If code not found
         """
-        logger.info(f"Fetching ICD-11 code: {code}")
+        logger.info("Fetching ICD-11 code: %s", _sanitize_log_field(code))
 
         try:
             return self._get_icd11_remote(code)
         except CodeNotFoundError:
             pass
-        except TerminologyError as e:
-            logger.warning(f"Remote ICD-11 fetch failed: {e}")
+        except TerminologyError as exc:
+            logger.warning("Remote ICD-11 fetch failed (%s)", type(exc).__name__)
 
         if self.use_local_fallback:
             try:

@@ -78,9 +78,9 @@ def validate_api_key(f):
 
 def log_request():
     """Log incoming request details."""
-    logger.info(f"{request.method} {request.path}")
+    logger.info("%s %s", request.method, request.path)
     if request.is_json and request.json:
-        logger.debug(f"Request body: {json.dumps(request.json, indent=2)}")
+        logger.debug("Request body: %s", json.dumps(request.json, indent=2))
 
 
 # =============================================================================
@@ -332,7 +332,7 @@ def submit_claim():
         ],
     }
 
-    logger.info(f"Claim submitted: {claim_ref} for member {sha_number}")
+    logger.info("Claim submitted: %s for member %s", claim_ref, sha_number)
 
     return (
         jsonify(
@@ -824,7 +824,7 @@ def not_found(error):
 
 @app.errorhandler(500)
 def internal_error(error):
-    logger.error(f"Internal error: {error}")
+    logger.error("Internal error: %s", error)
     return (
         jsonify(
             {

@@ -34,6 +34,12 @@ from hmis.apps.core.events.base import DomainEvent
 
 logger = logging.getLogger(__name__)
 
+
+def _sanitize_log_field(value: object) -> str:
+    text = str(value)
+    return text.replace("\r", " ").replace("\n", " ")
+
+
 # Type alias for event handler functions
 EventHandler = Callable[[DomainEvent], None]
 
@@ -73,7 +79,11 @@ class EventBus:
                 if handler not in self._subscribers[event_type]:
                     self._subscribers[event_type].append(handler)
 
-        logger.debug(f"Subscribed {handler.__name__} to '{event_type}'")
+        logger.debug(
+            "Subscribed %s to '%s'",
+            _sanitize_log_field(handler.__name__),
+            _sanitize_log_field(event_type),
+        )
 
     def unsubscribe(self, event_type: str, handler: EventHandler) -> None:
         """
@@ -149,8 +159,12 @@ class EventBus:
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
-            logger.error(f"Failed to persist event {event.event_type}: {e}")
+        ) as exc:
+            logger.error(
+                "Failed to persist event %s (%s)",
+                _sanitize_log_field(event.event_type),
+                type(exc).__name__,
+            )
 
     @staticmethod
     def _safe_call(handler: EventHandler, event: DomainEvent) -> None:
@@ -167,8 +181,11 @@ class EventBus:
             ImportError,
         ):
             logger.exception(
-                f"Handler {handler.__name__} failed for event "
-                f"{event.event_type} (aggregate={event.aggregate_type}:{event.aggregate_id})"
+                "Handler %s failed for event %s (aggregate=%s:%s)",
+                _sanitize_log_field(handler.__name__),
+                _sanitize_log_field(event.event_type),
+                _sanitize_log_field(event.aggregate_type),
+                _sanitize_log_field(event.aggregate_id),
             )
 
 

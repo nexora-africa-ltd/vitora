@@ -216,8 +216,11 @@ class CertificateViewSet(viewsets.GenericViewSet, ListModelMixin, RetrieveModelM
                 organization=target_org,
                 validity_years=int(request.data.get("validity_years", 2)),
             )
-        except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except ValueError:
+            return Response(
+                {"error": "Unable to issue user certificate."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         return Response(
             UserCertificateSerializer(cert).data,
@@ -337,8 +340,11 @@ class CertificateViewSet(viewsets.GenericViewSet, ListModelMixin, RetrieveModelM
                 key_size=key_size,
                 validity_years=validity_years,
             )
-        except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except ValueError:
+            return Response(
+                {"error": "Unable to create intermediate certificate authority."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         return Response(
             CertificateAuthoritySerializer(ca).data,
@@ -374,8 +380,12 @@ class DocumentSignatureViewSet(viewsets.GenericViewSet, ListModelMixin, Retrieve
                 document_id=serializer.validated_data["document_id"],
                 user=request.user,
             )
-        except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except ValueError as exc:
+            message = str(exc.args[0]) if exc.args else "Unable to sign document."
+            return Response(
+                {"error": message},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         return Response(
             DocumentSignatureSerializer(sig).data,

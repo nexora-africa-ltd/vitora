@@ -213,9 +213,10 @@ class ClinicalReferralViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
+        ) as exc:
+            message = str(exc.args[0]) if exc.args else "Unable to accept referral."
             return Response(
-                {"detail": str(e)},
+                {"detail": message},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -257,9 +258,10 @@ class ClinicalReferralViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
+        ) as exc:
+            message = str(exc.args[0]) if exc.args else "Unable to decline referral."
             return Response(
-                {"detail": str(e)},
+                {"detail": message},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -299,9 +301,10 @@ class ClinicalReferralViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
+        ) as exc:
+            message = str(exc.args[0]) if exc.args else "Unable to cancel referral."
             return Response(
-                {"detail": str(e)},
+                {"detail": message},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

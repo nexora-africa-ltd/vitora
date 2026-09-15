@@ -89,7 +89,7 @@ def create_lab_queue_entry(sender, instance, created, **kwargs):
                 sample_type=specimen_type,
                 queue_status="PENDING",
             )
-            logger.info(f"Created LabQueue entry for order {instance.order_number}")
+            logger.info("Created LabQueue entry for order %s", instance.order_number)
 
             publish_event(
                 event_type=LaboratoryEvents.QUEUE_CREATED,
@@ -102,7 +102,9 @@ def create_lab_queue_entry(sender, instance, created, **kwargs):
                 facility_id=getattr(instance, "facility_id", None),
             )
         except _laboratory_signal_handled_exceptions() as e:
-            logger.error(f"Failed to create LabQueue entry for order {instance.order_number}: {e}")
+            logger.error(
+                "Failed to create LabQueue entry for order %s: %s", instance.order_number, e
+            )
 
 
 @receiver(post_save, sender=LabOrderItem)
@@ -140,9 +142,9 @@ def create_lab_queue_on_item_add(sender, instance, created, **kwargs):
             sample_type=instance.test.specimen_type or "BLOOD",
             queue_status="PENDING",
         )
-        logger.info(f"Created LabQueue entry for order {lab_order.order_number} (on item add)")
+        logger.info("Created LabQueue entry for order %s (on item add)", lab_order.order_number)
     except _laboratory_signal_handled_exceptions() as e:
-        logger.error(f"Failed to create LabQueue entry for order {lab_order.order_number}: {e}")
+        logger.error("Failed to create LabQueue entry for order %s: %s", lab_order.order_number, e)
 
     queue_entry = LabQueue.objects.filter(lab_order=lab_order).first()
     if queue_entry:
@@ -171,9 +173,9 @@ def sync_lab_queue_priority(sender, instance, created, **kwargs):
         if queue_entry and queue_entry.priority != instance.priority:
             queue_entry.priority = instance.priority
             queue_entry.save(update_fields=["priority", "priority_order"])
-            logger.info(f"Synced priority for queue entry {queue_entry.queue_number}")
+            logger.info("Synced priority for queue entry %s", queue_entry.queue_number)
     except _laboratory_signal_handled_exceptions() as e:
-        logger.error(f"Failed to sync priority for order {instance.order_number}: {e}")
+        logger.error("Failed to sync priority for order %s: %s", instance.order_number, e)
 
 
 @receiver(post_save, sender=LabQueue)
@@ -266,7 +268,7 @@ def update_order_status_on_result(sender, instance, created, **kwargs):
             # First result - transition to IN_PROGRESS
             if lab_order.status == "SPECIMEN_COLLECTED":
                 lab_order.update_status("IN_PROGRESS", user)
-                logger.info(f"Order {lab_order.order_number} transitioned to IN_PROGRESS")
+                logger.info("Order %s transitioned to IN_PROGRESS", lab_order.order_number)
 
                 # Also update queue to PROCESSING
                 queue_entry = LabQueue.objects.filter(lab_order=lab_order).first()
@@ -276,7 +278,7 @@ def update_order_status_on_result(sender, instance, created, **kwargs):
                     queue_entry.save(
                         update_fields=["queue_status", "processing_started_at", "updated_at"]
                     )
-                    logger.info(f"Queue {queue_entry.queue_number} transitioned to PROCESSING")
+                    logger.info("Queue %s transitioned to PROCESSING", queue_entry.queue_number)
 
         if items_with_results == total_items:
             # All results entered - keep in IN_PROGRESS but queue goes to REVIEW
@@ -288,11 +290,12 @@ def update_order_status_on_result(sender, instance, created, **kwargs):
                     update_fields=["queue_status", "processing_completed_at", "updated_at"]
                 )
                 logger.info(
-                    f"Queue {queue_entry.queue_number} transitioned to REVIEW (all results entered)"
+                    "Queue %s transitioned to REVIEW (all results entered)",
+                    queue_entry.queue_number,
                 )
 
     except _laboratory_signal_handled_exceptions() as e:
-        logger.error(f"Failed to update order status after result entry: {e}")
+        logger.error("Failed to update order status after result entry: %s", e)
 
 
 @receiver(post_save, sender=LabResult)
@@ -333,7 +336,7 @@ def notify_on_result_verification(sender, instance, created, **kwargs):
 
             # Broadcast verified result
             broadcast_result_verified(instance)
-            logger.info(f"Broadcasted verification notification for result {instance.id}")
+            logger.info("Broadcasted verification notification for result %s", instance.id)
 
             publish_event(
                 event_type=LaboratoryEvents.RESULT_VERIFIED,
@@ -350,7 +353,7 @@ def notify_on_result_verification(sender, instance, created, **kwargs):
             # If critical, also send critical alert
             if instance.is_critical_result:
                 broadcast_critical_alert(instance)
-                logger.info(f"Broadcasted critical alert for result {instance.id}")
+                logger.info("Broadcasted critical alert for result %s", instance.id)
 
             # Check if all results for this order are now verified
             lab_order = instance.order_item.lab_order
@@ -361,7 +364,7 @@ def notify_on_result_verification(sender, instance, created, **kwargs):
                 # All results verified - update order status and notify
                 lab_order.update_status("COMPLETED", instance.verified_by)
                 broadcast_order_completed(lab_order)
-                logger.info(f"Order {lab_order.order_number} completed - all results verified")
+                logger.info("Order %s completed - all results verified", lab_order.order_number)
 
                 publish_event(
                     event_type=LaboratoryEvents.ORDER_COMPLETED,
@@ -386,7 +389,7 @@ def notify_on_result_verification(sender, instance, created, **kwargs):
                     OSError,
                     AssertionError,
                 ) as notif_error:
-                    logger.error(f"Failed to send in-app notification: {notif_error}")
+                    logger.error("Failed to send in-app notification: %s", notif_error)
 
                 # Trigger SHA document attachment for the associated claim
                 try:
@@ -405,7 +408,7 @@ def notify_on_result_verification(sender, instance, created, **kwargs):
                     logger.debug("SHA document attachment trigger skipped: %s", exc)
 
     except _laboratory_signal_handled_exceptions() as e:
-        logger.error(f"Failed to send verification notification for result {instance.id}: {e}")
+        logger.error("Failed to send verification notification for result %s: %s", instance.id, e)
 
 
 @receiver(post_save, sender=LabOrder)

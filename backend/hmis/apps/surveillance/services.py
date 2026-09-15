@@ -102,7 +102,10 @@ class SurveillanceService:
 
         if existing:
             logger.info(
-                f"Case already exists for {disease.name} - patient {patient.mrn} - encounter {encounter.id}"
+                "Case already exists for %s - patient %s - encounter %s",
+                disease.name,
+                patient.mrn,
+                encounter.id,
             )
             return existing
 
@@ -118,8 +121,10 @@ class SurveillanceService:
         )
 
         logger.info(
-            f"Created notifiable case for {disease.name} - patient {patient.mrn} "
-            f"- category {disease.category}"
+            "Created notifiable case for %s - patient %s - category %s",
+            disease.name,
+            patient.mrn,
+            disease.category,
         )
 
         # Generate alert for immediate diseases
@@ -253,7 +258,7 @@ class SurveillanceService:
             )
             alert.sent_via_websocket = True
             alert.save(update_fields=["sent_via_websocket"])
-            logger.info(f"Broadcast surveillance alert {alert.id} via WebSocket")
+            logger.info("Broadcast surveillance alert %s via WebSocket", alert.id)
         except (
             AttributeError,
             TypeError,
@@ -263,7 +268,7 @@ class SurveillanceService:
             AssertionError,
             ImportError,
         ) as e:
-            logger.error(f"Failed to broadcast surveillance alert: {e}")
+            logger.error("Failed to broadcast surveillance alert: %s", e)
 
     @classmethod
     def send_sms_alert(cls, alert: "SurveillanceAlert") -> bool:
@@ -283,7 +288,7 @@ class SurveillanceService:
 
             county = alert.case.county
             if not county:
-                logger.warning(f"No county for alert {alert.id}, skipping SMS")
+                logger.warning("No county for alert %s, skipping SMS", alert.id)
                 return False
 
             # TODO: Get county health officer phone from configuration
@@ -301,7 +306,7 @@ class SurveillanceService:
                 alert.sent_via_sms = True
                 alert.sms_recipient = recipient
                 alert.save(update_fields=["sent_via_sms", "sms_recipient_encrypted"])
-                logger.info(f"Sent SMS alert {alert.id} to {recipient}")
+                logger.info("Sent SMS alert %s to %s", alert.id, recipient)
             return success
 
         except (
@@ -313,7 +318,7 @@ class SurveillanceService:
             AssertionError,
             ImportError,
         ) as e:
-            logger.error(f"Failed to send SMS alert: {e}")
+            logger.error("Failed to send SMS alert: %s", e)
             return False
 
     @classmethod
@@ -332,7 +337,7 @@ class SurveillanceService:
 
             county = alert.case.county
             if not county:
-                logger.warning(f"No county for alert {alert.id}, skipping email")
+                logger.warning("No county for alert %s, skipping email", alert.id)
                 return False
 
             # TODO: Get county health officer email from configuration
@@ -370,7 +375,7 @@ Please log in to Vitora HMIS to review and process this case.
             alert.sent_via_email = True
             alert.email_recipient = recipient
             alert.save(update_fields=["sent_via_email", "email_recipient_encrypted"])
-            logger.info(f"Sent email alert {alert.id} to {recipient}")
+            logger.info("Sent email alert %s to %s", alert.id, recipient)
             return True
 
         except (
@@ -382,7 +387,7 @@ Please log in to Vitora HMIS to review and process this case.
             AssertionError,
             ImportError,
         ) as e:
-            logger.error(f"Failed to send email alert: {e}")
+            logger.error("Failed to send email alert: %s", e)
             return False
 
     @classmethod
@@ -443,8 +448,10 @@ Please log in to Vitora HMIS to review and process this case.
                             ),
                         )
                         logger.warning(
-                            f"Outbreak threshold exceeded: {disease.name} - "
-                            f"{count}/{threshold.case_threshold} cases"
+                            "Outbreak threshold exceeded: %s - %s/%s cases",
+                            disease.name,
+                            count,
+                            threshold.case_threshold,
                         )
 
     @classmethod
@@ -471,7 +478,7 @@ Please log in to Vitora HMIS to review and process this case.
         for case in overdue_cases:
             cls.create_alert(case=case, alert_type=SurveillanceAlert.AlertType.OVERDUE)
             newly_overdue.append(case)
-            logger.warning(f"Case overdue: {case.disease.name} - {case.patient.mrn}")
+            logger.warning("Case overdue: %s - %s", case.disease.name, case.patient.mrn)
 
         return newly_overdue
 
@@ -718,8 +725,11 @@ class IDSRReportingService:
             report.save()
 
             logger.info(
-                f"Generated IDSR report W{epi_week:02d}/{epi_year}: "
-                f"{len(cases)} cases, {len(disease_data)} diseases"
+                "Generated IDSR report W%02d/%s: %s cases, %s diseases",
+                epi_week,
+                epi_year,
+                len(cases),
+                len(disease_data),
             )
 
         return report
@@ -821,8 +831,10 @@ class IDSRReportingService:
 
         if unmapped_diseases:
             logger.warning(
-                f"Unmapped DHIS2 data elements for report {report.id}: "
-                f"{', '.join(unmapped_diseases[:10])}{'...' if len(unmapped_diseases) > 10 else ''}"
+                "Unmapped DHIS2 data elements for report %s: %s%s",
+                report.id,
+                ", ".join(unmapped_diseases[:10]),
+                "..." if len(unmapped_diseases) > 10 else "",
             )
 
         return {
@@ -877,17 +889,17 @@ class IDSRReportingService:
 
             if response.ok:
                 report.mark_submitted(response_data)
-                logger.info(f"Submitted IDSR report {report.id} to DHIS2")
+                logger.info("Submitted IDSR report %s to DHIS2", report.id)
             else:
                 report.mark_failed(response_data)
-                logger.error(f"DHIS2 submission failed: {response.status_code}")
+                logger.error("DHIS2 submission failed: %s", response.status_code)
 
             return response_data
 
         except requests.RequestException as e:
             error_response = {"status": "error", "message": str(e)}
             report.mark_failed(error_response)
-            logger.error(f"DHIS2 request failed: {e}")
+            logger.error("DHIS2 request failed: %s", e)
             return error_response
 
 

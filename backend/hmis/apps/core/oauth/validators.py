@@ -17,6 +17,11 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_log_field(value: object) -> str:
+    text = str(value)
+    return text.replace("\r", " ").replace("\n", " ")
+
+
 class SMARTOAuth2Validator(OAuth2Validator):
     """
     Custom OAuth2 validator for SMART on FHIR.
@@ -81,12 +86,19 @@ class SMARTOAuth2Validator(OAuth2Validator):
         # Validate each scope
         for scope in scopes:
             if not smart_scopes.is_valid_scope(scope):
-                logger.warning(f"Invalid SMART scope requested: {scope} for client {client_id}")
+                logger.warning(
+                    "Invalid SMART scope requested: %s for client %s",
+                    _sanitize_log_field(scope),
+                    _sanitize_log_field(client_id),
+                )
                 return False
 
         # Validate launch scope rules
         if "launch" in scopes and not getattr(request, "launch_context", None):
-            logger.warning(f"Launch scope requested without launch context for client {client_id}")
+            logger.warning(
+                "Launch scope requested without launch context for client %s",
+                _sanitize_log_field(client_id),
+            )
             # Allow for now, but log warning
 
         return super().validate_scopes(client_id, scopes, client, request, *args, **kwargs)
@@ -174,7 +186,10 @@ class SMARTClientAuthenticationValidator:
             # Get client's public key (should be stored in client metadata)
             jwks = getattr(client, "jwks", None)
             if not jwks:
-                logger.warning(f"No JWKS configured for client {client.client_id}")
+                logger.warning(
+                    "No JWKS configured for client %s",
+                    _sanitize_log_field(client.client_id),
+                )
                 return False
 
             # Decode and validate JWT
@@ -210,8 +225,8 @@ class SMARTClientAuthenticationValidator:
 
             return True
 
-        except jwt.PyJWTError as e:
-            logger.warning(f"JWT validation failed: {e}")
+        except jwt.PyJWTError as exc:
+            logger.warning("JWT validation failed (%s)", type(exc).__name__)
             return False
 
     @staticmethod

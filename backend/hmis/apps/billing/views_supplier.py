@@ -144,7 +144,8 @@ class SupplierBillViewSet(
         try:
             bill.receive()
         except ValidationError as e:
-            return Response({"error": str(e.message)}, status=status.HTTP_400_BAD_REQUEST)
+            message = getattr(e, "message", None) or "Unable to receive supplier bill."
+            return Response({"error": message}, status=status.HTTP_400_BAD_REQUEST)
         from hmis.apps.billing.serializers import SupplierBillSerializer
 
         return Response(SupplierBillSerializer(bill).data)
@@ -161,7 +162,8 @@ class SupplierBillViewSet(
         try:
             bill.approve(user=request.user)
         except ValidationError as e:
-            return Response({"error": str(e.message)}, status=status.HTTP_400_BAD_REQUEST)
+            message = getattr(e, "message", None) or "Unable to approve supplier bill."
+            return Response({"error": message}, status=status.HTTP_400_BAD_REQUEST)
         AuditLog.log(
             action="supplier_bill_approve",
             user=request.user,
@@ -181,7 +183,8 @@ class SupplierBillViewSet(
         try:
             bill.dispute(notes=notes)
         except ValidationError as e:
-            return Response({"error": str(e.message)}, status=status.HTTP_400_BAD_REQUEST)
+            message = getattr(e, "message", None) or "Unable to dispute supplier bill."
+            return Response({"error": message}, status=status.HTTP_400_BAD_REQUEST)
         from hmis.apps.billing.serializers import SupplierBillSerializer
 
         return Response(SupplierBillSerializer(bill).data)
@@ -193,7 +196,8 @@ class SupplierBillViewSet(
         try:
             bill.cancel()
         except ValidationError as e:
-            return Response({"error": str(e.message)}, status=status.HTTP_400_BAD_REQUEST)
+            message = getattr(e, "message", None) or "Unable to cancel supplier bill."
+            return Response({"error": message}, status=status.HTTP_400_BAD_REQUEST)
         from hmis.apps.billing.serializers import SupplierBillSerializer
 
         return Response(SupplierBillSerializer(bill).data)
@@ -348,7 +352,8 @@ class SupplierPaymentViewSet(
         try:
             payment.reverse(reason=reason)
         except ValidationError as e:
-            return Response({"error": str(e.message)}, status=status.HTTP_400_BAD_REQUEST)
+            message = getattr(e, "message", None) or "Unable to reverse supplier payment."
+            return Response({"error": message}, status=status.HTTP_400_BAD_REQUEST)
         AuditLog.log(
             action="supplier_payment_reverse",
             user=request.user,

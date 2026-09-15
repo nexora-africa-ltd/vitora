@@ -39,6 +39,11 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_log_field(value: object) -> str:
+    text = str(value)
+    return text.replace("\r", " ").replace("\n", " ")
+
+
 @dataclass
 class RotationResult:
     """Result of a key rotation operation."""
@@ -96,13 +101,17 @@ class KeyRotationService:
 
             # If key is disabled, don't rotate
             if metadata.state != KeyState.ENABLED:
-                logger.warning(f"Key {metadata.key_id} is not enabled, skipping rotation check")
+                logger.warning(
+                    "Key %s is not enabled, skipping rotation check",
+                    _sanitize_log_field(metadata.key_id),
+                )
                 return False
 
             # Check next rotation time
             if metadata.next_rotation_at and datetime.now(UTC) >= metadata.next_rotation_at:
                 logger.info(
-                    f"Key rotation needed: past next_rotation_at ({metadata.next_rotation_at})"
+                    "Key rotation needed: past next_rotation_at (%s)",
+                    metadata.next_rotation_at,
                 )
                 return True
 
@@ -111,7 +120,7 @@ class KeyRotationService:
                 days_since_rotation = (datetime.now(UTC) - metadata.last_rotated_at).days
                 if days_since_rotation >= self._rotation_days:
                     logger.info(
-                        f"Key rotation needed: {days_since_rotation} days since last rotation"
+                        "Key rotation needed: %d days since last rotation", days_since_rotation
                     )
                     return True
 
@@ -119,7 +128,7 @@ class KeyRotationService:
             if metadata.created_at and not metadata.last_rotated_at:
                 days_since_creation = (datetime.now(UTC) - metadata.created_at).days
                 if days_since_creation >= self._rotation_days:
-                    logger.info(f"Key rotation needed: {days_since_creation} days since creation")
+                    logger.info("Key rotation needed: %d days since creation", days_since_creation)
                     return True
 
             return False
@@ -132,8 +141,8 @@ class KeyRotationService:
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
-            logger.error(f"Error checking rotation status: {e}")
+        ) as exc:
+            logger.error("Error checking rotation status (%s)", type(exc).__name__)
             return False
 
     def rotate(self) -> RotationResult:
@@ -182,14 +191,14 @@ class KeyRotationService:
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
-            logger.error(f"Key rotation failed: {e}")
+        ) as exc:
+            logger.error("Key rotation failed (%s)", type(exc).__name__)
             return RotationResult(
                 success=False,
                 old_key_id=old_metadata.key_id if old_metadata else None,
                 new_key_id=None,
                 records_reencrypted=0,
-                errors=[str(e)],
+                errors=["Key rotation failed"],
                 started_at=started_at,
                 completed_at=datetime.now(UTC),
             )
@@ -242,7 +251,11 @@ class KeyRotationService:
             try:
                 count = self._reencrypt_model(model, batch_size)
                 total_reencrypted += count
-                logger.info(f"Re-encrypted {count} records in {model.__name__}")
+                logger.info(
+                    "Re-encrypted %d records in %s",
+                    count,
+                    _sanitize_log_field(model.__name__),
+                )
             except (
                 AttributeError,
                 TypeError,
@@ -251,8 +264,11 @@ class KeyRotationService:
                 OSError,
                 AssertionError,
                 ImportError,
-            ) as e:
-                error_msg = f"Failed to re-encrypt {model.__name__}: {e}"
+            ) as exc:
+                error_msg = (
+                    "Failed to re-encrypt "
+                    f"{_sanitize_log_field(model.__name__)} ({type(exc).__name__})"
+                )
                 logger.error(error_msg)
                 errors.append(error_msg)
 
@@ -346,5 +362,5 @@ class KeyRotationService:
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
-            logger.warning(f"Failed to create audit log for key rotation: {e}")
+        ) as exc:
+            logger.warning("Failed to create audit log for key rotation (%s)", type(exc).__name__)

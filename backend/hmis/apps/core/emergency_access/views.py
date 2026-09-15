@@ -27,6 +27,11 @@ from .tasks import send_emergency_access_escalation
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_log_field(value: object) -> str:
+    text = str(value)
+    return text.replace("\r", " ").replace("\n", " ")
+
+
 class CanApproveEmergencyAccess(permissions.BasePermission):
     """Permission to approve/revoke emergency access."""
 
@@ -134,13 +139,16 @@ class EmergencyAccessViewSet(viewsets.ModelViewSet):
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
-            logger.warning(f"Failed to queue escalation notification: {e}")
+        ) as exc:
+            logger.warning("Failed to queue escalation notification (%s)", type(exc).__name__)
 
         logger.warning(
-            f"Emergency access invoked by {request.user.username} "
-            f"(reason: {emergency_access.reason}, "
-            f"patient: {emergency_access.patient.mrn if emergency_access.patient else 'N/A'})"
+            "Emergency access invoked by %s (reason: %s, patient: %s)",
+            _sanitize_log_field(request.user.username),
+            _sanitize_log_field(emergency_access.reason),
+            _sanitize_log_field(
+                emergency_access.patient.mrn if emergency_access.patient else "N/A"
+            ),
         )
 
         return Response(
@@ -228,7 +236,12 @@ class EmergencyAccessViewSet(viewsets.ModelViewSet):
             },
         )
 
-        logger.info(f"Emergency access {instance.id} {action_type}d by {request.user.username}")
+        logger.info(
+            "Emergency access %s %sd by %s",
+            instance.id,
+            _sanitize_log_field(action_type),
+            _sanitize_log_field(request.user.username),
+        )
 
         return Response(EmergencyAccessSerializer(instance).data)
 

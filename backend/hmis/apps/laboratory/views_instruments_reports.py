@@ -282,10 +282,15 @@ class DiagnosticReportViewSet(AuditedMutationMixin, NestedTenantScopeMixin, view
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
+        ) as exc:
             logger.exception("Error finalizing diagnostic report %s", report_number)
+            detail = "Unable to finalize diagnostic report."
+            if isinstance(exc, (ValidationError, DjangoValidationError)):
+                messages = list(getattr(exc, "messages", []) or [])
+                if messages:
+                    detail = str(messages[0])
             return Response(
-                {"detail": str(e)},
+                {"detail": detail},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -316,10 +321,15 @@ class DiagnosticReportViewSet(AuditedMutationMixin, NestedTenantScopeMixin, view
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
+        ) as exc:
             logger.exception("Error amending diagnostic report %s", report_number)
+            detail = "Unable to amend diagnostic report."
+            if isinstance(exc, (ValidationError, DjangoValidationError)):
+                messages = list(getattr(exc, "messages", []) or [])
+                if messages:
+                    detail = str(messages[0])
             return Response(
-                {"detail": str(e)},
+                {"detail": detail},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -347,10 +357,15 @@ class DiagnosticReportViewSet(AuditedMutationMixin, NestedTenantScopeMixin, view
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
+        ) as exc:
             logger.exception("Error cancelling diagnostic report %s", report_number)
+            detail = "Unable to cancel diagnostic report."
+            if isinstance(exc, (ValidationError, DjangoValidationError)):
+                messages = list(getattr(exc, "messages", []) or [])
+                if messages:
+                    detail = str(messages[0])
             return Response(
-                {"detail": str(e)},
+                {"detail": detail},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

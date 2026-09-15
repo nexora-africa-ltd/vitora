@@ -23,6 +23,11 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_log_field(value: object) -> str:
+    text = str(value)
+    return text.replace("\r", " ").replace("\n", " ")
+
+
 class ConnectivityChecker:
     """
     Check network connectivity to the sync server.
@@ -158,12 +163,12 @@ class ConnectivityMonitor:
         Args:
             new_status: The new connectivity status
         """
-        logger.info(f"Connectivity changed: {'online' if new_status else 'offline'}")
+        logger.info("Connectivity changed: %s", "online" if new_status else "offline")
         for callback in self._callbacks:
             try:
                 callback(new_status)
-            except Exception as e:  # noqa: BLE001 - callback failures must not break connectivity notifications
-                logger.error(f"Callback error: {e}")
+            except Exception as exc:  # noqa: BLE001 - callback failures must not break connectivity notifications
+                logger.error("Callback error (%s)", type(exc).__name__)
 
     def check_and_notify(self) -> bool:
         """
@@ -240,7 +245,12 @@ class SyncManager:
             status="PENDING",
         )
 
-        logger.debug(f"Queued {operation} for {model_name}:{record_id}")
+        logger.debug(
+            "Queued %s for %s:%s",
+            _sanitize_log_field(operation),
+            _sanitize_log_field(model_name),
+            _sanitize_log_field(record_id),
+        )
 
         return entry
 
@@ -319,9 +329,9 @@ class SyncManager:
                     entry.mark_failed(sync_result.get("error", "Unknown error"))
                     results["failed"] += 1
 
-            except Exception as e:  # noqa: BLE001 - per-entry sync failures must not stop the queue loop
-                logger.error(f"Error syncing entry {entry.id}: {e}")
-                entry.mark_failed(str(e))
+            except Exception as exc:  # noqa: BLE001 - per-entry sync failures must not stop the queue loop
+                logger.error("Error syncing entry %s (%s)", entry.id, type(exc).__name__)
+                entry.mark_failed("Sync failed")
                 results["failed"] += 1
 
         return results
@@ -572,9 +582,9 @@ def sync_to_server(
                 "error": f"Server returned {response.status_code}",
             }
 
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Sync request failed: {e}")
-        return {"success": False, "error": str(e)}
+    except requests.exceptions.RequestException as exc:
+        logger.error("Sync request failed (%s)", type(exc).__name__)
+        return {"success": False, "error": str(exc)}
 
 
 def record_conflict(
@@ -608,7 +618,11 @@ def record_conflict(
         status="PENDING",
     )
 
-    logger.warning(f"Conflict recorded for {model_name}:{record_id}")
+    logger.warning(
+        "Conflict recorded for %s:%s",
+        _sanitize_log_field(model_name),
+        _sanitize_log_field(record_id),
+    )
 
     return conflict
 
@@ -796,7 +810,7 @@ def process_queue_entry(entry: "SyncQueue") -> dict:
         OSError,
         AssertionError,
         ImportError,
-    ) as e:
-        logger.error(f"Error processing queue entry {entry.id}: {e}")
-        entry.mark_failed(str(e))
-        return {"success": False, "error": str(e)}
+    ) as exc:
+        logger.error("Error processing queue entry %s (%s)", entry.id, type(exc).__name__)
+        entry.mark_failed("Sync processing failed")
+        return {"success": False, "error": str(exc)}

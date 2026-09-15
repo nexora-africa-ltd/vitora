@@ -18,6 +18,8 @@ How to use: imported by `hmis.apps.encounters.views` compatibility shim.
 Supported inputs/args: DRF viewsets/API views for encounter lifecycle and treatment plan actions.
 """
 
+import logging
+
 from django.core.exceptions import ValidationError
 from django.db.models import ProtectedError
 from django.utils import timezone
@@ -30,6 +32,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.checkin.serializers import ClinicalSnapshotSerializer
+from hmis.apps.core.api_errors import safe_error_response
 from hmis.apps.core.history_views import ModelHistoryMixin
 from hmis.apps.core.mixins import (
     NestedTenantScopeMixin,
@@ -88,6 +91,8 @@ from .serializers import (
     VitalFlagSuggestionRejectSerializer,
     VitalFlagSuggestionSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @extend_schema_view(
@@ -880,9 +885,13 @@ class EncounterViewSet(
         try:
             encounter.begin_consultation()
         except ValueError as e:
-            return Response(
-                {"detail": str(e)},
-                status=status.HTTP_400_BAD_REQUEST,
+            return safe_error_response(
+                action="encounter_start_consultation",
+                exc=e,
+                logger=logger,
+                fallback="Unable to start consultation.",
+                expose_message_for=(),
+                extra_payload={"detail": "Unable to start consultation."},
             )
 
         serializer = self.get_serializer(encounter)

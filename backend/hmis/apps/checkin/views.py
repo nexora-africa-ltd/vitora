@@ -381,9 +381,9 @@ class PatientCheckinView(views.APIView):
                 facility=facility,
                 organization=organization,
             )
-        except ValueError as e:
+        except ValueError as exc:
             # Duplicate check-in or business rule violation
-            error_msg = str(e)
+            error_msg = str(exc.args[0]) if exc.args else "Check-in could not be completed."
             is_duplicate = "already in" in error_msg
             return Response(
                 {
@@ -399,9 +399,9 @@ class PatientCheckinView(views.APIView):
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
+        ):
             return Response(
-                {"detail": str(e)},
+                {"detail": "Check-in request could not be processed."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

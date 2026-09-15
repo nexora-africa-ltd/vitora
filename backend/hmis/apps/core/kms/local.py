@@ -99,7 +99,7 @@ class LocalKMSProvider(KMSProvider):
             AssertionError,
             ImportError,
         ) as e:
-            logger.error(f"Encryption failed: {e}")
+            logger.error("Encryption failed (%s)", type(e).__name__)
             raise EncryptionError(f"Failed to encrypt data: {e}") from e
 
     def decrypt(self, ciphertext: bytes, context: dict[str, str] | None = None) -> bytes:
@@ -136,7 +136,7 @@ class LocalKMSProvider(KMSProvider):
             AssertionError,
             ImportError,
         ) as e:
-            logger.error(f"Decryption failed: {e}")
+            logger.error("Decryption failed (%s)", type(e).__name__)
             raise DecryptionError(f"Failed to decrypt data: {e}") from e
 
     def encrypt_string(self, plaintext: str, context: dict[str, str] | None = None) -> str:
@@ -215,7 +215,7 @@ class LocalKMSProvider(KMSProvider):
             AssertionError,
             ImportError,
         ) as e:
-            logger.error(f"Key rotation failed: {e}")
+            logger.error("Key rotation failed (%s)", type(e).__name__)
             raise KeyRotationError(f"Failed to rotate key: {e}") from e
 
     def get_key_metadata(self) -> KeyMetadata:
@@ -261,7 +261,7 @@ class LocalKMSProvider(KMSProvider):
             AssertionError,
             ImportError,
         ) as e:
-            logger.error(f"Health check failed: {e}")
+            logger.error("Health check failed (%s)", type(e).__name__)
             return False
 
     def supports_automatic_rotation(self) -> bool:

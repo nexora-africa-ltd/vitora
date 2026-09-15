@@ -660,10 +660,10 @@ class ImagingOrderViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
             serializer = self.get_serializer(order)
             return Response(serializer.data)
-        except _imaging_action_exceptions() as e:
+        except _imaging_action_exceptions():
             logger.exception("Error submitting imaging order %s", order.pk)
             return Response(
-                {"error": str(e)},
+                {"error": "Unable to submit imaging order."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -737,7 +737,7 @@ class ImagingOrderViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
                     # Slot not available
                     if "not available" in str(ve).lower():
                         return Response(
-                            {"error": str(ve)},
+                            {"error": "Selected slot is not available."},
                             status=status.HTTP_409_CONFLICT,
                         )
                     raise
@@ -770,10 +770,10 @@ class ImagingOrderViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
             return Response(output_data)
 
-        except _imaging_action_exceptions() as e:
+        except _imaging_action_exceptions():
             logger.exception("Error scheduling imaging order %s", order.pk)
             return Response(
-                {"error": str(e)},
+                {"error": "Unable to schedule imaging order."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -796,10 +796,10 @@ class ImagingOrderViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
             serializer = self.get_serializer(order)
             return Response(serializer.data)
-        except _imaging_action_exceptions() as e:
+        except _imaging_action_exceptions():
             logger.exception("Error starting imaging order %s", order.pk)
             return Response(
-                {"error": str(e)},
+                {"error": "Unable to start imaging order."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -822,10 +822,10 @@ class ImagingOrderViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
             serializer = self.get_serializer(order)
             return Response(serializer.data)
-        except _imaging_action_exceptions() as e:
+        except _imaging_action_exceptions():
             logger.exception("Error completing imaging order %s", order.pk)
             return Response(
-                {"error": str(e)},
+                {"error": "Unable to complete imaging order."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -852,10 +852,10 @@ class ImagingOrderViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
             serializer = self.get_serializer(order)
             return Response(serializer.data)
-        except _imaging_action_exceptions() as e:
+        except _imaging_action_exceptions():
             logger.exception("Error cancelling imaging order %s", order.pk)
             return Response(
-                {"error": str(e)},
+                {"error": "Unable to cancel imaging order."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

@@ -168,15 +168,16 @@ def create_invoice_item_for_prescription(sender, instance, created, **kwargs):
     # Skip external prescriptions (filled at outside pharmacy - not billed by us)
     if prescription.dispensing_type == prescription.DispensingType.EXTERNAL:
         logger.debug(
-            f"Skipping invoice item for external prescription "
-            f"{prescription.prescription_number} - filled at outside pharmacy"
+            "Skipping invoice item for external prescription %s - filled at outside pharmacy",
+            prescription.prescription_number,
         )
         return
 
     # Skip walk-in prescriptions (no encounter)
     if not prescription.encounter:
         logger.debug(
-            f"Skipping invoice item for prescription {prescription.prescription_number} - no encounter"
+            "Skipping invoice item for prescription %s - no encounter",
+            prescription.prescription_number,
         )
         return
 
@@ -184,14 +185,15 @@ def create_invoice_item_for_prescription(sender, instance, created, **kwargs):
     invoice = Invoice.objects.filter(encounter=prescription.encounter).first()
     if not invoice:
         logger.warning(
-            f"No invoice found for encounter {prescription.encounter.id} - "
-            f"prescription item {instance.id} will not be billed"
+            "No invoice found for encounter %s - prescription item %s will not be billed",
+            prescription.encounter.id,
+            instance.id,
         )
         return
 
     # Check if invoice is editable
     if invoice.status != Invoice.Status.DRAFT:
-        logger.warning(f"Cannot add prescription item to invoice with status '{invoice.status}'")
+        logger.warning("Cannot add prescription item to invoice with status '%s'", invoice.status)
         return
 
     # Determine unit price (use reference price or get from available batch)
@@ -208,7 +210,7 @@ def create_invoice_item_for_prescription(sender, instance, created, **kwargs):
             unit_price = batch.selling_price
         else:
             unit_price = Decimal("0.00")
-            logger.warning(f"No price found for drug {drug.generic_name} - using 0.00")
+            logger.warning("No price found for drug %s - using 0.00", drug.generic_name)
 
     # Calculate line total
     quantity = Decimal(str(instance.quantity))
@@ -240,8 +242,10 @@ def create_invoice_item_for_prescription(sender, instance, created, **kwargs):
         )
 
         logger.info(
-            f"Created invoice item for prescription item {instance.id} - "
-            f"{drug.generic_name} x{instance.quantity}"
+            "Created invoice item for prescription item %s - %s x%s",
+            instance.id,
+            drug.generic_name,
+            instance.quantity,
         )
 
         publish_event(
@@ -259,7 +263,7 @@ def create_invoice_item_for_prescription(sender, instance, created, **kwargs):
             organization_id=getattr(prescription, "organization_id", None),
         )
     except _pharmacy_signal_handled_exceptions() as e:
-        logger.error(f"Failed to create invoice item for prescription item {instance.id}: {e}")
+        logger.error("Failed to create invoice item for prescription item %s: %s", instance.id, e)
 
 
 @receiver(post_save, sender=Prescription)
@@ -295,7 +299,7 @@ def broadcast_prescription_on_create(sender, instance, created, **kwargs):
 
         broadcast_prescription_created(instance)
     except _pharmacy_signal_handled_exceptions() as e:
-        logger.error(f"Failed to broadcast prescription created for {instance.id}: {e}")
+        logger.error("Failed to broadcast prescription created for %s: %s", instance.id, e)
 
 
 @receiver(post_save, sender=Dispensing)
@@ -361,8 +365,10 @@ def handle_dispensing_billing(sender, instance, created, **kwargs):
                     invoice_item.dispensing = instance
                     invoice_item.save(update_fields=["dispensing", "updated_at"])
                     logger.info(
-                        f"Linked dispensing {instance.id} to existing invoice item "
-                        f"{invoice_item.id} for {drug.generic_name}"
+                        "Linked dispensing %s to existing invoice item %s for %s",
+                        instance.id,
+                        invoice_item.id,
+                        drug.generic_name,
                     )
                 else:
                     created_item = _create_dispensing_invoice_item(
@@ -390,8 +396,9 @@ def handle_dispensing_billing(sender, instance, created, **kwargs):
 
     if not invoice:
         logger.warning(
-            f"No draft invoice found for patient {instance.patient.mrn} - "
-            f"direct dispensing {instance.id} will not be billed automatically"
+            "No draft invoice found for patient %s - direct dispensing %s will not be billed automatically",
+            instance.patient.mrn,
+            instance.id,
         )
         return
 
@@ -416,7 +423,7 @@ def handle_dispensing_billing(sender, instance, created, **kwargs):
             instance.quantity_dispensed,
         )
     except _pharmacy_signal_handled_exceptions() as e:
-        logger.error(f"Failed to create invoice item for dispensing {instance.id}: {e}")
+        logger.error("Failed to create invoice item for dispensing %s: %s", instance.id, e)
 
 
 @receiver(post_save, sender=Dispensing)
@@ -449,7 +456,7 @@ def broadcast_dispensing_on_create(sender, instance, created, **kwargs):
 
         broadcast_dispensing_completed(instance)
     except _pharmacy_signal_handled_exceptions() as e:
-        logger.error(f"Failed to broadcast dispensing completed for {instance.id}: {e}")
+        logger.error("Failed to broadcast dispensing completed for %s: %s", instance.id, e)
 
 
 @receiver(post_save, sender=StockBatch)
@@ -516,7 +523,7 @@ def broadcast_stock_level_change(sender, instance, **kwargs):
             broadcast_stock_low_warning(instance, facility_id)
             _notify_stock_alert(instance, critical=False)
     except _pharmacy_signal_handled_exceptions() as e:
-        logger.error(f"Failed to broadcast stock level change for batch {instance.id}: {e}")
+        logger.error("Failed to broadcast stock level change for batch %s: %s", instance.id, e)
 
 
 # ---------------------------------------------------------------------------

@@ -892,7 +892,9 @@ class SHAEligibilityService:
             "identification_number": identification_number,
         }
 
-        logger.info(f"Direct eligibility check: {identification_type}={identification_number}")
+        safe_type = str(identification_type).replace("\r", " ").replace("\n", " ")
+        safe_number = str(identification_number).replace("\r", " ").replace("\n", " ")
+        logger.info("Direct eligibility check: type=%s number=%s", safe_type, safe_number)
 
         try:
             response = self._call_api(request_params)
@@ -994,8 +996,8 @@ class SHAEligibilityService:
                     OSError,
                     AssertionError,
                     ImportError,
-                ) as e:
-                    logger.warning(f"Could not fetch dependents: {e}")
+                ) as exc:
+                    logger.warning("Could not fetch dependents (%s)", type(exc).__name__)
 
             return {
                 "is_eligible": is_eligible,
@@ -1033,7 +1035,7 @@ class SHAEligibilityService:
             }
 
         except SHAAuthError as e:
-            logger.error(f"Auth error during eligibility check: {e}")
+            logger.error("Auth error during eligibility check (%s)", type(e).__name__)
             return {
                 "is_eligible": False,
                 "sha_number": None,
@@ -1065,7 +1067,7 @@ class SHAEligibilityService:
                 "upstream_status": 504,
             }
         except requests.RequestException as e:
-            logger.error(f"Request error during eligibility check: {e}")
+            logger.error("Request error during eligibility check (%s)", type(e).__name__)
             return {
                 "is_eligible": False,
                 "sha_number": None,

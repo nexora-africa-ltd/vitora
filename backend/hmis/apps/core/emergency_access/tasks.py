@@ -16,6 +16,11 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
+def _sanitize_log_field(value: object) -> str:
+    text = str(value)
+    return text.replace("\r", " ").replace("\n", " ")
+
+
 @shared_task(
     bind=True,
     name="hmis.apps.core.emergency_access.tasks.send_emergency_access_escalation",
@@ -45,12 +50,12 @@ def send_emergency_access_escalation(self, emergency_access_id: int) -> dict:  #
             id=emergency_access_id
         )
     except EmergencyAccess.DoesNotExist:
-        logger.error(f"EmergencyAccess {emergency_access_id} not found")
+        logger.error("EmergencyAccess %s not found", emergency_access_id)
         return {"status": "error", "message": "EmergencyAccess not found"}
 
     # Already sent escalation
     if emergency_access.escalation_sent:
-        logger.info(f"Escalation already sent for EmergencyAccess {emergency_access_id}")
+        logger.info("Escalation already sent for EmergencyAccess %s", emergency_access_id)
         return {"status": "skipped", "message": "Already sent"}
 
     # Get administrators to notify (superusers and those with approve permission)
@@ -119,7 +124,7 @@ This is an automated alert. Do not reply to this email.
                 fail_silently=False,
             )
             emails_sent = len(admin_emails)
-            logger.info(f"Sent emergency access escalation email to {emails_sent} admins")
+            logger.info("Sent emergency access escalation email to %d admins", emails_sent)
         except (
             AttributeError,
             TypeError,
@@ -128,9 +133,9 @@ This is an automated alert. Do not reply to this email.
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
-            logger.exception(f"Failed to send escalation email: {e}")
-            errors.append(f"Email: {str(e)}")
+        ) as exc:
+            logger.exception("Failed to send escalation email (%s)", type(exc).__name__)
+            errors.append("Email: notification send failed")
     else:
         logger.warning("No admin emails configured for emergency access escalation")
 
@@ -161,10 +166,14 @@ This is an automated alert. Do not reply to this email.
                     OSError,
                     AssertionError,
                     ImportError,
-                ) as e:
-                    logger.warning(f"Failed to send SMS to {phone}: {e}")
+                ) as exc:
+                    logger.warning(
+                        "Failed to send SMS to %s (%s)",
+                        _sanitize_log_field(phone),
+                        type(exc).__name__,
+                    )
             if sms_sent:
-                logger.info(f"Sent emergency access escalation SMS to {sms_sent} admins")
+                logger.info("Sent emergency access escalation SMS to %d admins", sms_sent)
         except (
             AttributeError,
             TypeError,
@@ -173,9 +182,9 @@ This is an automated alert. Do not reply to this email.
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
-            logger.exception(f"Failed to initialize SMS gateway: {e}")
-            errors.append(f"SMS: {str(e)}")
+        ) as exc:
+            logger.exception("Failed to initialize SMS gateway (%s)", type(exc).__name__)
+            errors.append("SMS: gateway initialization failed")
 
     # Mark escalation as sent
     emergency_access.escalation_sent = True
@@ -213,6 +222,6 @@ def expire_emergency_access() -> dict:
     ).update(status=EmergencyAccessStatus.EXPIRED)
 
     if expired_count:
-        logger.info(f"Expired {expired_count} emergency access records")
+        logger.info("Expired %d emergency access records", expired_count)
 
     return {"expired_count": expired_count}

@@ -51,8 +51,9 @@ def create_invoice_item_for_completed_session(sender, instance, created, **kwarg
             if not invoice:
                 # No existing invoice - skip billing (will be handled manually)
                 logger.info(
-                    f"No invoice found for physiotherapy session {instance.id}. "
-                    f"Billing will need to be done manually."
+                    "No invoice found for physiotherapy session %s. "
+                    "Billing will need to be done manually.",
+                    instance.id,
                 )
                 return
 
@@ -96,8 +97,10 @@ def create_invoice_item_for_completed_session(sender, instance, created, **kwarg
         invoice.calculate_totals()
 
         logger.info(
-            f"Created invoice item {invoice_item.id} for physiotherapy session "
-            f"{instance.order.order_number} - Session {instance.session_number}"
+            "Created invoice item %s for physiotherapy session %s - Session %s",
+            invoice_item.id,
+            instance.order.order_number,
+            instance.session_number,
         )
 
     except ImportError:
@@ -110,7 +113,7 @@ def create_invoice_item_for_completed_session(sender, instance, created, **kwarg
         OSError,
         AssertionError,
     ) as e:
-        logger.error(f"Error creating invoice item for physiotherapy session: {e}")
+        logger.error("Error creating invoice item for physiotherapy session: %s", e)
 
 
 @receiver(post_save, sender=PhysiotherapyOrder)
@@ -159,7 +162,9 @@ def handle_order_status_change(sender, instance, created, **kwargs):
                 instance.save(update_fields=["clinic_visit"])
 
                 logger.info(
-                    f"Created clinic visit {visit.id} for physiotherapy order {instance.order_number}"
+                    "Created clinic visit %s for physiotherapy order %s",
+                    visit.id,
+                    instance.order_number,
                 )
 
         except ImportError:
@@ -172,7 +177,7 @@ def handle_order_status_change(sender, instance, created, **kwargs):
             OSError,
             AssertionError,
         ) as e:
-            logger.error(f"Error creating clinic visit for physiotherapy order: {e}")
+            logger.error("Error creating clinic visit for physiotherapy order: %s", e)
 
 
 @receiver(post_save, sender=PhysiotherapyOrder)
@@ -192,7 +197,7 @@ def update_order_payment_status(sender, instance, created, **kwargs):
         if instance.invoice.status == "paid" and not instance.is_paid:
             instance.is_paid = True
             instance.save(update_fields=["is_paid"])
-            logger.info(f"Marked physiotherapy order {instance.order_number} as paid")
+            logger.info("Marked physiotherapy order %s as paid", instance.order_number)
     except (
         AttributeError,
         TypeError,
@@ -202,4 +207,4 @@ def update_order_payment_status(sender, instance, created, **kwargs):
         AssertionError,
         ImportError,
     ) as e:
-        logger.error(f"Error updating payment status for physiotherapy order: {e}")
+        logger.error("Error updating payment status for physiotherapy order: %s", e)

@@ -426,9 +426,10 @@ class TriageAssessmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 user=request.user,
                 notes=notes,
             )
-        except ValueError as e:
+        except ValueError as exc:
+            message = str(exc.args[0]) if exc.args else "Unable to route patient to clinic."
             return Response(
-                {"detail": str(e)},
+                {"detail": message},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

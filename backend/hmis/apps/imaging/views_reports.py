@@ -346,10 +346,10 @@ class RadiologyReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
             serializer = RadiologyReportSerializer(report)
             return Response(serializer.data)
 
-        except _imaging_action_exceptions() as e:
+        except _imaging_action_exceptions():
             logger.exception("Error signing radiology report %s", report.pk)
             return Response(
-                {"error": str(e)},
+                {"error": "Unable to sign radiology report."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -408,10 +408,10 @@ class RadiologyReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
             output_serializer = RadiologyReportSerializer(report)
             return Response(output_serializer.data)
 
-        except _imaging_action_exceptions() as e:
+        except _imaging_action_exceptions():
             logger.exception("Error amending radiology report %s", report.pk)
             return Response(
-                {"error": str(e)},
+                {"error": "Unable to amend radiology report."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

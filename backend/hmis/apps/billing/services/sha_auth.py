@@ -230,7 +230,7 @@ class SHAAuthService:
         # Combine to form JWT
         token = f"{encoded_header}.{encoded_payload}.{encoded_signature}"
 
-        logger.debug(f"Generated fresh terminology JWT (expires in {expires_in}s)")
+        logger.debug("Generated fresh terminology JWT (expires in %ss)", expires_in)
         return token
 
     def get_terminology_headers(self) -> dict:

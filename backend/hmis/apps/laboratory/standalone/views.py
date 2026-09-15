@@ -936,9 +936,12 @@ class WalkInPatientViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mo
             OSError,
             AssertionError,
             ImportError,
-        ) as exc:  # noqa: BLE001
+        ):  # noqa: BLE001
             logger.exception("Walk-in promotion failed for id=%s", walkin.pk)
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Unable to promote walk-in patient."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         if not was_linked:
             AuditLog.log(
@@ -1588,9 +1591,12 @@ class ExternalOrderRequestViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
+        ):
             logger.exception("Error processing external order %s", ext_order.id)
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Unable to process external order."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     @action(detail=True, methods=["post"])
     def reject(self, request, pk=None):

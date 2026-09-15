@@ -23,6 +23,11 @@ from .sha_auth import SHAAuthError, SHAAuthService
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_log_field(value: object) -> str:
+    text = str(value)
+    return text.replace("\r", " ").replace("\n", " ")
+
+
 # =============================================================================
 # Data Classes
 # =============================================================================
@@ -580,7 +585,7 @@ class DHASearchService:
         elif registration_number:
             params["registration_number"] = registration_number
 
-        logger.info(f"Searching MFL with params: {params}")
+        logger.info("Searching MFL with params: %s", _sanitize_log_field(params))
 
         try:
             headers = self.auth_service.get_auth_headers()
@@ -592,7 +597,7 @@ class DHASearchService:
                 timeout=self.timeout,
             )
 
-            logger.debug(f"MFL search response status: {response.status_code}")
+            logger.debug("MFL search response status: %s", response.status_code)
 
             if response.status_code == 401:
                 raise SearchError(
@@ -751,7 +756,7 @@ class DHASearchService:
         elif registration_number:
             params["registration_number"] = registration_number
 
-        logger.info(f"Searching HWR with params: {list(params.keys())}")
+        logger.info("Searching HWR with params: %s", _sanitize_log_field(list(params.keys())))
 
         try:
             headers = self.auth_service.get_auth_headers()
@@ -761,12 +766,10 @@ class DHASearchService:
 
             # Log the actual request being made (excluding auth token for security)
             logger.info(
-                f"DHA Practitioner Search API Request:\n"
-                f"  URL: {full_url}\n"
-                f"  Method: GET\n"
-                f"  Params: {params}\n"
-                f"  Headers: {{'Content-Type': '{headers.get('Content-Type', 'N/A')}', "
-                f"'Authorization': 'Bearer ***REDACTED***'}}"
+                "DHA Practitioner Search request: url=%s method=GET params=%s content_type=%s",
+                _sanitize_log_field(full_url),
+                _sanitize_log_field(params),
+                _sanitize_log_field(headers.get("Content-Type", "N/A")),
             )
 
             response = requests.get(
@@ -778,13 +781,13 @@ class DHASearchService:
 
             # Log full response details
             logger.info(
-                f"DHA Practitioner Search API Response:\n"
-                f"  Status Code: {response.status_code}\n"
-                f"  Response Headers: {dict(response.headers)}\n"
-                f"  Response Body: {response.text[:2000] if response.text else 'Empty'}"
+                "DHA Practitioner Search response: status=%s headers=%s body_len=%d",
+                response.status_code,
+                _sanitize_log_field(dict(response.headers)),
+                len(response.text or ""),
             )
 
-            logger.debug(f"HWR search response status: {response.status_code}")
+            logger.debug("HWR search response status: %s", response.status_code)
 
             if response.status_code == 401:
                 raise SearchError(

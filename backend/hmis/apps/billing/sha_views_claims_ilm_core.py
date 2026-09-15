@@ -216,23 +216,23 @@ class SHAClaimILMCoreMixin:
         if isinstance(exc, VisitAlreadyOpenedError):
             return Response(
                 {
-                    "error": str(exc),
+                    "error": "Visit is already open for this claim.",
                     "code": "visit_already_opened",
                 },
                 status=status.HTTP_409_CONFLICT,
             )
         if isinstance(exc, ValueError):
             return Response(
-                {"error": str(exc), "code": "invalid_request"},
+                {"error": "Invalid request payload.", "code": "invalid_request"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         if isinstance(exc, RuntimeError):
             return Response(
-                {"error": str(exc), "code": "operation_failed"},
+                {"error": "Claim operation failed.", "code": "operation_failed"},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
         logger.exception("Unexpected ILM error: %s", exc)
         return Response(
-            {"error": str(exc) or "Internal error during DHA HIE call"},
+            {"error": "Internal error during DHA HIE call"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )

@@ -45,7 +45,8 @@ class LabEncounterConsumer(AsyncJsonWebsocketConsumer):
         encounter_exists = await self._encounter_exists(self.encounter_id)
         if not encounter_exists:
             logger.warning(
-                f"WebSocket connection rejected: encounter {self.encounter_id} not found"
+                "WebSocket connection rejected: encounter %s not found",
+                self.encounter_id,
             )
             await self.close()
             return
@@ -54,13 +55,13 @@ class LabEncounterConsumer(AsyncJsonWebsocketConsumer):
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
 
         await self.accept()
-        logger.info(f"WebSocket connected to lab encounter {self.encounter_id}")
+        logger.info("WebSocket connected to lab encounter %s", self.encounter_id)
 
     async def disconnect(self, _close_code):
         """Handle WebSocket disconnection."""
         if hasattr(self, "room_group_name"):
             await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
-            logger.info(f"WebSocket disconnected from lab encounter {self.encounter_id}")
+            logger.info("WebSocket disconnected from lab encounter %s", self.encounter_id)
 
     async def receive(self, text_data=None, _bytes_data=None):
         """Handle incoming WebSocket messages with error handling."""
@@ -69,13 +70,13 @@ class LabEncounterConsumer(AsyncJsonWebsocketConsumer):
                 content = json.loads(text_data)
                 await self.receive_json(content)
             except json.JSONDecodeError as e:
-                logger.warning(f"Invalid JSON received: {e}")
+                logger.warning("Invalid JSON received: %s", e)
                 await self.send_json({"error": "Invalid JSON format", "detail": str(e)})
 
     async def receive_json(self, content):
         """Handle incoming WebSocket messages (ping/pong)."""
         message_type = content.get("type", "unknown")
-        logger.debug(f"Received WebSocket message: {message_type}")
+        logger.debug("Received WebSocket message: %s", message_type)
 
         if message_type == "ping":
             await self.send_json({"type": "pong", "timestamp": content.get("timestamp")})
@@ -128,19 +129,19 @@ class LabOrderConsumer(AsyncJsonWebsocketConsumer):
         # Validate order exists
         order_exists = await self._order_exists(self.order_id)
         if not order_exists:
-            logger.warning(f"WebSocket connection rejected: order {self.order_id} not found")
+            logger.warning("WebSocket connection rejected: order %s not found", self.order_id)
             await self.close()
             return
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
-        logger.info(f"WebSocket connected to lab order {self.order_id}")
+        logger.info("WebSocket connected to lab order %s", self.order_id)
 
     async def disconnect(self, _close_code):
         """Handle WebSocket disconnection."""
         if hasattr(self, "room_group_name"):
             await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
-            logger.info(f"WebSocket disconnected from lab order {self.order_id}")
+            logger.info("WebSocket disconnected from lab order %s", self.order_id)
 
     async def receive(self, text_data=None, _bytes_data=None):
         """Handle incoming WebSocket messages with error handling."""
@@ -149,7 +150,7 @@ class LabOrderConsumer(AsyncJsonWebsocketConsumer):
                 content = json.loads(text_data)
                 await self.receive_json(content)
             except json.JSONDecodeError as e:
-                logger.warning(f"Invalid JSON received: {e}")
+                logger.warning("Invalid JSON received: %s", e)
                 await self.send_json({"error": "Invalid JSON format", "detail": str(e)})
 
     async def receive_json(self, content):
@@ -203,13 +204,13 @@ class LabClinicianConsumer(AsyncJsonWebsocketConsumer):
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
-        logger.info(f"WebSocket connected for clinician {self.user_id}")
+        logger.info("WebSocket connected for clinician %s", self.user_id)
 
     async def disconnect(self, _close_code):
         """Handle WebSocket disconnection."""
         if hasattr(self, "room_group_name"):
             await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
-            logger.info(f"WebSocket disconnected for clinician {self.user_id}")
+            logger.info("WebSocket disconnected for clinician %s", self.user_id)
 
     async def receive(self, text_data=None, _bytes_data=None):
         """Handle incoming WebSocket messages."""

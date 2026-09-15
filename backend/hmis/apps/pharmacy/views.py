@@ -268,9 +268,9 @@ class DrugViewSet(viewsets.ModelViewSet):
                     ],
                 }
             )
-        except TerminologyError as e:
+        except TerminologyError:
             return Response(
-                {"error": str(e)},
+                {"error": "Unable to search terminology service at this time."},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
@@ -711,8 +711,9 @@ class DispensingViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.Mod
             serializer = self.get_serializer(dispensings, many=True)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        except InsufficientStockError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except InsufficientStockError as exc:
+            message = str(exc.args[0]) if exc.args else "Insufficient stock for this request."
+            return Response({"error": message}, status=status.HTTP_400_BAD_REQUEST)
         except ValidationError as e:
             if hasattr(e, "message_dict"):
                 return Response(e.message_dict, status=status.HTTP_400_BAD_REQUEST)
@@ -749,8 +750,9 @@ class DispensingViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.Mod
             dispensing.process_return(int(quantity), reason)
             serializer = self.get_serializer(dispensing)
             return Response(serializer.data)
-        except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except ValueError as exc:
+            message = str(exc.args[0]) if exc.args else "Unable to process stock return."
+            return Response({"error": message}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=["post"])
     def verify(self, request, pk=None):
@@ -767,8 +769,9 @@ class DispensingViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.Mod
             dispensing.verify(request.user)
             serializer = self.get_serializer(dispensing)
             return Response(serializer.data)
-        except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except ValueError as exc:
+            message = str(exc.args[0]) if exc.args else "Unable to verify dispensing record."
+            return Response({"error": message}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class StockAdjustmentViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):

@@ -264,10 +264,14 @@ class ConsentSendOTPView(APIView):
             OSError,
             AssertionError,
             ImportError,
-        ) as e:
-            logger.warning("Failed to send OTP: %s", str(e))
+        ) as exc:
+            logger.warning("Failed to send OTP: %s", exc)
             return Response(
-                {"error": str(e), "code": "ilm_error", "details": {}},
+                {
+                    "error": "Failed to send consent OTP.",
+                    "code": "ilm_error",
+                    "details": {},
+                },
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 

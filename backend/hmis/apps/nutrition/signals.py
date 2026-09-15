@@ -47,8 +47,8 @@ def create_invoice_item_for_completed_consultation(sender, instance, created, **
         if not invoice:
             # No existing invoice - skip billing (will be handled manually)
             logger.info(
-                f"No invoice found for nutrition consultation {instance.consultation_number}. "
-                f"Billing will need to be done manually."
+                "No invoice found for nutrition consultation %s. Billing will need to be done manually.",
+                instance.consultation_number,
             )
             return
 
@@ -85,8 +85,9 @@ def create_invoice_item_for_completed_consultation(sender, instance, created, **
         invoice.calculate_totals()
 
         logger.info(
-            f"Created invoice item {invoice_item.id} for nutrition consultation "
-            f"{instance.consultation_number}"
+            "Created invoice item %s for nutrition consultation %s",
+            invoice_item.id,
+            instance.consultation_number,
         )
 
     except ImportError:
@@ -99,7 +100,7 @@ def create_invoice_item_for_completed_consultation(sender, instance, created, **
         OSError,
         AssertionError,
     ) as e:
-        logger.error(f"Error creating invoice item for nutrition consultation: {e}")
+        logger.error("Error creating invoice item for nutrition consultation: %s", e)
 
 
 @receiver(post_save, sender=NutritionConsultation)
@@ -142,7 +143,8 @@ def route_to_nutrition_clinic(sender, instance, created, **kwargs):
 
         if not nutrition_clinic:
             logger.info(
-                f"No nutrition clinic found for consultation {instance.consultation_number}."
+                "No nutrition clinic found for consultation %s.",
+                instance.consultation_number,
             )
             return
 
@@ -162,8 +164,8 @@ def route_to_nutrition_clinic(sender, instance, created, **kwargs):
 
             if not clinic_session:
                 logger.info(
-                    f"No active nutrition clinic session for today. "
-                    f"Consultation {instance.consultation_number} will need manual scheduling."
+                    "No active nutrition clinic session for today. Consultation %s will need manual scheduling.",
+                    instance.consultation_number,
                 )
                 return
 
@@ -188,8 +190,9 @@ def route_to_nutrition_clinic(sender, instance, created, **kwargs):
             instance.save(update_fields=["clinic_visit"])
 
             logger.info(
-                f"Created clinic visit {clinic_visit.id} for nutrition consultation "
-                f"{instance.consultation_number}"
+                "Created clinic visit %s for nutrition consultation %s",
+                clinic_visit.id,
+                instance.consultation_number,
             )
 
     except ImportError:
@@ -202,4 +205,4 @@ def route_to_nutrition_clinic(sender, instance, created, **kwargs):
         OSError,
         AssertionError,
     ) as e:
-        logger.error(f"Error routing to nutrition clinic: {e}")
+        logger.error("Error routing to nutrition clinic: %s", e)

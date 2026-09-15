@@ -17,6 +17,11 @@ from channels.generic.websocket import AsyncJsonWebsocketConsumer
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_log_field(value: object) -> str:
+    text = str(value)
+    return text.replace("\r", " ").replace("\n", " ")
+
+
 class DashboardConsumer(AsyncJsonWebsocketConsumer):
     """
     WebSocket consumer for dashboard projection broadcasts.
@@ -36,7 +41,10 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
         # Validate facility exists
         facility_exists = await self._facility_exists(self.facility_id)
         if not facility_exists:
-            logger.warning(f"WebSocket connection rejected: facility {self.facility_id} not found")
+            logger.warning(
+                "WebSocket connection rejected: facility %s not found",
+                _sanitize_log_field(self.facility_id),
+            )
             await self.close()
             return
 
@@ -44,13 +52,19 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
 
         await self.accept()
-        logger.info(f"WebSocket connected to dashboard for facility {self.facility_id}")
+        logger.info(
+            "WebSocket connected to dashboard for facility %s",
+            _sanitize_log_field(self.facility_id),
+        )
 
     async def disconnect(self, _close_code):
         """Handle WebSocket disconnection."""
         if hasattr(self, "room_group_name"):
             await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
-            logger.info(f"WebSocket disconnected from dashboard for facility {self.facility_id}")
+            logger.info(
+                "WebSocket disconnected from dashboard for facility %s",
+                _sanitize_log_field(self.facility_id),
+            )
 
     async def receive(self, text_data=None, _bytes_data=None):
         """Handle incoming WebSocket messages with error handling."""
@@ -58,12 +72,12 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
             try:
                 content = json.loads(text_data)
                 await self.receive_json(content)
-            except json.JSONDecodeError as e:
-                logger.warning(f"Invalid JSON received: {e}")
+            except json.JSONDecodeError:
+                logger.warning("Invalid JSON received on dashboard websocket")
                 await self.send_json(
                     {
                         "error": "Invalid JSON format",
-                        "detail": str(e),
+                        "detail": "Malformed JSON payload.",
                     }
                 )
 

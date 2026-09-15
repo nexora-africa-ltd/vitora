@@ -43,7 +43,7 @@ def broadcast_lab_event_sync(
                 "data": data,
             },
         )
-        logger.debug(f"Broadcasted lab.{event_type} to {group_name}")
+        logger.debug("Broadcasted lab.%s to %s", event_type, group_name)
     except (
         AttributeError,
         TypeError,
@@ -53,7 +53,7 @@ def broadcast_lab_event_sync(
         AssertionError,
         ImportError,
     ) as e:
-        logger.error(f"Failed to broadcast lab.{event_type} to {group_name}: {e}")
+        logger.error("Failed to broadcast lab.%s to %s: %s", event_type, group_name, e)
 
 
 def broadcast_result_entered(result) -> None:

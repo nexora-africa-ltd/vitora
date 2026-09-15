@@ -43,7 +43,7 @@ class ClinicQueueConsumer(AsyncJsonWebsocketConsumer):
         # Validate clinic exists
         clinic_exists = await self._clinic_exists(self.clinic_id)
         if not clinic_exists:
-            logger.warning(f"WebSocket connection rejected: clinic {self.clinic_id} not found")
+            logger.warning("WebSocket connection rejected: clinic %s not found", self.clinic_id)
             await self.close()
             return
 
@@ -51,14 +51,14 @@ class ClinicQueueConsumer(AsyncJsonWebsocketConsumer):
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
 
         await self.accept()
-        logger.info(f"WebSocket connected to clinic queue {self.clinic_id}")
+        logger.info("WebSocket connected to clinic queue %s", self.clinic_id)
 
     async def disconnect(self, _close_code):
         """Handle WebSocket disconnection."""
         # Leave clinic group
         if hasattr(self, "room_group_name"):
             await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
-            logger.info(f"WebSocket disconnected from clinic queue {self.clinic_id}")
+            logger.info("WebSocket disconnected from clinic queue %s", self.clinic_id)
 
     async def receive(self, text_data=None, _bytes_data=None):
         """
@@ -71,7 +71,7 @@ class ClinicQueueConsumer(AsyncJsonWebsocketConsumer):
                 content = json.loads(text_data)
                 await self.receive_json(content)
             except json.JSONDecodeError as e:
-                logger.warning(f"Invalid JSON received: {e}")
+                logger.warning("Invalid JSON received: %s", e)
                 await self.send_json(
                     {
                         "error": "Invalid JSON format",
@@ -87,7 +87,7 @@ class ClinicQueueConsumer(AsyncJsonWebsocketConsumer):
         This method handles any incoming messages gracefully.
         """
         message_type = content.get("type", "unknown")
-        logger.debug(f"Received WebSocket message: {message_type}")
+        logger.debug("Received WebSocket message: %s", message_type)
 
         # Echo back acknowledgment (optional, useful for debugging)
         if message_type == "ping":

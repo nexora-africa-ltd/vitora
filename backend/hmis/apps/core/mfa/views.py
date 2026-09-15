@@ -1193,13 +1193,13 @@ class MFAAwareTokenRefreshView(APIView):
                 }
             )
 
-        except TokenError as e:
+        except TokenError:
             return Response(
-                {"error": str(e), "code": "TOKEN_INVALID"},
+                {"error": "Token is invalid or expired.", "code": "TOKEN_INVALID"},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
-        except InvalidToken as e:
+        except InvalidToken:
             return Response(
-                {"error": str(e), "code": "TOKEN_INVALID"},
+                {"error": "Token is invalid or expired.", "code": "TOKEN_INVALID"},
                 status=status.HTTP_401_UNAUTHORIZED,
             )

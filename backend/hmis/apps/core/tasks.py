@@ -220,12 +220,12 @@ def sync_single_entry(self, entry_id: int):
     from hmis.apps.core.models import SyncQueue
     from hmis.apps.core.sync import sync_to_server
 
-    logger.info(f"Syncing single entry: {entry_id}")
+    logger.info("Syncing single entry: %s", entry_id)
 
     try:
         entry = SyncQueue.objects.get(id=entry_id)
     except SyncQueue.DoesNotExist:
-        logger.error(f"SyncQueue entry {entry_id} not found")
+        logger.error("SyncQueue entry %s not found", entry_id)
         return {"success": False, "error": "Entry not found"}
 
     entry.mark_syncing()
@@ -255,10 +255,10 @@ def sync_single_entry(self, entry_id: int):
         OSError,
         AssertionError,
         ImportError,
-    ) as e:
-        logger.error(f"Error syncing entry {entry_id}: {e}")
-        entry.mark_failed(str(e))
-        raise self.retry(countdown=calculate_retry_delay(self.request.retries)) from e
+    ) as exc:
+        logger.error("Error syncing entry %s (%s)", entry_id, type(exc).__name__)
+        entry.mark_failed("Sync failed")
+        raise self.retry(countdown=calculate_retry_delay(self.request.retries)) from exc
 
 
 @shared_task(
@@ -283,7 +283,7 @@ def cleanup_synced_entries(days_old: int = 30):
 
     from hmis.apps.core.models import SyncQueue
 
-    logger.info(f"Cleaning up synced entries older than {days_old} days")
+    logger.info("Cleaning up synced entries older than %d days", days_old)
 
     cutoff_date = timezone.now() - timedelta(days=days_old)
 
@@ -292,7 +292,7 @@ def cleanup_synced_entries(days_old: int = 30):
         synced_at__lt=cutoff_date,
     ).delete()
 
-    logger.info(f"Deleted {deleted_count} old synced entries")
+    logger.info("Deleted %d old synced entries", deleted_count)
 
     return {
         "deleted": deleted_count,
@@ -324,7 +324,7 @@ def retry_failed_entries():
         retry_count__lt=max_retries,
     ).update(status="PENDING")
 
-    logger.info(f"Reset {updated_count} failed entries for retry")
+    logger.info("Reset %d failed entries for retry", updated_count)
 
     return {"reset_count": updated_count}
 
@@ -373,8 +373,9 @@ def full_sync():
             total_results[key] += results[key]
 
     logger.info(
-        f"Full sync complete: {total_results['processed']} processed, "
-        f"{total_results['succeeded']} succeeded"
+        "Full sync complete: %s processed, %s succeeded",
+        total_results["processed"],
+        total_results["succeeded"],
     )
 
     return total_results
@@ -439,8 +440,10 @@ def send_overdue_appointment_alerts():
 
                     results["alerts_sent"] += 1
                     logger.info(
-                        f"Sent overdue alert for enrollment {enrollment.id} "
-                        f"(patient: {enrollment.patient.mrn}, clinic: {enrollment.clinic.name})"
+                        "Sent overdue alert for enrollment %s (patient: %s, clinic: %s)",
+                        enrollment.id,
+                        enrollment.patient.mrn,
+                        enrollment.clinic.name,
                     )
             except (
                 AttributeError,
@@ -450,13 +453,18 @@ def send_overdue_appointment_alerts():
                 OSError,
                 AssertionError,
                 ImportError,
-            ) as e:
+            ) as exc:
                 results["errors"] += 1
-                logger.error(f"Failed to send alert for enrollment {enrollment.id}: {e}")
+                logger.error(
+                    "Failed to send alert for enrollment %s (%s)",
+                    enrollment.id,
+                    type(exc).__name__,
+                )
 
     logger.info(
-        f"Overdue alert check complete: {results['overdue_found']} overdue, "
-        f"{results['alerts_sent']} alerts sent"
+        "Overdue alert check complete: %s overdue, %s alerts sent",
+        results["overdue_found"],
+        results["alerts_sent"],
     )
 
     return results
@@ -568,11 +576,15 @@ def send_upcoming_appointment_reminders():
                 OSError,
                 AssertionError,
                 ImportError,
-            ) as e:
+            ) as exc:
                 results["errors"] += 1
-                logger.error(f"Failed to send reminder for enrollment {enrollment.id}: {e}")
+                logger.error(
+                    "Failed to send reminder for enrollment %s (%s)",
+                    enrollment.id,
+                    type(exc).__name__,
+                )
 
-    logger.info(f"Appointment reminders complete: {results['reminders_sent']} sent")
+    logger.info("Appointment reminders complete: %s sent", results["reminders_sent"])
 
     return results
 
@@ -645,7 +657,7 @@ def generate_defaulter_list(clinic_id: int | None = None):
 
     from hmis.apps.clinics.models import ClinicEnrollment
 
-    logger.info(f"Generating defaulter list (clinic_id={clinic_id})")
+    logger.info("Generating defaulter list (clinic_id=%s)", clinic_id)
 
     today = timezone.localdate()
 
@@ -683,7 +695,7 @@ def generate_defaulter_list(clinic_id: int | None = None):
                 }
             )
 
-    logger.info(f"Found {len(defaulters)} defaulters")
+    logger.info("Found %d defaulters", len(defaulters))
 
     return {
         "generated_at": str(today),
@@ -716,7 +728,7 @@ def verify_audit_chain_integrity(count: int = 1000):
     from hmis.apps.core.services.audit_integrity import AuditIntegrityService
     from hmis.apps.core.services.notification_service import notify_user
 
-    logger.info(f"Starting audit chain integrity verification (last {count} entries)")
+    logger.info("Starting audit chain integrity verification (last %d entries)", count)
 
     service = AuditIntegrityService()
     result = service.verify_latest(count=count)
@@ -735,8 +747,9 @@ def verify_audit_chain_integrity(count: int = 1000):
 
     if not result.valid:
         logger.critical(
-            f"AUDIT CHAIN TAMPER DETECTED at seq {result.first_mismatch_seq}: "
-            f"{result.first_mismatch_detail}"
+            "AUDIT CHAIN TAMPER DETECTED at seq %s: %s",
+            result.first_mismatch_seq,
+            result.first_mismatch_detail,
         )
 
         # Notify all superusers
@@ -760,7 +773,7 @@ def verify_audit_chain_integrity(count: int = 1000):
                 action_url="/admin/audit-integrity",
             )
     else:
-        logger.info(f"Audit chain integrity verified: {result.entries_checked} entries OK")
+        logger.info("Audit chain integrity verified: %s entries OK", result.entries_checked)
 
     return {
         "valid": result.valid,
