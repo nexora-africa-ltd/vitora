@@ -552,7 +552,7 @@ class SurgicalPreOpAssessView(AIFeatureGatedMixin, APIView):
         except TibaBotError as e:
             logger.error("TibaBot error for surgical pre-op assessment: %s", e)
             return Response(
-                {"error": str(e)},
+                {"error": "Upstream AI service request failed."},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
@@ -611,7 +611,10 @@ class SurgicalChecklistStartView(AIFeatureGatedMixin, APIView):
             )
         except TibaBotError as e:
             logger.error("TibaBot error for surgical checklist start: %s", e)
-            return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
+            return Response(
+                {"error": "Upstream AI service request failed."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
         session = result.get("session", {})
         tibabot_session_id = (
@@ -685,7 +688,10 @@ class SurgicalChecklistAdvanceView(AIFeatureGatedMixin, APIView):
             )
         except TibaBotError as e:
             logger.error("TibaBot error for surgical checklist advance: %s", e)
-            return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
+            return Response(
+                {"error": "Upstream AI service request failed."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
         latest = (
             AISurgicalChecklistSessionResult.objects.filter(tibabot_session_id=session_id)
@@ -766,7 +772,10 @@ class SurgicalChecklistStatusView(AIFeatureGatedMixin, APIView):
             )
         except TibaBotError as e:
             logger.error("TibaBot error for surgical checklist status: %s", e)
-            return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
+            return Response(
+                {"error": "Upstream AI service request failed."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
         response_serializer = SurgicalChecklistSessionResponseSerializer(data=result)
         if response_serializer.is_valid():
@@ -809,7 +818,10 @@ class SurgicalPostOpCarePlanView(AIFeatureGatedMixin, APIView):
             )
         except TibaBotError as e:
             logger.error("TibaBot error for surgical post-op care plan: %s", e)
-            return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
+            return Response(
+                {"error": "Upstream AI service request failed."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
         surgical_apgar = result.get("surgical_apgar") or {}
         try:
@@ -852,7 +864,10 @@ class SurgicalProcedureListView(AIFeatureGatedMixin, APIView):
             )
         except TibaBotError as e:
             logger.error("TibaBot error for surgical procedures list: %s", e)
-            return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
+            return Response(
+                {"error": "Upstream AI service request failed."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
         response_serializer = SurgicalProcedureListResponseSerializer(data=result)
         if response_serializer.is_valid():
@@ -878,7 +893,10 @@ class SurgicalProcedureDetailView(AIFeatureGatedMixin, APIView):
             )
         except TibaBotError as e:
             logger.error("TibaBot error for surgical procedure detail: %s", e)
-            return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
+            return Response(
+                {"error": "Upstream AI service request failed."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
         response_serializer = SurgicalProcedureDetailResponseSerializer(data=result)
         if response_serializer.is_valid():

@@ -143,8 +143,8 @@ class TestSMSErrorHandling:
 
     @patch("hmis.apps.core.sms_gateway._get_sms_client")
     @patch("hmis.apps.core.sms_gateway.logger")
-    def test_send_reminder_logs_phone_number_on_failure(self, mock_logger, mock_get_client):
-        """Should log recipient phone number when sending fails."""
+    def test_send_reminder_logs_masked_phone_number_on_failure(self, mock_logger, mock_get_client):
+        """Should log a masked recipient phone number when sending fails."""
         mock_sms = Mock()
         mock_sms.send = Mock(side_effect=Exception("Network error"))
         mock_get_client.return_value = mock_sms
@@ -155,10 +155,11 @@ class TestSMSErrorHandling:
         with pytest.raises(RuntimeError):
             gateway.send_reminder(phone, "Test")
 
-        # Verify phone number is in log message
+        # Direct identifiers must be masked before they reach application logs.
         mock_logger.error.assert_called_once()
         call_args_str = str(mock_logger.error.call_args)
-        assert phone in call_args_str
+        assert "****5678" in call_args_str
+        assert phone not in call_args_str
 
     @patch("hmis.apps.core.sms_gateway._get_sms_client")
     def test_send_reminder_raises_on_failure(self, mock_get_client):

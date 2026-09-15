@@ -634,7 +634,7 @@ class WebhookRegisterView(AIFeatureGatedMixin, APIView):
             )
         except TibaBotError as e:
             return Response(
-                {"error": str(e)},
+                {"error": "Upstream AI service request failed."},
                 status=e.status_code or status.HTTP_502_BAD_GATEWAY,
             )
 
@@ -671,7 +671,7 @@ class WebhookListView(AIFeatureGatedMixin, APIView):
             )
         except TibaBotError as e:
             return Response(
-                {"error": str(e)},
+                {"error": "Upstream AI service request failed."},
                 status=e.status_code or status.HTTP_502_BAD_GATEWAY,
             )
 
@@ -700,7 +700,7 @@ class WebhookDetailView(AIFeatureGatedMixin, APIView):
             )
         except TibaBotError as e:
             return Response(
-                {"error": str(e)},
+                {"error": "Upstream AI service request failed."},
                 status=e.status_code or status.HTTP_502_BAD_GATEWAY,
             )
 
@@ -731,7 +731,7 @@ class WebhookDetailView(AIFeatureGatedMixin, APIView):
             )
         except TibaBotError as e:
             return Response(
-                {"error": str(e)},
+                {"error": "Upstream AI service request failed."},
                 status=e.status_code or status.HTTP_502_BAD_GATEWAY,
             )
 
@@ -758,7 +758,7 @@ class WebhookDetailView(AIFeatureGatedMixin, APIView):
             )
         except TibaBotError as e:
             return Response(
-                {"error": str(e)},
+                {"error": "Upstream AI service request failed."},
                 status=e.status_code or status.HTTP_502_BAD_GATEWAY,
             )
 
@@ -795,7 +795,7 @@ class WebhookPauseView(AIFeatureGatedMixin, APIView):
             )
         except TibaBotError as e:
             return Response(
-                {"error": str(e)},
+                {"error": "Upstream AI service request failed."},
                 status=e.status_code or status.HTTP_502_BAD_GATEWAY,
             )
 
@@ -832,7 +832,7 @@ class WebhookActivateView(AIFeatureGatedMixin, APIView):
             )
         except TibaBotError as e:
             return Response(
-                {"error": str(e)},
+                {"error": "Upstream AI service request failed."},
                 status=e.status_code or status.HTTP_502_BAD_GATEWAY,
             )
 
@@ -869,7 +869,7 @@ class WebhookDeliveryHistoryView(AIFeatureGatedMixin, APIView):
             )
         except TibaBotError as e:
             return Response(
-                {"error": str(e)},
+                {"error": "Upstream AI service request failed."},
                 status=e.status_code or status.HTTP_502_BAD_GATEWAY,
             )
 
@@ -897,13 +897,13 @@ class FacilityKBInfoView(AIFeatureGatedMixin, APIView):
         except TibaBotUnavailableError as e:
             logger.warning("TibaBot facility KB unavailable: %s", e, exc_info=True)
             return Response(
-                {"error": str(e)},
+                {"error": "TibaBot service is currently unavailable."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except TibaBotError as e:
             logger.warning("TibaBot facility KB error: %s", e, exc_info=True)
             return Response(
-                {"error": str(e)},
+                {"error": "Upstream AI service request failed."},
                 status=e.status_code or status.HTTP_502_BAD_GATEWAY,
             )
 
@@ -951,7 +951,7 @@ class FacilityKBUploadView(AIFeatureGatedMixin, APIView):
             )
         except TibaBotError as e:
             return Response(
-                {"error": str(e)},
+                {"error": "Upstream AI service request failed."},
                 status=e.status_code or status.HTTP_502_BAD_GATEWAY,
             )
 
@@ -988,7 +988,7 @@ class FacilityKBDocumentDeleteView(AIFeatureGatedMixin, APIView):
             )
         except TibaBotError as e:
             return Response(
-                {"error": str(e)},
+                {"error": "Upstream AI service request failed."},
                 status=e.status_code or status.HTTP_502_BAD_GATEWAY,
             )
 
@@ -1038,7 +1038,7 @@ class FacilityKBSearchView(AIFeatureGatedMixin, APIView):
             )
         except TibaBotError as e:
             return Response(
-                {"error": str(e)},
+                {"error": "Upstream AI service request failed."},
                 status=e.status_code or status.HTTP_502_BAD_GATEWAY,
             )
 

@@ -151,7 +151,7 @@ def send_bulk_sms(phones: list[str], message: str, sender_id: str | None = None)
 
     client = _get_sms_client()
     if not client:
-        logger.warning(f"Bulk SMS not sent (client not configured): {len(phones)} recipients")
+        logger.warning("Bulk SMS not sent (client not configured): %d recipients", len(phones))
         return dict.fromkeys(phones, False)
 
     sender = sender_id or getattr(settings, "SMS_SENDER_ID", None)
@@ -173,7 +173,7 @@ def send_bulk_sms(phones: list[str], message: str, sender_id: str | None = None)
                 results[phone] = False
 
         success_count = sum(1 for v in results.values() if v)
-        logger.info(f"Bulk SMS: {success_count}/{len(phones)} sent successfully")
+        logger.info("Bulk SMS: %d/%d sent successfully", success_count, len(phones))
         return results
 
     except Exception:  # noqa: BLE001 - fail-open boundary around external provider/network errors
@@ -287,6 +287,7 @@ class SMSGateway:
         """
         success = self.send(phone, message)
         if not success:
+            logger.error("SMS reminder delivery failed for %s", _mask_phone(phone))
             raise RuntimeError("SMS reminder delivery failed")
 
     def send_surveillance_alert(

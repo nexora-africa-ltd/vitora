@@ -431,7 +431,7 @@ class PatientInsuranceViewSet(
         try:
             self._ensure_healthcloud_enabled(enrollment)
         except ValidationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="verify_via_healthcloud", exc=exc)
         service = InsuranceEligibilityService()
         try:
             result = service.verify(enrollment, facility=getattr(request, "facility", None))
@@ -510,7 +510,7 @@ class PatientInsuranceViewSet(
         try:
             self._ensure_healthcloud_enabled(enrollment)
         except ValidationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="healthcloud_session_start", exc=exc)
 
         existing_session = (
             InsuranceVisitAuthorization.objects.filter(
@@ -590,7 +590,7 @@ class PatientInsuranceViewSet(
         try:
             self._ensure_healthcloud_enabled(enrollment)
         except ValidationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="healthcloud_post_profile", exc=exc)
 
         serializer = HealthCloudPostProfileSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -624,7 +624,7 @@ class PatientInsuranceViewSet(
         try:
             self._ensure_healthcloud_enabled(enrollment)
         except ValidationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="healthcloud_get_health_id", exc=exc)
 
         serializer = HealthCloudGetHealthIdSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -676,13 +676,13 @@ class PatientInsuranceViewSet(
             payload, content_type = read_decrypted_card_image(enrollment=enrollment, side=side)
         except FileNotFoundError:
             return Response({"error": "Card image not found."}, status=status.HTTP_404_NOT_FOUND)
-        except (OSError, ValueError, TypeError) as exc:
+        except (OSError, ValueError, TypeError):
             logger.exception(
                 "Failed to read insurance card image",
                 extra={"enrollment_id": enrollment.id, "side": side},
             )
             return Response(
-                {"error": f"Could not load card image: {exc}"},
+                {"error": "Could not load card image."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -711,7 +711,7 @@ class PatientInsuranceViewSet(
         try:
             self._ensure_healthcloud_enabled(enrollment)
         except ValidationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="healthcloud_session_request_otp", exc=exc)
 
         serializer = HealthCloudSessionRequestOTPSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -742,7 +742,7 @@ class PatientInsuranceViewSet(
         try:
             self._ensure_healthcloud_enabled(enrollment)
         except ValidationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="healthcloud_session_start_visit", exc=exc)
 
         serializer = HealthCloudSessionStartVisitSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -784,7 +784,7 @@ class PatientInsuranceViewSet(
         try:
             self._ensure_healthcloud_enabled(enrollment)
         except ValidationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="request_otp", exc=exc)
         serializer = RequestOTPSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         service = HealthCloudWorkflowService()
@@ -805,7 +805,7 @@ class PatientInsuranceViewSet(
         try:
             self._ensure_healthcloud_enabled(enrollment)
         except ValidationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="start_visit", exc=exc)
         serializer = StartVisitSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = dict(serializer.validated_data)

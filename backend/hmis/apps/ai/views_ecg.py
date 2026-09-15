@@ -157,14 +157,14 @@ class ECGInterpretView(AIFeatureGatedMixin, APIView):
         try:
             client = get_tibabot_client()
             result = client.ecg_interpret(data)
-        except TibaBotUnavailableError as e:
+        except TibaBotUnavailableError:
             return Response(
-                {"error": str(e), "mode": "unavailable"},
+                {"error": "TibaBot AI service is currently unavailable.", "mode": "unavailable"},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError as e:
+        except TibaBotError:
             return Response(
-                {"error": str(e)},
+                {"error": "Upstream AI service request failed."},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
@@ -197,14 +197,14 @@ class ECGCompareView(AIFeatureGatedMixin, APIView):
         try:
             client = get_tibabot_client()
             result = client.ecg_compare(data)
-        except TibaBotUnavailableError as e:
+        except TibaBotUnavailableError:
             return Response(
-                {"error": str(e), "mode": "unavailable"},
+                {"error": "TibaBot AI service is currently unavailable.", "mode": "unavailable"},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError as e:
+        except TibaBotError:
             return Response(
-                {"error": str(e)},
+                {"error": "Upstream AI service request failed."},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
@@ -281,14 +281,14 @@ class ECGUploadView(AIFeatureGatedMixin, APIView):
             result = client.ecg_upload(
                 file_data, file.name or "ecg_file", file.content_type or "application/octet-stream"
             )
-        except TibaBotUnavailableError as e:
+        except TibaBotUnavailableError:
             return Response(
-                {"error": str(e), "mode": "unavailable"},
+                {"error": "TibaBot AI service is currently unavailable.", "mode": "unavailable"},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError as e:
+        except TibaBotError:
             return Response(
-                {"error": str(e)},
+                {"error": "Upstream AI service request failed."},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
@@ -322,14 +322,14 @@ class ECGReportView(AIFeatureGatedMixin, APIView):
         try:
             client = get_tibabot_client()
             pdf_bytes = client.ecg_report(data)
-        except TibaBotUnavailableError as e:
+        except TibaBotUnavailableError:
             return Response(
-                {"error": str(e), "mode": "unavailable"},
+                {"error": "TibaBot AI service is currently unavailable.", "mode": "unavailable"},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError as e:
+        except TibaBotError:
             return Response(
-                {"error": str(e)},
+                {"error": "Upstream AI service request failed."},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
@@ -364,14 +364,14 @@ class ECGScoreCHA2DS2VAScView(AIFeatureGatedMixin, APIView):
         try:
             client = get_tibabot_client()
             result = client.ecg_score_cha2ds2_vasc(data)
-        except TibaBotUnavailableError as e:
+        except TibaBotUnavailableError:
             return Response(
-                {"error": str(e), "mode": "unavailable"},
+                {"error": "TibaBot AI service is currently unavailable.", "mode": "unavailable"},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError as e:
+        except TibaBotError:
             return Response(
-                {"error": str(e)},
+                {"error": "Upstream AI service request failed."},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
@@ -404,14 +404,14 @@ class ECGScoreHASBLEDView(AIFeatureGatedMixin, APIView):
         try:
             client = get_tibabot_client()
             result = client.ecg_score_has_bled(data)
-        except TibaBotUnavailableError as e:
+        except TibaBotUnavailableError:
             return Response(
-                {"error": str(e), "mode": "unavailable"},
+                {"error": "TibaBot AI service is currently unavailable.", "mode": "unavailable"},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError as e:
+        except TibaBotError:
             return Response(
-                {"error": str(e)},
+                {"error": "Upstream AI service request failed."},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
@@ -432,14 +432,14 @@ class ECGPatternsView(AIFeatureGatedMixin, APIView):
         try:
             client = get_tibabot_client()
             result = client.ecg_patterns()
-        except TibaBotUnavailableError as e:
+        except TibaBotUnavailableError:
             return Response(
-                {"error": str(e), "mode": "unavailable"},
+                {"error": "TibaBot AI service is currently unavailable.", "mode": "unavailable"},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError as e:
+        except TibaBotError:
             return Response(
-                {"error": str(e)},
+                {"error": "Upstream AI service request failed."},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 

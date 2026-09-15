@@ -128,7 +128,7 @@ class InsuranceVisitAuthorizationViewSet(
         try:
             self._ensure_healthcloud_enabled(authorization)
         except ValidationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="validate_token", exc=exc)
         serializer = ValidateAuthorizationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         service = HealthCloudWorkflowService()
@@ -313,7 +313,7 @@ class InsuranceClaimViewSet(
 
             return Response(payload, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response({"error": str(exc) or fallback}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": fallback}, status=status.HTTP_400_BAD_REQUEST)
 
     def _build_invoice_submission_payload(self, claim: InsuranceClaim, payload: dict) -> dict:
         invoice = claim.invoice
@@ -465,7 +465,7 @@ class InsuranceClaimViewSet(
         try:
             claim.submit(user=request.user)
         except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="claim_submit", exc=e)
         return Response(InsuranceClaimSerializer(claim).data)
 
     @action(detail=True, methods=["post"])
@@ -479,7 +479,7 @@ class InsuranceClaimViewSet(
                 user=request.user,
             )
         except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="claim_approve", exc=e)
         return Response(InsuranceClaimSerializer(claim).data)
 
     @action(detail=True, methods=["post"])
@@ -493,7 +493,7 @@ class InsuranceClaimViewSet(
                 user=request.user,
             )
         except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="claim_partially_approve", exc=e)
         return Response(InsuranceClaimSerializer(claim).data)
 
     @action(detail=True, methods=["post"])
@@ -507,7 +507,7 @@ class InsuranceClaimViewSet(
                 user=request.user,
             )
         except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="claim_reject", exc=e)
         return Response(InsuranceClaimSerializer(claim).data)
 
     @action(detail=True, methods=["post"], url_path="query")
@@ -521,7 +521,7 @@ class InsuranceClaimViewSet(
                 user=request.user,
             )
         except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="claim_query", exc=e)
         return Response(InsuranceClaimSerializer(claim).data)
 
     @action(detail=True, methods=["post"], url_path="respond-to-query")
@@ -535,7 +535,7 @@ class InsuranceClaimViewSet(
                 user=request.user,
             )
         except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="claim_respond_to_query", exc=e)
         return Response(InsuranceClaimSerializer(claim).data)
 
     @action(detail=True, methods=["post"], url_path="mark-paid")
@@ -546,7 +546,7 @@ class InsuranceClaimViewSet(
         try:
             claim.mark_paid(paid_amount=serializer.validated_data["paid_amount"])
         except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="claim_mark_paid", exc=e)
         return Response(InsuranceClaimSerializer(claim).data)
 
     @action(detail=True, methods=["post"])
@@ -557,7 +557,7 @@ class InsuranceClaimViewSet(
         try:
             claim.appeal(notes=serializer.validated_data.get("notes", ""))
         except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="claim_appeal", exc=e)
         return Response(InsuranceClaimSerializer(claim).data)
 
     @action(detail=True, methods=["post"])
@@ -568,7 +568,7 @@ class InsuranceClaimViewSet(
         try:
             claim.cancel(reason=serializer.validated_data.get("reason", ""))
         except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="claim_cancel", exc=e)
         return Response(InsuranceClaimSerializer(claim).data)
 
     @action(detail=True, methods=["post"], url_path="write-off")
@@ -578,7 +578,7 @@ class InsuranceClaimViewSet(
         try:
             claim.write_off(reason=reason)
         except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="claim_write_off", exc=e)
         return Response(InsuranceClaimSerializer(claim).data)
 
     @action(detail=True, methods=["post"], url_path="reserve-balance")
@@ -587,7 +587,7 @@ class InsuranceClaimViewSet(
         try:
             self._ensure_healthcloud_enabled(claim)
         except ValidationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="reserve_balance", exc=exc)
         serializer = ReserveBalanceSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         authorization = get_object_or_404(
@@ -636,7 +636,7 @@ class InsuranceClaimViewSet(
                         "Visit authorization is required before submitting this claim."
                     )
         except ValidationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="submit_to_healthcloud", exc=exc)
         service = HealthCloudWorkflowService()
         try:
             response = service.submit_claim(
@@ -662,7 +662,7 @@ class InsuranceClaimViewSet(
                         "Active balance reservation is required before invoice submission."
                     )
         except ValidationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="submit_invoice", exc=exc)
         serializer = SubmitInvoiceSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
@@ -671,7 +671,7 @@ class InsuranceClaimViewSet(
                 dict(serializer.validated_data),
             )
         except ValidationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="submit_invoice", exc=exc)
         service = HealthCloudWorkflowService()
         try:
             response = service.submit_invoice(
@@ -690,7 +690,7 @@ class InsuranceClaimViewSet(
         try:
             self._ensure_healthcloud_enabled(claim)
         except ValidationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="refresh_external_status", exc=exc)
         service = HealthCloudWorkflowService()
         try:
             response = service.refresh_claim_status(
@@ -710,7 +710,7 @@ class InsuranceClaimViewSet(
         try:
             self._ensure_healthcloud_enabled(claim)
         except ValidationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="submit_credit_note", exc=exc)
         serializer = SubmitCreditNoteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         payload = dict(serializer.validated_data)
@@ -733,7 +733,7 @@ class InsuranceClaimViewSet(
         try:
             self._ensure_healthcloud_enabled(claim)
         except ValidationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="upload_attachment", exc=exc)
         service = HealthCloudWorkflowService()
 
         file_obj = request.FILES.get("attachment")
@@ -774,7 +774,7 @@ class InsuranceClaimViewSet(
         try:
             self._ensure_healthcloud_enabled(claim)
         except ValidationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="upload_attachment_file", exc=exc)
 
         file_obj = request.FILES.get("file")
         if file_obj is None:
@@ -806,7 +806,7 @@ class InsuranceClaimViewSet(
         try:
             self._ensure_healthcloud_enabled(claim)
         except ValidationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="check_remittance", exc=exc)
         service = HealthCloudWorkflowService()
         try:
             response = service.get_claim_remittance(
@@ -906,15 +906,12 @@ class InsurancePreauthViewSet(
             try:
                 result = service.submit(preauth, user=request.user)
             except _insurance_handled_exceptions() as e:
-                return Response(
-                    {
-                        "error": str(e),
-                        "action": (
-                            "HealthCloud preauth endpoint may not be enabled for this payer. "
-                            "Confirm contract endpoint path/tenant and retry."
-                        ),
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
+                return self._upstream_error_response(
+                    e,
+                    fallback=(
+                        "HealthCloud preauth endpoint may not be enabled for this payer. "
+                        "Confirm contract endpoint path/tenant and retry."
+                    ),
                 )
 
             if not result.success:
@@ -936,7 +933,7 @@ class InsurancePreauthViewSet(
         try:
             preauth.submit(user=request.user)
         except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="preauth_submit", exc=e)
         return Response(InsurancePreauthSerializer(preauth).data)
 
     @action(detail=True, methods=["post"], url_path="check-status")
@@ -967,7 +964,7 @@ class InsurancePreauthViewSet(
                 user=request.user,
             )
         except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="preauth_approve", exc=e)
         return Response(InsurancePreauthSerializer(preauth).data)
 
     @action(detail=True, methods=["post"])
@@ -981,7 +978,7 @@ class InsurancePreauthViewSet(
                 user=request.user,
             )
         except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="preauth_deny", exc=e)
         return Response(InsurancePreauthSerializer(preauth).data)
 
     @action(detail=True, methods=["post"])
@@ -992,7 +989,7 @@ class InsurancePreauthViewSet(
         try:
             preauth.cancel(reason=serializer.validated_data.get("reason", ""))
         except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return _insurance_error_response(action="preauth_cancel", exc=e)
         return Response(InsurancePreauthSerializer(preauth).data)
 
 

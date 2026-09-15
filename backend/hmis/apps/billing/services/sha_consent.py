@@ -580,7 +580,7 @@ class SHAConsentService:
 
         response_data = self._make_request("POST", endpoint, json=payload)
         self._persist_consent_token(consent, response_data)
-        logger.info("Visit started for consent %s (patient: %s)", consent.id, consent.patient_id)
+        logger.info("Visit started for consent %s", consent.id)
         return response_data
 
     def _start_visit_ilm(
@@ -703,9 +703,8 @@ class SHAConsentService:
                             )
 
         logger.info(
-            "ILM visit started for consent %s (patient: %s)",
+            "ILM visit started for consent %s",
             consent.id,
-            consent.patient_id,
         )
         return response_data
 
@@ -792,10 +791,8 @@ class SHAConsentService:
                     ),
                 )
                 logger.info(
-                    "Sandbox biometric authorization for consent %s (auth_guid: %s, token: %s)",
+                    "Sandbox biometric authorization created for consent %s",
                     consent.id,
-                    auth_guid,
-                    token,
                 )
                 return {
                     "consent_id": consent.id,
@@ -851,9 +848,8 @@ class SHAConsentService:
         )
 
         logger.info(
-            "Biometric authorization initiated for consent %s (auth_guid: %s)",
+            "Biometric authorization initiated for consent %s",
             consent.id,
-            auth_guid,
         )
 
         return {
@@ -899,9 +895,8 @@ class SHAConsentService:
                     token = str(uuid.uuid4())
                     consent.mark_validated(token=token)
                     logger.info(
-                        "Sandbox biometric consent %s auto-authorized (auth_guid: %s)",
+                        "Sandbox biometric consent %s auto-authorized",
                         consent.id,
-                        auth_guid,
                     )
                     return {
                         "auth_guid": auth_guid,
@@ -937,9 +932,7 @@ class SHAConsentService:
                 token = response_data.get("consent_token") or auth_guid
                 expires_in = _expires_in_from_response(response_data)
                 consent.mark_validated(token=token, expires_in_seconds=expires_in)
-                logger.info(
-                    "Biometric consent %s authorized (auth_guid: %s)", consent.id, auth_guid
-                )
+                logger.info("Biometric consent %s authorized", consent.id)
 
         return {
             "auth_guid": auth_guid,
@@ -989,7 +982,7 @@ class SHAConsentService:
 
         if consent and consent.status == ConsentToken.ConsentStatus.PENDING:
             consent.mark_failed()
-            logger.info("Biometric consent %s cancelled (auth_guid: %s)", consent.id, auth_guid)
+            logger.info("Biometric consent %s cancelled", consent.id)
 
         return {
             "auth_guid": auth_guid,

@@ -249,10 +249,10 @@ class TerminologySearchView(APIView):
             raise TerminologyError("Empty results from DHA API", status_code=503)
 
         except TerminologyError as dha_error:
-            logger.warning(f"DHA Terminology API failed: {dha_error}, falling back to local")
+            logger.warning("DHA Terminology API failed, falling back to local: %s", dha_error)
             return self._search_icd11_local(search, limit, str(dha_error))
         except _sha_utility_handled_exceptions() as dha_error:
-            logger.warning(f"DHA Terminology API failed: {dha_error}, falling back to local")
+            logger.warning("DHA Terminology API failed, falling back to local: %s", dha_error)
             return self._search_icd11_local(search, limit, str(dha_error))
 
     def _search_icd11_local(self, search: str, limit: int, fallback_reason: str = ""):
@@ -331,7 +331,7 @@ class TerminologySearchView(APIView):
                 }
             )
         except _sha_utility_handled_exceptions() as exc:
-            logger.error(f"ICD-11 database fallback failed: {exc}")
+            logger.error("ICD-11 database fallback failed: %s", exc)
             return Response(
                 {"error": "All ICD-11 services unavailable"},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -1063,7 +1063,8 @@ class SHAWebhookView(APIView):
 
         try:
             payload = request.data
-            webhook_logger.info(f"SHA Webhook received: {payload}")
+            payload_keys = sorted(payload.keys()) if isinstance(payload, dict) else []
+            webhook_logger.info("SHA Webhook received: keys=%s", payload_keys)
 
             signature = request.headers.get("X-SHA-Signature")
             if signature and not self._verify_signature(request.body, signature):
@@ -1076,11 +1077,11 @@ class SHAWebhookView(APIView):
             if "claim_reference" in payload:
                 return self._handle_simple_notification(payload)
 
-            webhook_logger.warning(f"Unknown webhook payload format: {payload}")
+            webhook_logger.warning("Unknown webhook payload format: keys=%s", payload_keys)
             return Response({"status": "received", "warning": "Unknown format"})
 
-        except _sha_utility_handled_exceptions() as e:
-            webhook_logger.exception(f"Error processing SHA webhook: {e}")
+        except _sha_utility_handled_exceptions():
+            webhook_logger.exception("Error processing SHA webhook")
             return Response(
                 {"error": "Processing error"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1122,9 +1123,9 @@ class SHAWebhookView(APIView):
                 response_payload=payload,
             )
             if updated:
-                webhook_logger.info(f"Updated claim {claim_id} to status {new_status}")
+                webhook_logger.info("Updated claim %s to status %s", claim_id, new_status)
             else:
-                webhook_logger.warning(f"Could not find claim with reference {claim_id}")
+                webhook_logger.warning("Could not find claim with reference %s", claim_id)
 
         return Response(
             {
@@ -1153,9 +1154,9 @@ class SHAWebhookView(APIView):
         )
 
         if updated:
-            webhook_logger.info(f"Updated claim {claim_reference} to status {new_status}")
+            webhook_logger.info("Updated claim %s to status %s", claim_reference, new_status)
         else:
-            webhook_logger.warning(f"Could not find claim with reference {claim_reference}")
+            webhook_logger.warning("Could not find claim with reference %s", claim_reference)
 
         return Response(
             {"status": "processed", "claim_reference": claim_reference, "updated": updated}

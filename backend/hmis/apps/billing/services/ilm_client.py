@@ -81,6 +81,13 @@ def _redact(value: Any, depth: int = 0) -> Any:
     return value
 
 
+def _sanitize_log_field(value: Any) -> str:
+    """Collapse CR/LF and trim oversized log fields to reduce log injection risk."""
+    text = str(value or "")
+    text = text.replace("\r", " ").replace("\n", " ")
+    return text[:200]
+
+
 @dataclass
 class IlmResponse:
     """Lightweight wrapper around a successful ILM response."""
@@ -166,6 +173,8 @@ class IlmClient:
     ) -> IlmResponse:
         method = method.upper()
         url = self._build_url(path)
+        safe_method = _sanitize_log_field(method)
+        safe_path = _sanitize_log_field(path)
         retry_statuses = retry_statuses or self.DEFAULT_RETRY_STATUSES
         correlation_id = _REQUEST_ID.get() or uuid.uuid4().hex
 
@@ -243,7 +252,11 @@ class IlmClient:
                 last_exc = exc
                 duration_ms = int((time.monotonic() - started) * 1000)
                 logger.warning(
-                    "ILM timeout %s %s attempt=%d duration=%dms", method, path, attempt, duration_ms
+                    "ILM timeout %s %s attempt=%d duration=%dms",
+                    safe_method,
+                    safe_path,
+                    attempt,
+                    duration_ms,
                 )
                 if attempt > self.max_retries:
                     self._record_audit(
@@ -271,7 +284,11 @@ class IlmClient:
                 last_exc = exc
                 duration_ms = int((time.monotonic() - started) * 1000)
                 logger.warning(
-                    "ILM transport error %s %s attempt=%d err=%s", method, path, attempt, exc
+                    "ILM transport error %s %s attempt=%d err=%s",
+                    safe_method,
+                    safe_path,
+                    attempt,
+                    exc.__class__.__name__,
                 )
                 if attempt > self.max_retries:
                     self._record_audit(
@@ -302,8 +319,8 @@ class IlmClient:
             if status_code in retry_statuses and attempt <= self.max_retries:
                 logger.warning(
                     "ILM retryable status %s %s -> %d attempt=%d",
-                    method,
-                    path,
+                    safe_method,
+                    safe_path,
                     status_code,
                     attempt,
                 )
@@ -313,8 +330,8 @@ class IlmClient:
             if status_code == 401 and attempt == 1:
                 logger.info(
                     "ILM 401 on %s %s — forcing token refresh and retry",
-                    method,
-                    path,
+                    safe_method,
+                    safe_path,
                 )
                 merged_headers.update(self.auth_service.get_auth_headers(force_refresh=True))
                 continue
