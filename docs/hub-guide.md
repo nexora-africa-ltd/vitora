@@ -687,7 +687,7 @@ sudo chown -R root:vitora /opt/vitora
 sudo chmod -R 750 /opt/vitora
 
 # 6. Update Python dependencies
-sudo -u vitora /opt/vitora/venv/bin/pip install -r /opt/vitora/requirements-hub.txt
+sudo -u vitora /opt/vitora/venv/bin/pip install --require-hashes -r /opt/vitora/requirements-hub.txt
 
 # 7. Run migrations
 cd /opt/vitora
@@ -727,7 +727,7 @@ Get-ChildItem $source.FullName | Where-Object { $_.Name -notin @('.env', 'data',
 }
 
 # 5. Update dependencies
-& C:\VitoraHub\venv\Scripts\python.exe -m pip install -r C:\VitoraHub\requirements-hub.txt
+& C:\VitoraHub\venv\Scripts\python.exe -m pip install --require-hashes -r C:\VitoraHub\requirements-hub.txt
 
 # 6. Run migrations
 Push-Location C:\VitoraHub
@@ -1244,7 +1244,7 @@ cd backend
 poetry install
 
 # Generate requirements for hub deployment
-poetry export -f requirements.txt --without-hashes > requirements-hub.txt
+poetry export --only main -f requirements.txt > requirements-hub.txt
 
 # Create tarball
 mkdir -p /tmp/vitora-hub

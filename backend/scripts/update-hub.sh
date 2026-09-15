@@ -159,7 +159,7 @@ info "Updating Python dependencies..."
 source "$VENV_DIR/bin/activate"
 pip install --quiet --upgrade pip
 if [[ -f "$APP_DIR/requirements-hub.txt" ]]; then
-    pip install --quiet -r "$APP_DIR/requirements-hub.txt"
+    pip install --quiet --require-hashes -r "$APP_DIR/requirements-hub.txt"
 fi
 
 # Run migrations

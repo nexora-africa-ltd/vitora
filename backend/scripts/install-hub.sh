@@ -606,9 +606,9 @@ pip install --quiet --upgrade pip
 
 # Install from pre-built wheel or requirements
 if [[ -f "$APP_DIR/requirements-hub.txt" ]]; then
-    pip install --quiet -r "$APP_DIR/requirements-hub.txt"
+    pip install --quiet --require-hashes -r "$APP_DIR/requirements-hub.txt"
 elif [[ -f "$APP_DIR/requirements.txt" ]]; then
-    pip install --quiet -r "$APP_DIR/requirements.txt"
+    pip install --quiet --require-hashes -r "$APP_DIR/requirements.txt"
 fi
 
 # Production ASGI server

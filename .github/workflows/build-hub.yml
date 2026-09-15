@@ -77,21 +77,11 @@ jobs:
           poetry self add poetry-plugin-export
           poetry config virtualenvs.create false
 
-      - name: Export requirements
+      - name: Export hash-locked requirements
         working-directory: backend
         shell: bash
         run: |
-          poetry export --without dev --without-hashes --format requirements.txt --output requirements-hub-raw.txt
-          python -c "
-          import re
-          with open('requirements-hub-raw.txt') as f:
-              lines = f.readlines()
-          with open('requirements-hub.txt', 'w') as f:
-              for line in lines:
-                  cleaned = re.sub(r' ; (python_version|platform_system|sys_platform|implementation_name).*', '', line)
-                  f.write(cleaned)
-          "
-          rm -f requirements-hub-raw.txt
+          poetry export --only main --format requirements.txt --output requirements-hub.txt
 
       - name: Install Python dependencies (for Cython)
         working-directory: backend
@@ -101,8 +91,8 @@ jobs:
           # Poetry's install path on Windows tries to uninstall/downgrade packages
           # already pre-installed in the GitHub-hosted Python toolcache (e.g. certifi),
           # and Windows file locks cause "[WinError 32] file in use" failures.
-          # pip install -r is idempotent and only installs what's missing.
-          pip install --no-warn-script-location -r requirements-hub.txt
+          # Hashes bind every downloaded artifact to the reviewed Poetry lock.
+          pip install --require-hashes --no-warn-script-location -r requirements-hub.txt
           # Cython 3.1.x can fail with "unhashable type: 'Extension'" in mixed
           # extension-list builds; pin to the stable 3.0 line for hub compilation.
           pip install --no-warn-script-location "cython>=3.0,<3.1" setuptools wheel

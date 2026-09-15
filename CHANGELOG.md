@@ -15,9 +15,19 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
-### Added
+## [1.0.19] - 2026-09-15
 
-- Placeholder section for upcoming release notes.
+### Hub
+
+- Removed unused and misleading `cloc`, `pycloc`, `pydotenv`, and `crypto` Python dependencies from hub deployments.
+- Exported hash-locked Python requirements and enforce `--require-hashes` in Linux and Windows hub install/update paths.
+
+## [Desktop 1.0.11] - 2026-09-15
+
+### Desktop
+
+- Verify SHA-256 checksums for downloaded Node.js sidecar artifacts before extraction and reject unexpected redirects.
+- Bumped desktop app version metadata to `1.0.11` across `desktop-app/package.json`, `desktop-app/src-tauri/Cargo.toml`, `desktop-app/src-tauri/tauri.conf.json`, `desktop-app/package-lock.json`, and `desktop-app/src-tauri/Cargo.lock`.
 
 ## [1.0.17] - 2026-09-03
 

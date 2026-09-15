@@ -731,9 +731,9 @@ Write-Info "Installing Python dependencies..."
 # Use python -m pip (avoids "To modify pip, please run..." error on old pip)
 & $python -m pip install --quiet --upgrade pip
 if (Test-Path "$InstallDir\requirements-hub.txt") {
-    & $python -m pip install --quiet -r "$InstallDir\requirements-hub.txt"
+    & $python -m pip install --quiet --require-hashes -r "$InstallDir\requirements-hub.txt"
 } elseif (Test-Path "$InstallDir\requirements.txt") {
-    & $python -m pip install --quiet -r "$InstallDir\requirements.txt"
+    & $python -m pip install --quiet --require-hashes -r "$InstallDir\requirements.txt"
 }
 & $python -m pip install --quiet daphne whitenoise
 

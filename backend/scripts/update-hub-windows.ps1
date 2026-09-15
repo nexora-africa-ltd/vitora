@@ -603,7 +603,7 @@ if (Test-Path "$InstallDir\requirements-hub.txt") {
     # this native command and gate on LASTEXITCODE instead.
     $prevEAP = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
-    $pipOutput = & $pip install -r "$InstallDir\requirements-hub.txt" --quiet 2>&1
+    $pipOutput = & $pip install --require-hashes -r "$InstallDir\requirements-hub.txt" --quiet 2>&1
     $pipExit = $LASTEXITCODE
     $ErrorActionPreference = $prevEAP
 
