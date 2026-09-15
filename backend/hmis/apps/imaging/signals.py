@@ -120,7 +120,7 @@ def create_invoice_item_for_imaging(sender, instance, created, **kwargs):
         AssertionError,
         ImportError,
     ) as e:
-        logger.error(f"Failed to create invoice item for imaging order item {instance.id}: {e}")
+        logger.error("Failed to create invoice item for imaging order item %s: %s", instance.id, e)
 
 
 # ---------------------------------------------------------------------------

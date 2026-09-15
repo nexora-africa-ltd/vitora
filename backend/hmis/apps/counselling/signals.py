@@ -338,7 +338,7 @@ def create_clinic_visit_for_session(sender, instance, created, **kwargs):
         instance.clinic_visit = clinic_visit
         instance.save(update_fields=["clinic_visit"])
 
-        logger.info(f"Created clinic visit for counselling session {instance.session_number}")
+        logger.info("Created clinic visit for counselling session %s", instance.session_number)
 
     except (
         AttributeError,

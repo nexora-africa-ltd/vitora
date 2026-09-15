@@ -313,7 +313,7 @@ def process_inbound_message(channel: InstrumentChannel, raw_data: str) -> Analyz
         return message
 
     except ProtocolError as e:
-        logger.warning(f"Protocol error processing message on {channel}: {e}")
+        logger.warning("Protocol error processing message on %s: %s", channel, e)
         message.mark_failed(f"Protocol error: {e}")
         channel.update_status(InstrumentChannel.ConnectionStatus.ERROR, str(e))
         return message
@@ -326,7 +326,7 @@ def process_inbound_message(channel: InstrumentChannel, raw_data: str) -> Analyz
         AssertionError,
         ImportError,
     ) as e:
-        logger.error(f"Unexpected error processing analyzer message: {e}", exc_info=True)
+        logger.error("Unexpected error processing analyzer message: %s", e, exc_info=True)
         message.mark_failed(f"Unexpected error: {e}")
         return message
 

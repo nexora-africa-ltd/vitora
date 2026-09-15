@@ -183,9 +183,9 @@ class SHAClaimAutomationDocumentsMixin:
 
             return {"attached": attached, "already_attached": already_attached}
 
-        except _sha_automation_handled_exceptions() as e:
+        except _sha_automation_handled_exceptions():
             logger.exception("Auto-attach documents failed for claim %s", claim_id)
-            return {"attached": 0, "error": str(e)}
+            return {"attached": 0, "error": "Auto-attach documents failed"}
 
     @classmethod
     def _render_text_pdf_bytes(cls, content: str) -> bytes:

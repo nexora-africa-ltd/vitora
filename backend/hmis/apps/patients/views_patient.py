@@ -52,7 +52,7 @@ def _fire_cr_sync(patient_id: int) -> None:
         # Don't break patient creation if Celery/Redis unavailable
         import logging
 
-        logging.getLogger(__name__).warning("Failed to queue CR sync for patient %s", patient_id)
+        logging.getLogger(__name__).warning("Failed to queue CR sync")
 
 
 def _fire_sha_auto_verify(patient_id: int, facility_id: int | None = None) -> None:
@@ -73,8 +73,7 @@ def _fire_sha_auto_verify(patient_id: int, facility_id: int | None = None) -> No
         import logging
 
         logging.getLogger(__name__).warning(
-            "Failed to queue SHA auto-verify for patient %s",
-            patient_id,
+            "Failed to queue SHA auto-verify",
         )
 
 

@@ -64,9 +64,8 @@ def evaluate_cds_on_encounter_save(
                     details=details,
                 )
                 logger.info(
-                    "CDS alert created: rule=%s patient=%s",
+                    "CDS alert created: rule=%s",
                     rule.code,
-                    context.patient_id,
                 )
     except (
         AttributeError,

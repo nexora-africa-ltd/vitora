@@ -156,7 +156,7 @@ class LOINCTerminologyService:
                 resp.raise_for_status()
                 data = resp.json()
         except (httpx.HTTPError, ValueError, TypeError) as e:
-            logger.error(f"LOINC lookup failed for {code}: {e}")
+            logger.error("LOINC lookup failed for %s: %s", code, e)
             return None
 
         # Parse FHIR Parameters response
@@ -193,7 +193,7 @@ class LOINCTerminologyService:
                 resp.raise_for_status()
                 data = resp.json()
         except (httpx.HTTPError, ValueError, TypeError) as e:
-            logger.error(f"LOINC search failed for '{term}': {e}")
+            logger.error("LOINC search failed for '%s': %s", term, e)
             return []
 
         results = []

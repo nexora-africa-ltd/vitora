@@ -112,7 +112,7 @@ def _insurance_error_response(
         else:
             status_code = status.HTTP_502_BAD_GATEWAY
     elif isinstance(exc, (ValidationError, DRFValidationError)):
-        message = str(exc) or "Invalid insurance request."
+        message = "Invalid insurance request."
 
     return Response({"error": message}, status=status_code)
 

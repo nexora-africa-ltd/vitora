@@ -59,18 +59,17 @@ class SHAClaimAutomationOpsMixin:
                     for remittance in remittances:
                         result["claims_reconciled"] += getattr(remittance, "reconciled_count", 0)
 
-                except _sha_automation_handled_exceptions() as e:
+                except _sha_automation_handled_exceptions():
                     logger.warning(
-                        "Remittance fetch failed for facility %s: %s",
+                        "Remittance fetch failed for facility %s",
                         facility.mfl_code,
-                        str(e),
                     )
 
             return result
 
-        except _sha_automation_handled_exceptions() as e:
+        except _sha_automation_handled_exceptions():
             logger.exception("Remittance fetch and reconcile failed")
-            return {**result, "error": str(e)}
+            return {**result, "error": "Remittance fetch and reconcile failed"}
 
     # -------------------------------------------------------------------------
     # 6. Smart query response workflow
@@ -373,9 +372,9 @@ class SHAClaimAutomationOpsMixin:
                 "valid_until": (timezone.now() + timedelta(hours=24)).isoformat(),
             }
 
-        except _sha_automation_handled_exceptions() as e:
-            logger.warning("Eligibility pre-check failed for patient %s: %s", patient_id, e)
-            return {"status": "error", "reason": str(e)}
+        except _sha_automation_handled_exceptions():
+            logger.warning("Eligibility pre-check failed for patient %s", patient_id)
+            return {"status": "error", "reason": "Eligibility pre-check failed"}
 
     # -------------------------------------------------------------------------
     # 9. Auto-submit preauth for routine procedures

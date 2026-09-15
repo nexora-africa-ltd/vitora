@@ -265,7 +265,12 @@ class AssignmentOverrideViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
                 notes=serializer.validated_data.get("notes", ""),
             )
         except ValueError as e:
-            return safe_error_response(action="scheduling.override_approve", exc=e, logger=logger)
+            return safe_error_response(
+                action="scheduling.override_approve",
+                exc=e,
+                logger=logger,
+                expose_message_for=(),
+            )
 
         return Response(AssignmentOverrideSerializer(override).data)
 
@@ -287,7 +292,12 @@ class AssignmentOverrideViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
                 reason=serializer.validated_data["reason"],
             )
         except ValueError as e:
-            return safe_error_response(action="scheduling.override_reject", exc=e, logger=logger)
+            return safe_error_response(
+                action="scheduling.override_reject",
+                exc=e,
+                logger=logger,
+                expose_message_for=(),
+            )
 
         return Response(AssignmentOverrideSerializer(override).data)
 

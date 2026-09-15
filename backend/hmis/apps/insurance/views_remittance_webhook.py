@@ -23,6 +23,7 @@ from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from hmis.apps.core.api_errors import safe_error_response
 from hmis.apps.core.audit import AuditedMutationMixin
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
 from hmis.apps.core.openapi import SchemaFallbackSerializer
@@ -90,10 +91,11 @@ class InsuranceRemittanceViewSet(
         try:
             remittance.reconcile()
         except ValidationError as exc:
-            messages = list(exc.messages)
-            return Response(
-                {"error": str(messages[0]) if messages else "Unable to reconcile remittance."},
-                status=status.HTTP_400_BAD_REQUEST,
+            return safe_error_response(
+                action="insurance.remittance_reconcile",
+                exc=exc,
+                logger=logger,
+                expose_message_for=(ValidationError,),
             )
         return Response(InsuranceRemittanceSerializer(remittance).data)
 

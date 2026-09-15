@@ -828,7 +828,10 @@ class AppointmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             appointment.confirm(user=request.user)
         except ValueError as e:
             return safe_error_response(
-                action="scheduling.appointment_confirm", exc=e, logger=logger
+                action="scheduling.appointment_confirm",
+                exc=e,
+                logger=logger,
+                expose_message_for=(),
             )
 
         self._log_action("appointment_confirm", appointment)
@@ -845,7 +848,10 @@ class AppointmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             appointment.check_in(user=request.user)
         except ValueError as e:
             return safe_error_response(
-                action="scheduling.appointment_check_in", exc=e, logger=logger
+                action="scheduling.appointment_check_in",
+                exc=e,
+                logger=logger,
+                expose_message_for=(),
             )
 
         self._log_action("appointment_checkin", appointment)
@@ -861,7 +867,12 @@ class AppointmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         try:
             appointment.start(user=request.user)
         except ValueError as e:
-            return safe_error_response(action="scheduling.appointment_start", exc=e, logger=logger)
+            return safe_error_response(
+                action="scheduling.appointment_start",
+                exc=e,
+                logger=logger,
+                expose_message_for=(),
+            )
 
         self._log_action("appointment_start", appointment)
         return Response(AppointmentSerializer(appointment).data)
@@ -880,7 +891,10 @@ class AppointmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             )
         except ValueError as e:
             return safe_error_response(
-                action="scheduling.appointment_complete", exc=e, logger=logger
+                action="scheduling.appointment_complete",
+                exc=e,
+                logger=logger,
+                expose_message_for=(),
             )
 
         self._log_action("appointment_complete", appointment)
@@ -899,7 +913,12 @@ class AppointmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 reason=serializer.validated_data.get("reason", ""),
             )
         except ValueError as e:
-            return safe_error_response(action="scheduling.appointment_cancel", exc=e, logger=logger)
+            return safe_error_response(
+                action="scheduling.appointment_cancel",
+                exc=e,
+                logger=logger,
+                expose_message_for=(),
+            )
 
         self._log_action(
             "appointment_cancel",
@@ -921,7 +940,10 @@ class AppointmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             appointment.mark_no_show(user=request.user)
         except ValueError as e:
             return safe_error_response(
-                action="scheduling.appointment_no_show", exc=e, logger=logger
+                action="scheduling.appointment_no_show",
+                exc=e,
+                logger=logger,
+                expose_message_for=(),
             )
 
         self._log_action("appointment_noshow", appointment)

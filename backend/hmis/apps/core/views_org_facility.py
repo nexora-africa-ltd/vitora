@@ -1908,10 +1908,10 @@ class DHIS2ConfigViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 {"status": "error", "detail": "Connection timed out (15s)."},
                 status=status.HTTP_504_GATEWAY_TIMEOUT,
             )
-        except http_requests.RequestException as exc:
+        except http_requests.RequestException:
             logger.warning(
                 "DHIS2 connectivity test request failed",
-                extra={"config_id": config.pk, "api_url": config.api_url, "error": str(exc)},
+                extra={"config_id": config.pk, "api_url": config.api_url},
             )
             return Response(
                 {
@@ -1920,10 +1920,10 @@ class DHIS2ConfigViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 },
                 status=status.HTTP_502_BAD_GATEWAY,
             )
-        except ValueError as exc:
+        except ValueError:
             logger.warning(
                 "DHIS2 connectivity test returned invalid JSON payload",
-                extra={"config_id": config.pk, "api_url": config.api_url, "error": str(exc)},
+                extra={"config_id": config.pk, "api_url": config.api_url},
             )
             return Response(
                 {

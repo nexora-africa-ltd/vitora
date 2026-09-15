@@ -624,7 +624,12 @@ class ShiftAnalyticsExportMixin:
         try:
             shift.start_shift(method="QR_CODE")
         except ValueError as e:
-            return safe_error_response(action="scheduling.qr_clock_in", exc=e, logger=logger)
+            return safe_error_response(
+                action="scheduling.qr_clock_in",
+                exc=e,
+                logger=logger,
+                expose_message_for=(),
+            )
 
         serializer = ShiftSerializer(shift)
         return Response(serializer.data)

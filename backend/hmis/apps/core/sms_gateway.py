@@ -100,7 +100,7 @@ def send_sms(phone: str, message: str, sender_id: str | None = None) -> bool:
 
     client = _get_sms_client()
     if not client:
-        logger.warning("SMS not sent (client not configured): %s", _mask_phone(phone))
+        logger.warning("SMS not sent (client not configured)")
         return False
 
     sender = sender_id or getattr(settings, "SMS_SENDER_ID", None)
@@ -111,16 +111,16 @@ def send_sms(phone: str, message: str, sender_id: str | None = None) -> bool:
         if response and "SMSMessageData" in response:
             recipients = response["SMSMessageData"].get("Recipients", [])
             if recipients and recipients[0].get("status") == "Success":
-                logger.info("SMS sent successfully to %s", _mask_phone(phone))
+                logger.info("SMS sent successfully")
                 return True
             else:
                 status = recipients[0].get("status") if recipients else "Unknown"
-                logger.warning("SMS delivery failed for %s: %s", _mask_phone(phone), status)
+                logger.warning("SMS delivery failed: %s", status)
                 return False
-        logger.info("SMS submitted to %s", _mask_phone(phone))
+        logger.info("SMS submitted")
         return True
     except Exception:  # noqa: BLE001 - fail-open boundary around external provider/network errors
-        logger.exception("Failed to send SMS to %s", _mask_phone(phone))
+        logger.exception("Failed to send SMS")
         return False
 
 

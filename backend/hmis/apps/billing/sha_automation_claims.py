@@ -100,13 +100,12 @@ class SHAClaimAutomationClaimsMixin:
 
             return {"status": "sent", "result": result}
 
-        except _sha_automation_handled_exceptions() as e:
+        except _sha_automation_handled_exceptions():
             logger.warning(
-                "Auto-consent trigger failed for patient %s: %s",
+                "Auto-consent trigger failed for patient %s",
                 patient_id,
-                str(e),
             )
-            return {"status": "error", "reason": str(e)}
+            return {"status": "error", "reason": "Auto-consent trigger failed"}
 
     # -------------------------------------------------------------------------
     # 2. Auto-start visit on encounter creation
@@ -223,9 +222,9 @@ class SHAClaimAutomationClaimsMixin:
 
             return {"status": "error", "reason": "DHA visit start returned failure"}
 
-        except _sha_automation_handled_exceptions() as e:
+        except _sha_automation_handled_exceptions():
             logger.exception("Auto-start visit failed for encounter %s", encounter_id)
-            return {"status": "error", "reason": str(e)}
+            return {"status": "error", "reason": "Auto-start visit failed"}
 
     # -------------------------------------------------------------------------
     # 3. Auto-populate interventions from clinical actions
@@ -329,7 +328,7 @@ class SHAClaimAutomationClaimsMixin:
 
             return suggestions
 
-        except _sha_automation_handled_exceptions() as e:
+        except _sha_automation_handled_exceptions():
             logger.warning("Intervention suggestion failed for encounter %s: %s", encounter_id, e)
             return []
 
@@ -450,9 +449,9 @@ class SHAClaimAutomationClaimsMixin:
 
             return {"attached": attached, "skipped": skipped}
 
-        except _sha_automation_handled_exceptions() as e:
+        except _sha_automation_handled_exceptions():
             logger.exception("Auto-attach interventions failed for claim %s", claim_id)
-            return {"attached": 0, "skipped": 0, "error": str(e)}
+            return {"attached": 0, "skipped": 0, "error": "Auto-attach interventions failed"}
 
     # -------------------------------------------------------------------------
     # 4. Auto-attach digital documents
