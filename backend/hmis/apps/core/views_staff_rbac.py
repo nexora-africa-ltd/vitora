@@ -951,14 +951,16 @@ class StaffProfileViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         if staff_profile and staff_profile.license_expiry:
             my_license = {
                 "license_number": staff_profile.license_number,
-                "license_expiry": str(staff_profile.license_expiry)
-                if staff_profile.license_expiry
-                else None,
+                "license_expiry": (
+                    str(staff_profile.license_expiry) if staff_profile.license_expiry else None
+                ),
                 "license_verified": staff_profile.license_verified,
                 "licensing_body": staff_profile.licensing_body,
-                "hwr_last_verified_at": staff_profile.hwr_last_verified_at.isoformat()
-                if staff_profile.hwr_last_verified_at
-                else None,
+                "hwr_last_verified_at": (
+                    staff_profile.hwr_last_verified_at.isoformat()
+                    if staff_profile.hwr_last_verified_at
+                    else None
+                ),
             }
             if staff_profile.license_expiry:
                 if staff_profile.license_expiry < today:

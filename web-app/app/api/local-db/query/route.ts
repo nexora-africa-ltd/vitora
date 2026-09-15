@@ -25,22 +25,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Dynamic import to avoid loading native modules in web mode
+    const { assertKnownTable } = await import('@/lib/desktop/local-db');
     const { queryLocal, countLocal, searchLocal } = await import('@/lib/desktop/data-access');
+    const safeTable = assertKnownTable(String(table));
 
     let data: unknown[];
     let count: number;
 
     if (search && searchColumns?.length) {
-      data = searchLocal(table, searchColumns, search, { limit, orderBy });
+      data = searchLocal(safeTable, searchColumns, search, { limit, orderBy });
       count = data.length;
     } else {
-      data = queryLocal({ table, where, orderBy, limit, offset });
-      count = countLocal(table, where);
+      data = queryLocal({ table: safeTable, where, orderBy, limit, offset });
+      count = countLocal(safeTable, where);
     }
 
     return NextResponse.json({ data, count });
   } catch (error) {
     console.error('[LocalDB API] Query error:', error);
-    return NextResponse.json({ error: 'Query failed', details: String(error) }, { status: 500 });
+    return NextResponse.json({ error: 'Query failed' }, { status: 500 });
   }
 }

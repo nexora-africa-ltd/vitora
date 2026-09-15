@@ -10,7 +10,13 @@
  * The frontend accesses it via Next.js API routes.
  */
 
-import { getLocalDb, isLocalDbAvailable } from './local-db';
+import {
+  assertKnownColumns,
+  assertKnownTable,
+  getLocalDb,
+  isLocalDbAvailable,
+  sanitizeOrderBy,
+} from './local-db';
 import { queueChange } from './sync-engine';
 
 export interface QueryOptions {
@@ -37,12 +43,16 @@ export function queryLocal<T = Record<string, unknown>>(options: QueryOptions): 
 
   const db = getLocalDb();
   const { table, where, orderBy, limit, offset } = options;
+  const safeTable = assertKnownTable(table);
+  const safeOrderBy = sanitizeOrderBy(safeTable, orderBy);
 
-  let sql = `SELECT * FROM "${table}"`;
+  let sql = `SELECT * FROM "${safeTable}"`;
   const params: unknown[] = [];
 
   if (where && Object.keys(where).length > 0) {
-    const conditions = Object.entries(where).map(([key, value]) => {
+    const safeKeys = assertKnownColumns(safeTable, Object.keys(where));
+    const conditions = safeKeys.map((key) => {
+      const value = where[key];
       if (value === null) return `"${key}" IS NULL`;
       params.push(value);
       return `"${key}" = ?`;
@@ -50,8 +60,8 @@ export function queryLocal<T = Record<string, unknown>>(options: QueryOptions): 
     sql += ` WHERE ${conditions.join(' AND ')}`;
   }
 
-  if (orderBy) {
-    sql += ` ORDER BY ${orderBy}`;
+  if (safeOrderBy) {
+    sql += ` ORDER BY ${safeOrderBy}`;
   }
 
   if (limit) {
@@ -73,7 +83,8 @@ export function queryLocal<T = Record<string, unknown>>(options: QueryOptions): 
 export function getLocalById<T = Record<string, unknown>>(table: string, id: string): T | null {
   if (!isLocalDbAvailable()) return null;
   const db = getLocalDb();
-  return (db.prepare(`SELECT * FROM "${table}" WHERE id = ?`).get(id) as T) || null;
+  const safeTable = assertKnownTable(table);
+  return (db.prepare(`SELECT * FROM "${safeTable}" WHERE id = ?`).get(id) as T) || null;
 }
 
 /**
@@ -83,11 +94,14 @@ export function countLocal(table: string, where?: Record<string, unknown>): numb
   if (!isLocalDbAvailable()) return 0;
 
   const db = getLocalDb();
-  let sql = `SELECT COUNT(*) as count FROM "${table}"`;
+  const safeTable = assertKnownTable(table);
+  let sql = `SELECT COUNT(*) as count FROM "${safeTable}"`;
   const params: unknown[] = [];
 
   if (where && Object.keys(where).length > 0) {
-    const conditions = Object.entries(where).map(([key, value]) => {
+    const safeKeys = assertKnownColumns(safeTable, Object.keys(where));
+    const conditions = safeKeys.map((key) => {
+      const value = where[key];
       if (value === null) return `"${key}" IS NULL`;
       params.push(value);
       return `"${key}" = ?`;
@@ -111,12 +125,15 @@ export function searchLocal<T = Record<string, unknown>>(
   if (!isLocalDbAvailable() || !query.trim()) return [];
 
   const db = getLocalDb();
+  const safeTable = assertKnownTable(table);
+  const safeColumns = assertKnownColumns(safeTable, searchColumns);
+  const safeOrderBy = sanitizeOrderBy(safeTable, options?.orderBy);
   const term = `%${query.trim()}%`;
-  const conditions = searchColumns.map((col) => `"${col}" LIKE ?`).join(' OR ');
-  const params = searchColumns.map(() => term);
+  const conditions = safeColumns.map((col) => `"${col}" LIKE ?`).join(' OR ');
+  const params = safeColumns.map(() => term);
 
-  let sql = `SELECT * FROM "${table}" WHERE (${conditions})`;
-  if (options?.orderBy) sql += ` ORDER BY ${options.orderBy}`;
+  let sql = `SELECT * FROM "${safeTable}" WHERE (${conditions})`;
+  if (safeOrderBy) sql += ` ORDER BY ${safeOrderBy}`;
   if (options?.limit) {
     sql += ` LIMIT ?`;
     params.push(String(options.limit));
@@ -138,6 +155,7 @@ export function writeLocal(options: WriteOptions): Record<string, unknown> | nul
 
   const db = getLocalDb();
   const { table, operation, recordId, data } = options;
+  const safeTable = assertKnownTable(table);
 
   if (operation === 'CREATE') {
     // Generate ID if not provided
@@ -149,7 +167,7 @@ export function writeLocal(options: WriteOptions): Record<string, unknown> | nul
       updated_at: new Date().toISOString(),
     };
 
-    const columns = Object.keys(record);
+    const columns = assertKnownColumns(safeTable, Object.keys(record));
     const placeholders = columns.map(() => '?').join(', ');
     const values = columns.map((col) => {
       const val = record[col];
@@ -159,17 +177,17 @@ export function writeLocal(options: WriteOptions): Record<string, unknown> | nul
     });
 
     db.prepare(
-      `INSERT INTO "${table}" (${columns.map((c) => `"${c}"`).join(', ')}) VALUES (${placeholders})`
+      `INSERT INTO "${safeTable}" (${columns.map((c) => `"${c}"`).join(', ')}) VALUES (${placeholders})`
     ).run(...values);
 
     // Queue for sync
-    queueChange(table, 'CREATE', id, record);
+    queueChange(safeTable, 'CREATE', id, record);
     return record;
   }
 
   if (operation === 'UPDATE' && recordId) {
     const record: Record<string, unknown> = { ...data, updated_at: new Date().toISOString() };
-    const columns = Object.keys(record);
+    const columns = assertKnownColumns(safeTable, Object.keys(record));
     const setClause = columns.map((col) => `"${col}" = ?`).join(', ');
     const values = columns.map((col) => {
       const val = record[col];
@@ -179,18 +197,18 @@ export function writeLocal(options: WriteOptions): Record<string, unknown> | nul
     });
     values.push(recordId);
 
-    db.prepare(`UPDATE "${table}" SET ${setClause} WHERE id = ?`).run(...values);
+    db.prepare(`UPDATE "${safeTable}" SET ${setClause} WHERE id = ?`).run(...values);
 
     // Queue for sync
-    queueChange(table, 'UPDATE', recordId, record);
+    queueChange(safeTable, 'UPDATE', recordId, record);
     return { id: recordId, ...record };
   }
 
   if (operation === 'DELETE' && recordId) {
-    db.prepare(`DELETE FROM "${table}" WHERE id = ?`).run(recordId);
+    db.prepare(`DELETE FROM "${safeTable}" WHERE id = ?`).run(recordId);
 
     // Queue for sync
-    queueChange(table, 'DELETE', recordId, {});
+    queueChange(safeTable, 'DELETE', recordId, {});
     return { id: recordId };
   }
 
@@ -205,11 +223,12 @@ export function bulkUpsert(table: string, records: Array<Record<string, unknown>
   if (!isLocalDbAvailable() || records.length === 0) return 0;
 
   const db = getLocalDb();
+  const safeTable = assertKnownTable(table);
   let applied = 0;
 
   const upsertAll = db.transaction(() => {
     for (const record of records) {
-      const columns = Object.keys(record);
+      const columns = assertKnownColumns(safeTable, Object.keys(record));
       const placeholders = columns.map(() => '?').join(', ');
       const values = columns.map((col) => {
         const val = record[col];
@@ -219,8 +238,8 @@ export function bulkUpsert(table: string, records: Array<Record<string, unknown>
       });
 
       db.prepare(
-        `INSERT OR REPLACE INTO "${table}" (${columns.map((c) => `"${c}"`).join(', ')}) VALUES (${placeholders})`
-      ).run(...values);
+          `INSERT OR REPLACE INTO "${safeTable}" (${columns.map((c) => `"${c}"`).join(', ')}) VALUES (${placeholders})`
+        ).run(...values);
       applied++;
     }
   });

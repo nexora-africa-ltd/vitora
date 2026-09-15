@@ -1,6 +1,6 @@
 [package]
 name = "vitora-hmis"
-version = "1.0.12"
+version = "1.0.13"
 description = "Vitora HMIS Desktop Application"
 authors = ["Nexora Consulting Ltd"]
 edition = "2021"

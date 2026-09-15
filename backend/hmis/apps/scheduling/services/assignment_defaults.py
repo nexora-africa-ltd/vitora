@@ -226,7 +226,9 @@ def seed_assignment_defaults_for_facility(
         "skipped": skipped,
         "templates": len(DEFAULT_ASSIGNMENT_RULES),
         "created_rule_codes": created_rule_codes,
-        "total_rules": AssignmentRule.objects.filter(facility=facility).count()
-        if not dry_run
-        else AssignmentRule.objects.filter(facility=facility).count() + created,
+        "total_rules": (
+            AssignmentRule.objects.filter(facility=facility).count()
+            if not dry_run
+            else AssignmentRule.objects.filter(facility=facility).count() + created
+        ),
     }

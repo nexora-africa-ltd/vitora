@@ -78,6 +78,26 @@ const ILM_LOOKUP_ID_OPTIONS = [
 
 type IlmLookupIdType = (typeof ILM_LOOKUP_ID_OPTIONS)[number]['value'];
 
+type PrefillBridgePayload = {
+  healthcloud?: Record<string, unknown>;
+  cr?: ClientRegistryClient;
+  shaPerson?: SHAPayloadPerson;
+};
+
+declare global {
+  interface Window {
+    __vitoraPrefillBridge?: PrefillBridgePayload;
+  }
+}
+
+function setPrefillBridge(payload: PrefillBridgePayload): void {
+  if (typeof window === 'undefined') return;
+  window.__vitoraPrefillBridge = {
+    ...(window.__vitoraPrefillBridge || {}),
+    ...payload,
+  };
+}
+
 export default function PatientLookupPage() {
   const router = useRouter();
   const canCreateRoute = useCreateRouteAccess();
@@ -249,7 +269,7 @@ export default function PatientLookupPage() {
       insurance_member_number: healthcloudMemberNumber.trim(),
     };
 
-    sessionStorage.setItem('healthcloud_prepopulate', JSON.stringify(prefill));
+    setPrefillBridge({ healthcloud: prefill });
     router.push('/patients/new?from_healthcloud=1');
   };
 
@@ -893,7 +913,7 @@ function CRResultCard({
   const totalDependants = crDependants.length || shaDependants.length;
 
   const handleRegister = (crData: ClientRegistryClient) => {
-    sessionStorage.setItem('cr_prepopulate', JSON.stringify(crData));
+    setPrefillBridge({ cr: crData });
     router.push('/patients/new?from_cr=1');
   };
 
@@ -1644,11 +1664,7 @@ function CRResultCard({
                                 principal_national_id: principalNationalId,
                               };
 
-                              sessionStorage.removeItem('cr_prepopulate');
-                              sessionStorage.setItem(
-                                'sha_person_prepopulate',
-                                JSON.stringify(depPerson)
-                              );
+                              setPrefillBridge({ cr: undefined, shaPerson: depPerson });
                               router.push('/patients/new?from_sha=1');
                             }}
                           >

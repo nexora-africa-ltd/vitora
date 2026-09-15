@@ -24,6 +24,7 @@ from collections.abc import Mapping
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import urlparse
 
 import requests
 from django.conf import settings
@@ -370,7 +371,15 @@ class IlmClient:
     # --------------- helpers ----------------------------------------------
 
     def _build_url(self, path: str) -> str:
+        base = urlparse(self.base_url)
         if path.startswith("http://") or path.startswith("https://"):
+            candidate = urlparse(path)
+            if candidate.scheme != base.scheme or candidate.netloc != base.netloc:
+                raise DHAError(
+                    "Cross-origin ILM URL rejected",
+                    method="REQUEST",
+                    path=path,
+                )
             return path
         if not path.startswith("/"):
             path = "/" + path

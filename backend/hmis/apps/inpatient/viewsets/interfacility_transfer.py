@@ -436,17 +436,17 @@ class InterFacilityTransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
                 "snapshot_source": "DISCHARGE",
                 "discharge_id": discharge.id,
                 "discharge_type": discharge.discharge_type,
-                "discharge_date": discharge.discharge_date.isoformat()
-                if discharge.discharge_date
-                else None,
+                "discharge_date": (
+                    discharge.discharge_date.isoformat() if discharge.discharge_date else None
+                ),
                 "final_diagnosis": discharge.final_diagnosis,
                 "final_diagnosis_text": discharge.final_diagnosis_text,
                 "procedures_performed": discharge.procedures_performed,
                 "treatment_summary": discharge.treatment_summary,
                 "discharge_medications": discharge.discharge_medications,
-                "follow_up_date": discharge.follow_up_date.isoformat()
-                if discharge.follow_up_date
-                else None,
+                "follow_up_date": (
+                    discharge.follow_up_date.isoformat() if discharge.follow_up_date else None
+                ),
                 "follow_up_instructions": discharge.follow_up_instructions,
                 "patient_instructions": discharge.patient_instructions,
                 "referral_facility": discharge.referral_facility,
@@ -470,9 +470,11 @@ class InterFacilityTransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
                 "procedures_performed": discharge_draft.procedures_performed,
                 "treatment_summary": discharge_draft.treatment_summary,
                 "discharge_medications": discharge_draft.discharge_medications,
-                "follow_up_date": discharge_draft.follow_up_date.isoformat()
-                if discharge_draft.follow_up_date
-                else None,
+                "follow_up_date": (
+                    discharge_draft.follow_up_date.isoformat()
+                    if discharge_draft.follow_up_date
+                    else None
+                ),
                 "follow_up_instructions": discharge_draft.follow_up_instructions,
                 "patient_instructions": discharge_draft.patient_instructions,
                 "referral_facility": discharge_draft.referral_facility,

@@ -387,51 +387,19 @@ export function CarePlanPanel({
     () => ({ encounter_id: encounterId, admission_id: admissionId }),
     [encounterId, admissionId]
   );
-  const localStorageKey = React.useMemo(
-    () => `ai-care-plan:${encounterId ?? 'none'}:${admissionId ?? 'none'}`,
-    [encounterId, admissionId]
-  );
   const { data: storedResults } = useStoredCarePlans(storedParams);
   const latestStored = storedResults?.[0];
-
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      const raw = window.localStorage.getItem(localStorageKey);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as AICarePlanResponse;
-      if (parsed && Array.isArray(parsed.goals)) {
-        setPersistedResult(parsed);
-      }
-    } catch {
-      // ignore invalid local cache
-    }
-  }, [localStorageKey]);
 
   React.useEffect(() => {
     const storedData = latestStored?.result_data as AICarePlanResponse | undefined;
     if (!storedData || !Array.isArray(storedData.goals)) return;
     setPersistedResult(storedData);
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.setItem(localStorageKey, JSON.stringify(storedData));
-      } catch {
-        // ignore storage errors
-      }
-    }
-  }, [latestStored, localStorageKey]);
+  }, [latestStored]);
 
   React.useEffect(() => {
     if (!result || !Array.isArray(result.goals)) return;
     setPersistedResult(result);
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.setItem(localStorageKey, JSON.stringify(result));
-      } catch {
-        // ignore storage errors
-      }
-    }
-  }, [result, localStorageKey]);
+  }, [result]);
 
   // Hydrate from stored result if no fresh result yet
   const displayResult: AICarePlanResponse | undefined =
@@ -579,9 +547,6 @@ export function CarePlanPanel({
   const handleClear = () => {
     reset();
     setPersistedResult(undefined);
-    if (typeof window !== 'undefined') {
-      window.localStorage.removeItem(localStorageKey);
-    }
     // Delete the latest stored result if available
     if (latestStored?.id) {
       aiApi

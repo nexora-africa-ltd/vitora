@@ -199,9 +199,9 @@ def get_clinical_snapshot(patient) -> ClinicalSnapshot:
                 "ckd_stage": latest_egfr["ckd_stage"],
                 "egfr": latest_egfr["egfr_ckd_epi"],
                 "dose_band": latest_egfr["dose_adjustment_band"],
-                "measured_at": latest_egfr["created_at"].isoformat()
-                if latest_egfr["created_at"]
-                else None,
+                "measured_at": (
+                    latest_egfr["created_at"].isoformat() if latest_egfr["created_at"] else None
+                ),
             }
             # Add renal alert if impaired
             if latest_egfr["ckd_stage"] not in ("G1", "G2"):

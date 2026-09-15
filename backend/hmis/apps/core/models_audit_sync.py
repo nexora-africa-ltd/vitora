@@ -12,6 +12,7 @@ Supported inputs/args:
 """
 
 import hashlib
+import hmac
 import json
 
 from django.conf import settings
@@ -302,13 +303,20 @@ class AuditLog(models.Model):
         resource_id: int | None,
         details: dict,
     ) -> str:
-        """Compute SHA-256 hash for an audit log entry."""
+        """Compute HMAC-SHA256 hash for an audit log entry."""
         payload = (
             f"{sequence_number}|{previous_hash}|{action}|{user_id}"
             f"|{timestamp.isoformat()}|{resource_type}|{resource_id}"
             f"|{json.dumps(details, sort_keys=True, default=str)}"
         )
-        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+        chain_key = getattr(settings, "AUDIT_LOG_CHAIN_KEY", "") or getattr(
+            settings, "SECRET_KEY", ""
+        )
+        return hmac.new(
+            chain_key.encode("utf-8"),
+            payload.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
 
 
 class FrontendEvent(models.Model):

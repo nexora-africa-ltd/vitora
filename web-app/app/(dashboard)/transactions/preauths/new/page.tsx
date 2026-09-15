@@ -298,7 +298,7 @@ const PREAUTH_DOC_TO_ATTACHMENT_TYPE: Record<string, string> = {
 };
 
 const AUTO_GENERATABLE_PREAUTH_DOC_TYPES = new Set(['MEDICAL_REPORT', 'PREAUTH_FORM']);
-const PREAUTH_DRAFT_STORAGE_KEY = 'transactions-preauth-new-draft-v1';
+const PREAUTH_DRAFT_STORAGE_KEY = 'transactions-preauth-new-draft-v2';
 
 function escapePdfText(input: string): string {
   return input.replaceAll('\\', '\\\\').replaceAll('(', '\\(').replaceAll(')', '\\)');
@@ -896,14 +896,9 @@ export default function NewPreauthPage() {
     hydratedDraftRef.current = true;
 
     try {
-      const raw = window.localStorage.getItem(PREAUTH_DRAFT_STORAGE_KEY);
+      const raw = window.sessionStorage.getItem(PREAUTH_DRAFT_STORAGE_KEY);
       if (!raw) return;
       const draft = JSON.parse(raw) as Record<string, unknown>;
-
-      if (!urlPatientId && typeof draft.patientId === 'number') setPatientId(draft.patientId);
-      if (!urlClaimId && typeof draft.claimId === 'string') setClaimId(draft.claimId);
-      if (!urlEncounterId && typeof draft.encounterId === 'string')
-        setEncounterId(draft.encounterId);
 
       if (typeof draft.selectedType === 'string') {
         const allowed = new Set(PREAUTH_TYPES.map((item) => item.id));
@@ -911,22 +906,6 @@ export default function NewPreauthPage() {
           setSelectedType(draft.selectedType as PreauthType);
         }
       }
-      if (typeof draft.consentToken === 'string') setConsentToken(draft.consentToken);
-      if (typeof draft.consentTokenId === 'number') setConsentTokenId(draft.consentTokenId);
-      if (typeof draft.consentedInterventionCode === 'string') {
-        setConsentedInterventionCode(draft.consentedInterventionCode);
-      }
-      if (typeof draft.shaMemberId === 'number') setShaMemberId(draft.shaMemberId);
-      if (typeof draft.interventionCode === 'string') setInterventionCode(draft.interventionCode);
-      if (typeof draft.interventionName === 'string') setInterventionName(draft.interventionName);
-      if (typeof draft.interventionPrice === 'number')
-        setInterventionPrice(draft.interventionPrice);
-      if (Array.isArray(draft.diagnosisChips))
-        setDiagnosisChips(draft.diagnosisChips as DiagnosisChip[]);
-      if (Array.isArray(draft.doctorChips)) setDoctorChips(draft.doctorChips as DoctorChip[]);
-      if (Array.isArray(draft.tariffChips)) setTariffChips(draft.tariffChips.map(String));
-      if (typeof draft.serviceStartDate === 'string') setServiceStartDate(draft.serviceStartDate);
-      if (typeof draft.serviceEndDate === 'string') setServiceEndDate(draft.serviceEndDate);
       if (typeof draft.typeOfAnaesthesia === 'string') {
         const candidate = draft.typeOfAnaesthesia.toUpperCase();
         const allowed = new Set(ANAESTHESIA_OPTIONS.map((item) => item.value));
@@ -934,139 +913,23 @@ export default function NewPreauthPage() {
           setTypeOfAnaesthesia(candidate as AnaesthesiaType);
         }
       }
-      if (typeof draft.providerNotificationEmail === 'string') {
-        setProviderNotificationEmail(draft.providerNotificationEmail);
-      }
-      if (typeof draft.providerNotificationEmailTouched === 'boolean') {
-        setProviderNotificationEmailTouched(draft.providerNotificationEmailTouched);
-      }
-      if (typeof draft.clinicalNotes === 'string') setClinicalNotes(draft.clinicalNotes);
-      if (typeof draft.clinicalNotesTouched === 'boolean') {
-        setClinicalNotesTouched(draft.clinicalNotesTouched);
-      }
-      if (Array.isArray(draft.generatedRequiredDocTypes)) {
-        setGeneratedRequiredDocTypes(
-          draft.generatedRequiredDocTypes.map((value) => String(value).toUpperCase())
-        );
-      }
-      if (Array.isArray(draft.uploadedRequiredDocTypes)) {
-        setUploadedRequiredDocTypes(
-          draft.uploadedRequiredDocTypes.map((value) => String(value).toUpperCase())
-        );
-      }
-      if (
-        draft.evidenceClaimAttachmentIds &&
-        typeof draft.evidenceClaimAttachmentIds === 'object'
-      ) {
-        setEvidenceClaimAttachmentIds(draft.evidenceClaimAttachmentIds as Record<string, number>);
-      }
-      if (Array.isArray(draft.documents)) {
-        const restoredDocs = draft.documents
-          .map((item) => {
-            const row = item as Record<string, unknown>;
-            const displayName =
-              String(row.displayName || row.fileName || 'Attachment').trim() || 'Attachment';
-            const fileName = String(row.fileName || displayName || 'attachment.pdf');
-            const mimeType = String(row.mimeType || 'application/pdf');
-            const placeholder = new File([], fileName, { type: mimeType });
-            return {
-              key: String(row.key || `doc-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`),
-              file: placeholder,
-              displayName,
-              claimAttachmentId:
-                typeof row.claimAttachmentId === 'number' ? row.claimAttachmentId : undefined,
-              evidenceKey: typeof row.evidenceKey === 'string' ? row.evidenceKey : undefined,
-              requiredDocType:
-                typeof row.requiredDocType === 'string' ? row.requiredDocType : undefined,
-              source:
-                row.source === 'generated' ||
-                row.source === 'required_upload' ||
-                row.source === 'evidence' ||
-                row.source === 'manual'
-                  ? row.source
-                  : 'manual',
-              claimFileUrl: typeof row.claimFileUrl === 'string' ? row.claimFileUrl : undefined,
-              fileSizeBytes: typeof row.fileSizeBytes === 'number' ? row.fileSizeBytes : undefined,
-              mimeType,
-            } as DraftDocument;
-          })
-          .filter((row) => !!row.displayName);
-        setDocuments(restoredDocs);
-      }
     } catch {
       // Ignore malformed drafts and continue with a fresh form.
     }
-  }, [urlClaimId, urlEncounterId, urlPatientId]);
+  }, []);
 
   useEffect(() => {
     if (!hydratedDraftRef.current) return;
 
     const payload = {
-      patientId,
-      claimId,
-      encounterId,
       selectedType,
-      consentToken,
-      consentTokenId,
-      consentedInterventionCode,
-      shaMemberId,
-      interventionCode,
-      interventionName,
-      interventionPrice,
-      diagnosisChips,
-      doctorChips,
-      tariffChips,
-      serviceStartDate,
-      serviceEndDate,
       typeOfAnaesthesia,
-      providerNotificationEmail,
-      providerNotificationEmailTouched,
-      clinicalNotes,
-      clinicalNotesTouched,
-      generatedRequiredDocTypes,
-      uploadedRequiredDocTypes,
-      evidenceClaimAttachmentIds,
-      documents: documents.map((doc) => ({
-        key: doc.key,
-        displayName: doc.displayName,
-        fileName: doc.file?.name || doc.displayName,
-        claimAttachmentId: doc.claimAttachmentId,
-        evidenceKey: doc.evidenceKey,
-        requiredDocType: doc.requiredDocType,
-        source: doc.source,
-        claimFileUrl: doc.claimFileUrl,
-        fileSizeBytes: doc.fileSizeBytes ?? doc.file?.size,
-        mimeType: doc.mimeType ?? doc.file?.type,
-      })),
     };
 
-    window.localStorage.setItem(PREAUTH_DRAFT_STORAGE_KEY, JSON.stringify(payload));
+    window.sessionStorage.setItem(PREAUTH_DRAFT_STORAGE_KEY, JSON.stringify(payload));
   }, [
-    patientId,
-    claimId,
-    encounterId,
     selectedType,
-    consentToken,
-    consentTokenId,
-    consentedInterventionCode,
-    shaMemberId,
-    interventionCode,
-    interventionName,
-    interventionPrice,
-    diagnosisChips,
-    doctorChips,
-    tariffChips,
-    serviceStartDate,
-    serviceEndDate,
     typeOfAnaesthesia,
-    providerNotificationEmail,
-    providerNotificationEmailTouched,
-    clinicalNotes,
-    clinicalNotesTouched,
-    generatedRequiredDocTypes,
-    uploadedRequiredDocTypes,
-    evidenceClaimAttachmentIds,
-    documents,
   ]);
 
   const { data: selectedInterventionRecord, isFetching: selectedInterventionRecordLoading } =
@@ -2877,7 +2740,7 @@ export default function NewPreauthPage() {
         title: 'Pre-authorization Submitted',
         description: `${typeConfig?.label || 'Selected'} preauth for ${interventionCode} submitted to SHA.`,
       });
-      window.localStorage.removeItem(PREAUTH_DRAFT_STORAGE_KEY);
+      window.sessionStorage.removeItem(PREAUTH_DRAFT_STORAGE_KEY);
       queryClient.invalidateQueries({ queryKey: ['preauths-list'] });
 
       // Redirect to the new preauth detail page if we have the record_id
@@ -2947,7 +2810,7 @@ export default function NewPreauthPage() {
 
   const handleClearAll = () => {
     if (!window.confirm('Clear all fields and start over?')) return;
-    window.localStorage.removeItem(PREAUTH_DRAFT_STORAGE_KEY);
+    window.sessionStorage.removeItem(PREAUTH_DRAFT_STORAGE_KEY);
 
     // Patient / claim
     setPatientId(null);
@@ -4448,7 +4311,7 @@ export default function NewPreauthPage() {
         <Button
           variant="outline"
           onClick={() => {
-            window.localStorage.removeItem(PREAUTH_DRAFT_STORAGE_KEY);
+            window.sessionStorage.removeItem(PREAUTH_DRAFT_STORAGE_KEY);
             router.push('/transactions/preauths');
           }}
         >

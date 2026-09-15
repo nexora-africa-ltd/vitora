@@ -26,10 +26,9 @@ Behavior notes:
 import json
 import time
 from pathlib import Path
-from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
-from urllib.request import Request, urlopen
 
+import requests
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
@@ -143,10 +142,14 @@ class Command(BaseCommand):
 
         for attempt in range(1, MAX_RETRIES + 1):
             try:
-                req = Request(url, headers={"Accept": "application/json"})  # noqa: S310
-                with urlopen(req, timeout=60) as resp:  # noqa: S310  # nosec B310 — URL is hardcoded HTTPS constant
-                    return json.loads(resp.read().decode())
-            except (HTTPError, URLError, TimeoutError) as e:
+                response = requests.get(
+                    url,
+                    headers={"Accept": "application/json"},
+                    timeout=60,
+                )
+                response.raise_for_status()
+                return response.json()
+            except requests.RequestException as e:
                 if attempt == MAX_RETRIES:
                     self.stderr.write(
                         self.style.ERROR(

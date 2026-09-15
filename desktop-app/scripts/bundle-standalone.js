@@ -11,7 +11,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 const WEB_APP_DIR = path.resolve(__dirname, '../../web-app');
 const STANDALONE_SRC = path.join(WEB_APP_DIR, '.next/standalone');
@@ -46,10 +46,9 @@ function copyDirSync(src, dest) {
     }
     fs.mkdirSync(dest, { recursive: true });
     try {
-      execSync(
-        `robocopy "${src}" "${dest}" /E /NFL /NDL /NJH /NJS /NC /NS`,
-        { stdio: 'pipe' }
-      );
+      execFileSync('robocopy', [src, dest, '/E', '/NFL', '/NDL', '/NJH', '/NJS', '/NC', '/NS'], {
+        stdio: 'pipe',
+      });
     } catch (e) {
       if (e.status >= 8) {
         throw new Error(`robocopy failed with exit code ${e.status}`);
@@ -57,18 +56,22 @@ function copyDirSync(src, dest) {
     }
   } else {
     try {
-      execSync(`rsync -a --delete "${src}/" "${dest}/"`, { stdio: 'pipe' });
+      execFileSync('rsync', ['-a', '--delete', `${src}/`, `${dest}/`], { stdio: 'pipe' });
     } catch {
       if (fs.existsSync(dest)) {
         fs.rmSync(dest, { recursive: true, force: true });
       }
-      execSync(`cp -r "${src}" "${dest}"`, { stdio: 'pipe' });
+      execFileSync('cp', ['-r', src, dest], { stdio: 'pipe' });
     }
   }
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function findBlockedHostOffenders(dir, host) {
-  const escapedHost = host.replace(/\./g, '\\.');
+  const escapedHost = escapeRegExp(host);
   // Regex that matches the blocked host used as an API target (assigned to a
   // variable, passed to fetch, used as baseURL, etc.) but NOT when it only
   // appears in an equality comparison for migration detection.
@@ -188,15 +191,9 @@ console.log(`  Creating archive → ${ARCHIVE_DEST}`);
 
 if (process.platform === 'win32') {
   // Windows: use tar (available since Windows 10 1803)
-  execSync(
-    `tar -czf "${ARCHIVE_DEST}" -C "${STAGING_DIR}" .`,
-    { stdio: 'inherit' }
-  );
+  execFileSync('tar', ['-czf', ARCHIVE_DEST, '-C', STAGING_DIR, '.'], { stdio: 'inherit' });
 } else {
-  execSync(
-    `tar -czf "${ARCHIVE_DEST}" -C "${STAGING_DIR}" .`,
-    { stdio: 'inherit' }
-  );
+  execFileSync('tar', ['-czf', ARCHIVE_DEST, '-C', STAGING_DIR, '.'], { stdio: 'inherit' });
 }
 
 // 6. Report archive size

@@ -196,9 +196,9 @@ class ClinicalCommentViewSet(viewsets.ModelViewSet):
                 priority="normal",
                 title="You were mentioned in a comment",
                 message=f"{instance.author.get_full_name() or instance.author.username} mentioned you in a comment.",
-                related_model=instance.content_type.model
-                if instance.content_type_id
-                else "comment",
+                related_model=(
+                    instance.content_type.model if instance.content_type_id else "comment"
+                ),
                 related_id=instance.object_id,
             )
 

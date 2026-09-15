@@ -356,9 +356,9 @@ class FHIRObservationSearchView(FHIRSearchAPIView):
                                     }
                                 ]
                             },
-                            "effectiveDateTime": enc.encounter_date.isoformat()
-                            if enc.encounter_date
-                            else None,
+                            "effectiveDateTime": (
+                                enc.encounter_date.isoformat() if enc.encounter_date else None
+                            ),
                             "valueQuantity": {"value": float(value)},
                             "subject": {"reference": f"Patient/{enc.patient_id}"},
                         }
@@ -447,9 +447,11 @@ class FHIRConditionSearchView(FHIRSearchAPIView):
                     {
                         "system": "http://hl7.org/fhir/sid/icd-10",
                         "code": dx.icd10_code.code,
-                        "display": dx.icd10_code.description
-                        if hasattr(dx.icd10_code, "description")
-                        else str(dx.icd10_code),
+                        "display": (
+                            dx.icd10_code.description
+                            if hasattr(dx.icd10_code, "description")
+                            else str(dx.icd10_code)
+                        ),
                     }
                 )
             if getattr(dx, "snomed_code", None):
@@ -519,9 +521,11 @@ class FHIRMedicationStatementSearchView(FHIRSearchAPIView):
                 "id": str(rx.pk),
                 "status": fhir_status,
                 "subject": {"reference": f"Patient/{rx.patient_id}"},
-                "dateAsserted": rx.created_at.isoformat()
-                if hasattr(rx, "created_at") and rx.created_at
-                else None,
+                "dateAsserted": (
+                    rx.created_at.isoformat()
+                    if hasattr(rx, "created_at") and rx.created_at
+                    else None
+                ),
             }
             entries.append(resource)
 
@@ -686,13 +690,15 @@ class FHIRDiagnosticReportSearchView(FHIRSearchAPIView):
                     ]
                 },
                 "subject": {
-                    "reference": f"Patient/{report.lab_order.patient_id}"
-                    if report.lab_order
-                    else None
+                    "reference": (
+                        f"Patient/{report.lab_order.patient_id}" if report.lab_order else None
+                    )
                 },
-                "issued": report.issued_at.isoformat()
-                if hasattr(report, "issued_at") and report.issued_at
-                else None,
+                "issued": (
+                    report.issued_at.isoformat()
+                    if hasattr(report, "issued_at") and report.issued_at
+                    else None
+                ),
                 "conclusion": getattr(report, "conclusion", "") or "",
             }
             entries.append(resource)

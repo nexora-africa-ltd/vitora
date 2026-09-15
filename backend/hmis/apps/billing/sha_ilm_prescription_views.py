@@ -45,6 +45,7 @@ from hmis.apps.billing.services.ilm_terminology_service import (
     IlmTerminologyConfigurationError,
     IlmTerminologyService,
 )
+from hmis.apps.core.api_errors import safe_error_response
 from hmis.apps.core.events import BillingEvents, publish_event
 from hmis.apps.core.openapi import SchemaFallbackSerializer
 from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
@@ -267,7 +268,12 @@ class IlmPrescriptionCreateView(BillingILMSchemaMixin, APIView):
             for item in items:
                 terminology.validate_concept_code(item.generic_concept_code, provenance=provenance)
         except IlmTerminologyConfigurationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(
+                action="billing.ilm_prescription_terminology_validation",
+                exc=exc,
+                logger=logger,
+                expose_message_for=(IlmTerminologyConfigurationError,),
+            )
         except DHAError as exc:
             return _ilm_handle_error("create-terminology-validation", exc)
         params = CreatePrescriptionParams(

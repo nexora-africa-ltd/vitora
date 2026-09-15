@@ -721,9 +721,11 @@ class IlmPreauthCreateView(BillingILMSchemaMixin, APIView):
 
         resolved_attachment_payload = [
             {
-                "id": int(row["attachment_id"])
-                if str(row.get("attachment_id", "")).isdigit()
-                else None,
+                "id": (
+                    int(row["attachment_id"])
+                    if str(row.get("attachment_id", "")).isdigit()
+                    else None
+                ),
                 "title": row.get("document_title", ""),
                 "doc_type": row.get("document_type", "OTHER"),
                 "checksum": row.get("checksum", ""),

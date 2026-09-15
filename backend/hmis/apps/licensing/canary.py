@@ -140,12 +140,12 @@ def write_canary_file(output_dir: Path, installation_id: str) -> Path:
     canary_token = generate_canary_token(installation_id, "binary")
     log_canary = generate_log_canary(installation_id)
 
-    content = f'''# Auto-generated canary data — do not modify
+    content = f"""# Auto-generated canary data — do not modify
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 _CANARY_TOKEN = "{canary_token}"
 _HONEYPOT = {honeypot_strings!r}
 _LOG_REF = "{log_canary}"
-'''
+"""
     canary_path.write_text(content)
     return canary_path
 

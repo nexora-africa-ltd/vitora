@@ -129,7 +129,7 @@ class SDMXImportService:
 
     # --- Internal parsing methods ---
 
-    def _find_element(self, root: Element, local_name: str, ns: str = "message") -> Element | None:  # noqa: ARG002
+    def _find_element(self, root: Element, local_name: str, _ns: str = "message") -> Element | None:
         """Find element by local name across known namespaces."""
         # Try with namespace
         for _prefix, uri in NS.items():

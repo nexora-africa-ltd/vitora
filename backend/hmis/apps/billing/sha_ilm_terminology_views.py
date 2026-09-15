@@ -7,7 +7,8 @@ ILM query filters using configured terminology provenance.
 
 from __future__ import annotations
 
-from rest_framework import status
+import logging
+
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -18,7 +19,10 @@ from hmis.apps.billing.services.ilm_terminology_service import (
     IlmTerminologyService,
 )
 from hmis.apps.billing.sha_ilm_prescription_views import BillingILMSchemaMixin, _ilm_handle_error
+from hmis.apps.core.api_errors import safe_error_response
 from hmis.apps.core.permissions import ReadRequiresModelPermission
+
+logger = logging.getLogger(__name__)
 
 
 class IlmTerminologyConceptsView(BillingILMSchemaMixin, APIView):
@@ -33,7 +37,12 @@ class IlmTerminologyConceptsView(BillingILMSchemaMixin, APIView):
             if isinstance(payload, dict):
                 payload = {**payload, "provenance": service.configured_provenance()}
         except IlmTerminologyConfigurationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(
+                action="billing.ilm_terminology_concepts",
+                exc=exc,
+                logger=logger,
+                expose_message_for=(IlmTerminologyConfigurationError,),
+            )
         except DHAError as exc:
             return _ilm_handle_error("terminology-concepts", exc)
         return Response(payload)
@@ -51,7 +60,12 @@ class IlmTerminologyMappingsView(BillingILMSchemaMixin, APIView):
             if isinstance(payload, dict):
                 payload = {**payload, "provenance": service.configured_provenance()}
         except IlmTerminologyConfigurationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(
+                action="billing.ilm_terminology_mappings",
+                exc=exc,
+                logger=logger,
+                expose_message_for=(IlmTerminologyConfigurationError,),
+            )
         except DHAError as exc:
             return _ilm_handle_error("terminology-mappings", exc)
         return Response(payload)

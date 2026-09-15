@@ -33,6 +33,7 @@ from hmis.apps.billing.services.client_registry import (
 )
 from hmis.apps.billing.services.dha_search import DHASearchService, SearchError
 from hmis.apps.billing.services.terminology import TerminologyError, TerminologyService
+from hmis.apps.core.api_errors import safe_error_response
 from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
 
 logger = logging.getLogger(__name__)
@@ -412,9 +413,9 @@ class ClientRegistryView(APIView):
                             "first_name": client.first_name,
                             "last_name": client.last_name,
                             "middle_name": client.middle_name,
-                            "date_of_birth": str(client.date_of_birth)
-                            if client.date_of_birth
-                            else None,
+                            "date_of_birth": (
+                                str(client.date_of_birth) if client.date_of_birth else None
+                            ),
                             "gender": client.gender,
                             "national_id": client.national_id,
                             "huduma_number": client.huduma_number,
@@ -560,7 +561,13 @@ class ClientRegistryView(APIView):
             )
 
         except ClientRegistryError as e:
-            return Response({"error": str(e), "success": False}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(
+                action="billing.client_registry_register",
+                exc=e,
+                logger=logger,
+                expose_message_for=(ClientRegistryError,),
+                extra_payload={"success": False},
+            )
         except _sha_utility_handled_exceptions() as exc:
             logger.exception("Client Registry registration failed")
             return Response(
@@ -638,9 +645,22 @@ class ClientRegistryView(APIView):
             )
 
         except ClientNotFoundError as e:
-            return Response({"error": str(e), "success": False}, status=status.HTTP_404_NOT_FOUND)
+            return safe_error_response(
+                action="billing.client_registry_update",
+                exc=e,
+                logger=logger,
+                default_status=status.HTTP_404_NOT_FOUND,
+                expose_message_for=(ClientNotFoundError,),
+                extra_payload={"success": False},
+            )
         except ClientRegistryError as e:
-            return Response({"error": str(e), "success": False}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(
+                action="billing.client_registry_update",
+                exc=e,
+                logger=logger,
+                expose_message_for=(ClientRegistryError,),
+                extra_payload={"success": False},
+            )
         except _sha_utility_handled_exceptions() as exc:
             logger.exception("Client Registry update failed")
             return Response(
@@ -800,9 +820,9 @@ class FacilitySearchView(APIView):
                             "ownership": facility.ownership,
                             "facility_type": facility.facility_type,
                             "operational_status": facility.operational_status,
-                            "license_expiry": str(facility.license_expiry)
-                            if facility.license_expiry
-                            else None,
+                            "license_expiry": (
+                                str(facility.license_expiry) if facility.license_expiry else None
+                            ),
                             "is_sha_contracted": facility.approved,
                         },
                         "level_corrected": level_corrected,

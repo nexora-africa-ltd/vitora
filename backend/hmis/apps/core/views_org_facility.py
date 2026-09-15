@@ -876,9 +876,11 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         return Response(
             {
                 "organization_id": organization.id,
-                "plan": SubscriptionPlanDetailSerializer(organization.subscription_plan).data
-                if organization.subscription_plan
-                else None,
+                "plan": (
+                    SubscriptionPlanDetailSerializer(organization.subscription_plan).data
+                    if organization.subscription_plan
+                    else None
+                ),
                 "subscription_status": organization.subscription_status,
                 "subscription_valid_until": organization.subscription_valid_until,
                 "ai_tokens": {

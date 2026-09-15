@@ -476,9 +476,9 @@ def check_channel_health(channel: InstrumentChannel) -> dict:
         "instrument_code": channel.instrument.code,
         "channel_name": channel.name,
         "connection_status": channel.connection_status,
-        "last_activity_at": channel.last_activity_at.isoformat()
-        if channel.last_activity_at
-        else None,
+        "last_activity_at": (
+            channel.last_activity_at.isoformat() if channel.last_activity_at else None
+        ),
         "last_error": channel.last_error,
         "messages_last_hour": messages_last_hour,
         "errors_last_hour": errors_last_hour,

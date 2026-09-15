@@ -264,9 +264,11 @@ class QCResultViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelVi
         results_qs = QCResult.objects.filter(
             lot_id=lot_id,
             test_id=test_id,
-            facility=request.user.staff_profile.primary_facility
-            if hasattr(request.user, "staff_profile")
-            else None,
+            facility=(
+                request.user.staff_profile.primary_facility
+                if hasattr(request.user, "staff_profile")
+                else None
+            ),
         )
 
         if instrument_id:

@@ -40,9 +40,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Dynamic import to avoid loading native modules in web mode
+    const { assertKnownTable } = await import('@/lib/desktop/local-db');
     const { writeLocal } = await import('@/lib/desktop/data-access');
+    const safeTable = assertKnownTable(String(table));
 
-    const record = writeLocal({ table, operation, recordId, data: data || {} });
+    const record = writeLocal({ table: safeTable, operation, recordId, data: data || {} });
 
     if (!record) {
       return NextResponse.json({ error: 'Write failed — local DB not available' }, { status: 503 });
@@ -51,6 +53,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ record }, { status: operation === 'CREATE' ? 201 : 200 });
   } catch (error) {
     console.error('[LocalDB API] Write error:', error);
-    return NextResponse.json({ error: 'Write failed', details: String(error) }, { status: 500 });
+    return NextResponse.json({ error: 'Write failed' }, { status: 500 });
   }
 }

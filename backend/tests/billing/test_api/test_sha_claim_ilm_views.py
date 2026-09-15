@@ -11,6 +11,7 @@ These cover the per-action HTTP routes that wrap IlmClaimService:
 The IlmClaimService is mocked so we only verify routing, payload mapping
 and HTTP-level error translation.
 """
+
 # ruff: noqa: F811
 
 from __future__ import annotations

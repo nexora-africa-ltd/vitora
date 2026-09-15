@@ -435,9 +435,11 @@ class SHAClaimAutomationClaimsMixin:
                     **defaults,
                     "intervention_name": intervention.get("name", "")
                     or defaults.get("intervention_name", ""),
-                    "tariff_amount": override_tariff
-                    if override_tariff is not None
-                    else defaults.get("tariff_amount"),
+                    "tariff_amount": (
+                        override_tariff
+                        if override_tariff is not None
+                        else defaults.get("tariff_amount")
+                    ),
                 }
                 SHAClaimIntervention.objects.create(
                     claim=claim,

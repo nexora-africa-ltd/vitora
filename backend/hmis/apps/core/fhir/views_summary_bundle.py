@@ -653,9 +653,11 @@ class FHIRPatientSummaryView(FHIRSchemaMixin, APIView):
                 problem_section.pop("emptyReason", None)
                 problem_section["entry"] = [{"reference": f"Condition/{d.id}"} for d in diagnoses]
                 problem_items = [
-                    diagnosis.icd10_code.description
-                    if diagnosis.icd10_code
-                    else diagnosis.free_text_diagnosis or diagnosis.notes or "Unknown"
+                    (
+                        diagnosis.icd10_code.description
+                        if diagnosis.icd10_code
+                        else diagnosis.free_text_diagnosis or diagnosis.notes or "Unknown"
+                    )
                     for diagnosis in diagnoses
                 ]
                 problem_section["text"] = {

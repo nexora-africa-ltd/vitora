@@ -18,6 +18,7 @@ import time
 import uuid
 from datetime import timedelta
 from typing import Any
+from urllib.parse import urlparse
 
 import requests
 from django.conf import settings
@@ -786,9 +787,9 @@ class SHAConsentService:
                     identification_number=agent_national_id,
                     created_by=user,
                     facility=facility,
-                    organization=facility.organization
-                    if hasattr(facility, "organization")
-                    else None,
+                    organization=(
+                        facility.organization if hasattr(facility, "organization") else None
+                    ),
                 )
                 logger.info(
                     "Sandbox biometric authorization for consent %s (auth_guid: %s, token: %s)",
@@ -1046,6 +1047,18 @@ class SHAConsentService:
         )
         return f"{base}{path}"
 
+    def _is_allowed_url(self, url: str) -> bool:
+        candidate = urlparse(url)
+        if candidate.scheme not in {"http", "https"}:
+            return False
+
+        allowed_origins = {
+            f"{urlparse(self.api_base_url).scheme}://{urlparse(self.api_base_url).netloc}",
+            f"{urlparse(self.tiberbu_base_url).scheme}://{urlparse(self.tiberbu_base_url).netloc}",
+        }
+        candidate_origin = f"{candidate.scheme}://{candidate.netloc}"
+        return candidate_origin in allowed_origins
+
     def _make_request(
         self,
         method: str,
@@ -1070,6 +1083,8 @@ class SHAConsentService:
         """
         if not url:
             raise SHAConsentError("Endpoint URL is empty", code="no_endpoint")
+        if not self._is_allowed_url(url):
+            raise SHAConsentError("Endpoint URL is not allowed", code="invalid_endpoint")
 
         retries = max_retries if max_retries is not None else self.max_retries
 

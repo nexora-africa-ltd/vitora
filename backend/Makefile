@@ -306,7 +306,8 @@ pre-commit: format quality test
 	@echo "Pre-commit checks complete!"
 
 cloc:
-	cloc . --exclude-dir=tests,venv,.venv,node_modules,__tests__,.mypy_cache,.pytest_cache,.ruff_cache,dist,build,__pycache__
+	@command -v cloc >/dev/null || { echo "cloc is not installed. On Ubuntu/Debian run: sudo apt-get install cloc"; exit 1; }
+	cloc .. --exclude-ext=csv,xml --exclude-dir=tests,e2e,venv,.venv,node_modules,__tests__,.mypy_cache,.pytest_cache,.ruff_cache,dist,build,htmlcov,staticfiles,.next,target,coverage,playwright-report,test-results,__pycache__
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true

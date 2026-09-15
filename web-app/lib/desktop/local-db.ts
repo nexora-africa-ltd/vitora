@@ -69,6 +69,74 @@ export function getLocalDb(): import('better-sqlite3').Database {
   return db;
 }
 
+const SAFE_SQL_IDENTIFIER_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+function ensureSafeIdentifier(identifier: string, label: string): string {
+  if (!SAFE_SQL_IDENTIFIER_RE.test(identifier)) {
+    throw new Error(`Invalid ${label}`);
+  }
+  return identifier;
+}
+
+function getKnownTable(table: string): string {
+  const database = getLocalDb();
+  const safeTable = ensureSafeIdentifier(table, 'table name');
+  const row = database
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
+    .get(safeTable) as { name?: string } | undefined;
+  if (!row?.name) {
+    throw new Error(`Unknown table: ${safeTable}`);
+  }
+  return safeTable;
+}
+
+function getKnownColumnsForTable(table: string): Set<string> {
+  const database = getLocalDb();
+  const safeTable = getKnownTable(table);
+  const rows = database.prepare(`PRAGMA table_info("${safeTable}")`).all() as Array<{ name: string }>;
+  return new Set(rows.map((row) => row.name));
+}
+
+export function assertKnownTable(table: string): string {
+  return getKnownTable(table);
+}
+
+export function assertKnownColumns(table: string, columns: string[]): string[] {
+  const knownColumns = getKnownColumnsForTable(table);
+  const sanitized: string[] = [];
+  for (const column of columns) {
+    const safeColumn = ensureSafeIdentifier(column, 'column name');
+    if (!knownColumns.has(safeColumn)) {
+      throw new Error(`Unknown column: ${safeColumn}`);
+    }
+    sanitized.push(safeColumn);
+  }
+  return sanitized;
+}
+
+export function sanitizeOrderBy(table: string, orderBy?: string): string | undefined {
+  if (!orderBy) return undefined;
+  const knownColumns = getKnownColumnsForTable(table);
+  const fragments = orderBy
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => {
+      const [rawColumn, rawDirection] = part.split(/\s+/, 2);
+      const column = ensureSafeIdentifier(rawColumn || '', 'order-by column');
+      if (!knownColumns.has(column)) {
+        throw new Error(`Unknown order-by column: ${column}`);
+      }
+      const direction = (rawDirection || 'ASC').toUpperCase();
+      if (direction !== 'ASC' && direction !== 'DESC') {
+        throw new Error(`Invalid order direction: ${direction}`);
+      }
+      return `"${column}" ${direction}`;
+    });
+
+  return fragments.length > 0 ? fragments.join(', ') : undefined;
+}
+
 /**
  * Check if the local database is available and initialized.
  */

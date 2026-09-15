@@ -25,6 +25,13 @@ _sms_client = None
 _initialized = False
 
 
+def _mask_phone(phone: str) -> str:
+    normalized = (phone or "").strip()
+    if len(normalized) <= 4:
+        return "****"
+    return f"****{normalized[-4:]}"
+
+
 def _get_sms_client():
     """
     Get the Africa's Talking SMS client, initializing if needed.
@@ -62,8 +69,8 @@ def _get_sms_client():
     except ValueError as e:
         logger.warning("SMS backend configuration error: %s", e)
         return None
-    except Exception as e:  # noqa: BLE001 - fail-open boundary around pluggable third-party SMS backend init
-        logger.error(f"Failed to initialize SMS backend: {e}")
+    except Exception:  # noqa: BLE001 - fail-open boundary around pluggable third-party SMS backend init
+        logger.exception("Failed to initialize SMS backend")
         return None
 
 
@@ -93,7 +100,7 @@ def send_sms(phone: str, message: str, sender_id: str | None = None) -> bool:
 
     client = _get_sms_client()
     if not client:
-        logger.warning(f"SMS not sent (client not configured): {phone}")
+        logger.warning("SMS not sent (client not configured): %s", _mask_phone(phone))
         return False
 
     sender = sender_id or getattr(settings, "SMS_SENDER_ID", None)
@@ -104,16 +111,16 @@ def send_sms(phone: str, message: str, sender_id: str | None = None) -> bool:
         if response and "SMSMessageData" in response:
             recipients = response["SMSMessageData"].get("Recipients", [])
             if recipients and recipients[0].get("status") == "Success":
-                logger.info(f"SMS sent successfully to {phone}")
+                logger.info("SMS sent successfully to %s", _mask_phone(phone))
                 return True
             else:
                 status = recipients[0].get("status") if recipients else "Unknown"
-                logger.warning(f"SMS delivery failed for {phone}: {status}")
+                logger.warning("SMS delivery failed for %s: %s", _mask_phone(phone), status)
                 return False
-        logger.info(f"SMS submitted to {phone}")
+        logger.info("SMS submitted to %s", _mask_phone(phone))
         return True
-    except Exception as e:  # noqa: BLE001 - fail-open boundary around external provider/network errors
-        logger.error(f"Failed to send SMS to {phone}: {e}")
+    except Exception:  # noqa: BLE001 - fail-open boundary around external provider/network errors
+        logger.exception("Failed to send SMS to %s", _mask_phone(phone))
         return False
 
 
@@ -169,8 +176,8 @@ def send_bulk_sms(phones: list[str], message: str, sender_id: str | None = None)
         logger.info(f"Bulk SMS: {success_count}/{len(phones)} sent successfully")
         return results
 
-    except Exception as e:  # noqa: BLE001 - fail-open boundary around external provider/network errors
-        logger.error(f"Failed to send bulk SMS: {e}")
+    except Exception:  # noqa: BLE001 - fail-open boundary around external provider/network errors
+        logger.exception("Failed to send bulk SMS")
         return dict.fromkeys(phones, False)
 
 
