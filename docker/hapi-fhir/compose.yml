@@ -45,12 +45,8 @@ services:
       - spring.datasource.url=jdbc:h2:mem:hapi;DB_CLOSE_DELAY=-1
       - spring.datasource.username=sa
       - spring.datasource.password=
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/fhir/metadata"]
-      interval: 10s
-      timeout: 10s
-      retries: 12
-      start_period: 60s
+    # The minimal HAPI image has no bundled HTTP probe client. Verify readiness
+    # from the host with `curl http://localhost:8090/fhir/metadata` instead.
     restart: unless-stopped
     networks:
       - vitora-fhir-network

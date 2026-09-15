@@ -1044,7 +1044,9 @@ The current desktop app is Tauri v2 + a bundled Next.js standalone Node sidecar.
 
 **Release validation checklist for desktop changes:**
 - Run `cd web-app && npx tsc --noEmit` and `cd desktop-app/src-tauri && cargo check --offline`.
-- Bump all desktop versions together: `desktop-app/package.json`, `desktop-app/src-tauri/Cargo.toml`, and `desktop-app/src-tauri/tauri.conf.json`, then refresh `package-lock.json` and `Cargo.lock`.
+- Bump all desktop version files together: `desktop-app/package.json`, `desktop-app/package-lock.json`, `desktop-app/src-tauri/Cargo.toml`, `desktop-app/src-tauri/Cargo.lock`, and `desktop-app/src-tauri/tauri.conf.json`.
+- For hub releases, keep version declarations aligned when touched (`backend/pyproject.toml`, `backend/hmis/__init__.py`) and always create the release tag `hub-vX.Y.Z`.
+- Release tags MUST be annotated (not lightweight): use `git tag -a <tag> -m "..."` and push explicitly with `git push origin <tag>` so GitHub tag workflows trigger reliably.
 - Tag desktop releases with `desktop-vX.Y.Z`; the CI workflow rebuilds `standalone.tar.gz` from `web-app/` on each desktop tag.
 
 ### 9. Serializer Naming — Avoid Duplicates

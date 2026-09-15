@@ -48,6 +48,8 @@ jobs:
 
     services:
       # HAPI FHIR R4 Server
+      # Readiness is checked from the runner below: the minimal HAPI image does
+      # not provide wget/curl for a Docker in-container health command.
       hapi-fhir:
         image: hapiproject/hapi:v7.4.0
         ports:
@@ -62,12 +64,6 @@ jobs:
           spring.datasource.url: jdbc:h2:mem:hapi;DB_CLOSE_DELAY=-1
           spring.datasource.username: sa
           spring.datasource.password: ''
-        options: >-
-          --health-cmd "wget -q --spider http://localhost:8080/fhir/metadata || exit 1"
-          --health-interval 15s
-          --health-timeout 10s
-          --health-retries 10
-          --health-start-period 90s
 
     steps:
       - name: Checkout code
@@ -103,7 +99,7 @@ jobs:
       - name: Wait for HAPI FHIR server
         run: |
           echo "Waiting for HAPI FHIR server to be ready..."
-          timeout 120 bash -c 'until curl -sf http://localhost:8090/fhir/metadata > /dev/null; do sleep 5; echo "Waiting..."; done'
+          timeout 240 bash -c 'until curl -sf http://localhost:8090/fhir/metadata > /dev/null; do sleep 5; echo "Waiting..."; done'
           echo "HAPI FHIR server is ready!"
 
       - name: Verify FHIR server capabilities
@@ -213,6 +209,7 @@ jobs:
 
     services:
       hapi-fhir:
+        # Use the runner-side curl loop below; do not require a probe binary in HAPI.
         image: hapiproject/hapi:v7.4.0
         ports:
           - 8090:8080
@@ -222,12 +219,6 @@ jobs:
           spring.datasource.url: jdbc:h2:mem:hapi;DB_CLOSE_DELAY=-1
           spring.datasource.username: sa
           spring.datasource.password: ''
-        options: >-
-          --health-cmd "wget -q --spider http://localhost:8080/fhir/metadata || exit 1"
-          --health-interval 15s
-          --health-timeout 10s
-          --health-retries 10
-          --health-start-period 90s
 
     steps:
       - name: Checkout code
@@ -251,7 +242,7 @@ jobs:
 
       - name: Wait for HAPI FHIR server
         run: |
-          timeout 120 bash -c 'until curl -sf http://localhost:8090/fhir/metadata > /dev/null; do sleep 5; done'
+          timeout 240 bash -c 'until curl -sf http://localhost:8090/fhir/metadata > /dev/null; do sleep 5; echo "Waiting..."; done'
 
       - name: Run performance tests
         working-directory: ./backend
