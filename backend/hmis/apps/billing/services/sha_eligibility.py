@@ -1017,9 +1017,11 @@ class SHAEligibilityService:
                 "date_of_birth": data.get("date_of_birth") or data.get("dateOfBirth"),
                 "gender": data.get("gender"),
                 "age": data.get("age"),
-                "whitelisted_for_otp": data.get("whitelisted_for_otp")
-                if data.get("whitelisted_for_otp") is not None
-                else data.get("whitelistedForOTP"),
+                "whitelisted_for_otp": (
+                    data.get("whitelisted_for_otp")
+                    if data.get("whitelisted_for_otp") is not None
+                    else data.get("whitelistedForOTP")
+                ),
                 "primary_scheme_name": data.get("primary_scheme_name"),
                 "primary_scheme_member_type": data.get("primary_scheme_member_type"),
                 "schemes": data.get("schemes") if isinstance(data.get("schemes"), list) else [],

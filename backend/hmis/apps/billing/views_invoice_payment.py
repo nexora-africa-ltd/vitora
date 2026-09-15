@@ -51,6 +51,7 @@ from hmis.apps.billing.serializers import (
     PaymentSerializer,
     ReceiptSerializer,
 )
+from hmis.apps.core.api_errors import safe_error_response
 from hmis.apps.core.audit import AuditedMutationMixin
 from hmis.apps.core.mixins import NestedTenantScopeMixin, PublicIdLookupMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
@@ -236,9 +237,9 @@ class InvoiceViewSet(
                     "invoice_date": claim.service_date,
                     "total_amount": str(claim.claimed_amount),
                     "local_invoice_id": claim.invoice_id,
-                    "local_invoice_number": getattr(local_invoice, "invoice_number", "")
-                    if local_invoice
-                    else "",
+                    "local_invoice_number": (
+                        getattr(local_invoice, "invoice_number", "") if local_invoice else ""
+                    ),
                 }
             )
 
@@ -537,7 +538,12 @@ class InvoiceViewSet(
             serializer = self.get_serializer(new_invoice)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(
+                action="billing.invoice_convert",
+                exc=e,
+                logger=logger,
+                expose_message_for=(ValidationError,),
+            )
 
     @action(detail=True, methods=["post"])
     def renew(self, request, pk=None):
@@ -563,7 +569,12 @@ class InvoiceViewSet(
             serializer = self.get_serializer(new_proforma)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(
+                action="billing.invoice_renew",
+                exc=e,
+                logger=logger,
+                expose_message_for=(ValidationError,),
+            )
 
     @action(detail=True, methods=["get", "post"])
     def items(self, request, pk=None):
@@ -888,7 +899,12 @@ class CreditNoteViewSet(AuditedMutationMixin, NestedTenantScopeMixin, viewsets.M
             serializer = self.get_serializer(credit_note)
             return Response(serializer.data)
         except (ValueError, ValidationError) as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(
+                action="billing.credit_note_approve",
+                exc=e,
+                logger=logger,
+                expose_message_for=(ValueError, ValidationError),
+            )
 
     @action(detail=True, methods=["post"])
     def reject(self, request, pk=None):
@@ -905,7 +921,12 @@ class CreditNoteViewSet(AuditedMutationMixin, NestedTenantScopeMixin, viewsets.M
             serializer = self.get_serializer(credit_note)
             return Response(serializer.data)
         except (ValueError, ValidationError) as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(
+                action="billing.credit_note_reject",
+                exc=e,
+                logger=logger,
+                expose_message_for=(ValueError, ValidationError),
+            )
 
     @action(detail=True, methods=["post"])
     def refund(self, request, pk=None):
@@ -925,4 +946,8 @@ class CreditNoteViewSet(AuditedMutationMixin, NestedTenantScopeMixin, viewsets.M
             serializer = self.get_serializer(credit_note)
             return Response(serializer.data)
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(
+                action="billing.credit_note_refund",
+                exc=e,
+                logger=logger,
+            )

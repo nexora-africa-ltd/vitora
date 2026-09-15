@@ -153,9 +153,11 @@ def standalone_onboarding_status(request):
             {
                 "complete": facility.lis_onboarding_complete,
                 "steps": steps,
-                "completed_at": facility.lis_onboarding_completed_at.isoformat()
-                if facility.lis_onboarding_completed_at
-                else None,
+                "completed_at": (
+                    facility.lis_onboarding_completed_at.isoformat()
+                    if facility.lis_onboarding_completed_at
+                    else None
+                ),
             }
         )
 
@@ -164,9 +166,11 @@ def standalone_onboarding_status(request):
             {
                 "complete": True,
                 "steps": steps,
-                "completed_at": facility.lis_onboarding_completed_at.isoformat()
-                if facility.lis_onboarding_completed_at
-                else None,
+                "completed_at": (
+                    facility.lis_onboarding_completed_at.isoformat()
+                    if facility.lis_onboarding_completed_at
+                    else None
+                ),
             }
         )
 
@@ -200,9 +204,11 @@ def standalone_onboarding_status(request):
         {
             "complete": True,
             "steps": steps,
-            "completed_at": facility.lis_onboarding_completed_at.isoformat()
-            if facility.lis_onboarding_completed_at
-            else None,
+            "completed_at": (
+                facility.lis_onboarding_completed_at.isoformat()
+                if facility.lis_onboarding_completed_at
+                else None
+            ),
         }
     )
 

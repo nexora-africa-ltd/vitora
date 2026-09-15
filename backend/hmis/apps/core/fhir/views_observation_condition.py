@@ -601,9 +601,11 @@ class FHIRObservationView(PublicFHIRReadAPIView):
                 "versionId": "1",
                 "lastUpdated": format_date(observation.updated_at),
                 "profile": [
-                    "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-alcoholuse-uv-ips"
-                    if observation.observation_type == "ALCOHOL_USE"
-                    else "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-tobaccouse-uv-ips"
+                    (
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-alcoholuse-uv-ips"
+                        if observation.observation_type == "ALCOHOL_USE"
+                        else "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-tobaccouse-uv-ips"
+                    )
                 ],
             },
             "status": "final",

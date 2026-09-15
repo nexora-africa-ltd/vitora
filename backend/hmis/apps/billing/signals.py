@@ -339,14 +339,16 @@ def handle_admission_billing(sender, instance, created, **kwargs):
             payload={
                 "patient_id": getattr(instance, "patient_id", None),
                 "payer_type": getattr(instance, "payer_type", None),
-                "sha_eligibility_sync": {
-                    "status": (eligibility_sync_result or {}).get("status"),
-                    "eligible": (eligibility_sync_result or {}).get("eligible"),
-                    "member_status": (eligibility_sync_result or {}).get("member_status"),
-                    "reason": (eligibility_sync_result or {}).get("reason"),
-                }
-                if eligibility_sync_result is not None
-                else None,
+                "sha_eligibility_sync": (
+                    {
+                        "status": (eligibility_sync_result or {}).get("status"),
+                        "eligible": (eligibility_sync_result or {}).get("eligible"),
+                        "member_status": (eligibility_sync_result or {}).get("member_status"),
+                        "reason": (eligibility_sync_result or {}).get("reason"),
+                    }
+                    if eligibility_sync_result is not None
+                    else None
+                ),
             },
             facility_id=getattr(instance, "facility_id", None),
         )

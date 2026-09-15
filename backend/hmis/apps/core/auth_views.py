@@ -1583,9 +1583,9 @@ def onboarding_status(request):
             {
                 "complete": org.onboarding_complete,
                 "all_required_done": all_required_done,
-                "completed_at": org.onboarding_completed_at.isoformat()
-                if org.onboarding_completed_at
-                else None,
+                "completed_at": (
+                    org.onboarding_completed_at.isoformat() if org.onboarding_completed_at else None
+                ),
                 "steps": steps,
             }
         )

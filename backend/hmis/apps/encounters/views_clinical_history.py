@@ -516,9 +516,9 @@ class VitalFlagSuggestionViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelVi
             to_status=suggestion.status,
             actor=request.user,
             payload={
-                "selected_icd10": suggestion.selected_icd10.code
-                if suggestion.selected_icd10
-                else "",
+                "selected_icd10": (
+                    suggestion.selected_icd10.code if suggestion.selected_icd10 else ""
+                ),
                 "selected_icd11_code": suggestion.selected_icd11_code,
             },
         )
@@ -578,10 +578,12 @@ class VitalFlagSuggestionViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelVi
                 ),
                 certainty=data.get(
                     "certainty",
-                    "confirmed"
-                    if resolution_action
-                    == VitalFlagSuggestion.ResolutionAction.CREATE_DIAGNOSIS_CONFIRMED
-                    else "provisional",
+                    (
+                        "confirmed"
+                        if resolution_action
+                        == VitalFlagSuggestion.ResolutionAction.CREATE_DIAGNOSIS_CONFIRMED
+                        else "provisional"
+                    ),
                 ),
                 diagnosed_by=request.user,
             )

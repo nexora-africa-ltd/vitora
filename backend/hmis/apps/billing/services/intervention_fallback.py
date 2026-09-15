@@ -457,9 +457,11 @@ def get_local_intervention_claim_defaults(code: str, facility_level: object = No
 
     return {
         "intervention_name": info.get("name", "") if info else "",
-        "benefit_code": info.get("benefit_code", "")
-        if info
-        else (code.rsplit("-", 1)[0] if "-" in code else ""),
+        "benefit_code": (
+            info.get("benefit_code", "")
+            if info
+            else (code.rsplit("-", 1)[0] if "-" in code else "")
+        ),
         "payment_mechanism": payment_mechanism,
         "access_point": access_point,
         "tariff_amount": tariff_amount,

@@ -255,9 +255,9 @@ class TriageReportSummaryView(APIView):
                 {
                     "category": cat,
                     "target_minutes": target,
-                    "avg_wait_minutes": round(sum(cat_waits) / len(cat_waits), 1)
-                    if cat_waits
-                    else 0,
+                    "avg_wait_minutes": (
+                        round(sum(cat_waits) / len(cat_waits), 1) if cat_waits else 0
+                    ),
                     "median_wait_minutes": (
                         round(statistics.median(cat_waits), 1) if cat_waits else 0
                     ),

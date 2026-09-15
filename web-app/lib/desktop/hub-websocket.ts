@@ -8,7 +8,7 @@
  * Falls back to short-polling if WebSocket connection fails.
  */
 
-import { getLocalDb, isLocalDbAvailable } from './local-db';
+import { assertKnownColumns, assertKnownTable, getLocalDb, isLocalDbAvailable } from './local-db';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -160,7 +160,7 @@ export class HubWebSocketClient {
         const message: HubSyncMessage = JSON.parse(event.data);
         this._handleMessage(message);
       } catch {
-        console.warn('[WS Sync] Failed to parse message:', event.data);
+        console.warn('[WS Sync] Failed to parse message');
       }
     };
 
@@ -222,29 +222,32 @@ export class HubWebSocketClient {
     const applyAll = db.transaction(() => {
       for (const change of changes) {
         const { table, operation, record_id, data } = change;
+        const safeTable = assertKnownTable(table);
 
         if (operation === 'DELETE' && record_id) {
-          db.prepare(`DELETE FROM "${table}" WHERE id = ?`).run(record_id);
+          db.prepare(`DELETE FROM "${safeTable}" WHERE id = ?`).run(record_id);
           continue;
         }
 
         if ((operation === 'CREATE' || operation === 'UPDATE') && data) {
-          const columns = Object.keys(data);
+          const payload = { ...data };
+          const columns = Object.keys(payload);
           if (!columns.includes('id') && record_id) {
             columns.unshift('id');
-            (data as Record<string, unknown>)['id'] = record_id;
+            payload.id = record_id;
           }
+          const safeColumns = assertKnownColumns(safeTable, columns);
 
-          const placeholders = columns.map(() => '?').join(', ');
-          const values = columns.map((col) => {
-            const val = data[col];
+          const placeholders = safeColumns.map(() => '?').join(', ');
+          const values = safeColumns.map((col) => {
+            const val = payload[col];
             if (val === null || val === undefined) return null;
             if (typeof val === 'object') return JSON.stringify(val);
             return val;
           });
 
           db.prepare(
-            `INSERT OR REPLACE INTO "${table}" (${columns.map((c) => `"${c}"`).join(', ')}) VALUES (${placeholders})`
+            `INSERT OR REPLACE INTO "${safeTable}" (${safeColumns.map((c) => `"${c}"`).join(', ')}) VALUES (${placeholders})`
           ).run(...values);
         }
       }

@@ -16,6 +16,7 @@ import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any, ClassVar
+from urllib.parse import urlparse
 
 import requests
 from django.conf import settings
@@ -220,6 +221,20 @@ class TibaBotClient:
         if self.api_key:
             self.session.headers["X-API-Key"] = self.api_key
 
+    def _build_url(self, endpoint: str) -> str:
+        base_url = self.base_url.rstrip("/")
+        base = urlparse(base_url)
+
+        if endpoint.startswith("http://") or endpoint.startswith("https://"):
+            candidate = urlparse(endpoint)
+            if candidate.scheme != base.scheme or candidate.netloc != base.netloc:
+                raise TibaBotError("Cross-origin endpoint rejected")
+            return endpoint
+
+        if not endpoint.startswith("/"):
+            endpoint = "/" + endpoint
+        return f"{base_url}{endpoint}"
+
     def _request(
         self,
         method: str,
@@ -247,7 +262,7 @@ class TibaBotClient:
             TibaBotUnavailableError: When the service is unreachable
             TibaBotError: For other API errors
         """
-        url = f"{self.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
+        url = self._build_url(endpoint)
 
         # Per-request headers (user identity JWT + per-facility API key)
         headers: dict[str, str] = {}
@@ -324,7 +339,7 @@ class TibaBotClient:
         params: dict[str, Any] | None = None,
     ) -> Iterator[dict[str, Any]]:
         """Make an HTTP SSE request to TibaBot and yield parsed events."""
-        url = f"{self.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
+        url = self._build_url(endpoint)
 
         headers: dict[str, str] = {"Accept": "text/event-stream"}
         user = _get_current_user()

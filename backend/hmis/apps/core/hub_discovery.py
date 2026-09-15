@@ -42,6 +42,12 @@ class HubDiscoveryService:
         self.facility_id: str = getattr(settings, "HUB_FACILITY_ID", "")
         self.facility_name: str = getattr(settings, "HUB_FACILITY_NAME", "Vitora Hub")
         self.version: str = "0.3.0"
+        self.discovery_bind_host: str = getattr(
+            settings,
+            "HUB_DISCOVERY_BIND_HOST",
+            "0.0.0.0",  # noqa: S104 - LAN discovery intentionally binds all interfaces by default
+        )
+        self.discovery_token: str = getattr(settings, "HUB_DISCOVERY_TOKEN", "").strip()
 
         self._mdns_info = None
         self._zeroconf = None
@@ -156,9 +162,14 @@ class HubDiscoveryService:
         sock.settimeout(1.0)  # 1s timeout for checking stop event
 
         try:
-            sock.bind(("", DISCOVERY_UDP_PORT))
+            sock.bind((self.discovery_bind_host, DISCOVERY_UDP_PORT))
         except OSError as e:
-            logger.error("Cannot bind UDP port %d: %s", DISCOVERY_UDP_PORT, e)
+            logger.error(
+                "Cannot bind UDP %s:%d: %s",
+                self.discovery_bind_host,
+                DISCOVERY_UDP_PORT,
+                e,
+            )
             return
 
         local_ip = self._get_local_ip() or "127.0.0.1"
@@ -175,7 +186,14 @@ class HubDiscoveryService:
         while not self._udp_stop.is_set():
             try:
                 data, addr = sock.recvfrom(1024)
-                if data.strip() == DISCOVERY_MAGIC:
+                probe = data.strip()
+                if self.discovery_token:
+                    expected = b":".join([DISCOVERY_MAGIC, self.discovery_token.encode("utf-8")])
+                    is_valid_probe = probe == expected
+                else:
+                    is_valid_probe = probe == DISCOVERY_MAGIC
+
+                if is_valid_probe:
                     sock.sendto(response_payload, addr)
                     logger.debug("UDP discovery: responded to %s", addr)
             except TimeoutError:

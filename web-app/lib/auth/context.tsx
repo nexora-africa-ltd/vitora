@@ -144,7 +144,6 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 // Token storage keys — tokens are now in httpOnly cookies (not in localStorage)
 const USER_KEY = 'vitora_user';
 const MUST_CHANGE_PW_KEY = 'vitora_must_change_password';
-const RESET_TOKEN_KEY = 'vitora_reset_token';
 // Cookie name for middleware auth check (must match middleware.ts)
 const AUTH_COOKIE_NAME = 'vitora_authenticated';
 // Idle timer activity key (must match use-idle-timer.ts)
@@ -308,14 +307,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (userStr) {
           const storedUser = JSON.parse(userStr) as User;
           const storedMustChange = localStorage.getItem(MUST_CHANGE_PW_KEY) === 'true';
-          const storedResetToken = localStorage.getItem(RESET_TOKEN_KEY) || null;
           setState({
             user: storedUser,
             tokens: null, // Tokens are in httpOnly cookies
             isAuthenticated: true,
             isLoading: false,
             mustChangePassword: storedMustChange,
-            resetToken: storedResetToken,
+            resetToken: null,
           });
 
           // Verify auth is still valid by syncing from backend.
@@ -335,7 +333,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               // Auth cookie expired — clear state + middleware cookie
               localStorage.removeItem(USER_KEY);
               localStorage.removeItem(MUST_CHANGE_PW_KEY);
-              localStorage.removeItem(RESET_TOKEN_KEY);
               document.cookie = `${AUTH_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
               setState({
                 user: null,
@@ -354,7 +351,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         localStorage.removeItem(USER_KEY);
         localStorage.removeItem(MUST_CHANGE_PW_KEY);
-        localStorage.removeItem(RESET_TOKEN_KEY);
         document.cookie = `${AUTH_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
         setState((prev) => ({ ...prev, isLoading: false }));
       }
@@ -464,14 +460,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(USER_KEY, JSON.stringify(user));
       if (data.must_change_password) {
         localStorage.setItem(MUST_CHANGE_PW_KEY, 'true');
-        if (data.password_reset_token) {
-          localStorage.setItem(RESET_TOKEN_KEY, data.password_reset_token);
-        } else {
-          localStorage.removeItem(RESET_TOKEN_KEY);
-        }
       } else {
         localStorage.removeItem(MUST_CHANGE_PW_KEY);
-        localStorage.removeItem(RESET_TOKEN_KEY);
       }
 
       // Reset idle timer
@@ -575,14 +565,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(USER_KEY, JSON.stringify(user));
         if (data.must_change_password) {
           localStorage.setItem(MUST_CHANGE_PW_KEY, 'true');
-          if (data.password_reset_token) {
-            localStorage.setItem(RESET_TOKEN_KEY, data.password_reset_token);
-          } else {
-            localStorage.removeItem(RESET_TOKEN_KEY);
-          }
         } else {
           localStorage.removeItem(MUST_CHANGE_PW_KEY);
-          localStorage.removeItem(RESET_TOKEN_KEY);
         }
 
         // Reset idle timer
@@ -680,14 +664,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(USER_KEY, JSON.stringify(user));
       if (data.must_change_password) {
         localStorage.setItem(MUST_CHANGE_PW_KEY, 'true');
-        if (data.password_reset_token) {
-          localStorage.setItem(RESET_TOKEN_KEY, data.password_reset_token);
-        } else {
-          localStorage.removeItem(RESET_TOKEN_KEY);
-        }
       } else {
         localStorage.removeItem(MUST_CHANGE_PW_KEY);
-        localStorage.removeItem(RESET_TOKEN_KEY);
       }
       localStorage.setItem(IDLE_ACTIVITY_KEY, Date.now().toString());
       document.cookie = `${AUTH_COOKIE_NAME}=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
@@ -729,7 +707,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(MFA_GRACE_KEY);
     localStorage.removeItem(MUST_CHANGE_PW_KEY);
-    localStorage.removeItem(RESET_TOKEN_KEY);
 
     // Clear clinical form drafts to prevent data leaking on shared workstations
     clearAllDrafts();
@@ -785,7 +762,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Clear the password reset token (called after logout or successful password change)
   const clearResetToken = useCallback(() => {
-    localStorage.removeItem(RESET_TOKEN_KEY);
     setState((prev) => ({ ...prev, resetToken: null }));
   }, []);
 

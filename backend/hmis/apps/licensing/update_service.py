@@ -209,9 +209,7 @@ def verify_container_image(image_ref: str) -> bool:
         return False
 
 
-def pull_container_update(  # nosec B107
-    update: UpdateInfo, license_token: str = ""
-) -> bool:
+def pull_container_update(update: UpdateInfo, license_token: str = "") -> bool:  # nosec B107
     """
     Pull a new container image from the private registry.
 

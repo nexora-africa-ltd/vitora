@@ -33,6 +33,7 @@ from rest_framework.response import Response
 
 from hmis.apps.billing.models import FacilityBillingConfig, Invoice, Payment, PaymentPoint, Service
 from hmis.apps.billing.services.mpesa import MpesaConfigurationError
+from hmis.apps.core.api_errors import safe_error_response
 from hmis.apps.core.audit import AuditedMutationMixin
 from hmis.apps.core.mixins import NestedTenantScopeMixin, resolve_request_tenant
 from hmis.apps.core.models import Facility
@@ -112,7 +113,6 @@ class MpesaViewSet(viewsets.ViewSet):
                     extra={
                         "action": action,
                         "error_class": exc.__class__.__name__,
-                        "error": str(exc),
                     },
                 )
                 if callback_mode:
@@ -124,7 +124,14 @@ class MpesaViewSet(viewsets.ViewSet):
                         status=status.HTTP_200_OK,
                     )
                 if code in {"validation_error", "mpesa_configuration_error"}:
-                    return Response({"error": str(exc), "code": code}, status=http_status)
+                    return safe_error_response(
+                        action=f"billing.mpesa.{action}",
+                        exc=exc,
+                        logger=logger,
+                        default_status=http_status,
+                        expose_message_for=(ValidationError, MpesaConfigurationError),
+                        extra_payload={"code": code},
+                    )
                 return Response({"error": message, "code": code}, status=http_status)
 
         logger.exception("Unhandled M-Pesa action error", extra={"action": action})

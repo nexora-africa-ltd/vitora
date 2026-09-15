@@ -21,6 +21,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.billing.agent import BillingAgentService
+from hmis.apps.core.api_errors import safe_error_response
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import (
@@ -394,7 +395,7 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
         try:
             case.schedule(user=request.user)
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(action="theatre.workflow", exc=e, logger=logger)
         _audit(
             request, "surgery_case_schedule", "SurgeryCase", case.pk, case_number=case.case_number
         )
@@ -406,7 +407,7 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
         try:
             case.start_pre_op(user=request.user)
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(action="theatre.workflow", exc=e, logger=logger)
         _audit(request, "surgery_case_pre_op", "SurgeryCase", case.pk, case_number=case.case_number)
         return Response(SurgeryCaseDetailSerializer(case).data)
 
@@ -416,7 +417,7 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
         try:
             case.enter_theatre(user=request.user)
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(action="theatre.workflow", exc=e, logger=logger)
         _audit(
             request,
             "surgery_case_enter_theatre",
@@ -432,7 +433,7 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
         try:
             case.start_surgery(user=request.user)
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(action="theatre.workflow", exc=e, logger=logger)
         _audit(
             request,
             "surgery_case_start_surgery",
@@ -448,7 +449,7 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
         try:
             case.end_surgery(user=request.user)
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(action="theatre.workflow", exc=e, logger=logger)
         _audit(
             request,
             "surgery_case_end_surgery",
@@ -468,7 +469,7 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
             else:
                 case.transition_to(SurgeryCase.CaseStatus.IN_PACU, user=request.user)
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(action="theatre.workflow", exc=e, logger=logger)
         _audit(
             request, "surgery_case_enter_pacu", "SurgeryCase", case.pk, case_number=case.case_number
         )
@@ -480,7 +481,7 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
         try:
             case.discharge(user=request.user)
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(action="theatre.workflow", exc=e, logger=logger)
         _audit(
             request, "surgery_case_discharge", "SurgeryCase", case.pk, case_number=case.case_number
         )
@@ -494,7 +495,7 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
         try:
             case.cancel(user=request.user, reason=serializer.validated_data["reason"])
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(action="theatre.workflow", exc=e, logger=logger)
         _audit(
             request,
             "surgery_case_cancel",
@@ -516,7 +517,7 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
                 postponed_to=serializer.validated_data.get("postponed_to_date"),
             )
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(action="theatre.workflow", exc=e, logger=logger)
         _audit(
             request, "surgery_case_postpone", "SurgeryCase", case.pk, case_number=case.case_number
         )
@@ -925,7 +926,7 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
                 tenant_kwargs=self.get_tenant_save_kwargs(),
             )
         except InsufficientStockError as error:
-            return Response({"error": str(error)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(action="theatre.workflow", exc=error, logger=logger)
         BillingAgentService.sync_theatre_case_billing(case)
         _audit(
             request,
@@ -953,7 +954,7 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
         try:
             BillingAgentService.remove_theatre_consumable_billing(consumable)
         except ValueError as error:
-            return Response({"error": str(error)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(action="theatre.workflow", exc=error, logger=logger)
         restore_theatre_consumable_stock(consumable)
         _audit(
             request, "theatre_consumable_remove", "SurgeryCase", case.pk, item_id=consumable.item_id

@@ -6,7 +6,7 @@ const EXTRA_ALLOWED_HOSTS = (process.env.VITORA_ATTACHMENT_INLINE_ALLOWED_HOSTS 
   .map((value) => value.trim().toLowerCase())
   .filter(Boolean);
 
-function resolveAllowedTarget(src: string, apiHostFromClient?: string | null): URL | null {
+function resolveAllowedTarget(src: string, requestHost?: string | null): URL | null {
   let apiBase: URL;
   try {
     apiBase = new URL(API_BASE_URL);
@@ -16,11 +16,7 @@ function resolveAllowedTarget(src: string, apiHostFromClient?: string | null): U
 
   let target: URL;
   try {
-    if (src.startsWith('/') && apiHostFromClient) {
-      target = new URL(src, `${apiBase.protocol}//${apiHostFromClient}`);
-    } else {
-      target = src.startsWith('/') ? new URL(src, apiBase) : new URL(src);
-    }
+    target = src.startsWith('/') ? new URL(src, apiBase) : new URL(src);
   } catch {
     return null;
   }
@@ -35,19 +31,16 @@ function resolveAllowedTarget(src: string, apiHostFromClient?: string | null): U
 
   const sameApiHost = target.hostname === apiBase.hostname && target.port === apiBase.port;
   const azureMediaHost = target.hostname.endsWith('.azurecontainerapps.io');
-  const localMediaHost = target.hostname === '127.0.0.1' || target.hostname === 'localhost';
+  const localMediaHost =
+    (target.hostname === '127.0.0.1' || target.hostname === 'localhost') &&
+    (apiBase.hostname === '127.0.0.1' || apiBase.hostname === 'localhost');
   const explicitAllowHost = EXTRA_ALLOWED_HOSTS.includes(target.host.toLowerCase());
   const explicitAllowName = EXTRA_ALLOWED_HOSTS.includes(target.hostname.toLowerCase());
 
-  let desktopClientApiHostMatch = false;
-  if (process.env.VITORA_DESKTOP === '1' && apiHostFromClient) {
-    desktopClientApiHostMatch = target.host.toLowerCase() === apiHostFromClient.toLowerCase();
-  }
-
-  let webClientApiHostMatch = false;
-  if (apiHostFromClient && target.host.toLowerCase() === apiHostFromClient.toLowerCase()) {
-    webClientApiHostMatch = true;
-  }
+  const requestHostMatch =
+    process.env.VITORA_DESKTOP === '1' &&
+    typeof requestHost === 'string' &&
+    target.host.toLowerCase() === requestHost.toLowerCase();
 
   if (
     !sameApiHost &&
@@ -55,8 +48,7 @@ function resolveAllowedTarget(src: string, apiHostFromClient?: string | null): U
     !localMediaHost &&
     !explicitAllowHost &&
     !explicitAllowName &&
-    !desktopClientApiHostMatch &&
-    !webClientApiHostMatch
+    !requestHostMatch
   ) {
     return null;
   }
@@ -66,12 +58,11 @@ function resolveAllowedTarget(src: string, apiHostFromClient?: string | null): U
 
 export async function GET(request: NextRequest) {
   const src = request.nextUrl.searchParams.get('src');
-  const apiHost = request.nextUrl.searchParams.get('apiHost');
   if (!src) {
     return new Response('Missing src query parameter', { status: 400 });
   }
 
-  const target = resolveAllowedTarget(src, apiHost);
+  const target = resolveAllowedTarget(src, request.nextUrl.host);
   if (!target) {
     return new Response('Unsupported attachment source', { status: 400 });
   }
@@ -85,20 +76,6 @@ export async function GET(request: NextRequest) {
     });
   } catch {
     upstream = new Response(null, { status: 502 });
-  }
-
-  if ((!upstream.ok || !upstream.body) && apiHost && target.hostname === 'localhost') {
-    try {
-      const retryTarget = new URL(target.toString());
-      retryTarget.host = apiHost;
-      upstream = await fetch(retryTarget.toString(), {
-        method: 'GET',
-        redirect: 'follow',
-        cache: 'no-store',
-      });
-    } catch {
-      // keep original upstream error handling below
-    }
   }
 
   if (!upstream.ok || !upstream.body) {

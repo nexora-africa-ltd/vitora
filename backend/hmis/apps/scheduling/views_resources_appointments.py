@@ -24,6 +24,7 @@ from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from hmis.apps.core.api_errors import safe_error_response
 from hmis.apps.core.mixins import (
     NestedTenantScopeMixin,
     ReadOnCreateMixin,
@@ -826,7 +827,9 @@ class AppointmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         try:
             appointment.confirm(user=request.user)
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(
+                action="scheduling.appointment_confirm", exc=e, logger=logger
+            )
 
         self._log_action("appointment_confirm", appointment)
         return Response(AppointmentSerializer(appointment).data)
@@ -841,7 +844,9 @@ class AppointmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         try:
             appointment.check_in(user=request.user)
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(
+                action="scheduling.appointment_check_in", exc=e, logger=logger
+            )
 
         self._log_action("appointment_checkin", appointment)
         return Response(AppointmentSerializer(appointment).data)
@@ -856,7 +861,7 @@ class AppointmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         try:
             appointment.start(user=request.user)
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(action="scheduling.appointment_start", exc=e, logger=logger)
 
         self._log_action("appointment_start", appointment)
         return Response(AppointmentSerializer(appointment).data)
@@ -874,7 +879,9 @@ class AppointmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 notes=serializer.validated_data.get("notes", ""),
             )
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(
+                action="scheduling.appointment_complete", exc=e, logger=logger
+            )
 
         self._log_action("appointment_complete", appointment)
         return Response(AppointmentSerializer(appointment).data)
@@ -892,7 +899,7 @@ class AppointmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 reason=serializer.validated_data.get("reason", ""),
             )
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(action="scheduling.appointment_cancel", exc=e, logger=logger)
 
         self._log_action(
             "appointment_cancel",
@@ -913,7 +920,9 @@ class AppointmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         try:
             appointment.mark_no_show(user=request.user)
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(
+                action="scheduling.appointment_no_show", exc=e, logger=logger
+            )
 
         self._log_action("appointment_noshow", appointment)
         return Response(AppointmentSerializer(appointment).data)

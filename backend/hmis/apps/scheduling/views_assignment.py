@@ -24,6 +24,7 @@ from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from hmis.apps.core.api_errors import safe_error_response
 from hmis.apps.core.mixins import (
     NestedTenantScopeMixin,
     ReadOnCreateMixin,
@@ -264,7 +265,7 @@ class AssignmentOverrideViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
                 notes=serializer.validated_data.get("notes", ""),
             )
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(action="scheduling.override_approve", exc=e, logger=logger)
 
         return Response(AssignmentOverrideSerializer(override).data)
 
@@ -286,7 +287,7 @@ class AssignmentOverrideViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
                 reason=serializer.validated_data["reason"],
             )
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(action="scheduling.override_reject", exc=e, logger=logger)
 
         return Response(AssignmentOverrideSerializer(override).data)
 

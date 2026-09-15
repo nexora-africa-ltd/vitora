@@ -23,6 +23,7 @@ from rest_framework import serializers, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from hmis.apps.core.api_errors import safe_error_response
 from hmis.apps.core.models import AuditLog
 from hmis.apps.scheduling.models import Shift
 from hmis.apps.scheduling.serializers import ShiftListSerializer, ShiftSerializer
@@ -623,7 +624,7 @@ class ShiftAnalyticsExportMixin:
         try:
             shift.start_shift(method="QR_CODE")
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(action="scheduling.qr_clock_in", exc=e, logger=logger)
 
         serializer = ShiftSerializer(shift)
         return Response(serializer.data)

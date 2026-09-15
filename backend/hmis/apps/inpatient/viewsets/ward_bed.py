@@ -418,9 +418,11 @@ class WardViewSet(AuditedMutationMixin, TenantScopedViewMixin, viewsets.ModelVie
                 "facility_id": facility.id,
                 "facility_name": facility.name,
                 "wards": created_wards,
-                "message": f"Created {len(created_wards)} default ward(s)"
-                if created_wards
-                else "All default wards already exist",
+                "message": (
+                    f"Created {len(created_wards)} default ward(s)"
+                    if created_wards
+                    else "All default wards already exist"
+                ),
             },
             status=status.HTTP_201_CREATED if created_wards else status.HTTP_200_OK,
         )

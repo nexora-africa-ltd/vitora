@@ -345,9 +345,9 @@ class CriticalValueNotificationViewSet(TenantScopedViewMixin, viewsets.ReadOnlyM
         data = {
             "total_notifications": total,
             "notified_within_deadline": within_deadline,
-            "compliance_rate": (within_deadline / notified_count * 100)
-            if notified_count > 0
-            else 0.0,
+            "compliance_rate": (
+                (within_deadline / notified_count * 100) if notified_count > 0 else 0.0
+            ),
             "average_notification_minutes": (
                 total_notification_minutes / notified_count if notified_count > 0 else 0.0
             ),

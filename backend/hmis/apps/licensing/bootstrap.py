@@ -138,17 +138,19 @@ def serialize_organization(organization) -> dict[str, Any]:
         "contact_phone": organization.contact_phone,
         "subscription_tier": organization.subscription_tier,
         "subscription_status": organization.subscription_status,
-        "subscription_plan": {
-            "code": plan.code,
-            "name": plan.name,
-            "features": plan.features,
-            "max_facilities": plan.max_facilities,
-            "max_users": plan.max_users,
-            "max_patients": plan.max_patients,
-            "monthly_ai_tokens": plan.monthly_ai_tokens,
-        }
-        if plan
-        else None,
+        "subscription_plan": (
+            {
+                "code": plan.code,
+                "name": plan.name,
+                "features": plan.features,
+                "max_facilities": plan.max_facilities,
+                "max_users": plan.max_users,
+                "max_patients": plan.max_patients,
+                "monthly_ai_tokens": plan.monthly_ai_tokens,
+            }
+            if plan
+            else None
+        ),
     }
 
 
@@ -413,15 +415,21 @@ def seed_from_activation_payload(payload: dict[str, Any]) -> tuple[Any, Any]:
         plan_defaults = {
             "name": subscription_plan_data.get("name") or f"{subscription_tier.title()} Plan",
             "features": subscription_features,
-            "max_facilities": subscription_plan_data.get("max_facilities")
-            if "max_facilities" in subscription_plan_data
-            else payload.get("max_facilities"),
-            "max_users": subscription_plan_data.get("max_users")
-            if "max_users" in subscription_plan_data
-            else payload.get("max_staff"),
-            "max_patients": subscription_plan_data.get("max_patients")
-            if "max_patients" in subscription_plan_data
-            else payload.get("max_patients"),
+            "max_facilities": (
+                subscription_plan_data.get("max_facilities")
+                if "max_facilities" in subscription_plan_data
+                else payload.get("max_facilities")
+            ),
+            "max_users": (
+                subscription_plan_data.get("max_users")
+                if "max_users" in subscription_plan_data
+                else payload.get("max_staff")
+            ),
+            "max_patients": (
+                subscription_plan_data.get("max_patients")
+                if "max_patients" in subscription_plan_data
+                else payload.get("max_patients")
+            ),
             "monthly_ai_tokens": subscription_plan_data.get("monthly_ai_tokens"),
             "is_active": True,
         }

@@ -2906,9 +2906,11 @@ class Command(BaseCommand):
                     clinical_indication=img_def.get("clinical_indication", ""),
                     status=img_def["status"],
                     ordered_at=img_date,
-                    completed_at=img_date + timedelta(hours=3)
-                    if img_def["status"] in ("COMPLETED", "REPORTED")
-                    else None,
+                    completed_at=(
+                        img_date + timedelta(hours=3)
+                        if img_def["status"] in ("COMPLETED", "REPORTED")
+                        else None
+                    ),
                 )
                 ImagingOrderItem.objects.create(
                     order=img_order,
@@ -3115,9 +3117,9 @@ class Command(BaseCommand):
                         admission=admission,
                         chart_date=chart_date,
                         recorded_by=user,
-                        patient_weight_kg=Decimal(day_def["weight_kg"])
-                        if day_def.get("weight_kg")
-                        else None,
+                        patient_weight_kg=(
+                            Decimal(day_def["weight_kg"]) if day_def.get("weight_kg") else None
+                        ),
                         intravenous_infusion_notes=day_def.get("iv_notes", ""),
                     )
                     created["fluid_sheets"] += 1

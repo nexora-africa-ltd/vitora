@@ -387,12 +387,12 @@ class Antibiogram(FacilityScopedModel):
                     "sensitive_count": row["sensitive"],
                     "intermediate_count": row["intermediate"],
                     "resistant_count": row["resistant"],
-                    "percent_sensitive": round(row["sensitive"] / row["total"] * 100, 1)
-                    if row["total"]
-                    else None,
-                    "percent_resistant": round(row["resistant"] / row["total"] * 100, 1)
-                    if row["total"]
-                    else None,
+                    "percent_sensitive": (
+                        round(row["sensitive"] / row["total"] * 100, 1) if row["total"] else None
+                    ),
+                    "percent_resistant": (
+                        round(row["resistant"] / row["total"] * 100, 1) if row["total"] else None
+                    ),
                 },
             )
             results.append(obj)

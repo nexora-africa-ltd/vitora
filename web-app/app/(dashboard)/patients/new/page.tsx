@@ -60,6 +60,18 @@ type HealthcloudEnrollmentContext = {
   valid_to?: string;
 };
 
+type PrefillBridgePayload = {
+  healthcloud?: Record<string, unknown>;
+  cr?: ClientRegistryClient;
+  shaPerson?: SHAPayloadPerson;
+};
+
+declare global {
+  interface Window {
+    __vitoraPrefillBridge?: PrefillBridgePayload;
+  }
+}
+
 function isDuplicateRegistrationError(error: unknown): boolean {
   const message = getApiErrorMessage(error).toLowerCase();
   if (
@@ -147,8 +159,14 @@ export default function NewPatientPage() {
     };
 
     try {
-      const storedHealthcloud = sessionStorage.getItem('healthcloud_prepopulate');
+      const bridge = window.__vitoraPrefillBridge;
+      const storedHealthcloud = bridge?.healthcloud
+        ? JSON.stringify(bridge.healthcloud)
+        : sessionStorage.getItem('healthcloud_prepopulate');
       if (storedHealthcloud) {
+        if (window.__vitoraPrefillBridge) {
+          window.__vitoraPrefillBridge.healthcloud = undefined;
+        }
         sessionStorage.removeItem('healthcloud_prepopulate');
         const data = JSON.parse(storedHealthcloud) as {
           provider_id?: number;
@@ -195,8 +213,14 @@ export default function NewPatientPage() {
         return;
       }
 
-      const storedShaPerson = sessionStorage.getItem('sha_person_prepopulate');
+      const storedShaPerson = bridge?.shaPerson
+        ? JSON.stringify(bridge.shaPerson)
+        : sessionStorage.getItem('sha_person_prepopulate');
       if (storedShaPerson) {
+        if (window.__vitoraPrefillBridge) {
+          window.__vitoraPrefillBridge.shaPerson = undefined;
+          window.__vitoraPrefillBridge.cr = undefined;
+        }
         sessionStorage.removeItem('sha_person_prepopulate');
         sessionStorage.removeItem('cr_prepopulate');
 
@@ -212,8 +236,11 @@ export default function NewPatientPage() {
         return;
       }
 
-      const stored = sessionStorage.getItem('cr_prepopulate');
+      const stored = bridge?.cr ? JSON.stringify(bridge.cr) : sessionStorage.getItem('cr_prepopulate');
       if (stored) {
+        if (window.__vitoraPrefillBridge) {
+          window.__vitoraPrefillBridge.cr = undefined;
+        }
         sessionStorage.removeItem('cr_prepopulate');
         const client = JSON.parse(stored) as ClientRegistryClient;
         setCrClient(client);

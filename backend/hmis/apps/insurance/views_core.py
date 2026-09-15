@@ -97,10 +97,24 @@ def _insurance_error_response(
 ) -> Response:
     logger.warning(
         "Insurance action failed",
-        extra={"action": action, "error_class": exc.__class__.__name__, "error": str(exc)},
+        extra={"action": action, "error_class": exc.__class__.__name__},
     )
-    message = str(exc) or fallback
-    return Response({"error": message}, status=status.HTTP_400_BAD_REQUEST)
+    status_code: int = status.HTTP_400_BAD_REQUEST
+    message = fallback
+
+    if isinstance(exc, InsuranceApiError):
+        if exc.status_code and exc.status_code in (400, 404, 409, 422, 429):
+            message = exc.message or fallback
+            status_code = exc.status_code
+        elif exc.status_code and exc.status_code in (401, 403):
+            message = "Insurance provider authentication failed."
+            status_code = exc.status_code
+        else:
+            status_code = status.HTTP_502_BAD_GATEWAY
+    elif isinstance(exc, (ValidationError, DRFValidationError)):
+        message = str(exc) or "Invalid insurance request."
+
+    return Response({"error": message}, status=status_code)
 
 
 # ---------------------------------------------------------------------------
@@ -345,12 +359,12 @@ class PatientInsuranceViewSet(
             "status": result.status,
             "plan_name": result.plan_name,
             "member_number": result.member_number,
-            "annual_balance": str(result.annual_balance)
-            if result.annual_balance is not None
-            else None,
-            "copay_percent": str(result.copay_percent)
-            if result.copay_percent is not None
-            else None,
+            "annual_balance": (
+                str(result.annual_balance) if result.annual_balance is not None else None
+            ),
+            "copay_percent": (
+                str(result.copay_percent) if result.copay_percent is not None else None
+            ),
             "message": result.message,
             "raw_response": result.raw_response,
         }
@@ -531,9 +545,11 @@ class PatientInsuranceViewSet(
                 {
                     "session": InsuranceVisitAuthorizationSerializer(existing_session).data,
                     "eligibility": {
-                        "eligible": bool(enrollment.last_eligibility_eligible)
-                        if enrollment.last_eligibility_eligible is not None
-                        else True,
+                        "eligible": (
+                            bool(enrollment.last_eligibility_eligible)
+                            if enrollment.last_eligibility_eligible is not None
+                            else True
+                        ),
                         "status": enrollment.last_eligibility_status or existing_session.status,
                         "plan_name": enrollment.plan.name,
                         "member_number": existing_session.member_number or enrollment.member_number,

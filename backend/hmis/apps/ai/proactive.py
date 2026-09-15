@@ -495,9 +495,9 @@ def evaluate_pattern_rules(
                                     "title": rule["title"],
                                     "message": rule["message"],
                                     "category": "allergy_drug_interaction",
-                                    "confidence": 0.95
-                                    if rule["cross_reactivity"] == "same_class"
-                                    else 0.8,
+                                    "confidence": (
+                                        0.95 if rule["cross_reactivity"] == "same_class" else 0.8
+                                    ),
                                     "source": "pattern_engine",
                                     "allergy": allergy,
                                     "drug": drug,
@@ -579,9 +579,11 @@ def generate_llm_insights(
                 {
                     "id": insight.get("id", f"llm_{len(normalized)}"),
                     "tier": 3,
-                    "severity": insight.get("severity", "info")
-                    if insight.get("severity") in ("critical", "warning", "info")
-                    else "info",
+                    "severity": (
+                        insight.get("severity", "info")
+                        if insight.get("severity") in ("critical", "warning", "info")
+                        else "info"
+                    ),
                     "title": insight.get("title", "Clinical Insight"),
                     "message": insight.get("message", ""),
                     "category": insight.get("category", "clinical"),

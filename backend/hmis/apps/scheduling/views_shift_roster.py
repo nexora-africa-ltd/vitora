@@ -25,6 +25,7 @@ from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from hmis.apps.core.api_errors import safe_error_response
 from hmis.apps.core.mixins import (
     NestedTenantScopeMixin,
     ReadOnCreateMixin,
@@ -880,7 +881,7 @@ class ShiftViewSet(
         try:
             shift.start_shift(room=room, clinic=clinic, method=clock_method)
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(action="scheduling.shift_start", exc=e, logger=logger)
 
         # Auto-open clinic session if needed
         session_auto_opened = False
@@ -908,7 +909,7 @@ class ShiftViewSet(
         try:
             shift.complete_shift()
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(action="scheduling.shift_complete", exc=e, logger=logger)
 
         # Auto-close clinic session if this was the last active shift
         session_auto_closed = False
@@ -946,7 +947,7 @@ class ShiftViewSet(
         try:
             shift.take_break()
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(action="scheduling.shift_break", exc=e, logger=logger)
         serializer = ShiftSerializer(shift)
         return Response(serializer.data)
 
@@ -957,7 +958,7 @@ class ShiftViewSet(
         try:
             shift.resume_shift()
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(action="scheduling.shift_resume", exc=e, logger=logger)
         serializer = ShiftSerializer(shift)
         return Response(serializer.data)
 
@@ -973,7 +974,7 @@ class ShiftViewSet(
                 reason=cancel_serializer.validated_data.get("reason", ""),
             )
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(action="scheduling.shift_cancel", exc=e, logger=logger)
         serializer = ShiftSerializer(shift)
         return Response(serializer.data)
 

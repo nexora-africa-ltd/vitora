@@ -167,9 +167,9 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
                     getattr(department, "code", "") if department is not None else ""
                 ),
                 "organization_id": instance.organization_id,
-                "organization_slug": getattr(organization, "slug", "")
-                if organization is not None
-                else "",
+                "organization_slug": (
+                    getattr(organization, "slug", "") if organization is not None else ""
+                ),
                 "primary_facility_id": instance.primary_facility_id,
                 "primary_facility_mfl_code": (
                     getattr(facility, "mfl_code", "") if facility is not None else ""
@@ -200,19 +200,19 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
                 "description": instance.description or "",
                 "scope": instance.scope or "ORG",
                 "organization_id": instance.organization_id,
-                "organization_slug": getattr(organization, "slug", "")
-                if organization is not None
-                else "",
+                "organization_slug": (
+                    getattr(organization, "slug", "") if organization is not None else ""
+                ),
                 "facility_id": instance.facility_id,
-                "facility_mfl_code": getattr(facility, "mfl_code", "")
-                if facility is not None
-                else "",
+                "facility_mfl_code": (
+                    getattr(facility, "mfl_code", "") if facility is not None else ""
+                ),
                 "permissions_matrix": instance.permissions_matrix or {},
                 "hierarchy_level": instance.hierarchy_level,
                 "parent_role_id": instance.parent_role_id,
-                "parent_role_code": getattr(parent_role, "code", "")
-                if parent_role is not None
-                else "",
+                "parent_role_code": (
+                    getattr(parent_role, "code", "") if parent_role is not None else ""
+                ),
                 "is_active": getattr(instance, "is_active", True),
             },
             instance,
@@ -231,19 +231,19 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
                 "description": instance.description or "",
                 "department_type": instance.department_type or "",
                 "organization_id": instance.organization_id,
-                "organization_slug": getattr(organization, "slug", "")
-                if organization is not None
-                else "",
+                "organization_slug": (
+                    getattr(organization, "slug", "") if organization is not None else ""
+                ),
                 "facility_id": instance.facility_id,
-                "facility_mfl_code": getattr(facility, "mfl_code", "")
-                if facility is not None
-                else "",
+                "facility_mfl_code": (
+                    getattr(facility, "mfl_code", "") if facility is not None else ""
+                ),
                 "parent_id": instance.parent_id,
                 "parent_code": getattr(parent, "code", "") if parent is not None else "",
                 "head_id": instance.head_id,
-                "head_username": getattr(head_user, "username", "")
-                if head_user is not None
-                else "",
+                "head_username": (
+                    getattr(head_user, "username", "") if head_user is not None else ""
+                ),
                 "is_active": instance.is_active,
             },
             instance,
@@ -264,23 +264,23 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
                 "staff_profile_employee_id": (
                     getattr(staff_profile, "employee_id", "") if staff_profile is not None else ""
                 ),
-                "staff_username": getattr(staff_user, "username", "")
-                if staff_user is not None
-                else "",
+                "staff_username": (
+                    getattr(staff_user, "username", "") if staff_user is not None else ""
+                ),
                 "organization_id": instance.organization_id,
-                "organization_slug": getattr(organization, "slug", "")
-                if organization is not None
-                else "",
+                "organization_slug": (
+                    getattr(organization, "slug", "") if organization is not None else ""
+                ),
                 "role_id": instance.role_id,
                 "role_code": getattr(role, "code", "") if role is not None else "",
                 "department_id": instance.department_id,
-                "department_code": getattr(department, "code", "")
-                if department is not None
-                else "",
+                "department_code": (
+                    getattr(department, "code", "") if department is not None else ""
+                ),
                 # M2M: list of facility PKs the member can access in this org.
-                "facility_ids": list(instance.facilities.values_list("pk", flat=True))
-                if instance.pk
-                else [],
+                "facility_ids": (
+                    list(instance.facilities.values_list("pk", flat=True)) if instance.pk else []
+                ),
                 "facility_mfl_codes": facility_mfl_codes,
                 "is_primary": instance.is_primary,
                 "status": instance.status,
@@ -304,23 +304,23 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
                 "is_active": instance.is_active,
                 "capacity": instance.capacity,
                 "staff_profile_id": instance.staff_profile_id,
-                "staff_username": getattr(staff_user, "username", "")
-                if staff_user is not None
-                else "",
+                "staff_username": (
+                    getattr(staff_user, "username", "") if staff_user is not None else ""
+                ),
                 "metadata": instance.metadata or {},
                 "description": instance.description or "",
                 "department_id": instance.department_id,
-                "department_code": getattr(department, "code", "")
-                if department is not None
-                else "",
+                "department_code": (
+                    getattr(department, "code", "") if department is not None else ""
+                ),
                 "organization_id": instance.organization_id,
-                "organization_slug": getattr(organization, "slug", "")
-                if organization is not None
-                else "",
+                "organization_slug": (
+                    getattr(organization, "slug", "") if organization is not None else ""
+                ),
                 "facility_id": instance.facility_id,
-                "facility_mfl_code": getattr(facility, "mfl_code", "")
-                if facility is not None
-                else "",
+                "facility_mfl_code": (
+                    getattr(facility, "mfl_code", "") if facility is not None else ""
+                ),
             },
             instance,
         )
@@ -340,9 +340,9 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
                 "floor": instance.floor or "",
                 "capacity": instance.capacity,
                 "department_id": getattr(instance, "department_id", None),
-                "department_code": getattr(department, "code", "")
-                if department is not None
-                else "",
+                "department_code": (
+                    getattr(department, "code", "") if department is not None else ""
+                ),
                 "status": instance.status,
                 "requires_appointment": instance.requires_appointment,
                 "requires_referral": instance.requires_referral,
@@ -363,13 +363,13 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
                     else ""
                 ),
                 "organization_id": instance.organization_id,
-                "organization_slug": getattr(organization, "slug", "")
-                if organization is not None
-                else "",
+                "organization_slug": (
+                    getattr(organization, "slug", "") if organization is not None else ""
+                ),
                 "facility_id": instance.facility_id,
-                "facility_mfl_code": getattr(facility, "mfl_code", "")
-                if facility is not None
-                else "",
+                "facility_mfl_code": (
+                    getattr(facility, "mfl_code", "") if facility is not None else ""
+                ),
             },
             instance,
         )
@@ -644,9 +644,9 @@ def _encounter_hints(prefix: str, encounter) -> dict:
         f"{prefix}_patient_mrn": getattr(patient, "mrn", "") if patient else "",
         f"{prefix}_encounter_date": encounter.encounter_date,
         f"{prefix}_encounter_type": encounter.encounter_type or "",
-        f"{prefix}_facility_mfl_code": getattr(facility, "mfl_code", "")
-        if facility is not None
-        else "",
+        f"{prefix}_facility_mfl_code": (
+            getattr(facility, "mfl_code", "") if facility is not None else ""
+        ),
         f"{prefix}_chief_complaint": (encounter.chief_complaint or "")[:200],
     }
 

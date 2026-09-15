@@ -132,26 +132,34 @@ class TATReportingEngine:
                 "total_orders": total,
                 "breaches": breaches,
                 "compliance_rate": compliance_rate,
-                "avg_total_minutes": round(segment_avgs["avg_total"], 2)
-                if segment_avgs["avg_total"]
-                else None,
+                "avg_total_minutes": (
+                    round(segment_avgs["avg_total"], 2) if segment_avgs["avg_total"] else None
+                ),
                 "p50_minutes": _percentile(all_totals, 50),
                 "p90_minutes": _percentile(all_totals, 90),
                 "p95_minutes": _percentile(all_totals, 95),
             },
             "segments": {
-                "avg_order_to_collect": round(segment_avgs["avg_order_to_collect"], 2)
-                if segment_avgs["avg_order_to_collect"]
-                else None,
-                "avg_collect_to_receive": round(segment_avgs["avg_collect_to_receive"], 2)
-                if segment_avgs["avg_collect_to_receive"]
-                else None,
-                "avg_receive_to_result": round(segment_avgs["avg_receive_to_result"], 2)
-                if segment_avgs["avg_receive_to_result"]
-                else None,
-                "avg_result_to_verify": round(segment_avgs["avg_result_to_verify"], 2)
-                if segment_avgs["avg_result_to_verify"]
-                else None,
+                "avg_order_to_collect": (
+                    round(segment_avgs["avg_order_to_collect"], 2)
+                    if segment_avgs["avg_order_to_collect"]
+                    else None
+                ),
+                "avg_collect_to_receive": (
+                    round(segment_avgs["avg_collect_to_receive"], 2)
+                    if segment_avgs["avg_collect_to_receive"]
+                    else None
+                ),
+                "avg_receive_to_result": (
+                    round(segment_avgs["avg_receive_to_result"], 2)
+                    if segment_avgs["avg_receive_to_result"]
+                    else None
+                ),
+                "avg_result_to_verify": (
+                    round(segment_avgs["avg_result_to_verify"], 2)
+                    if segment_avgs["avg_result_to_verify"]
+                    else None
+                ),
             },
             "by_priority": by_priority,
             "by_test": by_test,
@@ -300,9 +308,11 @@ class TATReportingEngine:
                     "technician_id": row["resulted_by"],
                     "technician_name": name,
                     "results_entered": count,
-                    "avg_entry_time_minutes": round(row["avg_receive_to_result"], 2)
-                    if row["avg_receive_to_result"]
-                    else None,
+                    "avg_entry_time_minutes": (
+                        round(row["avg_receive_to_result"], 2)
+                        if row["avg_receive_to_result"]
+                        else None
+                    ),
                     "breaches": row["breaches"],
                     "breach_rate": round((row["breaches"] / count) * 100, 2) if count else 0,
                 }
@@ -377,9 +387,9 @@ class TATReportingEngine:
                     "tests_entered": row["total_entered"] or 0,
                     "tests_verified": row["total_verified"] or 0,
                     "specimens_rejected": row["total_rejected"] or 0,
-                    "avg_entry_time_minutes": round(row["avg_entry"], 2)
-                    if row["avg_entry"]
-                    else None,
+                    "avg_entry_time_minutes": (
+                        round(row["avg_entry"], 2) if row["avg_entry"] else None
+                    ),
                 }
             )
 
@@ -404,12 +414,12 @@ class TATReportingEngine:
                 "rejection_rate": rejection_rate,
                 "critical_results": critical_total,
                 "critical_compliance_rate": critical_compliance,
-                "avg_entry_time_minutes": round(totals["avg_entry_time"], 2)
-                if totals["avg_entry_time"]
-                else None,
-                "avg_verify_time_minutes": round(totals["avg_verify_time"], 2)
-                if totals["avg_verify_time"]
-                else None,
+                "avg_entry_time_minutes": (
+                    round(totals["avg_entry_time"], 2) if totals["avg_entry_time"] else None
+                ),
+                "avg_verify_time_minutes": (
+                    round(totals["avg_verify_time"], 2) if totals["avg_verify_time"] else None
+                ),
             },
             "by_technician": technicians,
             "by_day": [

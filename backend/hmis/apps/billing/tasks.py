@@ -32,13 +32,21 @@ def _billing_task_handled_exceptions() -> tuple[type[Exception], ...]:
     )
 
 
+logger = logging.getLogger(__name__)
+
+
+def _mask_sha_number(value: str | None) -> str:
+    text = (value or "").strip()
+    if len(text) <= 4:
+        return "****"
+    return f"****{text[-4:]}"
+
+
 @shared_task(name="hmis.apps.billing.tasks.apply_daily_bed_charges")
 def apply_daily_bed_charges():
     """Apply daily bed charges to all active inpatient admissions."""
     from hmis.apps.billing.agent import BillingAgentService
     from hmis.apps.billing.services.automation_rules import BillingAutomationRuleService
-
-    logger = logging.getLogger(__name__)
 
     charged = BillingAgentService.apply_daily_bed_charges()
 
@@ -577,7 +585,7 @@ def verify_patient_sha_eligibility(patient_id: int, facility_id: int | None = No
         logger.info(
             "SHA eligibility refreshed for patient %s (member %s): eligible=%s",
             patient_id,
-            sha_member.sha_number,
+            _mask_sha_number(sha_member.sha_number),
             result.is_eligible,
         )
         return {
@@ -637,7 +645,7 @@ def verify_patient_sha_eligibility(patient_id: int, facility_id: int | None = No
         logger.info(
             "SHA member auto-created for patient %s: %s (active)",
             patient_id,
-            sha_number,
+            _mask_sha_number(sha_number),
         )
         return {"status": "created", "sha_number": sha_number, "eligible": True}
 

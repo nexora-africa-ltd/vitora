@@ -19,6 +19,7 @@ from rest_framework.response import Response
 from hmis.apps.billing.models import ConsentToken, SHAClaim
 from hmis.apps.billing.services.dha_errors import DHAError
 from hmis.apps.billing.sha_views_claims_helpers import _stringify_error
+from hmis.apps.core.api_errors import safe_error_response
 
 logger = logging.getLogger(__name__)
 
@@ -248,7 +249,12 @@ class SHAClaimILMInterventionsMixin:
                 practitioner_regulation_body=str(d.get("practitioner_regulation_body", "KMPDC")),
             )
         except _ilm_intervention_exceptions() as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return safe_error_response(
+                action="billing.ilm_start_visit",
+                exc=e,
+                logger=logger,
+                expose_message_for=(ValueError, TypeError, LookupError),
+            )
         try:
             result = self._ilm_service(facility=claim.facility).start_visit(
                 claim, params, user=request.user
