@@ -20,11 +20,12 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import ReadRequiresModelPermission
 
 from .models import (
+    CountyNotificationDelivery,
     IHRNotification,
     IHRNotificationStatus,
     NotifiableCase,
@@ -32,8 +33,10 @@ from .models import (
     NotificationStatus,
     OutbreakThreshold,
     SurveillanceAlert,
+    SurveillanceFacilitySettings,
 )
 from .serializers import (
+    CountyNotificationDeliverySerializer,
     CountyReportSerializer,
     IHRCloseSerializer,
     IHREscalateToNationalSerializer,
@@ -53,6 +56,7 @@ from .serializers import (
     SurveillanceAlertListSerializer,
     SurveillanceAlertSerializer,
     SurveillanceDashboardSerializer,
+    SurveillanceFacilitySettingsSerializer,
 )
 
 
@@ -302,11 +306,41 @@ class NotifiableCaseViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
         serializer = NotifyCountySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        notes = serializer.validated_data.get("notification_notes", "")
+
+        from .services import SurveillanceService
+
+        # Dispatch outbound county notifications and persist delivery attempts.
+        deliveries = SurveillanceService.notify_county(
+            case=case,
+            triggered_by=request.user,
+            notes=notes,
+        )
+
+        if not deliveries:
+            return Response(
+                {
+                    "error": "No county notification channel is enabled/configured for this facility.",
+                    "delivery_status": [],
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not any(delivery.status == "SENT" for delivery in deliveries):
+            return Response(
+                {
+                    "error": "County notification delivery failed. Case remains pending notification.",
+                    "delivery_status": CountyNotificationDeliverySerializer(
+                        deliveries, many=True
+                    ).data,
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
         # Update case status
         case.mark_notified(user=request.user)
 
         # Add notes if provided
-        notes = serializer.validated_data.get("notification_notes", "")
         if notes:
             case.investigation_notes = f"{case.investigation_notes}\n[Notification] {notes}".strip()
             case.save(update_fields=["investigation_notes"])
@@ -323,7 +357,35 @@ class NotifiableCaseViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
             },
         )
 
-        return Response(NotifiableCaseSerializer(case).data)
+        payload = NotifiableCaseSerializer(case).data
+        payload["delivery_status"] = CountyNotificationDeliverySerializer(
+            deliveries, many=True
+        ).data
+        return Response(payload)
+
+    @action(detail=True, methods=["get"])
+    def notification_deliveries(self, request, pk=None):
+        """List outbound county notification delivery attempts for a case."""
+        case = self.get_object()
+        deliveries = CountyNotificationDelivery.objects.filter(case=case).order_by("-created_at")
+        serializer = CountyNotificationDeliverySerializer(deliveries, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def retry_county_notifications(self, request, pk=None):
+        """Retry failed/scheduled county notifications for a case."""
+        case = self.get_object()
+        from .services import SurveillanceService
+
+        deliveries = SurveillanceService.retry_case_county_notifications(case)
+
+        if case.notification_status == NotificationStatus.PENDING and any(
+            delivery.status == "SENT" for delivery in deliveries
+        ):
+            case.mark_notified(user=request.user)
+
+        serializer = CountyNotificationDeliverySerializer(deliveries, many=True)
+        return Response(serializer.data)
 
     @action(detail=False, methods=["get"])
     def pending(self, request):
@@ -408,6 +470,42 @@ class SurveillanceAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         alerts = self.get_queryset().filter(is_acknowledged=False)
         serializer = SurveillanceAlertListSerializer(alerts, many=True)
         return Response(serializer.data)
+
+
+class SurveillanceFacilitySettingsViewSet(
+    ReadOnCreateMixin,
+    TenantScopedViewMixin,
+    viewsets.ModelViewSet,
+):
+    """Facility-scoped surveillance county-notification settings."""
+
+    tenant_scope = "facility"
+    queryset = SurveillanceFacilitySettings.objects.select_related("facility").all()
+    serializer_class = SurveillanceFacilitySettingsSerializer
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
+    ordering = ["-updated_at"]
+
+    def perform_create(self, serializer):
+        """Persist row under current tenant scope."""
+        serializer.save(**self.get_tenant_save_kwargs())
+
+    @action(detail=False, methods=["get"], url_path="current")
+    def current(self, request):
+        """Get or create settings for the current facility."""
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        organization = getattr(request, "organization", None)
+        if facility is None:
+            return Response(
+                {"error": "Facility context is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        settings_obj, _ = SurveillanceFacilitySettings.objects.get_or_create(
+            facility=facility,
+            defaults={"organization": organization},
+        )
+        return Response(self.get_serializer(settings_obj).data)
 
 
 class OutbreakThresholdViewSet(viewsets.ModelViewSet):

@@ -86,6 +86,62 @@ export const NotifiableCaseDetailSchema = z.object({
   notified_by_name: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
+  delivery_status: z.array(
+    z.object({
+      id: z.number(),
+      case: z.number(),
+      channel: z.enum(['SMS', 'EMAIL']),
+      status: z.enum(['PENDING', 'SENT', 'RETRY_SCHEDULED', 'FAILED']),
+      recipient_masked: z.string(),
+      attempt_count: z.number(),
+      max_retry_attempts: z.number(),
+      retry_backoff_minutes: z.number(),
+      last_error: z.string(),
+      sent_at: z.string().nullable(),
+      last_attempt_at: z.string().nullable(),
+      next_retry_at: z.string().nullable(),
+      triggered_by: z.number().nullable(),
+      triggered_by_name: z.string().nullable(),
+      created_at: z.string(),
+      updated_at: z.string(),
+    })
+  ).optional(),
+});
+
+export const CountyNotificationDeliverySchema = z.object({
+  id: z.number(),
+  case: z.number(),
+  channel: z.enum(['SMS', 'EMAIL']),
+  status: z.enum(['PENDING', 'SENT', 'RETRY_SCHEDULED', 'FAILED']),
+  recipient_masked: z.string(),
+  attempt_count: z.number(),
+  max_retry_attempts: z.number(),
+  retry_backoff_minutes: z.number(),
+  last_error: z.string(),
+  sent_at: z.string().nullable(),
+  last_attempt_at: z.string().nullable(),
+  next_retry_at: z.string().nullable(),
+  triggered_by: z.number().nullable(),
+  triggered_by_name: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const CountyNotificationDeliveryListSchema = z.array(CountyNotificationDeliverySchema);
+
+export const SurveillanceFacilitySettingsSchema = z.object({
+  id: z.number(),
+  facility: z.number(),
+  notify_via_sms: z.boolean(),
+  notify_via_email: z.boolean(),
+  sms_recipient_masked: z.string(),
+  email_recipient_masked: z.string(),
+  include_patient_identifiers: z.boolean(),
+  max_retry_attempts: z.number(),
+  retry_backoff_minutes: z.number(),
+  is_active: z.boolean(),
+  created_at: z.string(),
+  updated_at: z.string(),
 });
 
 export const PaginatedNotifiableCaseSchema = z.object({

@@ -13,15 +13,25 @@ from typing import TYPE_CHECKING
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.conf import settings
+from django.core.mail import send_mail
 from django.db import models
 from django.utils import timezone
+
+from hmis.apps.core.sms_gateway import send_sms
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import User
 
     from hmis.apps.encounters.models import Diagnosis
 
-    from .models import IDSRWeeklyReport, NotifiableCase, NotifiableDisease, SurveillanceAlert
+    from .models import (
+        CountyNotificationDelivery,
+        IDSRWeeklyReport,
+        NotifiableCase,
+        NotifiableDisease,
+        SurveillanceAlert,
+        SurveillanceFacilitySettings,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -138,6 +148,257 @@ class SurveillanceService:
         cls.check_outbreak_thresholds(disease, patient.county)
 
         return case
+
+    @staticmethod
+    def _resolve_facility_settings(case: "NotifiableCase") -> "SurveillanceFacilitySettings | None":
+        """Return active facility settings for a case, if configured."""
+        from .models import SurveillanceFacilitySettings
+
+        if not case.facility_id:
+            return None
+        return (
+            SurveillanceFacilitySettings.objects.filter(
+                facility_id=case.facility_id,
+                is_active=True,
+            )
+            .order_by("-updated_at")
+            .first()
+        )
+
+    @staticmethod
+    def _fallback_surveillance_config() -> dict[str, object]:
+        """Fallback to env-based configuration when facility settings are missing."""
+        return {
+            "notify_via_sms": bool(getattr(settings, "SURVEILLANCE_SMS_RECIPIENT", "")),
+            "notify_via_email": bool(getattr(settings, "SURVEILLANCE_EMAIL_RECIPIENT", "")),
+            "sms_recipient": getattr(settings, "SURVEILLANCE_SMS_RECIPIENT", ""),
+            "email_recipient": getattr(settings, "SURVEILLANCE_EMAIL_RECIPIENT", ""),
+            "max_retry_attempts": int(getattr(settings, "SURVEILLANCE_MAX_RETRY_ATTEMPTS", 3)),
+            "retry_backoff_minutes": int(
+                getattr(settings, "SURVEILLANCE_RETRY_BACKOFF_MINUTES", 15)
+            ),
+            "include_patient_identifiers": False,
+        }
+
+    @classmethod
+    def _county_notification_config(cls, case: "NotifiableCase") -> dict[str, object]:
+        """Resolve effective county notification config for a case."""
+        facility_settings = cls._resolve_facility_settings(case)
+        if facility_settings:
+            return {
+                "notify_via_sms": facility_settings.notify_via_sms,
+                "notify_via_email": facility_settings.notify_via_email,
+                "sms_recipient": facility_settings.sms_recipient or "",
+                "email_recipient": facility_settings.email_recipient or "",
+                "max_retry_attempts": facility_settings.max_retry_attempts,
+                "retry_backoff_minutes": facility_settings.retry_backoff_minutes,
+                "include_patient_identifiers": facility_settings.include_patient_identifiers,
+            }
+        return cls._fallback_surveillance_config()
+
+    @staticmethod
+    def _build_county_notification_message(
+        case: "NotifiableCase", notes: str = "", include_patient_identifiers: bool = False
+    ) -> str:
+        """Build a county notification message with optional patient identifiers."""
+        patient_line = ""
+        if include_patient_identifiers:
+            patient_line = f"\nPatient MRN: {case.patient.mrn}"
+
+        deadline = (
+            case.notification_deadline.strftime("%Y-%m-%d %H:%M")
+            if case.notification_deadline
+            else "N/A"
+        )
+        notes_block = f"\nNotes: {notes.strip()}" if notes.strip() else ""
+        return (
+            "Disease Surveillance County Notification\n"
+            f"Disease: {case.disease.name}\n"
+            f"Category: {case.disease.get_category_display()}\n"
+            f"Detected: {case.detected_at.strftime('%Y-%m-%d %H:%M')}\n"
+            f"County: {case.county.name if case.county else 'N/A'}\n"
+            f"Notification deadline: {deadline}"
+            f"{patient_line}"
+            f"{notes_block}\n"
+            "Please review this case in Vitora HMIS."
+        )
+
+    @classmethod
+    def _mark_delivery_result(
+        cls,
+        delivery: "CountyNotificationDelivery",
+        success: bool,
+        error: str = "",
+    ) -> None:
+        """Update delivery attempt state and schedule retry when needed."""
+        from .models import CountyNotificationDeliveryStatus
+
+        now = timezone.now()
+        delivery.attempt_count += 1
+        delivery.last_attempt_at = now
+        delivery.last_error = (error or "").strip()
+
+        if success:
+            delivery.status = CountyNotificationDeliveryStatus.SENT
+            delivery.sent_at = now
+            delivery.next_retry_at = None
+        else:
+            if delivery.attempt_count < delivery.max_retry_attempts:
+                delivery.status = CountyNotificationDeliveryStatus.RETRY_SCHEDULED
+                delivery.next_retry_at = now + timedelta(
+                    minutes=max(1, delivery.retry_backoff_minutes)
+                )
+            else:
+                delivery.status = CountyNotificationDeliveryStatus.FAILED
+                delivery.next_retry_at = None
+            delivery.sent_at = None
+
+        delivery.save(
+            update_fields=[
+                "status",
+                "attempt_count",
+                "last_attempt_at",
+                "next_retry_at",
+                "last_error",
+                "sent_at",
+                "updated_at",
+            ]
+        )
+
+    @classmethod
+    def _dispatch_delivery(
+        cls,
+        delivery: "CountyNotificationDelivery",
+        message: str,
+        subject: str,
+    ) -> None:
+        """Attempt immediate dispatch for a single county delivery record."""
+        try:
+            if delivery.channel == "SMS":
+                success = bool(send_sms(delivery.recipient or "", message))
+                cls._mark_delivery_result(
+                    delivery, success, "SMS gateway send failed." if not success else ""
+                )
+                return
+
+            if delivery.channel == "EMAIL":
+                sent_count = send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[delivery.recipient or ""],
+                    fail_silently=False,
+                )
+                success = bool(sent_count)
+                cls._mark_delivery_result(
+                    delivery,
+                    success,
+                    "Email transport did not accept message." if not success else "",
+                )
+                return
+
+            cls._mark_delivery_result(delivery, False, f"Unsupported channel: {delivery.channel}")
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ) as e:
+            cls._mark_delivery_result(delivery, False, str(e))
+
+    @classmethod
+    def notify_county(
+        cls,
+        case: "NotifiableCase",
+        triggered_by=None,
+        notes: str = "",
+    ) -> list["CountyNotificationDelivery"]:
+        """Dispatch county notification channels and persist delivery records."""
+        from .models import CountyNotificationChannel, CountyNotificationDelivery
+
+        config = cls._county_notification_config(case)
+        include_patient_identifiers = bool(config.get("include_patient_identifiers", False))
+        message = cls._build_county_notification_message(
+            case,
+            notes=notes,
+            include_patient_identifiers=include_patient_identifiers,
+        )
+        subject = f"[Vitora HMIS] County Notification: {case.disease.name}"
+
+        deliveries: list[CountyNotificationDelivery] = []
+        channel_targets = [
+            (
+                CountyNotificationChannel.SMS,
+                bool(config.get("notify_via_sms")),
+                str(config.get("sms_recipient") or "").strip(),
+            ),
+            (
+                CountyNotificationChannel.EMAIL,
+                bool(config.get("notify_via_email")),
+                str(config.get("email_recipient") or "").strip(),
+            ),
+        ]
+
+        for channel, enabled, recipient in channel_targets:
+            if not enabled:
+                continue
+
+            delivery = CountyNotificationDelivery.objects.create(
+                case=case,
+                channel=channel,
+                facility_id=case.facility_id,
+                organization_id=case.organization_id,
+                recipient=recipient,
+                max_retry_attempts=int(config.get("max_retry_attempts") or 3),
+                retry_backoff_minutes=int(config.get("retry_backoff_minutes") or 15),
+                triggered_by=triggered_by,
+            )
+            deliveries.append(delivery)
+
+            if not recipient:
+                delivery.last_error = (
+                    "Channel enabled but recipient is not configured for this facility."
+                )
+                delivery.status = "FAILED"
+                delivery.save(update_fields=["status", "last_error", "updated_at"])
+                continue
+
+            cls._dispatch_delivery(delivery, message=message, subject=subject)
+
+        return deliveries
+
+    @classmethod
+    def retry_case_county_notifications(
+        cls, case: "NotifiableCase"
+    ) -> list["CountyNotificationDelivery"]:
+        """Retry failed/scheduled county notifications for a case."""
+        from .models import CountyNotificationDelivery, CountyNotificationDeliveryStatus
+
+        deliveries = list(
+            CountyNotificationDelivery.objects.filter(
+                case=case,
+                status__in=[
+                    CountyNotificationDeliveryStatus.RETRY_SCHEDULED,
+                    CountyNotificationDeliveryStatus.FAILED,
+                ],
+            )
+        )
+
+        message = cls._build_county_notification_message(
+            case,
+            include_patient_identifiers=bool(
+                cls._county_notification_config(case).get("include_patient_identifiers", False)
+            ),
+        )
+        subject = f"[Vitora HMIS] County Notification: {case.disease.name}"
+        for delivery in deliveries:
+            if delivery.attempt_count >= delivery.max_retry_attempts:
+                continue
+            cls._dispatch_delivery(delivery, message=message, subject=subject)
+        return deliveries
 
     @classmethod
     def create_alert(
@@ -281,19 +542,16 @@ class SurveillanceService:
         Returns:
             True if SMS sent successfully
         """
-        # Get county health officer phone from settings or county config
-        # This is a placeholder implementation
         try:
-            from hmis.apps.core.sms_gateway import send_sms
-
             county = alert.case.county
             if not county:
                 logger.warning("No county for alert %s, skipping SMS", alert.id)
                 return False
 
-            # TODO: Get county health officer phone from configuration
-            # For now, use settings
-            recipient = getattr(settings, "SURVEILLANCE_SMS_RECIPIENT", None)
+            config = cls._county_notification_config(alert.case)
+            recipient = str(config.get("sms_recipient") or "").strip()
+            if not recipient:
+                recipient = str(getattr(settings, "SURVEILLANCE_SMS_RECIPIENT", "") or "").strip()
             if not recipient:
                 logger.info("No SURVEILLANCE_SMS_RECIPIENT configured")
                 return False
@@ -333,15 +591,15 @@ class SurveillanceService:
             True if email sent successfully
         """
         try:
-            from django.core.mail import send_mail
-
             county = alert.case.county
             if not county:
                 logger.warning("No county for alert %s, skipping email", alert.id)
                 return False
 
-            # TODO: Get county health officer email from configuration
-            recipient = getattr(settings, "SURVEILLANCE_EMAIL_RECIPIENT", None)
+            config = cls._county_notification_config(alert.case)
+            recipient = str(config.get("email_recipient") or "").strip()
+            if not recipient:
+                recipient = str(getattr(settings, "SURVEILLANCE_EMAIL_RECIPIENT", "") or "").strip()
             if not recipient:
                 logger.info("No SURVEILLANCE_EMAIL_RECIPIENT configured")
                 return False

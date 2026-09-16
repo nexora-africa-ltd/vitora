@@ -18,6 +18,7 @@ from .views import (
     OutbreakThresholdViewSet,
     SurveillanceAlertViewSet,
     SurveillanceDashboardView,
+    SurveillanceFacilitySettingsViewSet,
 )
 
 app_name = "surveillance"
@@ -26,6 +27,7 @@ router = DefaultRouter()
 router.register(r"diseases", NotifiableDiseaseViewSet, basename="disease")
 router.register(r"cases", NotifiableCaseViewSet, basename="case")
 router.register(r"alerts", SurveillanceAlertViewSet, basename="alert")
+router.register(r"settings", SurveillanceFacilitySettingsViewSet, basename="surveillance-settings")
 router.register(r"thresholds", OutbreakThresholdViewSet, basename="threshold")
 router.register(r"idsr", IDSRWeeklyReportViewSet, basename="idsr")
 router.register(r"ihr", IHRNotificationViewSet, basename="ihr")

@@ -1584,3 +1584,11 @@ class DHIS2DataElementMapping(models.Model):
             result[key][m.indicator_type] = m.data_element_uid
 
         return result
+
+
+from .models_notifications import (  # noqa: E402,F401
+    CountyNotificationChannel,
+    CountyNotificationDelivery,
+    CountyNotificationDeliveryStatus,
+    SurveillanceFacilitySettings,
+)

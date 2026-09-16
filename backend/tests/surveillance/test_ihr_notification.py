@@ -403,6 +403,26 @@ class TestIHRSerializerValidation:
         assert "risk_assessment" in data
         assert "response_measures" in data
 
+    def test_detail_serializer_prefers_full_names_for_reviewers(self, ihr_notification, test_user):
+        """Should expose full names for reporter/reviewers when available."""
+        from hmis.apps.surveillance.serializers import IHRNotificationSerializer
+
+        test_user.first_name = "Mary"
+        test_user.last_name = "Wanjiku"
+        test_user.save(update_fields=["first_name", "last_name"])
+
+        ihr_notification.county_reviewed_by = test_user
+        ihr_notification.national_reviewed_by = test_user
+        ihr_notification.save(
+            update_fields=["county_reviewed_by", "national_reviewed_by", "updated_at"]
+        )
+
+        data = IHRNotificationSerializer(ihr_notification).data
+
+        assert data["reported_by_name"] == "Mary Wanjiku"
+        assert data["county_reviewed_by_name"] == "Mary Wanjiku"
+        assert data["national_reviewed_by_name"] == "Mary Wanjiku"
+
 
 # ============================================================================
 # API Endpoint Tests

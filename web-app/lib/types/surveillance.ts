@@ -85,6 +85,45 @@ export interface NotifiableCaseDetail {
   notified_by_name: string | null;
   created_at: string;
   updated_at: string;
+  delivery_status?: CountyNotificationDelivery[];
+}
+
+export type CountyNotificationChannel = 'SMS' | 'EMAIL';
+
+export type CountyNotificationDeliveryStatus = 'PENDING' | 'SENT' | 'RETRY_SCHEDULED' | 'FAILED';
+
+export interface CountyNotificationDelivery {
+  id: number;
+  case: number;
+  channel: CountyNotificationChannel;
+  status: CountyNotificationDeliveryStatus;
+  recipient_masked: string;
+  attempt_count: number;
+  max_retry_attempts: number;
+  retry_backoff_minutes: number;
+  last_error: string;
+  sent_at: string | null;
+  last_attempt_at: string | null;
+  next_retry_at: string | null;
+  triggered_by: number | null;
+  triggered_by_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SurveillanceFacilitySettings {
+  id: number;
+  facility: number;
+  notify_via_sms: boolean;
+  notify_via_email: boolean;
+  sms_recipient_masked: string;
+  email_recipient_masked: string;
+  include_patient_identifiers: boolean;
+  max_retry_attempts: number;
+  retry_backoff_minutes: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface NotifiableCaseListParams {

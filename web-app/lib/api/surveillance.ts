@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
 import {
+  CountyNotificationDeliveryListSchema,
   CountyReportSchema,
   ExceededThresholdListSchema,
   IDSRDashboardSchema,
@@ -24,9 +25,11 @@ import {
   PaginatedIDSRWeeklyReportSchema,
   PaginatedIHRNotificationSchema,
   SurveillanceAlertListArraySchema,
+  SurveillanceFacilitySettingsSchema,
   SurveillanceDashboardSchema,
 } from '@/lib/schemas/surveillance.schema';
 import type {
+  CountyNotificationDelivery,
   CountyReport,
   ExceededThreshold,
   IDSRDashboard,
@@ -45,6 +48,7 @@ import type {
   NotifiableDiseaseListItem,
   OutbreakThreshold,
   SurveillanceAlertListItem,
+  SurveillanceFacilitySettings,
   SurveillanceDashboard,
 } from '@/lib/types/surveillance';
 import type { PaginatedResponse } from '@/lib/types';
@@ -100,10 +104,24 @@ export const surveillanceApi = {
   async notifyCounty(id: number, notes?: string): Promise<NotifiableCaseDetail> {
     const response = await apiClient.post<NotifiableCaseDetail>(
       `/api/surveillance/cases/${id}/notify_county/`,
-      { notes: notes ?? '' }
+      { notification_notes: notes ?? '' }
     );
     return parseResponse(NotifiableCaseDetailSchema, response.data, {
       context: 'surveillanceApi.notifyCounty',
+    });
+  },
+
+  async listCaseNotificationDeliveries(id: number): Promise<CountyNotificationDelivery[]> {
+    const response = await apiClient.get(`/api/surveillance/cases/${id}/notification_deliveries/`);
+    return parseResponse(CountyNotificationDeliveryListSchema, response.data, {
+      context: 'surveillanceApi.listCaseNotificationDeliveries',
+    });
+  },
+
+  async retryCaseNotificationDeliveries(id: number): Promise<CountyNotificationDelivery[]> {
+    const response = await apiClient.post(`/api/surveillance/cases/${id}/retry_county_notifications/`);
+    return parseResponse(CountyNotificationDeliveryListSchema, response.data, {
+      context: 'surveillanceApi.retryCaseNotificationDeliveries',
     });
   },
 
@@ -140,6 +158,35 @@ export const surveillanceApi = {
     );
     return parseResponse(PaginatedNotifiableCaseSchema, response.data, {
       context: 'surveillanceApi.listImmediateCases',
+    });
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Facility Notification Settings
+  // ─────────────────────────────────────────────────────────────────────────
+  async getNotificationSettings(): Promise<SurveillanceFacilitySettings> {
+    const response = await apiClient.get('/api/surveillance/settings/current/');
+    return parseResponse(SurveillanceFacilitySettingsSchema, response.data, {
+      context: 'surveillanceApi.getNotificationSettings',
+    });
+  },
+
+  async updateNotificationSettings(
+    id: number,
+    payload: {
+      notify_via_sms?: boolean;
+      notify_via_email?: boolean;
+      sms_recipient?: string;
+      email_recipient?: string;
+      include_patient_identifiers?: boolean;
+      max_retry_attempts?: number;
+      retry_backoff_minutes?: number;
+      is_active?: boolean;
+    }
+  ): Promise<SurveillanceFacilitySettings> {
+    const response = await apiClient.patch(`/api/surveillance/settings/${id}/`, payload);
+    return parseResponse(SurveillanceFacilitySettingsSchema, response.data, {
+      context: 'surveillanceApi.updateNotificationSettings',
     });
   },
 

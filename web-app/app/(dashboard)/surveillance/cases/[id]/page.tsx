@@ -23,6 +23,7 @@ import {
   Users,
   CheckCircle2,
   XCircle,
+  RefreshCw,
 } from 'lucide-react';
 
 const STATUS_BADGE_VARIANTS: Record<
@@ -67,6 +68,12 @@ export default function NotifiableCaseDetailPage() {
     enabled: Number.isFinite(caseId),
   });
 
+  const { data: deliveryStatus = [] } = useQuery({
+    queryKey: ['notifiable-case-deliveries', caseId],
+    queryFn: () => surveillanceApi.listCaseNotificationDeliveries(caseId),
+    enabled: Number.isFinite(caseId),
+  });
+
   const { mutateAsync: notifyCounty, isPending: notifying } = useMutation({
     mutationFn: () => surveillanceApi.notifyCounty(caseId),
     onSuccess: () => {
@@ -76,11 +83,40 @@ export default function NotifiableCaseDetailPage() {
       });
       queryClient.invalidateQueries({ queryKey: ['notifiable-case', caseId] });
       queryClient.invalidateQueries({ queryKey: ['notifiable-cases'] });
+      queryClient.invalidateQueries({ queryKey: ['notifiable-case-deliveries', caseId] });
+    },
+    onError: (error: unknown) => {
+      const msg =
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: { data?: { error?: string } } }).response?.data?.error ===
+          'string'
+          ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
+          : 'Unable to notify the county.';
+      toast({
+        title: 'Notification failed',
+        description: msg,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const { mutateAsync: retryDeliveries, isPending: retryingDeliveries } = useMutation({
+    mutationFn: () => surveillanceApi.retryCaseNotificationDeliveries(caseId),
+    onSuccess: () => {
+      toast({
+        title: 'Retry triggered',
+        description: 'County notification retries have been processed.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['notifiable-case', caseId] });
+      queryClient.invalidateQueries({ queryKey: ['notifiable-cases'] });
+      queryClient.invalidateQueries({ queryKey: ['notifiable-case-deliveries', caseId] });
     },
     onError: () => {
       toast({
-        title: 'Notification failed',
-        description: 'Unable to notify the county.',
+        title: 'Retry failed',
+        description: 'Unable to retry county notifications.',
         variant: 'destructive',
       });
     },
@@ -112,6 +148,9 @@ export default function NotifiableCaseDetailPage() {
   }
 
   const canNotify = caseData.notification_status === 'PENDING';
+  const hasRetryableDeliveries = deliveryStatus.some((item) =>
+    ['FAILED', 'RETRY_SCHEDULED'].includes(item.status)
+  );
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -123,6 +162,16 @@ export default function NotifiableCaseDetailPage() {
             {canNotify && (
               <Button onClick={() => notifyCounty()} disabled={notifying}>
                 {notifying ? 'Notifying...' : 'Notify County'}
+              </Button>
+            )}
+            {hasRetryableDeliveries && (
+              <Button
+                variant="outline"
+                onClick={() => retryDeliveries()}
+                disabled={retryingDeliveries}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                {retryingDeliveries ? 'Retrying...' : 'Retry Delivery'}
               </Button>
             )}
           </div>
@@ -332,6 +381,50 @@ export default function NotifiableCaseDetailPage() {
               label="Contacts Identified"
               value={caseData.contacts_identified}
             />
+          </CardContent>
+        </Card>
+
+        {/* Delivery Status */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-base sm:text-lg">County Delivery Status</CardTitle>
+              <HelpPopover content="Outbound county notification attempts by channel with retry state." />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {deliveryStatus.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No delivery attempts yet.</p>
+            ) : (
+              deliveryStatus.map((delivery) => (
+                <div
+                  key={delivery.id}
+                  className="rounded-md border border-border/60 p-3 text-sm"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium">{delivery.channel}</span>
+                    <Badge
+                      variant={
+                        delivery.status === 'SENT'
+                          ? 'success'
+                          : delivery.status === 'FAILED'
+                            ? 'destructive'
+                            : 'warning'
+                      }
+                    >
+                      {delivery.status}
+                    </Badge>
+                  </div>
+                  <p className="mt-1 text-muted-foreground">Recipient: {delivery.recipient_masked}</p>
+                  <p className="text-muted-foreground">
+                    Attempts: {delivery.attempt_count} / {delivery.max_retry_attempts}
+                  </p>
+                  {delivery.last_error ? (
+                    <p className="mt-1 text-destructive">Last error: {delivery.last_error}</p>
+                  ) : null}
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
       </div>

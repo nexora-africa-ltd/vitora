@@ -366,6 +366,12 @@ const _allNavItems: NavItemType[] = [
         icon: SquareActivity,
         actionKey: 'surveillance.manage_thresholds',
       },
+      {
+        label: 'Settings',
+        href: '/surveillance/settings',
+        icon: Settings,
+        actionKey: 'surveillance.manage_thresholds',
+      },
     ],
   },
   {
