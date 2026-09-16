@@ -26,7 +26,11 @@ class WardRoundViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     tenant_facility_chain = "admission__facility"
     tenant_org_chain = "admission__organization"
-    queryset = WardRound.objects.all()
+    queryset = WardRound.objects.select_related(
+        "admission__patient",
+        "conducted_by",
+        "review_request",
+    )
     serializer_class = WardRoundSerializer
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]

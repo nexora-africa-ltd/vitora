@@ -1249,11 +1249,17 @@ class LabResult(models.Model):
         Returns:
             dict: Validation summary including status and requirements
         """
-        validations = self.validations.all()
+        validations = list(self.validations.all())
         requires_clinical = self.order_item.test.requires_clinical_signoff
 
-        technical = validations.filter(validation_type="TECHNICAL").first()
-        clinical = validations.filter(validation_type="CLINICAL").first()
+        technical = next(
+            (validation for validation in validations if validation.validation_type == "TECHNICAL"),
+            None,
+        )
+        clinical = next(
+            (validation for validation in validations if validation.validation_type == "CLINICAL"),
+            None,
+        )
 
         return {
             "requires_clinical_signoff": requires_clinical,

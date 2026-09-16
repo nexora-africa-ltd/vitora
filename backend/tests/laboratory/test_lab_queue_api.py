@@ -8,6 +8,8 @@ from datetime import timedelta
 
 import pytest  # type: ignore
 from django.contrib.auth import get_user_model
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from rest_framework import status
 
@@ -106,6 +108,27 @@ class TestLabQueueList:
         )
         assert len(data) >= 1
         assert data[0]["queue_number"] == sample_lab_queue.queue_number
+
+    def test_list_lab_queue_avoids_per_specimen_order_item_queries(
+        self, authenticated_client, sample_lab_queue, test_catalog
+    ):
+        """Queue list preloads specimen item IDs and order test details."""
+        from hmis.apps.laboratory.models import Specimen
+
+        specimen = Specimen.objects.create(
+            barcode="NPLUSONE-SPECIMEN",
+            specimen_type="BLOOD",
+            lab_order=sample_lab_queue.lab_order,
+        )
+        specimen.order_items.add(*sample_lab_queue.lab_order.items.all())
+        sample_lab_queue.specimen = specimen
+        sample_lab_queue.save(update_fields=["specimen"])
+
+        with CaptureQueriesContext(connection) as context:
+            response = authenticated_client.get("/api/lab/queue/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(context.captured_queries) <= 12
 
     def test_list_lab_queue_unauthenticated(self, api_client, sample_lab_queue):
         """Should reject unauthenticated requests."""

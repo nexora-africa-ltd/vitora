@@ -88,6 +88,12 @@ class PatientLabOrderViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewS
             .get_queryset()
             .filter(patient_id=patient_pk)
             .select_related("patient", "encounter", "ordered_by")
+            .prefetch_related(
+                "items__test",
+                "items__result__entered_by",
+                "items__result__verified_by",
+                "items__result__validations__validated_by",
+            )
         )
 
 
@@ -114,6 +120,12 @@ class EncounterLabOrderViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelVie
             .get_queryset()
             .filter(encounter_id=encounter_id)
             .select_related("patient", "encounter", "ordered_by")
+            .prefetch_related(
+                "items__test",
+                "items__result__entered_by",
+                "items__result__verified_by",
+                "items__result__validations__validated_by",
+            )
         )
 
 
@@ -135,7 +147,13 @@ class PatientLabResultViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelView
             super()
             .get_queryset()
             .filter(order_item__lab_order__patient_id=patient_pk)
-            .select_related("order_item__test", "entered_by")
+            .select_related(
+                "order_item__test",
+                "order_item__lab_order__patient",
+                "entered_by",
+                "verified_by",
+            )
+            .prefetch_related("validations__validated_by")
         )
 
 
@@ -254,7 +272,7 @@ class LabQueueViewSet(AuditedMutationMixin, NestedTenantScopeMixin, viewsets.Mod
             "specimen",
             "specimen__collected_by",
             "specimen__received_by",
-        ).prefetch_related("lab_order__items__test")
+        ).prefetch_related("lab_order__items__test", "specimen__order_items")
 
     def get_serializer_class(self):
         from .serializers import (

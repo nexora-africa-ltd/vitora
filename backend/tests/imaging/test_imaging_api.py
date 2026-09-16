@@ -11,6 +11,8 @@ from datetime import timedelta
 from decimal import Decimal
 
 import pytest  # type: ignore
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from rest_framework import status
 
@@ -231,6 +233,33 @@ class TestImagingOrderAPI:
         response = authenticated_client.get("/api/imaging/orders/")
         assert response.status_code == status.HTTP_200_OK
         assert "results" in response.data
+
+    def test_list_orders_avoids_per_order_item_and_report_queries(
+        self,
+        authenticated_client,
+        sample_imaging_order,
+        sample_patient,
+        sample_encounter,
+        test_user,
+        procedure,
+    ):
+        """Imaging list query count stays bounded while serializing nested items."""
+        for index in range(3):
+            order = ImagingOrder.objects.create(
+                patient=sample_patient,
+                encounter=sample_encounter,
+                ordered_by=test_user,
+                clinical_indication=f"Follow-up {index}",
+            )
+            ImagingOrderItem.objects.create(
+                order=order, procedure=procedure, unit_cost=procedure.cost
+            )
+
+        with CaptureQueriesContext(connection) as context:
+            response = authenticated_client.get("/api/imaging/orders/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(context.captured_queries) <= 12
 
     def test_list_orders_pagination(self, authenticated_client, sample_imaging_order):
         """Should paginate order list."""

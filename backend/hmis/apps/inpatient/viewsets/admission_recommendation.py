@@ -30,7 +30,11 @@ User = get_user_model()
 class AdmissionRecommendationViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """ViewSet for AdmissionRecommendation model."""
 
-    queryset = AdmissionRecommendation.objects.all()
+    queryset = AdmissionRecommendation.objects.select_related(
+        "encounter__patient",
+        "recommended_by",
+        "resolved_by",
+    )
     serializer_class = AdmissionRecommendationSerializer
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]

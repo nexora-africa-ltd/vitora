@@ -339,6 +339,7 @@ class PatientListSerializer(serializers.ModelSerializer):
             "registered_at_facility",
             "registered_at_facility_name",
             "is_sensitive",
+            "is_deceased",
             "created_at",
         ]
         read_only_fields = fields

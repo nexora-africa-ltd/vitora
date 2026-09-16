@@ -11,6 +11,8 @@ Tests AdmissionRecommendation and Admission ViewSets with:
 
 import pytest  # type: ignore
 from django.contrib.auth import get_user_model
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from rest_framework import status
 
@@ -126,6 +128,45 @@ class TestAdmissionRecommendationAPI:
         assert response.status_code == status.HTTP_200_OK
         for rec in response.data["results"]:
             assert rec["status"] == "PENDING"
+
+    def test_recommendation_list_loads_related_records_without_query_fan_out(
+        self, authenticated_client, sample_admission_recommendation
+    ):
+        """Recommendation list serialization should join encounter, patient, and users."""
+        with CaptureQueriesContext(connection) as context:
+            response = authenticated_client.get("/api/inpatient/admission-recommendations/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) >= 1
+        assert len(context.captured_queries) <= 8
+
+
+@pytest.mark.django_db
+class TestReviewRequestAPIQueries:
+    """Regression tests for review-request list query loading."""
+
+    def test_review_request_list_loads_related_records_without_query_fan_out(
+        self, authenticated_client, sample_admission, test_user
+    ):
+        """Review-request list serialization should join admission, patient, bed, and users."""
+        from hmis.apps.inpatient.models import ReviewRequest
+
+        for index in range(3):
+            ReviewRequest.objects.create(
+                admission=sample_admission,
+                review_type="URGENT_REVIEW",
+                urgency="URGENT",
+                reason=f"Clinical review {index}",
+                requested_by=test_user,
+                assigned_to=test_user,
+            )
+
+        with CaptureQueriesContext(connection) as context:
+            response = authenticated_client.get("/api/inpatient/review-requests/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 3
+        assert len(context.captured_queries) <= 8
 
 
 @pytest.mark.django_db

@@ -8,13 +8,16 @@ Tests cover Kardex auto-creation, shift notes (append-only), handover notes, ris
 import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from rest_framework import status
 
 from hmis.apps.inpatient.models import (
     KardexFieldChange,
     KardexHandoverNote,
+    KardexScheduleItem,
     KardexShiftNote,
+    NursingCarePlanEntry,
     NursingKardex,
 )
 
@@ -504,3 +507,44 @@ class TestKardexFieldChangeHistoryAPI:
             f"/api/inpatient/kardex/{kardex.id}/delete-schedule-item/{item_id}/"
         )
         assert delete_response.status_code == status.HTTP_204_NO_CONTENT
+
+    def test_kardex_list_loads_nested_data_without_query_fan_out(
+        self, authenticated_client, sample_admission, test_user, another_user
+    ):
+        """Kardex list serialization should prefetch its nested nursing records."""
+        from django.db import connection
+
+        kardex = sample_admission.kardex
+        KardexShiftNote.objects.create(
+            kardex=kardex, shift="DAY", nurse=test_user, content="Stable"
+        )
+        KardexHandoverNote.objects.create(
+            kardex=kardex,
+            outgoing_nurse=test_user,
+            incoming_nurse=another_user,
+            shift_ending="DAY",
+            pending_tasks="Continue observations",
+        )
+        KardexScheduleItem.objects.create(
+            kardex=kardex,
+            item_type="VITALS_CHECK",
+            title="Vitals",
+            scheduled_for=timezone.now(),
+            created_by=test_user,
+        )
+        NursingCarePlanEntry.objects.create(
+            kardex=kardex,
+            recorded_at=timezone.now(),
+            recorded_by=test_user,
+            assessment="Assessment",
+            nursing_diagnosis="Diagnosis",
+            goal_and_outcome_criteria="Goal",
+            plan_of_action="Plan",
+            scientific_rationale="Rationale",
+        )
+
+        with CaptureQueriesContext(connection) as context:
+            response = authenticated_client.get("/api/inpatient/kardex/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(context.captured_queries) <= 14

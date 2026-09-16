@@ -810,7 +810,7 @@ class LabQueueSpecimenSerializer(serializers.ModelSerializer):
         return None
 
     def get_order_items(self, obj) -> list[int]:
-        return list(obj.order_items.values_list("id", flat=True))
+        return [item.id for item in obj.order_items.all()]
 
 
 class LabQueueSerializer(serializers.ModelSerializer):
@@ -931,7 +931,7 @@ class LabQueueSerializer(serializers.ModelSerializer):
 
     def get_expected_tat_hours(self, obj) -> int | None:
         """Get expected TAT from first test in order."""
-        first_item = obj.lab_order.items.first()
+        first_item = next(iter(obj.lab_order.items.all()), None)
         if first_item and first_item.test:
             return first_item.test.turnaround_hours
         return 24  # Default 24 hours

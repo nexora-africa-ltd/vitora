@@ -42,7 +42,10 @@ class DischargeViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     queryset = Discharge.objects.select_related(
         "admission",
+        "admission__patient",
+        "admission__patient__death_record",
         "admission__mch_registration",
+        "discharged_by",
         "pnc_clinic_visit",
         "pnc_appointment",
     ).prefetch_related("diagnoses")

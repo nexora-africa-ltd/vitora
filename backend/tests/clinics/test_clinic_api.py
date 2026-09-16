@@ -24,6 +24,8 @@ from decimal import Decimal
 
 import pytest  # type: ignore
 from django.contrib.auth import get_user_model
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
@@ -302,6 +304,27 @@ class TestClinicViewSet:
         clinic_codes = [c["code"] for c in response.data["results"]]
         assert "CCC-001" not in clinic_codes
 
+    def test_list_clinics_uses_constant_queries_for_open_and_scheduled_status(
+        self, authenticated_client, sample_clinic, sample_facility, sample_organization
+    ):
+        """Clinic list should annotate today's status instead of querying per clinic."""
+        from hmis.apps.clinics.models import Clinic
+
+        for index in range(3):
+            Clinic.objects.create(
+                name=f"Additional Clinic {index}",
+                clinic_type="GENERAL_OPD",
+                code=f"OPD-N1-{index}",
+                facility=sample_facility,
+                organization=sample_organization,
+            )
+
+        with CaptureQueriesContext(connection) as context:
+            response = authenticated_client.get(reverse("clinic-list"))
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(context.captured_queries) <= 7
+
     # -------------------------------------------------------------------------
     # Retrieve Clinic
     # -------------------------------------------------------------------------
@@ -552,6 +575,63 @@ class TestClinicQueueEndpoints:
         # Emergency should be first
         assert response.data["results"][0]["priority"] == "EMERGENCY"
 
+    def test_get_clinic_queue_uses_constant_queries_per_visit(
+        self,
+        authenticated_client,
+        sample_clinic,
+        sample_clinic_session,
+        sample_clinic_visit,
+        sample_facility,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
+        clinic_doctor_user,
+    ):
+        """Queue serialization should not query a visit's room or registrar per row."""
+        from hmis.apps.clinics.models import ClinicVisit
+        from hmis.apps.patients.models import Patient
+        from hmis.apps.scheduling.models import Resource
+
+        room = Resource.objects.create(
+            name="Queue Room",
+            resource_type="PLACE",
+            code="QUEUE-N1-ROOM",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        sample_clinic_visit.room = room
+        sample_clinic_visit.save(update_fields=["room"])
+        for index in range(2):
+            patient = Patient.objects.create(
+                first_name=f"Queue{index}",
+                last_name="Patient",
+                date_of_birth="1990-01-01",
+                gender="M",
+                county=sample_county,
+                sub_county=sample_sub_county,
+                organization=sample_organization,
+            )
+            ClinicVisit.objects.create(
+                session=sample_clinic_session,
+                patient=patient,
+                status="WAITING",
+                priority="STANDARD",
+                visit_type="NEW",
+                source="DIRECT",
+                registered_by=clinic_doctor_user,
+                room=room,
+                facility=sample_facility,
+                organization=sample_organization,
+            )
+
+        with CaptureQueriesContext(connection) as context:
+            response = authenticated_client.get(
+                reverse("clinic-queue", kwargs={"pk": sample_clinic.pk})
+            )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(context.captured_queries) <= 7
+
     def test_add_patient_to_queue(
         self, authenticated_client, sample_clinic, sample_clinic_session, sample_patient
     ):
@@ -605,6 +685,60 @@ class TestClinicVisitViewSet:
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) >= 1
+
+    def test_list_clinic_visits_uses_constant_queries_per_visit(
+        self,
+        authenticated_client,
+        sample_clinic_session,
+        sample_clinic_visit,
+        sample_facility,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
+        clinic_doctor_user,
+    ):
+        """General visit lists should not query each visit's room and registrar."""
+        from hmis.apps.clinics.models import ClinicVisit
+        from hmis.apps.patients.models import Patient
+        from hmis.apps.scheduling.models import Resource
+
+        room = Resource.objects.create(
+            name="Visit List Room",
+            resource_type="PLACE",
+            code="VISIT-N1-ROOM",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        sample_clinic_visit.room = room
+        sample_clinic_visit.save(update_fields=["room"])
+        for index in range(2):
+            patient = Patient.objects.create(
+                first_name=f"Visit{index}",
+                last_name="Patient",
+                date_of_birth="1990-01-01",
+                gender="F",
+                county=sample_county,
+                sub_county=sample_sub_county,
+                organization=sample_organization,
+            )
+            ClinicVisit.objects.create(
+                session=sample_clinic_session,
+                patient=patient,
+                status="WAITING",
+                priority="STANDARD",
+                visit_type="NEW",
+                source="DIRECT",
+                registered_by=clinic_doctor_user,
+                room=room,
+                facility=sample_facility,
+                organization=sample_organization,
+            )
+
+        with CaptureQueriesContext(connection) as context:
+            response = authenticated_client.get(reverse("clinicvisit-list"))
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(context.captured_queries) <= 7
 
     def test_list_clinic_visits_filter_by_status(self, authenticated_client, sample_clinic_visit):
         """Can filter visits by status."""

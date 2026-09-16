@@ -21,6 +21,7 @@ from datetime import date, time, timedelta
 import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
+from django.test.utils import CaptureQueriesContext
 from rest_framework import status
 
 from hmis.apps.encounters.models import VitalFlagSuggestion
@@ -397,6 +398,31 @@ class TestWardRoundQueries:
         # Most recent should be first
         assert rounds[0].subjective == "Day 0"
         assert rounds[-1].subjective == "Day 2"
+
+    def test_ward_round_list_loads_related_records_without_query_fan_out(
+        self, authenticated_client, sample_admission, test_user
+    ):
+        """Ward-round list serialization should join admission, patient, and clinician."""
+        from django.db import connection
+
+        for index in range(3):
+            WardRound.objects.create(
+                admission=sample_admission,
+                round_date=date.today(),
+                round_time=time(9, index),
+                conducted_by=test_user,
+                subjective=f"Subjective {index}",
+                objective="Objective",
+                assessment="Assessment",
+                plan="Plan",
+                condition_status="STABLE",
+            )
+
+        with CaptureQueriesContext(connection) as context:
+            response = authenticated_client.get("/api/inpatient/ward-rounds/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(context.captured_queries) <= 8
 
 
 @pytest.mark.django_db

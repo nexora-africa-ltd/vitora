@@ -9,6 +9,8 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest  # type: ignore
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -42,6 +44,32 @@ class TestInvoiceAPIEndpoints:
 
         assert response.status_code == status.HTTP_200_OK
         assert "results" in response.data or isinstance(response.data, list)
+
+    def test_list_invoices_avoids_per_invoice_serializer_queries(
+        self, authenticated_client, sample_invoice, sample_facility, test_user
+    ):
+        """Invoice list query count stays bounded as nested rows are serialized."""
+        for index in range(3):
+            invoice = Invoice.objects.create(
+                patient=sample_invoice.patient,
+                facility=sample_facility,
+                organization=sample_facility.organization,
+                due_date=date.today() + timedelta(days=30),
+                created_by=test_user,
+            )
+            InvoiceItem.objects.create(
+                invoice=invoice,
+                description=f"Consultation {index}",
+                quantity=Decimal("1.00"),
+                unit_price=Decimal("100.00"),
+                line_total=Decimal("100.00"),
+            )
+
+        with CaptureQueriesContext(connection) as context:
+            response = authenticated_client.get("/api/billing/invoices/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(context.captured_queries) <= 16
 
     def test_list_invoices_unauthenticated_fails(self, api_client):
         """Test unauthenticated access is rejected."""

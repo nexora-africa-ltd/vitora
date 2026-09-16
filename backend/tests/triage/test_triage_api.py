@@ -9,6 +9,8 @@ from decimal import Decimal
 
 import pytest  # type: ignore
 from django.contrib.auth.models import Permission
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from rest_framework import status
 
@@ -342,6 +344,60 @@ class TestQueueEndpoints:
         response = authenticated_client.get("/api/triage/queue/")
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) >= 1
+
+    def test_queue_selects_assigned_clinic_for_each_entry(
+        self,
+        authenticated_client,
+        test_user,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+    ):
+        """Assigned clinic names should not issue a query for every queue entry."""
+        from hmis.apps.clinics.models import Clinic
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.triage.models import TriageAssessment, TriageQueue
+
+        permission = Permission.objects.get(codename="view_triage_queue")
+        test_user.user_permissions.add(permission)
+        clinic = Clinic.objects.create(
+            name="Triage Queue Clinic",
+            clinic_type="GENERAL_OPD",
+            code="TRIAGE-N1",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        for index in range(3):
+            encounter = Encounter.objects.create(
+                patient=sample_encounter.patient,
+                encounter_type="OPD",
+                chief_complaint=f"Queue complaint {index}",
+                facility=sample_facility,
+            )
+            assessment = TriageAssessment.objects.create(
+                encounter=encounter,
+                chief_complaint=f"Queue complaint {index}",
+                chief_complaint_category="OTHER",
+                mental_status="A",
+                mobility="AMBULATORY",
+                triage_category="GREEN",
+                auto_calculated_category="GREEN",
+                assigned_clinic=clinic,
+                arrival_time=timezone.now(),
+                triage_start_time=timezone.now(),
+                triaged_by=test_user,
+                facility=sample_facility,
+            )
+            TriageQueue.objects.create(
+                triage_assessment=assessment, position=index, status="WAITING"
+            )
+
+        with CaptureQueriesContext(connection) as context:
+            response = authenticated_client.get("/api/triage/queue/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 3
+        assert len(context.captured_queries) <= 7
 
     def test_queue_excludes_completed(self, authenticated_client, test_user, sample_encounter):
         """Should exclude completed entries from queue."""

@@ -166,7 +166,11 @@ class ImagingOrderSerializer(serializers.ModelSerializer):
 
     def get_report_summary(self, obj) -> dict | None:
         """Return findings/impression from the most recent report revision."""
-        report = obj.reports.order_by("-created_at").first()
+        prefetched = getattr(obj, "_prefetched_objects_cache", {})
+        if "reports" in prefetched:
+            report = prefetched["reports"][0] if prefetched["reports"] else None
+        else:
+            report = obj.reports.order_by("-created_at").first()
         if report is None:
             return None
         return {

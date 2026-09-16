@@ -77,10 +77,14 @@ class ClinicSerializer(serializers.ModelSerializer):
 
     def get_is_open_today(self, obj) -> bool:
         """Check if clinic has an open session today."""
+        if hasattr(obj, "is_open_today_annotated"):
+            return obj.is_open_today_annotated
         return obj.is_open_today()
 
     def get_is_scheduled_today(self, obj) -> bool:
         """Check if clinic is scheduled to operate today."""
+        if hasattr(obj, "is_scheduled_today_annotated"):
+            return obj.is_scheduled_today_annotated
         return obj.is_scheduled_today()
 
     def validate_code(self, value):
@@ -135,10 +139,14 @@ class ClinicListSerializer(serializers.ModelSerializer):
 
     def get_is_open_today(self, obj) -> bool:
         """Check if clinic has an open session today."""
+        if hasattr(obj, "is_open_today_annotated"):
+            return obj.is_open_today_annotated
         return obj.is_open_today()
 
     def get_is_scheduled_today(self, obj) -> bool:
         """Check if clinic is scheduled to operate today."""
+        if hasattr(obj, "is_scheduled_today_annotated"):
+            return obj.is_scheduled_today_annotated
         return obj.is_scheduled_today()
 
 

@@ -7,6 +7,7 @@ Supported inputs/args: DRF request payloads/query params handled by NursingKarde
 # ruff: noqa: ARG002
 
 from django.contrib.auth import get_user_model
+from django.db.models import Prefetch
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
@@ -65,7 +66,32 @@ class NursingKardexViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     tenant_facility_chain = "admission__facility"
     tenant_org_chain = "admission__organization"
-    queryset = NursingKardex.objects.all()
+    queryset = NursingKardex.objects.select_related(
+        "admission__patient",
+        "admission__ward",
+        "admission__bed",
+    ).prefetch_related(
+        Prefetch("shift_notes", queryset=KardexShiftNote.objects.select_related("nurse")),
+        Prefetch(
+            "handover_notes",
+            queryset=KardexHandoverNote.objects.select_related("outgoing_nurse", "incoming_nurse"),
+        ),
+        Prefetch(
+            "schedule_items",
+            queryset=KardexScheduleItem.objects.select_related("created_by").order_by(
+                "scheduled_for"
+            ),
+            to_attr="prefetched_schedule_items",
+        ),
+        Prefetch(
+            "care_plan_entries",
+            queryset=NursingCarePlanEntry.objects.select_related("recorded_by"),
+        ),
+        Prefetch(
+            "field_change_history",
+            queryset=KardexFieldChange.objects.select_related("changed_by"),
+        ),
+    )
     serializer_class = NursingKardexSerializer
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
