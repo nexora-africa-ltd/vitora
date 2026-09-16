@@ -1,0 +1,54 @@
+# Vitora staging-only Locust capacity test. Run manually after preparing isolated data.
+name: Staging Load Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      users:
+        description: Concurrent virtual users
+        required: true
+        default: '10'
+      run_time:
+        description: Locust run duration
+        required: true
+        default: 5m
+
+jobs:
+  locust:
+    name: Locust staging capacity test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: staging
+    permissions:
+      contents: read
+    env:
+      LOCUST_HOST: https://staging-api.vitora.digital
+      LOCUST_USERNAME: ${{ secrets.LOCUST_USERNAME }}
+      LOCUST_PASSWORD: ${{ secrets.LOCUST_PASSWORD }}
+      LOCUST_FACILITY_ID: ${{ vars.LOCUST_FACILITY_ID }}
+      LOCUST_PATIENT_ID: ${{ vars.LOCUST_PATIENT_ID }}
+      LOCUST_CREATE_WRITES: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: snok/install-poetry@v1
+      - name: Install load-test dependencies
+        working-directory: backend
+        run: poetry install --with load-test
+      - name: Run read-only clinical workload
+        working-directory: backend
+        run: >-
+          poetry run locust -f tests/integration/locustfile.py --host "$LOCUST_HOST"
+          --headless --users "${{ inputs.users }}" --spawn-rate 2
+          --run-time "${{ inputs.run_time }}" --html locust-report.html
+          --csv locust-results --only-summary
+      - name: Upload Locust report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-locust-results
+          path: |
+            backend/locust-report.html
+            backend/locust-results*.csv

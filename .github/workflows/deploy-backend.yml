@@ -38,6 +38,13 @@ jobs:
     env:
       DEPLOY_ENV: ${{ github.event.inputs.environment || (github.ref_name == 'main' && 'production') || 'staging' }}
       CONTAINER_APP_NAME: ${{ (github.event.inputs.environment == 'production' || github.ref_name == 'main') && 'vitora-api-private-prod-sa' || 'vitora-api-private-sa' }}
+      WORKER_APP_NAME: ${{ (github.event.inputs.environment == 'production' || github.ref_name == 'main') && 'vitora-worker-private-prod-sa' || 'vitora-worker-private-sa' }}
+      BEAT_APP_NAME: ${{ (github.event.inputs.environment == 'production' || github.ref_name == 'main') && 'vitora-beat-private-prod-sa' || 'vitora-beat-private-sa' }}
+      ASYNC_WORKERS_ENABLED: ${{ vars.ASYNC_WORKERS_ENABLED || 'false' }}
+      API_MIN_REPLICAS: 1
+      API_MAX_REPLICAS: ${{ vars.ASYNC_WORKERS_ENABLED == 'true' && 6 || 1 }}
+      WORKER_MIN_REPLICAS: 1
+      WORKER_MAX_REPLICAS: 4
 
     steps:
       - name: Checkout code
@@ -106,6 +113,7 @@ jobs:
             DJANGO_SETTINGS_MODULE=hmis.settings.${{ env.DEPLOY_ENV }} \
             DATABASE_URL=secretref:database-url \
             DB_CONN_MAX_AGE=${{ vars.DB_CONN_MAX_AGE || (env.DEPLOY_ENV == 'production' && '600' || '60') }} \
+            REDIS_URL=${{ env.ASYNC_WORKERS_ENABLED == 'true' && 'secretref:redis-url' || '' }} \
             ENCRYPTION_KEY=secretref:encryption-key \
             PII_HMAC_KEY=secretref:pii-hmac-key \
             AZURE_STORAGE_CONNECTION_STRING=secretref:azure-storage-connection-string \
@@ -134,7 +142,7 @@ jobs:
             CLOUD_API_BASE_URL=${{ vars.CLOUD_API_BASE_URL || (env.DEPLOY_ENV == 'production' && 'https://api.vitora.digital' || 'https://staging-api.vitora.digital') }} \
             SYNC_SERVER_URL=${{ vars.SYNC_SERVER_URL || (env.DEPLOY_ENV == 'production' && 'https://api.vitora.digital/api/sync' || 'https://staging-api.vitora.digital/api/sync') }} \
             DEFAULT_FROM_EMAIL=noreply@vitora.digital \
-            CELERY_TASK_ALWAYS_EAGER=${{ env.DEPLOY_ENV == 'staging' && 'true' || 'false' }} \
+            CELERY_TASK_ALWAYS_EAGER=${{ env.ASYNC_WORKERS_ENABLED == 'true' && 'false' || 'true' }} \
             SHA_ENABLED=true \
             SHA_API_BASE_URL=https://uat.dha.go.ke \
             SHA_AUTH_MODE=${{ vars.SHA_AUTH_MODE || 'ilm' }} \
@@ -259,6 +267,77 @@ jobs:
             LICENSE_SIGNING_KEY=secretref:license-signing-key \
             LOINC_USERNAME=secretref:loinc-username \
             LOINC_PASSWORD=secretref:loinc-password \
+            --output none
+
+      - name: Configure Redis for distributed async processing
+        if: env.ASYNC_WORKERS_ENABLED == 'true'
+        env:
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+        run: |
+          if [[ -z "$REDIS_URL" ]]; then
+            echo "REDIS_URL must be configured when ASYNC_WORKERS_ENABLED=true." >&2
+            exit 1
+          fi
+          for APP_NAME in "${{ env.CONTAINER_APP_NAME }}" "${{ env.WORKER_APP_NAME }}" "${{ env.BEAT_APP_NAME }}"; do
+            az containerapp secret set \
+              --name "$APP_NAME" \
+              --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+              --secrets "redis-url=$REDIS_URL" \
+              --output none
+          done
+
+      - name: Apply bounded API autoscaling
+        run: |
+          az containerapp update \
+            --name "${{ env.CONTAINER_APP_NAME }}" \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --min-replicas "${{ env.API_MIN_REPLICAS }}" \
+            --max-replicas "${{ env.API_MAX_REPLICAS }}" \
+            --scale-rule-name http-concurrency \
+            --scale-rule-type http \
+            --scale-rule-http-concurrency 80 \
+            --output none
+
+      - name: Disable distributed async processes for budget mode
+        if: env.ASYNC_WORKERS_ENABLED != 'true'
+        run: |
+          for APP_NAME in "${{ env.WORKER_APP_NAME }}" "${{ env.BEAT_APP_NAME }}"; do
+            if az containerapp show --name "$APP_NAME" --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" >/dev/null 2>&1; then
+              az containerapp update \
+                --name "$APP_NAME" \
+                --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+                --min-replicas 0 \
+                --max-replicas 1 \
+                --output none
+            fi
+          done
+
+      - name: Deploy worker and singleton scheduler
+        if: env.ASYNC_WORKERS_ENABLED == 'true'
+        run: |
+          for APP_NAME in "${{ env.WORKER_APP_NAME }}" "${{ env.BEAT_APP_NAME }}"; do
+            if ! az containerapp show --name "$APP_NAME" --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" >/dev/null 2>&1; then
+              echo "Missing $APP_NAME. Provision the API, worker, and Beat topology with scripts/azure-provision-sa-api-apps.sh before deployment." >&2
+              exit 1
+            fi
+          done
+
+          az containerapp update \
+            --name "${{ env.WORKER_APP_NAME }}" \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --image "${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}" \
+            --min-replicas "${{ env.WORKER_MIN_REPLICAS }}" \
+            --max-replicas "${{ env.WORKER_MAX_REPLICAS }}" \
+            --set-env-vars VITORA_PROCESS=worker REDIS_URL=secretref:redis-url CELERY_TASK_ALWAYS_EAGER=false \
+            --output none
+
+          az containerapp update \
+            --name "${{ env.BEAT_APP_NAME }}" \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --image "${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}" \
+            --min-replicas 1 \
+            --max-replicas 1 \
+            --set-env-vars VITORA_PROCESS=beat REDIS_URL=secretref:redis-url CELERY_TASK_ALWAYS_EAGER=false \
             --output none
 
       - name: Run post-deploy maintenance
