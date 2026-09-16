@@ -1,7 +1,7 @@
 .PHONY: help install test lint format type-check security clean \
 	staging-status staging-logs staging-logs-100 staging-exec staging-seed \
 	staging-migrate staging-shell staging-restart staging-env staging-secrets \
-	staging-deploy staging-verify staging-login-test load-test-smoke check-ilm \
+	staging-deploy staging-verify staging-login-test load-test-smoke load-test-ui check-ilm \
 	prod-deploy prod-env prod-logs prod-exec prod-shell prod-status prod-restart prod-verify \
 	runserver api api-wsgi kill-api r notif-burst notif-burst5
 
@@ -38,6 +38,7 @@ help:
 	@echo "  inferno-smoke - Seed FHIR test data and start the local Inferno IPS smoke flow"
 	@echo "  test-fhir-release - Prepare Inferno smoke flow and run live HAPI integration validation"
 	@echo "  load-test-smoke - Run a 60-second Locust smoke test against an explicit non-production host"
+	@echo "  load-test-ui    - Start Locust's loopback-only interactive UI against an explicit non-production host"
 	@echo ""
 	@echo "Per-app tests (fast, no coverage):"
 	@echo "  test-encounters  test-patients    test-triage"
@@ -210,6 +211,17 @@ load-test-smoke:
 		echo "Refusing to run Locust against a host that is not explicitly local or staging."; exit 1 ;; esac
 	poetry run locust -f tests/integration/locustfile.py --host "$(LOCUST_HOST)" \
 		--headless --users 2 --spawn-rate 1 --run-time 60s --only-summary
+
+load-test-ui:
+	@if [ -z "$(LOCUST_HOST)" ]; then \
+		echo "Usage: make load-test-ui LOCUST_HOST=<staging-or-local-url>"; \
+		exit 1; \
+	fi
+	@case "$(LOCUST_HOST)" in *"localhost"*|*"127.0.0.1"*|*"staging"*) ;; *) \
+		echo "Refusing to expose Locust controls for a host that is not explicitly local or staging."; exit 1 ;; esac
+	@echo "Locust UI: http://127.0.0.1:8089"
+	poetry run locust -f tests/integration/locustfile.py --host "$(LOCUST_HOST)" \
+		--web-host 127.0.0.1 --web-port 8089
 
 test-contracts:
 	poetry run pytest tests/contracts/ -v --no-cov

@@ -73,6 +73,22 @@ LOCUST_USERNAME=... LOCUST_PASSWORD=... LOCUST_FACILITY_ID=... \
 
 Record concurrent users, duration, request count, error rate, p95/p99 latency, database connection count, CPU, memory, Redis metrics, and Celery queue age for each accepted capacity baseline. Never run generic Locust traffic against production or use real patient data.
 
+### Interactive Locust UI
+
+Use the built-in Locust UI for exploratory staging or local runs. It is intentionally bound to
+`127.0.0.1`, so its traffic controls and results are never publicly reachable:
+
+```bash
+cd backend
+LOCUST_USERNAME=... LOCUST_PASSWORD=... LOCUST_FACILITY_ID=... \
+  make load-test-ui LOCUST_HOST=https://staging-api.vitora.digital
+```
+
+Open `http://127.0.0.1:8089`, select a small user count and spawn rate, then start the run.
+Use the headless `make load-test-smoke` target and GitHub workflow for repeatable baselines and
+artifacts. Do not use either target with production credentials, real patient data, or a
+publicly exposed Locust UI.
+
 ## Recovery Validation
 
 `restore-drill.yml` runs monthly in an isolated PostgreSQL service, downloads the latest encrypted Azure Blob backup, validates its checksum, restores it, and checks migration data exists. Review its duration and result against the recovery objectives after every run. A failed drill is a production incident until corrected.

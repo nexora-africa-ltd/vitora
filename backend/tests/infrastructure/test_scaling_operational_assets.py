@@ -81,3 +81,12 @@ def test_load_test_workflow_is_manual_and_staging_only():
     assert "poetry install --with load-test" in workflow
     assert "LOCUST_PASSWORD" in workflow
     assert "upload-artifact" in workflow
+
+
+def test_makefile_exposes_a_loopback_bound_locust_ui_target():
+    """Interactive load testing must remain local to the operator's machine."""
+    makefile = (REPO_ROOT / "backend" / "Makefile").read_text()
+
+    assert "load-test-ui:" in makefile
+    assert "--web-host 127.0.0.1" in makefile
+    assert "LOCUST_HOST" in makefile
