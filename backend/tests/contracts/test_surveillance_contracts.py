@@ -430,6 +430,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "notification_notes",
+                "notes",
             }
         ),
     ),
