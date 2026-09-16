@@ -67,6 +67,7 @@ sentry-sdk = {extras = ["django", "celery"], version = "^2.35.0"}
 openai = "^3.5.0"
 sqlparse = "^0.6.0"
 h2 = "^4.4.1"
+psycopg = {version = "^3.2", extras = ["binary", "pool"]}
 
 [tool.poetry.extras]
 azure = ["azure-identity", "azure-keyvault-keys"]
