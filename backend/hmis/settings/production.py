@@ -25,13 +25,14 @@ ALLOWED_HOSTS = [host.strip() for host in os.getenv("ALLOWED_HOSTS", "").split("
 # Database - PostgreSQL for production
 # Render provides DATABASE_URL automatically
 DATABASE_URL = os.getenv("DATABASE_URL")
+DB_CONN_MAX_AGE = int(os.getenv("DB_CONN_MAX_AGE", "600"))
 
 if DATABASE_URL:
     # Use dj-database-url for Render/Heroku-style DATABASE_URL
     DATABASES = {
         "default": dj_database_url.config(
             default=DATABASE_URL,
-            conn_max_age=600,
+            conn_max_age=DB_CONN_MAX_AGE,
             conn_health_checks=True,
             ssl_require=True,
         )
@@ -49,7 +50,7 @@ else:
             "PASSWORD": os.getenv("DB_PASSWORD", ""),
             "HOST": os.getenv("DB_HOST", "localhost"),
             "PORT": os.getenv("DB_PORT", "5432"),
-            "CONN_MAX_AGE": 600,
+            "CONN_MAX_AGE": DB_CONN_MAX_AGE,
             "DISABLE_SERVER_SIDE_CURSORS": True,
         }
     }

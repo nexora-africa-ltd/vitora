@@ -197,10 +197,11 @@ SHA_API_BASE_URL = os.getenv("SHA_API_BASE_URL", "https://uat.dha.go.ke")  # UAT
 ICD11_USE_LOCAL = os.getenv("ICD11_USE_LOCAL", "false").lower() == "true"
 
 # =============================================================================
-# Celery - Eager mode (no Redis required)
+# Celery - eager mode remains the local/demo default. Set false when staging
+# workers and Redis are provisioned to exercise the production async topology.
 # =============================================================================
-CELERY_TASK_ALWAYS_EAGER = True
-CELERY_TASK_EAGER_PROPAGATES = True
+CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "true").lower() == "true"
+CELERY_TASK_EAGER_PROPAGATES = CELERY_TASK_ALWAYS_EAGER
 
 # =============================================================================
 # Email - Console backend for staging (no real emails)

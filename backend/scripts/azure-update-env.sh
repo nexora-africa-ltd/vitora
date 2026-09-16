@@ -49,6 +49,7 @@ echo "==> Updating secrets..."
 
 declare -A SECRETS=(
   ["database-url"]="${DATABASE_URL:-}"
+  ["redis-url"]="${REDIS_URL:-}"
   ["encryption-key"]="${ENCRYPTION_KEY:-}"
   ["pii-hmac-key"]="${PII_HMAC_KEY:-}"
   ["django-secret-key"]="${DJANGO_SECRET_KEY:-}"
@@ -121,6 +122,7 @@ az containerapp update \
     "DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-hmis.settings.staging}" \
     "DJANGO_SECRET_KEY=secretref:django-secret-key" \
     "DATABASE_URL=secretref:database-url" \
+    "REDIS_URL=${REDIS_URL:+secretref:redis-url}" \
     "DB_CONN_MAX_AGE=${DB_CONN_MAX_AGE:-300}" \
     "ENCRYPTION_KEY=secretref:encryption-key" \
     "PII_HMAC_KEY=secretref:pii-hmac-key" \

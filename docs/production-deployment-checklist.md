@@ -6,7 +6,11 @@
 
 ## 1. Azure Infrastructure
 
-- [x] **Production Container App** created: `vitora-api-prod` in `vitora-rg`
+- [ ] **Process topology** provisioned in the active Container Apps environment:
+  - API: `vitora-api-private-prod-sa` with min 1, max 6 and HTTP concurrency scaling
+  - Worker: `vitora-worker-private-prod-sa` with min 1, max 4
+  - Beat: `vitora-beat-private-prod-sa` with min 1, max 1
+  - Provision all three with `bash scripts/azure-provision-sa-api-apps.sh` before the first deploy
 
   ```bash
   az containerapp create -n vitora-api-prod -g vitora-rg \
@@ -49,6 +53,7 @@ All secrets must be set before first deploy. Use `azure-update-env-production.sh
 | Secret | Required | Notes |
 |--------|----------|-------|
 | `database-url` | **YES** | Production PostgreSQL connection string |
+| `redis-url` | **YES** | TLS `rediss://` URL shared by Channels and Celery |
 | `django-secret-key` | **YES** | Generate: `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"` |
 | `encryption-key` | **YES** | Fernet key: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
 | `pii-hmac-key` | **YES** | HMAC key for PII hashing |
@@ -79,7 +84,8 @@ All secrets must be set before first deploy. Use `azure-update-env-production.sh
 - [ ] Set environment secrets:
   - `AZURE_CLIENT_ID`
   - `AZURE_TENANT_ID`
-  - `AZURE_SUBSCRIPTION_ID`
+   - `AZURE_SUBSCRIPTION_ID`
+   - `REDIS_URL`
 - [ ] Set environment variables (`vars.*`):
   - `ALLOWED_HOSTS` = `vitora-api-prod.agreeabledune-6cc420cc.eastus.azurecontainerapps.io,api.vitora.digital,app.vitora.digital`
   - `CORS_ALLOWED_ORIGINS` = `https://app.vitora.digital`
@@ -141,7 +147,9 @@ Verify these are correct in `hmis/settings/production.py`:
   - Container restart count > 3
   - HTTP 5xx error rate > 1%
   - Response time P95 > 5s
-  - CPU/memory utilization > 80%
+   - CPU/memory utilization > 80%
+   - Celery queue age > 10 minutes
+   - Worker or Beat replica count is zero
 - [ ] Uptime monitoring (external): `https://api.vitora.digital/api/health/`
 
 ## 8. Data & Compliance
@@ -160,7 +168,7 @@ Verify these are correct in `hmis/settings/production.py`:
 - [ ] Quality gates pass: `make quality`
 - [ ] Contract tests pass: `make test-contracts`
 - [ ] Manual smoke test on staging with production-like config
-- [ ] Load test completed (target concurrent users)
+- [ ] Locust staging baseline completed with recorded p95/p99, error rate, DB connections, Redis, and queue age
 - [ ] Security scan clean: `make security`
 
 ## 10. Deploy Procedure
@@ -179,10 +187,13 @@ git push origin production -f
 # 4. Verify deployment
 curl -sf https://api.vitora.digital/api/health/ | python3 -m json.tool
 
-# 5. Run migrations (if not auto-run by aca-start.sh)
-# Migrations run automatically via aca-start.sh on container start
+# 5. Verify worker and scheduler are running exactly as configured
+az containerapp replica list -n vitora-worker-private-prod-sa -g vitora-rg-sa -o table
+az containerapp replica list -n vitora-beat-private-prod-sa -g vitora-rg-sa -o table
 
-# 6. Verify frontend
+# 6. Migrations run through the post-deploy maintenance step, not aca-start.sh.
+
+# 7. Verify frontend
 curl -sf https://app.vitora.digital -o /dev/null -w "%{http_code}"
 ```
 
@@ -195,6 +206,7 @@ curl -sf https://app.vitora.digital -o /dev/null -w "%{http_code}"
 - [ ] Encounter creation works with vitals
 - [ ] Audit logs being created
 - [ ] WebSocket connection works (if Redis configured)
+- [ ] Redis health, worker processing, and Beat singleton verified
 - [ ] Email delivery works (password reset, invitations)
 - [ ] Push notifications work (if VAPID configured)
 

@@ -1,0 +1,66 @@
+# Monthly restore drill that validates the latest production backup in isolated PostgreSQL.
+name: Monthly Restore Drill
+
+on:
+  schedule:
+    - cron: '0 4 1-7 * 0'
+  workflow_dispatch:
+
+jobs:
+  restore-validate:
+    name: Restore latest backup into isolated PostgreSQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: restore_drill
+          POSTGRES_USER: restore_drill
+          POSTGRES_PASSWORD: restore_drill
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U restore_drill -d restore_drill"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_SA_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_SA_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SA_SUBSCRIPTION_ID }}
+      - name: Download, verify, and restore latest backup
+        env:
+          BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+          STORAGE_ACCOUNT: vitorabackupssa
+          STORAGE_CONTAINER: db-backups
+          PGPASSWORD: restore_drill
+        run: |
+          set -euo pipefail
+          BLOB_NAME=$(az storage blob list --auth-mode login --account-name "$STORAGE_ACCOUNT" \
+            --container-name "$STORAGE_CONTAINER" \
+            --query "sort_by([?ends_with(name, '.sql.gz') || ends_with(name, '.sql.gz.gpg')], &properties.creationTime)[-1].name" -o tsv)
+          test -n "$BLOB_NAME"
+          az storage blob download --auth-mode login --account-name "$STORAGE_ACCOUNT" \
+            --container-name "$STORAGE_CONTAINER" --name "$BLOB_NAME" --file backup
+          az storage blob download --auth-mode login --account-name "$STORAGE_ACCOUNT" \
+            --container-name "$STORAGE_CONTAINER" --name "${BLOB_NAME%.gpg}.sha256" --file backup.sha256
+          if [[ "$BLOB_NAME" == *.gpg ]]; then
+            gpg --batch --yes --passphrase "$BACKUP_ENCRYPTION_KEY" --output backup.sql.gz --decrypt backup
+          else
+            mv backup backup.sql.gz
+          fi
+          EXPECTED_SHA=$(cut -d' ' -f1 backup.sha256)
+          ACTUAL_SHA=$(sha256sum backup.sql.gz | cut -d' ' -f1)
+          test "$EXPECTED_SHA" = "$ACTUAL_SHA"
+          gunzip --stdout backup.sql.gz | psql -h 127.0.0.1 -U restore_drill -d restore_drill -v ON_ERROR_STOP=1
+          psql -h 127.0.0.1 -U restore_drill -d restore_drill -Atc "SELECT COUNT(*) FROM django_migrations;"
+      - name: Publish restore timing
+        if: always()
+        run: echo "Restore drill completed at $(date -u +'%Y-%m-%dT%H:%M:%SZ')."
