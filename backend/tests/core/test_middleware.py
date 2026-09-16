@@ -6,9 +6,11 @@ Sprint 0.6: Coverage improvement tests for middleware.py (0% -> 100%)
 
 import pytest  # type: ignore
 from django.contrib.auth import get_user_model
+from django.db import connection
+from django.http import HttpResponse
 from django.test import RequestFactory
 
-from hmis.apps.core.middleware import AuditLogMiddleware, get_client_ip
+from hmis.apps.core.middleware import AuditLogMiddleware, RequestTimingMiddleware, get_client_ip
 
 User = get_user_model()
 
@@ -181,3 +183,25 @@ class TestMiddlewareIntegration:
 
         # Should still work (returns 401 from view, not middleware)
         assert response.status_code in [200, 401, 403]
+
+
+@pytest.mark.django_db
+class TestRequestTimingMiddleware:
+    """Tests for staging-only request timing instrumentation."""
+
+    def test_emits_total_and_database_server_timing_metrics(self):
+        """Database work should be measured without exposing query details."""
+        factory = RequestFactory()
+        request = factory.get("/api/patients/")
+
+        def get_response(_request):
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+            return HttpResponse("ok")
+
+        response = RequestTimingMiddleware(get_response)(request)
+
+        timing = response["Server-Timing"]
+        assert "app;dur=" in timing
+        assert "db;dur=" in timing
+        assert "SELECT" not in timing

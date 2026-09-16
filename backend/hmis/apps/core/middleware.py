@@ -9,15 +9,48 @@ multi-tenant request scoping.
 """
 
 import logging
+import time
 from datetime import timedelta
 from urllib.parse import quote
 
 from django.conf import settings
+from django.db import connection
 from django.utils import timezone
 
 from hmis.apps.core.tenant_access import user_has_facility_access
 
 logger = logging.getLogger(__name__)
+
+
+class RequestTimingMiddleware:
+    """Expose aggregate application and database timing for staging diagnostics."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        started_at = time.perf_counter()
+        database_seconds = 0.0
+
+        def measure_execute(execute, sql, params, many, context):
+            nonlocal database_seconds
+            query_started_at = time.perf_counter()
+            try:
+                return execute(sql, params, many, context)
+            finally:
+                database_seconds += time.perf_counter() - query_started_at
+
+        with connection.execute_wrapper(measure_execute):
+            response = self.get_response(request)
+
+        app_ms = (time.perf_counter() - started_at) * 1000
+        database_ms = database_seconds * 1000
+        timing = f"app;dur={app_ms:.1f}, db;dur={database_ms:.1f}"
+        if response.has_header("Server-Timing"):
+            response["Server-Timing"] = f"{response['Server-Timing']}, {timing}"
+        else:
+            response["Server-Timing"] = timing
+        return response
 
 
 def get_client_ip(request):
