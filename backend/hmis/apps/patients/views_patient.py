@@ -37,6 +37,7 @@ from .filters import PatientFilter
 from .models import EmergencyContact, Patient
 from .serializers import (
     PatientHouseholdMemberSerializer,
+    PatientListSerializer,
     PatientSerializer,
     VitalsDataPointSerializer,
 )
@@ -126,6 +127,12 @@ class PatientViewSet(
     search_fields = ["first_name", "last_name", "mrn"]
     ordering_fields = ["created_at", "last_name", "first_name"]
     ordering = ["-created_at"]
+
+    def get_serializer_class(self):
+        """Use the compact serializer for paginated lists to avoid N+1 queries."""
+        if self.action == "list":
+            return PatientListSerializer
+        return PatientSerializer
 
     def get_queryset(self):
         """

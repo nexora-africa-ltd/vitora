@@ -305,6 +305,45 @@ class PatientSerializer(serializers.ModelSerializer):
         return data
 
 
+class PatientListSerializer(serializers.ModelSerializer):
+    """Compact patient representation for paginated search and list views."""
+
+    age = serializers.ReadOnlyField()
+    full_name = serializers.ReadOnlyField()
+    county_name = serializers.CharField(source="county.name", read_only=True)
+    sub_county_name = serializers.CharField(source="sub_county.name", read_only=True)
+    registered_at_facility_name = serializers.CharField(
+        source="registered_at_facility.name", read_only=True, allow_null=True
+    )
+
+    class Meta:
+        model = Patient
+        fields = [
+            "id",
+            "mrn",
+            "cr_number",
+            "cr_synced_at",
+            "sha_number",
+            "household_number",
+            "title",
+            "first_name",
+            "middle_name",
+            "last_name",
+            "full_name",
+            "date_of_birth",
+            "age",
+            "gender",
+            "phone_number",
+            "county_name",
+            "sub_county_name",
+            "registered_at_facility",
+            "registered_at_facility_name",
+            "is_sensitive",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
 class PatientHouseholdMemberSerializer(serializers.ModelSerializer):
     """Lightweight serializer for household member suggestions."""
 

@@ -64,11 +64,11 @@ def test_locust_scenario_is_environment_configured_and_safe_by_default():
         "Authorization",
         "X-Facility-ID",
         "catch_response=True",
-        "/api/core/staff/me/",
     ):
         assert required in scenario
 
     assert "sha/claims" not in scenario
+    assert "staff: context" not in scenario
     assert 'os.getenv("LOCUST_CREATE_WRITES", "false")' in scenario
 
 
