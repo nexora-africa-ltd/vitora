@@ -30,6 +30,8 @@ class CountyNotificationDeliveryStatus(models.TextChoices):
 
     PENDING = "PENDING", "Pending"
     SENT = "SENT", "Sent"
+    DELIVERED = "DELIVERED", "Delivered"
+    BOUNCED = "BOUNCED", "Bounced"
     RETRY_SCHEDULED = "RETRY_SCHEDULED", "Retry Scheduled"
     FAILED = "FAILED", "Failed"
 
@@ -101,7 +103,13 @@ class CountyNotificationDelivery(FacilityScopedModel):
     )
     last_error = models.TextField(blank=True, default="")
 
+    provider = models.CharField(max_length=40, blank=True, default="")
+    provider_message_id = models.CharField(max_length=255, blank=True, default="")
+    provider_event = models.CharField(max_length=80, blank=True, default="")
+
     sent_at = models.DateTimeField(null=True, blank=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    terminal_status_at = models.DateTimeField(null=True, blank=True)
     last_attempt_at = models.DateTimeField(null=True, blank=True)
     next_retry_at = models.DateTimeField(null=True, blank=True)
 

@@ -1,0 +1,36 @@
+<!-- # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved. -->
+<!--
+What this file is for:
+- Branded confirmation page for county notification acknowledgement links.
+
+How to use it:
+- Render from CountyNotificationAcknowledgeView with context values.
+
+Supported inputs/args:
+- title: short heading text
+- message: body text
+- success: boolean state for color accents
+-->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title }}</title>
+  </head>
+  <body style="margin:0;background:#f8fafc;font-family:Segoe UI,Arial,sans-serif;color:#0f172a;">
+    <div style="max-width:680px;margin:36px auto;padding:0 14px;">
+      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;">
+        <div
+          style="padding:14px 16px;background:{% if success %}linear-gradient(90deg,#0f766e,#0ea5a1){% else %}linear-gradient(90deg,#9f1239,#e11d48){% endif %};color:#fff;font-weight:600;"
+        >
+          Vitora HMIS
+        </div>
+        <div style="padding:18px 16px;">
+          <h2 style="margin:0 0 8px 0;font-size:22px;">{{ title }}</h2>
+          <p style="margin:0;color:#334155;font-size:14px;line-height:1.5;">{{ message }}</p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

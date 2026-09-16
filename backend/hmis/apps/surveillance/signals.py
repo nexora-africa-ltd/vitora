@@ -76,3 +76,43 @@ def check_diagnosis_for_surveillance(sender, instance, created, **kwargs):
             ImportError,
         ) as e:
             logger.error("Failed to create notifiable case for diagnosis %s: %s", instance.id, e)
+
+
+@receiver(post_save, sender="surveillance.ContactTracingContact")
+def publish_contact_tracing_contact_events(sender, instance, created, **kwargs):
+    """Publish contact tracing entity and workflow transition events."""
+    event_type = (
+        SurveillanceEvents.CONTACT_IDENTIFIED
+        if created
+        else SurveillanceEvents.CONTACT_STATUS_CHANGED
+    )
+    publish_event(
+        event_type=event_type,
+        aggregate_type="ContactTracingContact",
+        aggregate_id=instance.id,
+        payload={
+            "case_id": instance.case_id,
+            "status": instance.status,
+            "risk_level": instance.risk_level,
+        },
+        facility_id=getattr(instance, "facility_id", None),
+    )
+
+
+@receiver(post_save, sender="surveillance.ContactTracingFollowUp")
+def publish_contact_tracing_followup_events(sender, instance, created, **kwargs):
+    """Publish follow-up capture events for tracing workflow."""
+    if not created:
+        return
+    publish_event(
+        event_type=SurveillanceEvents.CONTACT_FOLLOWUP_RECORDED,
+        aggregate_type="ContactTracingFollowUp",
+        aggregate_id=instance.id,
+        payload={
+            "contact_id": instance.contact_id,
+            "case_id": getattr(instance.contact, "case_id", None),
+            "outcome": instance.outcome,
+            "symptoms_present": instance.symptoms_present,
+        },
+        facility_id=getattr(instance, "facility_id", None),
+    )

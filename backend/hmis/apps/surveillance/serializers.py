@@ -9,6 +9,8 @@ SurveillanceAlert, IDSRWeeklyReport, and reporting endpoints.
 from rest_framework import serializers
 
 from .models import (
+    ContactTracingContact,
+    ContactTracingFollowUp,
     CountyNotificationDelivery,
     IDSRDiseaseSummary,
     IDSRWeeklyReport,
@@ -62,7 +64,12 @@ class CountyNotificationDeliverySerializer(serializers.ModelSerializer):
             "max_retry_attempts",
             "retry_backoff_minutes",
             "last_error",
+            "provider",
+            "provider_message_id",
+            "provider_event",
             "sent_at",
+            "delivered_at",
+            "terminal_status_at",
             "last_attempt_at",
             "next_retry_at",
             "triggered_by",
@@ -355,6 +362,144 @@ class NotifyCountySerializer(serializers.Serializer):
         if not attrs.get("notification_notes") and attrs.get("notes"):
             attrs["notification_notes"] = attrs["notes"]
         return attrs
+
+
+class NotificationStatusActionSerializer(serializers.Serializer):
+    """Input payload for case status workflow transitions."""
+
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class ContactTracingFollowUpSerializer(serializers.ModelSerializer):
+    """Serializer for contact follow-up records."""
+
+    recorded_by_name = serializers.SerializerMethodField()
+    next_followup_date = serializers.DateField(required=False, allow_null=True, write_only=True)
+
+    class Meta:
+        model = ContactTracingFollowUp
+        fields = [
+            "id",
+            "contact",
+            "followup_date",
+            "method",
+            "symptoms_present",
+            "temperature_c",
+            "notes",
+            "outcome",
+            "next_followup_date",
+            "recorded_by",
+            "recorded_by_name",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "contact",
+            "recorded_by",
+            "recorded_by_name",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_recorded_by_name(self, obj) -> str | None:
+        """Return recorder display name."""
+        return _display_user_name(obj.recorded_by)
+
+
+class ContactTracingContactSerializer(serializers.ModelSerializer):
+    """Serializer for contact tracing contacts."""
+
+    case_id = serializers.IntegerField(source="case.id", read_only=True)
+    case_disease_name = serializers.CharField(source="case.disease.name", read_only=True)
+    created_by_name = serializers.SerializerMethodField()
+    updated_by_name = serializers.SerializerMethodField()
+    phone_number_masked = serializers.SerializerMethodField()
+    phone_number = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    followups = ContactTracingFollowUpSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = ContactTracingContact
+        fields = [
+            "id",
+            "case",
+            "case_id",
+            "case_disease_name",
+            "full_name",
+            "phone_number",
+            "phone_number_masked",
+            "relationship_to_case",
+            "risk_level",
+            "status",
+            "exposure_date",
+            "monitoring_start_date",
+            "monitoring_end_date",
+            "next_followup_date",
+            "last_followup_at",
+            "last_contact_attempt_at",
+            "notes",
+            "created_by",
+            "created_by_name",
+            "updated_by",
+            "updated_by_name",
+            "followups",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "case_id",
+            "case_disease_name",
+            "phone_number_masked",
+            "last_followup_at",
+            "last_contact_attempt_at",
+            "created_by",
+            "created_by_name",
+            "updated_by",
+            "updated_by_name",
+            "followups",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_created_by_name(self, obj) -> str | None:
+        """Return creator display name."""
+        return _display_user_name(obj.created_by)
+
+    def create(self, validated_data):
+        """Persist encrypted phone number from write-only payload field."""
+        phone_number = validated_data.pop("phone_number", "")
+        instance = super().create(validated_data)
+        if phone_number is not None:
+            instance.phone_number = phone_number
+            instance.save(update_fields=["phone_number_encrypted", "updated_at"])
+        return instance
+
+    def update(self, instance, validated_data):
+        """Persist encrypted phone number from write-only payload field."""
+        phone_number = validated_data.pop("phone_number", None)
+        instance = super().update(instance, validated_data)
+        if phone_number is not None:
+            instance.phone_number = phone_number
+            instance.save(update_fields=["phone_number_encrypted", "updated_at"])
+        return instance
+
+    def get_updated_by_name(self, obj) -> str | None:
+        """Return updater display name."""
+        return _display_user_name(obj.updated_by)
+
+    def get_phone_number_masked(self, obj) -> str:
+        """Return masked phone number."""
+        return _mask_recipient(obj.phone_number)
+
+
+class ContactTracingStatusActionSerializer(serializers.Serializer):
+    """Input for contact workflow transition actions."""
+
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+    monitoring_days = serializers.IntegerField(
+        required=False, min_value=1, max_value=30, default=14
+    )
 
 
 class SurveillanceAlertSerializer(serializers.ModelSerializer):

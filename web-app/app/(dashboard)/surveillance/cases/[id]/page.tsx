@@ -1,14 +1,24 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/shared/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { surveillanceApi } from '@/lib/api/surveillance';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
 import { toast } from '@/lib/hooks/use-toast';
 import Link from 'next/link';
@@ -57,6 +67,12 @@ export default function NotifiableCaseDetailPage() {
   const router = useRouter();
   const caseId = Number(params?.id);
   const queryClient = useQueryClient();
+  const { hasPermission } = usePermissions();
+  const [selectedSeverity, setSelectedSeverity] = useState<
+    'MILD' | 'MODERATE' | 'SEVERE' | 'CRITICAL'
+  >('MODERATE');
+  const [selectedOnsetDate, setSelectedOnsetDate] = useState('');
+  const [selectedLabConfirmed, setSelectedLabConfirmed] = useState<'true' | 'false'>('false');
 
   const {
     data: caseData,
@@ -76,10 +92,13 @@ export default function NotifiableCaseDetailPage() {
 
   const { mutateAsync: notifyCounty, isPending: notifying } = useMutation({
     mutationFn: () => surveillanceApi.notifyCounty(caseId),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      const isPendingConfirmation = data.notification_status === 'PENDING';
       toast({
-        title: 'County notified',
-        description: 'The case has been reported to the county health office.',
+        title: isPendingConfirmation ? 'Notification accepted' : 'County notified',
+        description: isPendingConfirmation
+          ? 'Email accepted and waiting for delivery confirmation from provider.'
+          : 'The case has been reported to the county health office.',
       });
       queryClient.invalidateQueries({ queryKey: ['notifiable-case', caseId] });
       queryClient.invalidateQueries({ queryKey: ['notifiable-cases'] });
@@ -122,6 +141,132 @@ export default function NotifiableCaseDetailPage() {
     },
   });
 
+  const { mutateAsync: markInvestigated, isPending: markingInvestigated } = useMutation({
+    mutationFn: () => surveillanceApi.markCaseInvestigated(caseId),
+    onSuccess: () => {
+      toast({
+        title: 'Case updated',
+        description: 'Case moved to under investigation.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['notifiable-case', caseId] });
+      queryClient.invalidateQueries({ queryKey: ['notifiable-cases'] });
+    },
+    onError: (error: unknown) => {
+      const msg =
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: { data?: { error?: string } } }).response?.data?.error ===
+          'string'
+          ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
+          : 'Unable to mark case as investigated.';
+      toast({
+        title: 'Update failed',
+        description: msg,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const { mutateAsync: closeCase, isPending: closingCase } = useMutation({
+    mutationFn: () => surveillanceApi.closeCase(caseId),
+    onSuccess: () => {
+      toast({
+        title: 'Case closed',
+        description: 'Case status moved to closed.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['notifiable-case', caseId] });
+      queryClient.invalidateQueries({ queryKey: ['notifiable-cases'] });
+    },
+    onError: (error: unknown) => {
+      const msg =
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: { data?: { error?: string } } }).response?.data?.error ===
+          'string'
+          ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
+          : 'Unable to close case.';
+      toast({
+        title: 'Close failed',
+        description: msg,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const { mutateAsync: updateSeverity, isPending: updatingSeverity } = useMutation({
+    mutationFn: (severity: 'MILD' | 'MODERATE' | 'SEVERE' | 'CRITICAL') =>
+      surveillanceApi.updateCaseSeverity(caseId, severity),
+    onSuccess: () => {
+      toast({
+        title: 'Severity updated',
+        description: 'Case severity has been saved.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['notifiable-case', caseId] });
+      queryClient.invalidateQueries({ queryKey: ['notifiable-cases'] });
+    },
+    onError: () => {
+      toast({
+        title: 'Update failed',
+        description: 'Unable to update case severity.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const { mutateAsync: updateOnsetDate, isPending: updatingOnsetDate } = useMutation({
+    mutationFn: (onsetDate: string) => surveillanceApi.updateCaseOnsetDate(caseId, onsetDate),
+    onSuccess: () => {
+      toast({
+        title: 'Onset date updated',
+        description: 'Case onset date has been saved.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['notifiable-case', caseId] });
+      queryClient.invalidateQueries({ queryKey: ['notifiable-cases'] });
+    },
+    onError: () => {
+      toast({
+        title: 'Update failed',
+        description: 'Unable to update onset date.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const { mutateAsync: updateLabConfirmed, isPending: updatingLabConfirmed } = useMutation({
+    mutationFn: (laboratoryConfirmed: boolean) =>
+      surveillanceApi.updateCaseLaboratoryConfirmed(caseId, laboratoryConfirmed),
+    onSuccess: () => {
+      toast({
+        title: 'Lab status updated',
+        description: 'Laboratory confirmation has been saved.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['notifiable-case', caseId] });
+      queryClient.invalidateQueries({ queryKey: ['notifiable-cases'] });
+    },
+    onError: () => {
+      toast({
+        title: 'Update failed',
+        description: 'Unable to update laboratory confirmation.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  useEffect(() => {
+    if (caseData?.severity) {
+      setSelectedSeverity(caseData.severity);
+    }
+  }, [caseData?.severity]);
+
+  useEffect(() => {
+    if (caseData) {
+      setSelectedOnsetDate(caseData.onset_date ?? '');
+      setSelectedLabConfirmed(caseData.laboratory_confirmed ? 'true' : 'false');
+    }
+  }, [caseData]);
+
   if (isLoading) {
     return (
       <div className="space-y-4 sm:space-y-6">
@@ -148,6 +293,15 @@ export default function NotifiableCaseDetailPage() {
   }
 
   const canNotify = caseData.notification_status === 'PENDING';
+  const canManageCaseStatus = hasPermission('surveillance.change_notifiablecase');
+  const canEditSeverity = hasPermission('surveillance.change_notifiablecase');
+  const canEditOnsetDate = hasPermission('surveillance.change_notifiablecase');
+  const canOverrideLabConfirmed = hasPermission('surveillance.change_notifiablecase');
+  const canMarkInvestigated =
+    canManageCaseStatus && ['NOTIFIED', 'ACKNOWLEDGED'].includes(caseData.notification_status);
+  const canCloseCase =
+    canManageCaseStatus &&
+    ['NOTIFIED', 'ACKNOWLEDGED', 'INVESTIGATED'].includes(caseData.notification_status);
   const hasRetryableDeliveries = deliveryStatus.some((item) =>
     ['FAILED', 'RETRY_SCHEDULED'].includes(item.status)
   );
@@ -162,6 +316,20 @@ export default function NotifiableCaseDetailPage() {
             {canNotify && (
               <Button onClick={() => notifyCounty()} disabled={notifying}>
                 {notifying ? 'Notifying...' : 'Notify County'}
+              </Button>
+            )}
+            {canMarkInvestigated && (
+              <Button
+                variant="outline"
+                onClick={() => markInvestigated()}
+                disabled={markingInvestigated}
+              >
+                {markingInvestigated ? 'Updating...' : 'Investigate'}
+              </Button>
+            )}
+            {canCloseCase && (
+              <Button variant="outline" onClick={() => closeCase()} disabled={closingCase}>
+                {closingCase ? 'Closing...' : 'Close'}
               </Button>
             )}
             {hasRetryableDeliveries && (
@@ -241,6 +409,30 @@ export default function NotifiableCaseDetailPage() {
               label="Onset Date"
               value={caseData.onset_date ? formatDate(caseData.onset_date) : 'Unknown'}
             />
+            {canEditOnsetDate && (
+              <div className="space-y-2 rounded-md border border-border/60 p-3">
+                <p className="text-sm font-medium">Update Onset Date</p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    type="date"
+                    value={selectedOnsetDate}
+                    onChange={(event) => setSelectedOnsetDate(event.target.value)}
+                    className="sm:w-56"
+                  />
+                  <Button
+                    variant="outline"
+                    disabled={
+                      updatingOnsetDate ||
+                      !selectedOnsetDate ||
+                      selectedOnsetDate === (caseData.onset_date ?? '')
+                    }
+                    onClick={() => updateOnsetDate(selectedOnsetDate)}
+                  >
+                    {updatingOnsetDate ? 'Saving...' : 'Save Onset Date'}
+                  </Button>
+                </div>
+              </div>
+            )}
             <InfoRow
               icon={<FlaskConical className="h-4 w-4" />}
               label="Lab Confirmed"
@@ -256,6 +448,35 @@ export default function NotifiableCaseDetailPage() {
                 )
               }
             />
+            {canOverrideLabConfirmed && (
+              <div className="space-y-2 rounded-md border border-border/60 p-3">
+                <p className="text-sm font-medium">Override Lab Confirmation</p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Select
+                    value={selectedLabConfirmed}
+                    onValueChange={(value) => setSelectedLabConfirmed(value as 'true' | 'false')}
+                  >
+                    <SelectTrigger className="sm:w-56">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">Confirmed</SelectItem>
+                      <SelectItem value="false">Not Confirmed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    disabled={
+                      updatingLabConfirmed ||
+                      (selectedLabConfirmed === 'true') === caseData.laboratory_confirmed
+                    }
+                    onClick={() => updateLabConfirmed(selectedLabConfirmed === 'true')}
+                  >
+                    {updatingLabConfirmed ? 'Saving...' : 'Save Lab Status'}
+                  </Button>
+                </div>
+              </div>
+            )}
             {caseData.lab_result_date && (
               <InfoRow
                 icon={<Calendar className="h-4 w-4" />}
@@ -272,6 +493,36 @@ export default function NotifiableCaseDetailPage() {
                 </Badge>
               }
             />
+            {canEditSeverity && (
+              <div className="space-y-2 rounded-md border border-border/60 p-3">
+                <p className="text-sm font-medium">Update Severity</p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Select
+                    value={selectedSeverity}
+                    onValueChange={(value) =>
+                      setSelectedSeverity(value as 'MILD' | 'MODERATE' | 'SEVERE' | 'CRITICAL')
+                    }
+                  >
+                    <SelectTrigger className="sm:w-56">
+                      <SelectValue placeholder="Select severity" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MILD">Mild</SelectItem>
+                      <SelectItem value="MODERATE">Moderate</SelectItem>
+                      <SelectItem value="SEVERE">Severe</SelectItem>
+                      <SelectItem value="CRITICAL">Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    disabled={updatingSeverity || selectedSeverity === caseData.severity}
+                    onClick={() => updateSeverity(selectedSeverity)}
+                  >
+                    {updatingSeverity ? 'Saving...' : 'Save Severity'}
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -381,6 +632,9 @@ export default function NotifiableCaseDetailPage() {
               label="Contacts Identified"
               value={caseData.contacts_identified}
             />
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/surveillance/cases/${caseId}/contacts`}>Manage Contacts</Link>
+            </Button>
           </CardContent>
         </Card>
 
@@ -405,11 +659,14 @@ export default function NotifiableCaseDetailPage() {
                     <span className="font-medium">{delivery.channel}</span>
                     <Badge
                       variant={
-                        delivery.status === 'SENT'
+                        delivery.status === 'DELIVERED' ||
+                        (delivery.channel === 'SMS' && delivery.status === 'SENT')
                           ? 'success'
-                          : delivery.status === 'FAILED'
+                          : delivery.status === 'FAILED' || delivery.status === 'BOUNCED'
                             ? 'destructive'
-                            : 'warning'
+                            : delivery.status === 'SENT'
+                              ? 'info'
+                              : 'warning'
                       }
                     >
                       {delivery.status}

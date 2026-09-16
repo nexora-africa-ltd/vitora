@@ -318,6 +318,20 @@ class NotifiableCase(FacilityScopedModel):
             self.notification_deadline = self.detected_at + timedelta(
                 hours=self.disease.reporting_hours
             )
+        if not self.onset_date and self.encounter_id:
+            try:
+                if self.encounter and self.encounter.encounter_date:
+                    self.onset_date = self.encounter.encounter_date
+            except (
+                AttributeError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                OSError,
+                AssertionError,
+                ImportError,
+            ):
+                pass
         if not self.county and self.patient:
             self.county = self.patient.county
             self.sub_county = self.patient.sub_county
@@ -405,6 +419,51 @@ class NotifiableCase(FacilityScopedModel):
         if user:
             self.notified_by = user
         self.save(update_fields=["notification_status", "notified_at", "notified_by", "updated_at"])
+
+    def mark_acknowledged(self, user=None) -> None:
+        """Mark case as acknowledged by county."""
+        self.notification_status = NotificationStatus.ACKNOWLEDGED
+        if not self.notified_at:
+            self.notified_at = timezone.now()
+        if user and not self.notified_by:
+            self.notified_by = user
+        self.save(update_fields=["notification_status", "notified_at", "notified_by", "updated_at"])
+
+    def mark_investigated(self, user=None, notes: str = "") -> None:
+        """Mark case as under investigation and append optional notes."""
+        self.notification_status = NotificationStatus.INVESTIGATED
+        if notes.strip():
+            self.investigation_notes = (
+                f"{self.investigation_notes}\n[Investigation] {notes.strip()}".strip()
+            )
+        if user and not self.notified_by:
+            self.notified_by = user
+        self.save(
+            update_fields=[
+                "notification_status",
+                "investigation_notes",
+                "notified_by",
+                "updated_at",
+            ]
+        )
+
+    def mark_closed(self, user=None, notes: str = "") -> None:
+        """Mark case as closed and append optional closure notes."""
+        self.notification_status = NotificationStatus.CLOSED
+        if notes.strip():
+            self.investigation_notes = (
+                f"{self.investigation_notes}\n[Closed] {notes.strip()}".strip()
+            )
+        if user and not self.notified_by:
+            self.notified_by = user
+        self.save(
+            update_fields=[
+                "notification_status",
+                "investigation_notes",
+                "notified_by",
+                "updated_at",
+            ]
+        )
 
 
 class SurveillanceAlert(FacilityScopedModel):
@@ -1586,6 +1645,14 @@ class DHIS2DataElementMapping(models.Model):
         return result
 
 
+from .models_contact_tracing import (  # noqa: E402,F401
+    ContactRiskLevel,
+    ContactTracingContact,
+    ContactTracingFollowUp,
+    ContactTracingStatus,
+    FollowUpMethod,
+    FollowUpOutcome,
+)
 from .models_notifications import (  # noqa: E402,F401
     CountyNotificationChannel,
     CountyNotificationDelivery,

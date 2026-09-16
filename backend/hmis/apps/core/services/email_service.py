@@ -14,6 +14,7 @@ Configuration (settings / env vars):
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -41,29 +42,58 @@ def _send(
 
     Returns True on success, False on failure (never raises).
     """
+    result = send_transactional_email(
+        subject=subject,
+        html_body=html_body,
+        to_email=to_email,
+        from_email=from_email,
+    )
+    return bool(result.get("accepted", False))
+
+
+def send_transactional_email(
+    *,
+    subject: str,
+    html_body: str,
+    to_email: str,
+    from_email: str | None = None,
+    headers: dict[str, str] | None = None,
+    tags: list[dict[str, str]] | None = None,
+) -> dict[str, Any]:
+    """Send email and return provider-aware metadata for delivery workflows."""
     sender = from_email or getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@vitora.health")
     resend_key = getattr(settings, "RESEND_API_KEY", "") or ""
 
-    # Safety: never use Resend SDK when running under the test runner.
     if getattr(settings, "TESTING", False):
         resend_key = ""
 
     if resend_key:
-        # Production path — Resend SDK
         try:
             import resend  # type: ignore
 
             resend.api_key = resend_key
-            resend.Emails.send(
-                {
-                    "from": sender,
-                    "to": [to_email],
-                    "subject": subject,
-                    "html": html_body,
-                }
-            )
-            logger.info("Email sent via Resend to %s: %s", to_email, subject)
-            return True
+            payload: dict[str, Any] = {
+                "from": sender,
+                "to": [to_email],
+                "subject": subject,
+                "html": html_body,
+            }
+            if headers:
+                payload["headers"] = headers
+            if tags:
+                payload["tags"] = tags
+
+            response = resend.Emails.send(payload)
+            provider_message_id = None
+            if isinstance(response, dict):
+                provider_message_id = response.get("id")
+            logger.info("Email accepted by Resend to %s: %s", to_email, subject)
+            return {
+                "accepted": True,
+                "provider": "resend",
+                "provider_message_id": provider_message_id,
+                "terminal_state": None,
+            }
         except (
             AttributeError,
             TypeError,
@@ -74,32 +104,47 @@ def _send(
             ImportError,
         ):
             logger.exception("Failed to send email via Resend to %s", to_email)
-            return False
-    else:
-        # Development path — Django email backend (console)
-        try:
-            plain_text = strip_tags(html_body)
-            send_mail(
-                subject=subject,
-                message=plain_text,
-                from_email=sender,
-                recipient_list=[to_email],
-                html_message=html_body,
-                fail_silently=False,
-            )
-            logger.info("Email sent via Django backend to %s: %s", to_email, subject)
-            return True
-        except (
-            AttributeError,
-            TypeError,
-            ValueError,
-            RuntimeError,
-            OSError,
-            AssertionError,
-            ImportError,
-        ):
-            logger.exception("Failed to send email via Django backend to %s", to_email)
-            return False
+            return {
+                "accepted": False,
+                "provider": "resend",
+                "provider_message_id": None,
+                "terminal_state": "failed",
+            }
+
+    try:
+        plain_text = strip_tags(html_body)
+        sent_count = send_mail(
+            subject=subject,
+            message=plain_text,
+            from_email=sender,
+            recipient_list=[to_email],
+            html_message=html_body,
+            fail_silently=False,
+        )
+        accepted = bool(sent_count)
+        logger.info("Email sent via Django backend to %s: %s", to_email, subject)
+        return {
+            "accepted": accepted,
+            "provider": "django",
+            "provider_message_id": None,
+            "terminal_state": "delivered" if accepted else "failed",
+        }
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):
+        logger.exception("Failed to send email via Django backend to %s", to_email)
+        return {
+            "accepted": False,
+            "provider": "django",
+            "provider_message_id": None,
+            "terminal_state": "failed",
+        }
 
 
 # ============================================================================

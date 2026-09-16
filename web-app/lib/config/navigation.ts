@@ -341,6 +341,12 @@ const _allNavItems: NavItemType[] = [
         actionKey: 'surveillance.report_case',
       },
       {
+        label: 'Contact Tracing',
+        href: '/surveillance/contact-tracing',
+        icon: Users,
+        actionKey: 'surveillance.report_case',
+      },
+      {
         label: 'Alerts',
         href: '/surveillance/alerts',
         icon: CircleAlert,
