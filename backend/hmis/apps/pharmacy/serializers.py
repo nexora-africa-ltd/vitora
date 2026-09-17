@@ -162,7 +162,6 @@ class DrugSerializer(serializers.ModelSerializer):
         model = Drug
         fields = [
             "id",
-            "facility",
             "code",
             "generic_name",
             "brand_names",

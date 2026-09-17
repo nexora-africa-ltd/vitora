@@ -543,6 +543,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "supersedes_report_number",
                 "technique",
                 "updated_at",
+                "verification_url",
             }
         ),
     ),

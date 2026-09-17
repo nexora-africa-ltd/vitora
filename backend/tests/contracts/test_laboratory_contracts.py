@@ -20,6 +20,7 @@ from hmis.apps.laboratory.serializers import (
     InstrumentCreateSerializer,
     InstrumentSerializer,
     LabBarcodeConfigSerializer,
+    LaboratoryAlertSettingsSerializer,
     LabOrderCreateSerializer,
     LabOrderItemCreateSerializer,
     LabOrderItemSerializer,
@@ -154,6 +155,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "supersedes",
                 "supersedes_report_number",
                 "updated_at",
+                "verification_url",
             }
         ),
     ),
@@ -594,6 +596,17 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "require_specimen_receipt",
                 "specimen_rejection_requires_supervisor",
                 "tat_warning_threshold_percent",
+            }
+        ),
+    ),
+    (
+        LaboratoryAlertSettingsSerializer,
+        frozenset(
+            {
+                "facility",
+                "id",
+                "lab_critical_alert_roles",
+                "lab_critical_alert_users",
             }
         ),
     ),

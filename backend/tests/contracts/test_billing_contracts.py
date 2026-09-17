@@ -220,6 +220,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "total_amount",
                 "updated_at",
                 "valid_until",
+                "verification_url",
             }
         ),
     ),
@@ -527,6 +528,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "receipt_date",
                 "receipt_number",
                 "received_by_username",
+                "verification_url",
                 "void_reason",
                 "voided_at",
             }

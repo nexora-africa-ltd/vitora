@@ -58,6 +58,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "patient_name",
                 "status",
                 "status_display",
+                "verification_url",
             }
         ),
     ),
@@ -103,6 +104,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "status",
                 "status_display",
                 "updated_at",
+                "verification_url",
             }
         ),
     ),
