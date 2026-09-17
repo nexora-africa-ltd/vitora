@@ -1,0 +1,17 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
+# Pharmacy stock email digest. Rendered by send_stock_alert_digest with facility-scoped alert data.
+PHARMACY STOCK ALERT DIGEST
+
+{{ facility_name }} has {{ total_alerts }} unresolved stock alert{{ total_alerts|pluralize }}.
+
+SUMMARY
+{% for count in counts %}- {{ count.severity }}: {{ count.alert_type|title }} ({{ count.total }})
+{% endfor %}
+
+ITEMS REQUIRING ATTENTION
+{% for severity, types in groups.items %}{{ severity }}
+{% for alert_type, grouped_alerts in types.items %}  {{ alert_type|title }}
+{% for alert in grouped_alerts %}- {{ alert.drug.generic_name }}: {{ alert.message }}
+{% endfor %}{% endfor %}{% endfor %}{% if remaining_alerts %}And {{ remaining_alerts }} more alert{{ remaining_alerts|pluralize }}.
+{% endif %}
+Open pharmacy inventory: {{ inventory_url }}

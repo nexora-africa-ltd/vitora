@@ -14,6 +14,7 @@ from .views import (
     LabAttachmentViewSet,
     LabBarcodeConfigViewSet,
     LabCriticalValuesReportView,
+    LaboratoryAlertSettingsViewSet,
     LabOrderViewSet,
     LabQueueViewSet,
     LabResultViewSet,
@@ -53,6 +54,9 @@ router.register(
 router.register(r"settings/referral-labs", ReferralLabViewSet, basename="referral-lab")
 router.register(r"settings/barcode-config", LabBarcodeConfigViewSet, basename="barcode-config")
 router.register(r"settings/workflow", LabWorkflowSettingsViewSet, basename="workflow-settings")
+router.register(
+    r"settings/alerts", LaboratoryAlertSettingsViewSet, basename="laboratory-alert-settings"
+)
 
 urlpatterns = [
     path("loinc-search/", LOINCSearchView.as_view(), name="loinc-search"),

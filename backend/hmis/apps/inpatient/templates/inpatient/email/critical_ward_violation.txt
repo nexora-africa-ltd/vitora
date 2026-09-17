@@ -1,0 +1,18 @@
+{# Critical ward compatibility alert plain-text fallback. Context: existing admission workflow data and critical violation messages. #}
+CRITICAL WARD COMPATIBILITY VIOLATION
+
+Patient: {{ patient_name }}
+MRN: {{ patient_mrn }}
+Ward: {{ ward_name }} ({{ ward_code }})
+Bed: {{ bed_number }}
+Admitted By: {{ admitted_by }}
+Admission Date: {{ admission_date }}
+
+CRITICAL VIOLATIONS:
+{% for violation in violations %}- {{ violation }}
+{% endfor %}
+Override Reason Given: {{ override_reason }}
+
+This admission requires immediate review. Please verify the placement is clinically appropriate or coordinate a transfer to an appropriate ward.
+
+This is an automated notification. Do not reply to this email.

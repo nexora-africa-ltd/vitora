@@ -10,6 +10,7 @@ from .models import (
     DiagnosticReport,
     Instrument,
     LabBarcodeConfig,
+    LaboratoryAlertSettings,
     LabOrder,
     LabOrderItem,
     LabQueue,
@@ -1573,3 +1574,30 @@ class LabWorkflowSettingsSerializer(serializers.ModelSerializer):
             "require_clinical_notes",
         ]
         read_only_fields = ["id"]
+
+
+class LaboratoryAlertSettingsSerializer(serializers.ModelSerializer):
+    """Validate critical-result escalation recipients for the active facility."""
+
+    class Meta:
+        model = LaboratoryAlertSettings
+        fields = ["id", "facility", "lab_critical_alert_roles", "lab_critical_alert_users"]
+        read_only_fields = ["id", "facility"]
+
+    def validate_lab_critical_alert_users(self, users):
+        """Explicit recipients must be primary or secondary staff at this facility."""
+        facility = self.instance.facility if self.instance else self.context["request"].facility
+        invalid_users = [
+            user.username
+            for user in users
+            if not hasattr(user, "staff_profile")
+            or (
+                user.staff_profile.primary_facility_id != facility.id
+                and not user.staff_profile.secondary_facilities.filter(pk=facility.id).exists()
+            )
+        ]
+        if invalid_users:
+            raise serializers.ValidationError(
+                f"Recipients must be assigned to {facility.name}: {', '.join(invalid_users)}"
+            )
+        return users

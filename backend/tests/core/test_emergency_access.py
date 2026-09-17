@@ -623,6 +623,8 @@ class TestEmergencyAccessTasks:
         call_kwargs = mock_send_transactional_email.call_args.kwargs
         assert "EMERGENCY ACCESS ALERT" in call_kwargs["html_body"]
         assert sample_emergency_access.user.username in call_kwargs["html_body"]
+        assert sample_emergency_access.reason_details in call_kwargs["html_body"]
+        assert f"/admin/emergency-access/{sample_emergency_access.id}/" in call_kwargs["html_body"]
         assert call_kwargs["facility"] is None
 
     @patch("hmis.apps.core.emergency_access.tasks.send_transactional_email")

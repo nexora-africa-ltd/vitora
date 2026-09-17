@@ -261,10 +261,12 @@ class StockAdjustmentAdmin(admin.ModelAdmin):
 class AlertSettingsAdmin(admin.ModelAdmin):
     list_display = (
         "id",
+        "facility",
         "low_stock_threshold",
         "expiry_warning_days",
         "expiry_critical_days",
         "enable_email_notifications",
+        "stock_alert_digest_minutes",
         "updated_by",
         "updated_at",
     )
@@ -273,12 +275,6 @@ class AlertSettingsAdmin(admin.ModelAdmin):
         "updated_by",
         "updated_at",
     )
-    readonly_fields = ("created_at", "updated_at")
-
-    def has_add_permission(self, request):
-        # Only allow one instance
-        return not AlertSettings.objects.exists()
-
-    def has_delete_permission(self, request, obj=None):
-        # Don't allow deletion
-        return False
+    raw_id_fields = ("facility", "organization", "updated_by")
+    filter_horizontal = ("stock_alert_roles", "stock_alert_users")
+    readonly_fields = ("created_at", "updated_at", "organization")

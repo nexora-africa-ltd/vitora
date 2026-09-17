@@ -572,6 +572,58 @@ class TestSurveillanceService:
         # Verify group_send was called
         mock_layer.group_send.assert_called_once()
 
+    @patch("hmis.apps.surveillance.services.send_transactional_email")
+    def test_immediate_alert_email_renders_template_with_case_context(
+        self,
+        mock_send_transactional_email,
+        db,
+        sample_patient,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+        settings,
+    ):
+        """Immediate alerts should send the template with critical case context."""
+        from hmis.apps.surveillance.models import (
+            NotifiableCase,
+            NotifiableDisease,
+            SurveillanceAlert,
+        )
+        from hmis.apps.surveillance.services import SurveillanceService
+
+        settings.SURVEILLANCE_EMAIL_RECIPIENT = "county.alerts@example.org"
+        mock_send_transactional_email.return_value = {"accepted": True}
+        disease = NotifiableDisease.objects.create(
+            name="Template Test Cholera",
+            icd10_codes="A00",
+            category="IMMEDIATE",
+            reporting_hours=24,
+        )
+        case = NotifiableCase.objects.create(
+            disease=disease,
+            patient=sample_patient,
+            encounter=sample_encounter,
+            facility=sample_facility,
+            organization=sample_organization,
+            county=sample_patient.county,
+            sub_county=sample_patient.sub_county,
+        )
+        alert = SurveillanceAlert.objects.create(
+            case=case,
+            alert_type="NEW_CASE",
+            message="Immediate cholera response required",
+        )
+
+        assert SurveillanceService.send_email_alert(alert) is True
+
+        call_kwargs = mock_send_transactional_email.call_args.kwargs
+        assert call_kwargs["to_email"] == "county.alerts@example.org"
+        assert call_kwargs["facility"] == sample_facility
+        assert "Immediate Disease Surveillance Alert" in call_kwargs["html_body"]
+        assert disease.name in call_kwargs["html_body"]
+        assert sample_patient.mrn in call_kwargs["html_body"]
+        assert "Notification Deadline" in call_kwargs["html_body"]
+
 
 # ============================================================================
 # API ViewSet Tests

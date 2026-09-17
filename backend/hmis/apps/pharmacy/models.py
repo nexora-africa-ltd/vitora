@@ -27,6 +27,7 @@ from simple_history.models import HistoricalRecords
 
 from hmis.apps.core.history import HistoryMixin
 from hmis.apps.core.mixins import FacilityScopedModel
+from hmis.apps.core.models import TimeStampedModel
 
 
 def generate_prescription_number(facility=None):
@@ -473,6 +474,12 @@ class StockAlert(FacilityScopedModel):
     resolution_notes = models.TextField(blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
+    stock_digest_sent_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="When this stock alert was included in a facility email digest.",
+    )
 
     class Meta:
         ordering = ["-severity", "-created_at"]
@@ -562,6 +569,7 @@ class StockAlert(FacilityScopedModel):
                     batch=batch,
                     alert_type="EXPIRED",
                     is_resolved=False,
+                    facility=batch.facility,
                     defaults={
                         "severity": "CRITICAL",
                         "message": f"Batch {batch.batch_number} has expired",
@@ -577,6 +585,7 @@ class StockAlert(FacilityScopedModel):
                     batch=batch,
                     alert_type="EXPIRING_SOON",
                     is_resolved=False,
+                    facility=batch.facility,
                     defaults={
                         "severity": "HIGH",
                         "message": f"Batch {batch.batch_number} expiring in {days} days",
@@ -592,6 +601,7 @@ class StockAlert(FacilityScopedModel):
                     batch=batch,
                     alert_type="EXPIRING_SOON",
                     is_resolved=False,
+                    facility=batch.facility,
                     defaults={
                         "severity": "MEDIUM",
                         "message": f"Batch {batch.batch_number} expiring in {days} days",
@@ -1239,14 +1249,14 @@ class StockAdjustment(models.Model):
         self.save()
 
 
-class AlertSettings(models.Model):
+class AlertSettings(FacilityScopedModel, TimeStampedModel):
     """
-    Global alert configuration settings.
+    Facility-specific alert configuration settings.
 
     Stores configuration for automated alert generation including
     thresholds for low stock and expiry warnings.
 
-    Only one instance should exist (enforced at application level).
+    Each facility owns one configuration and independent recipient lists.
     """
 
     # Stock alert thresholds
@@ -1266,8 +1276,18 @@ class AlertSettings(models.Model):
     enable_email_notifications = models.BooleanField(
         default=False, help_text="Enable email notifications for critical alerts"
     )
+    stock_alert_digest_minutes = models.PositiveSmallIntegerField(
+        default=15,
+        help_text="Minutes to coalesce pharmacy stock alerts into one email digest.",
+    )
     notification_email_recipients = models.TextField(
         blank=True, help_text="Comma-separated list of email addresses to notify"
+    )
+    stock_alert_roles = models.ManyToManyField(
+        "core.Role", blank=True, related_name="stock_alert_settings"
+    )
+    stock_alert_users = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, blank=True, related_name="stock_alert_settings"
     )
 
     # Metadata
@@ -1277,15 +1297,16 @@ class AlertSettings(models.Model):
         null=True,
         related_name="alert_settings_updates",
     )
-    updated_at = models.DateTimeField(auto_now=True)
-    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         verbose_name = "Alert Settings"
         verbose_name_plural = "Alert Settings"
+        constraints = [
+            models.UniqueConstraint(fields=["facility"], name="unique_alert_settings_facility")
+        ]
 
     def __str__(self):
-        return f"Alert Settings (Updated: {self.updated_at})"
+        return f"Alert Settings ({self.facility})"
 
     def clean(self):
         """Validate settings."""
@@ -1301,13 +1322,54 @@ class AlertSettings(models.Model):
         if self.expiry_critical_days >= self.expiry_warning_days:
             raise ValidationError("Critical days should be less than warning days")
 
+        if self.stock_alert_digest_minutes < 1:
+            raise ValidationError("Stock alert digest interval must be at least one minute")
+
     @classmethod
-    def get_settings(cls):
+    def get_settings(cls, facility):
         """
-        Get or create the singleton alert settings instance.
+        Get or create the specified facility's alert settings.
 
         Returns:
             AlertSettings: The alert settings instance
         """
-        settings, created = cls.objects.get_or_create(pk=1)
-        return settings
+        if facility is None:
+            raise ValueError("A facility is required for alert settings.")
+        alert_settings, _ = cls.objects.get_or_create(facility=facility)
+        return alert_settings
+
+    def _resolve_recipients(self, roles, users):
+        """Return active users assigned to this facility by configured role or user."""
+        from django.contrib.auth import get_user_model
+        from django.db.models import Q
+
+        User = get_user_model()
+        facility_staff = Q(staff_profile__primary_facility=self.facility) | Q(
+            staff_profile__secondary_facilities=self.facility
+        )
+        selected_roles = roles.all()
+        return User.objects.filter(
+            facility_staff,
+            Q(staff_profile__primary_role__in=selected_roles)
+            | Q(staff_profile__secondary_roles__in=selected_roles)
+            | Q(pk__in=users.values("pk")),
+            is_active=True,
+        ).distinct()
+
+    def resolve_stock_alert_recipients(self):
+        """Resolve active same-facility pharmacy stock recipients."""
+        return self._resolve_recipients(self.stock_alert_roles, self.stock_alert_users)
+
+    def resolve_stock_alert_email_recipients(self) -> list[str]:
+        """Return unique configured email addresses for the facility stock digest."""
+        recipients = {
+            email.strip().lower()
+            for email in self.notification_email_recipients.split(",")
+            if email.strip()
+        }
+        recipients.update(
+            email.strip().lower()
+            for email in self.resolve_stock_alert_recipients().values_list("email", flat=True)
+            if email and email.strip()
+        )
+        return sorted(recipients)

@@ -1,0 +1,5 @@
+<!-- Immediate surveillance alert HTML email. Context: alert message/type and current case workflow data. -->
+<div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;border:1px solid #fecaca">
+  <div style="background:#b91c1c;color:#fff;padding:18px"><h2 style="margin:0">Immediate Disease Surveillance Alert</h2></div>
+  <div style="padding:18px"><p><strong>{{ alert_type }}</strong></p><p>{{ alert_message }}</p><table><tr><td>Case ID</td><td>{{ case_id }}</td></tr><tr><td>Disease</td><td>{{ disease_name }}</td></tr><tr><td>Category</td><td>{{ category }}</td></tr><tr><td>Patient MRN</td><td>{{ patient_mrn }}</td></tr><tr><td>County</td><td>{{ county_name }}</td></tr><tr><td>Detected</td><td>{{ detected }}</td></tr><tr><td>Notification Deadline</td><td>{{ deadline }}</td></tr></table><p>Please follow the designated county public-health response process.</p></div>
+</div>

@@ -1123,8 +1123,13 @@ class AlertSettingsView(APIView):
         from hmis.apps.pharmacy.models import AlertSettings
         from hmis.apps.pharmacy.serializers import AlertSettingsSerializer
 
-        settings = AlertSettings.get_settings()
-        serializer = AlertSettingsSerializer(settings)
+        resolve_request_tenant(request)
+        if not getattr(request, "facility", None):
+            return Response(
+                {"detail": "An active facility is required."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        settings = AlertSettings.get_settings(request.facility)
+        serializer = AlertSettingsSerializer(settings, context={"request": request})
         return Response(serializer.data)
 
     @extend_schema(
@@ -1148,8 +1153,15 @@ class AlertSettingsView(APIView):
         from hmis.apps.pharmacy.models import AlertSettings
         from hmis.apps.pharmacy.serializers import AlertSettingsSerializer
 
-        settings = AlertSettings.get_settings()
-        serializer = AlertSettingsSerializer(settings, data=request.data, partial=partial)
+        resolve_request_tenant(request)
+        if not getattr(request, "facility", None):
+            return Response(
+                {"detail": "An active facility is required."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        settings = AlertSettings.get_settings(request.facility)
+        serializer = AlertSettingsSerializer(
+            settings, data=request.data, partial=partial, context={"request": request}
+        )
 
         if serializer.is_valid():
             serializer.save(updated_by=request.user)

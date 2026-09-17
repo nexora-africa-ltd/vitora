@@ -1120,3 +1120,10 @@ export interface LabWorkflowSettings {
   allow_duplicate_orders: boolean;
   require_clinical_notes: boolean;
 }
+
+export interface LaboratoryAlertSettings {
+  id: number;
+  facility: number;
+  lab_critical_alert_roles: number[];
+  lab_critical_alert_users: number[];
+}

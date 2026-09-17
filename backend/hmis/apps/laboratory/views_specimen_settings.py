@@ -26,6 +26,7 @@ from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequire
 
 from .models import (
     LabBarcodeConfig,
+    LaboratoryAlertSettings,
     LabWorkflowSettings,
     ReferralLab,
     ResultCommentTemplate,
@@ -35,6 +36,7 @@ from .models import (
 from .permissions import LaboratoryModuleRequired, LISIntegrationSettingsPermission
 from .serializers import (
     LabBarcodeConfigSerializer,
+    LaboratoryAlertSettingsSerializer,
     LabWorkflowSettingsSerializer,
     ReferralLabSerializer,
     ResultCommentTemplateSerializer,
@@ -287,6 +289,52 @@ class LabWorkflowSettingsViewSet(
         )
         serializer = self.get_serializer(settings)
         return Response(serializer.data)
+
+    def perform_create(self, serializer):
+        serializer.save(**self.get_tenant_save_kwargs())
+
+    def perform_update(self, serializer):
+        serializer.save()
+
+
+class LaboratoryAlertSettingsViewSet(
+    AuditedMutationMixin, TenantScopedViewMixin, viewsets.ModelViewSet
+):
+    """Singleton critical-result escalation settings for the active facility."""
+
+    queryset = LaboratoryAlertSettings.objects.prefetch_related(
+        "lab_critical_alert_roles", "lab_critical_alert_users"
+    )
+    audit_resource_type = "LaboratoryAlertSettings"
+    audit_action_prefix = "laboratory.alert_settings"
+    audit_source = "laboratory_api"
+    serializer_class = LaboratoryAlertSettingsSerializer
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        LISIntegrationSettingsPermission,
+        WriteRequiresRolePermission,
+        ReadRequiresModelPermission,
+    ]
+    tenant_scope = "facility"
+
+    def list(self, request, *args, **kwargs):
+        """Return or create the active facility's configuration."""
+        self._resolve_tenant_context()
+        if not getattr(request, "facility", None):
+            return Response(
+                {
+                    "detail": "No facility context. Set X-Facility-ID header or assign a primary facility."
+                },
+                status=400,
+            )
+        settings = LaboratoryAlertSettings.get_settings(request.facility)
+        return Response(self.get_serializer(settings).data)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        self._resolve_tenant_context()
+        return context
 
     def perform_create(self, serializer):
         serializer.save(**self.get_tenant_save_kwargs())

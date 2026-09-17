@@ -49,6 +49,7 @@ import {
   ReferralLab,
   LabBarcodeConfig,
   LabWorkflowSettings,
+  LaboratoryAlertSettings,
 } from '@/lib/types/laboratory';
 import { PaginatedResponse } from '@/lib/types';
 import { parseResponse } from '@/lib/schemas/validation';
@@ -106,6 +107,7 @@ import {
   ReferralLabArraySchema,
   LabBarcodeConfigSchema,
   LabWorkflowSettingsSchema,
+  LaboratoryAlertSettingsSchema,
 } from '@/lib/schemas/laboratory.schema';
 
 const ResolveTestsResponseSchema = z.object({
@@ -1518,6 +1520,26 @@ export const laboratoryApi = {
     const response = await apiClient.post('/api/lab/settings/workflow/', data);
     return parseResponse(LabWorkflowSettingsSchema, response.data, {
       context: 'laboratoryApi.createWorkflowSettings',
+    });
+  },
+
+  async getAlertSettings(): Promise<LaboratoryAlertSettings> {
+    const response = await apiClient.get('/api/lab/settings/alerts/');
+    const data = Array.isArray(response.data)
+      ? response.data[0]
+      : response.data.results?.[0] || response.data;
+    return parseResponse(LaboratoryAlertSettingsSchema, data, {
+      context: 'laboratoryApi.getAlertSettings',
+    });
+  },
+
+  async updateAlertSettings(
+    id: number,
+    data: Pick<LaboratoryAlertSettings, 'lab_critical_alert_roles' | 'lab_critical_alert_users'>
+  ): Promise<LaboratoryAlertSettings> {
+    const response = await apiClient.patch(`/api/lab/settings/alerts/${id}/`, data);
+    return parseResponse(LaboratoryAlertSettingsSchema, response.data, {
+      context: 'laboratoryApi.updateAlertSettings',
     });
   },
 };

@@ -15,8 +15,9 @@ from channels.layers import get_channel_layer
 from django.conf import settings
 from django.core import signing
 from django.db import models
+from django.template import TemplateDoesNotExist, TemplateSyntaxError
+from django.template.loader import render_to_string
 from django.utils import timezone
-from django.utils.html import escape
 
 from hmis.apps.core.services.email_service import send_transactional_email
 from hmis.apps.core.sms_gateway import send_sms
@@ -235,94 +236,33 @@ class SurveillanceService:
         reporter_name = _display_user_name(case.reported_by)
         notifier_name = _display_user_name(triggered_by)
         icd_codes = cls._encounter_icd10_codes(case)
-        patient_line = f"Patient MRN: {case.patient.mrn}" if include_patient_identifiers else ""
-        notes_clean = notes.strip()
-        text_lines = [
-            "Disease Surveillance County Notification",
-            f"Case ID: {case.id}",
-            f"Disease: {case.disease.name}",
-            f"ICD-10 Codes: {icd_codes or 'N/A'}",
-            f"Category: {case.disease.get_category_display()}",
-            f"Severity: {case.get_severity_display()}",
-            f"Detected: {detected}",
-            f"Reported At: {reported}",
-            f"Notification deadline: {deadline}",
-            f"County: {county_name}",
-            f"Sub-County: {sub_county_name}",
-            f"Facility: {facility_name} ({facility_code})",
-            f"Reported By: {reporter_name}",
-            f"Notification Triggered By: {notifier_name}",
-            f"Lab Confirmed: {'Yes' if case.laboratory_confirmed else 'No'}",
-            f"Current Outcome: {case.get_outcome_display()}",
-        ]
-        if patient_line:
-            text_lines.append(patient_line)
-        if notes_clean:
-            text_lines.append(f"Notes: {notes_clean}")
-        if ack_url:
-            text_lines.append(f"Acknowledge receipt: {ack_url}")
-        else:
-            text_lines.append("Please acknowledge receipt through the designated county process.")
-
-        text_body = "\n".join(text_lines)
-
-        def row(label: str, value: str) -> str:
-            return (
-                "<tr>"
-                f"<td style='padding:8px 10px;color:#4b5563;font-size:13px;font-weight:600;width:210px'>{escape(label)}</td>"
-                f"<td style='padding:8px 10px;color:#111827;font-size:13px'>{escape(value)}</td>"
-                "</tr>"
-            )
-
-        html_rows = [
-            row("Case ID", str(case.id)),
-            row("Disease", case.disease.name),
-            row("ICD-10 Codes", icd_codes or "N/A"),
-            row("Category", case.disease.get_category_display()),
-            row("Severity", case.get_severity_display()),
-            row("Detected", detected),
-            row("Reported At", reported),
-            row("Notification Deadline", deadline),
-            row("County", county_name),
-            row("Sub-County", sub_county_name),
-            row("Facility", f"{facility_name} ({facility_code})"),
-            row("Reported By", reporter_name),
-            row("Notification Triggered By", notifier_name),
-            row("Lab Confirmed", "Yes" if case.laboratory_confirmed else "No"),
-            row("Current Outcome", case.get_outcome_display()),
-        ]
-        if patient_line:
-            html_rows.append(row("Patient MRN", case.patient.mrn))
-        if notes_clean:
-            html_rows.append(row("Notes", notes_clean))
-
-        action_chunks: list[str] = []
-        if ack_url:
-            action_chunks.append(
-                f"<a href='{escape(ack_url)}' "
-                "style='background:#0f766e;color:#fff;text-decoration:none;padding:10px 14px;"
-                "display:inline-block;border-radius:8px;font-size:13px;margin-right:8px'>"
-                "Acknowledge Receipt</a>"
-            )
-        action_html = (
-            f"<p style='margin:18px 0 0'>{''.join(action_chunks)}</p>"
-            if action_chunks
-            else "<p style='margin:18px 0 0;color:#374151;font-size:13px'>Please acknowledge receipt through the designated county process.</p>"
-        )
-
-        html_body = (
-            "<div style='font-family:Segoe UI,Arial,sans-serif;background:#f8fafc;padding:18px'>"
-            "<div style='max-width:720px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;"
-            "border-radius:12px;padding:18px'>"
-            "<h2 style='margin:0 0 6px;color:#0f172a;font-size:20px'>Disease Surveillance County Notification</h2>"
-            "<p style='margin:0 0 14px;color:#475569;font-size:13px'>"
-            "This notification includes the case context needed for county public-health action.</p>"
-            "<table style='width:100%;border-collapse:collapse;border:1px solid #e5e7eb;border-radius:8px'>"
-            f"{''.join(html_rows)}"
-            "</table>"
-            f"{action_html}"
-            "</div></div>"
-        )
+        context = {
+            "case_id": case.id,
+            "disease_name": case.disease.name,
+            "icd_codes": icd_codes or "N/A",
+            "category": case.disease.get_category_display(),
+            "severity": case.get_severity_display(),
+            "detected": detected,
+            "reported": reported,
+            "deadline": deadline,
+            "county_name": county_name,
+            "sub_county_name": sub_county_name,
+            "facility_name": facility_name,
+            "facility_code": facility_code,
+            "reporter_name": reporter_name,
+            "notifier_name": notifier_name,
+            "laboratory_confirmed": case.laboratory_confirmed,
+            "outcome": case.get_outcome_display(),
+            "patient_mrn": case.patient.mrn if include_patient_identifiers else "",
+            "notes": notes.strip(),
+            "ack_url": ack_url,
+        }
+        text_body = render_to_string("surveillance/email/county_notification.txt", context)
+        try:
+            html_body = render_to_string("surveillance/email/county_notification.html", context)
+        except (TemplateDoesNotExist, TemplateSyntaxError) as exc:
+            logger.warning("County notification HTML template unavailable: %s", type(exc).__name__)
+            html_body = text_body.replace("\n", "<br>")
         return text_body, html_body
 
     @staticmethod
@@ -959,26 +899,31 @@ class SurveillanceService:
                 return False
 
             subject = f"[Vitora HMIS] {alert.get_alert_type_display()}: {alert.case.disease.name}"
-            body = f"""
-Disease Surveillance Alert
-===========================
-
-{alert.message}
-
-Case Details:
-- Disease: {alert.case.disease.name}
-- Category: {alert.case.disease.get_category_display()}
-- Patient MRN: {alert.case.patient.mrn}
-- County: {county.name if county else "N/A"}
-- Detected: {alert.case.detected_at.strftime("%Y-%m-%d %H:%M")}
-- Notification Deadline: {alert.case.notification_deadline.strftime("%Y-%m-%d %H:%M") if alert.case.notification_deadline else "N/A"}
-
-Please follow the designated county public-health response process.
-"""
+            context = {
+                "alert_message": alert.message,
+                "alert_type": alert.get_alert_type_display(),
+                "case_id": alert.case.id,
+                "disease_name": alert.case.disease.name,
+                "category": alert.case.disease.get_category_display(),
+                "patient_mrn": alert.case.patient.mrn,
+                "county_name": county.name,
+                "detected": alert.case.detected_at.strftime("%Y-%m-%d %H:%M"),
+                "deadline": (
+                    alert.case.notification_deadline.strftime("%Y-%m-%d %H:%M")
+                    if alert.case.notification_deadline
+                    else "N/A"
+                ),
+            }
+            text_body = render_to_string("surveillance/email/immediate_alert.txt", context)
+            try:
+                html_body = render_to_string("surveillance/email/immediate_alert.html", context)
+            except (TemplateDoesNotExist, TemplateSyntaxError) as exc:
+                logger.warning("Immediate alert HTML template unavailable: %s", type(exc).__name__)
+                html_body = text_body.replace("\n", "<br>")
 
             result = send_transactional_email(
                 subject=subject,
-                html_body=body.replace("\n", "<br>"),
+                html_body=html_body,
                 to_email=recipient,
                 facility=alert.case.facility,
             )

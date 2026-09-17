@@ -6,6 +6,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { format, formatDistanceToNow } from 'date-fns';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
@@ -57,6 +58,57 @@ import {
 } from '@/lib/hooks/use-pharmacy';
 import { useToast } from '@/lib/hooks/use-toast';
 import { pharmacyApi } from '@/lib/api/pharmacy';
+import { rolesApi, staffApi } from '@/lib/api/rbac';
+import { usePermissions } from '@/lib/hooks/use-permissions';
+import { useFacility } from '@/lib/context/facility-context';
+import type { Role, StaffProfile } from '@/lib/types/rbac';
+
+interface RecipientSelectionProps {
+  title: string;
+  roles: Role[];
+  staff: StaffProfile[];
+  selectedRoles: number[];
+  selectedUsers: number[];
+  onRolesChange: (ids: number[]) => void;
+  onUsersChange: (ids: number[]) => void;
+}
+
+function RecipientSelection({
+  title, roles, staff, selectedRoles, selectedUsers, onRolesChange, onUsersChange,
+}: RecipientSelectionProps) {
+  const toggle = (ids: number[], id: number, setIds: (next: number[]) => void) => {
+    setIds(ids.includes(id) ? ids.filter((selected) => selected !== id) : [...ids, id]);
+  };
+
+  return (
+    <Card className="border-muted">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm">{title}</CardTitle>
+        <CardDescription>Recipients must be assigned to the active facility.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4 sm:grid-cols-2">
+        <fieldset className="space-y-1">
+          <legend className="text-xs font-medium text-muted-foreground">Roles</legend>
+          {roles.map((role) => (
+            <label key={role.id} className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={selectedRoles.includes(role.id)} onChange={() => toggle(selectedRoles, role.id, onRolesChange)} />
+              {role.name}
+            </label>
+          ))}
+        </fieldset>
+        <fieldset className="space-y-1">
+          <legend className="text-xs font-medium text-muted-foreground">Individual staff</legend>
+          {staff.map((member) => (
+            <label key={member.user} className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={selectedUsers.includes(member.user)} onChange={() => toggle(selectedUsers, member.user, onUsersChange)} />
+              {member.full_name || member.user_username}
+            </label>
+          ))}
+        </fieldset>
+      </CardContent>
+    </Card>
+  );
+}
 
 interface AlertsPanelProps {
   alerts: StockAlert[];
@@ -143,6 +195,9 @@ export function AlertsPanel({
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [expiryWarningDays, setExpiryWarningDays] = useState('90');
   const [lowStockThreshold, setLowStockThreshold] = useState('100');
+  const [stockAlertDigestMinutes, setStockAlertDigestMinutes] = useState('15');
+  const [stockRoles, setStockRoles] = useState<number[]>([]);
+  const [stockUsers, setStockUsers] = useState<number[]>([]);
   const [lastRefreshed, setLastRefreshed] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -153,12 +208,31 @@ export function AlertsPanel({
   const resolveAlert = useResolveAlert();
   const { data: alertSettings } = useAlertSettings();
   const updateSettings = useUpdateAlertSettings();
+  const { isAdmin } = usePermissions();
+  const { facility } = useFacility();
+  const { data: roles } = useQuery({
+    queryKey: ['alert-recipient-roles'],
+    queryFn: () => rolesApi.list({ page_size: 100 }),
+    enabled: isAdmin,
+  });
+  const { data: staff } = useQuery({
+    queryKey: ['alert-recipient-staff'],
+    queryFn: () => staffApi.list({ page_size: 100 }),
+    enabled: isAdmin,
+  });
+  const facilityStaff = (staff?.results ?? []).filter(
+    (member) =>
+      member.primary_facility === facility?.id || member.secondary_facilities?.includes(facility?.id ?? -1)
+  );
 
   // Load settings when available
   useEffect(() => {
     if (alertSettings) {
       setExpiryWarningDays(String(alertSettings.expiry_warning_days || 90));
       setLowStockThreshold(String(alertSettings.low_stock_threshold || 100));
+      setStockAlertDigestMinutes(String(alertSettings.stock_alert_digest_minutes || 15));
+      setStockRoles(alertSettings.stock_alert_roles);
+      setStockUsers(alertSettings.stock_alert_users);
     }
   }, [alertSettings]);
 
@@ -491,8 +565,8 @@ export function AlertsPanel({
             Refresh
           </Button>
 
-          {/* Settings button */}
-          <Button
+          {/* Facility administrators configure recipient routing. */}
+          {isAdmin && <Button
             variant="outline"
             size="sm"
             data-testid="alert-settings-button"
@@ -500,7 +574,7 @@ export function AlertsPanel({
           >
             <Settings className="mr-1 h-4 w-4" />
             Settings
-          </Button>
+          </Button>}
         </div>
       </div>
 
@@ -712,7 +786,7 @@ export function AlertsPanel({
 
       {/* Resolve Dialog */}
       <Dialog open={resolveDialogOpen} onOpenChange={setResolveDialogOpen}>
-        <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Resolve Alert</DialogTitle>
             <DialogDescription>Enter notes about how this alert was resolved.</DialogDescription>
@@ -727,6 +801,20 @@ export function AlertsPanel({
                 onChange={(e) => setResolutionNotes(e.target.value)}
                 rows={4}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="stock-alert-digest-minutes">Email Digest Interval (minutes)</Label>
+              <Input
+                id="stock-alert-digest-minutes"
+                type="number"
+                min="1"
+                value={stockAlertDigestMinutes}
+                onChange={(e) => setStockAlertDigestMinutes(e.target.value)}
+                placeholder="15"
+              />
+              <p className="text-xs text-muted-foreground">
+                Stock alerts are combined into one email per recipient during this interval.
+              </p>
             </div>
           </div>
           <DialogFooter>
@@ -790,6 +878,15 @@ export function AlertsPanel({
                 Alert when stock falls below this quantity
               </p>
             </div>
+            <RecipientSelection
+              title="Pharmacy Stock Alert Recipients"
+              roles={roles?.results ?? []}
+              staff={facilityStaff}
+              selectedRoles={stockRoles}
+              selectedUsers={stockUsers}
+              onRolesChange={setStockRoles}
+              onUsersChange={setStockUsers}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSettingsDialogOpen(false)}>
@@ -801,6 +898,9 @@ export function AlertsPanel({
                   await updateSettings.mutateAsync({
                     expiry_warning_days: parseInt(expiryWarningDays) || 90,
                     low_stock_threshold: parseInt(lowStockThreshold) || 100,
+                    stock_alert_digest_minutes: Math.max(1, parseInt(stockAlertDigestMinutes) || 15),
+                    stock_alert_roles: stockRoles,
+                    stock_alert_users: stockUsers,
                   });
                   toast({
                     title: 'Settings saved',

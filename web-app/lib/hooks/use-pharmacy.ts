@@ -709,7 +709,10 @@ export function useUpdateAlertSettings() {
       expiry_warning_days?: number;
       expiry_critical_days?: number;
       enable_email_notifications?: boolean;
+      stock_alert_digest_minutes?: number;
       notification_email_recipients?: string;
+      stock_alert_roles?: number[];
+      stock_alert_users?: number[];
     }) => pharmacyApi.updateAlertSettings(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['alert-settings'] });

@@ -1177,3 +1177,10 @@ export const LabWorkflowSettingsSchema = z.object({
   allow_duplicate_orders: z.boolean(),
   require_clinical_notes: z.boolean(),
 });
+
+export const LaboratoryAlertSettingsSchema = z.object({
+  id: z.number(),
+  facility: z.number(),
+  lab_critical_alert_roles: z.array(z.number()),
+  lab_critical_alert_users: z.array(z.number()),
+});

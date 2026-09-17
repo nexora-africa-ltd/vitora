@@ -9,6 +9,8 @@ from celery import shared_task
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db.models import Q
+from django.template import TemplateDoesNotExist, TemplateSyntaxError
+from django.template.loader import render_to_string
 from django.utils import timezone
 
 from hmis.apps.core.services.email_service import send_transactional_email
@@ -99,32 +101,28 @@ def send_emergency_access_escalation(self, emergency_access_id: int) -> dict:  #
 
     subject = f"🚨 ALERT: Emergency Access Invoked by {emergency_access.user.username}"
 
-    message = f"""
-EMERGENCY ACCESS ALERT
-======================
-
-A user has invoked emergency (break-glass) access.
-
-User: {emergency_access.user.username} ({emergency_access.user.first_name} {emergency_access.user.last_name})
-Patient: {patient_info}
-Reason: {emergency_access.get_reason_display()}
-Details: {emergency_access.reason_details}
-Requested At: {emergency_access.requested_at.strftime("%Y-%m-%d %H:%M:%S")}
-Expires At: {emergency_access.expires_at.strftime("%Y-%m-%d %H:%M:%S")}
-Duration: {emergency_access.duration_minutes} minutes
-IP Address: {emergency_access.ip_address or "Unknown"}
-
-ACTION REQUIRED:
-- Review this emergency access request
-- Verify the justification is appropriate
-- Approve or revoke as needed
-
-Review at: {getattr(settings, "SITE_URL", "http://localhost")}/admin/emergency-access/{emergency_access.id}/
-
----
-Vitora HMIS - Emergency Access Monitoring
-This is an automated alert. Do not reply to this email.
-"""
+    context = {
+        "username": emergency_access.user.username,
+        "user_name": emergency_access.user.get_full_name(),
+        "patient_info": patient_info,
+        "reason": emergency_access.get_reason_display(),
+        "reason_details": emergency_access.reason_details,
+        "requested_at": emergency_access.requested_at.strftime("%Y-%m-%d %H:%M:%S"),
+        "expires_at": emergency_access.expires_at.strftime("%Y-%m-%d %H:%M:%S"),
+        "duration_minutes": emergency_access.duration_minutes,
+        "ip_address": emergency_access.ip_address or "Unknown",
+        "review_url": (
+            f"{getattr(settings, 'SITE_URL', 'http://localhost')}/admin/emergency-access/"
+            f"{emergency_access.id}/"
+        ),
+    }
+    text_body = render_to_string("core/emergency_access/email/escalation.txt", context)
+    try:
+        html_body = render_to_string("core/emergency_access/email/escalation.html", context)
+    except (TemplateDoesNotExist, TemplateSyntaxError) as exc:
+        # The plain-text template is a safe delivery fallback; provider failures still retry.
+        logger.warning("Emergency escalation HTML template unavailable: %s", type(exc).__name__)
+        html_body = text_body.replace("\n", "<br>")
 
     sms_message = f"🚨 VITORA ALERT: Emergency access by {emergency_access.user.username}. Reason: {emergency_access.reason}. Review required."
 
@@ -137,7 +135,7 @@ This is an automated alert. Do not reply to this email.
             for admin in admins.exclude(email=""):
                 result = send_transactional_email(
                     subject=subject,
-                    html_body=message.replace("\n", "<br>"),
+                    html_body=html_body,
                     to_email=admin.email,
                     facility=facility,
                 )

@@ -13,8 +13,104 @@ from datetime import date, timedelta
 
 from celery import shared_task
 from django.conf import settings
+from django.core.cache import cache
+from django.db import transaction
+from django.db.models import Count
+from django.template.loader import render_to_string
+from django.utils import timezone
+
+from hmis.apps.core.services.email_service import send_transactional_email
 
 logger = logging.getLogger(__name__)
+
+STOCK_DIGEST_MAX_ITEMS = 100
+
+
+def queue_stock_alert_digest(facility_id: int, digest_minutes: int = 15) -> None:
+    """Schedule one delayed stock digest per facility, regardless of alert volume."""
+    interval = max(1, digest_minutes)
+    key = f"pharmacy:stock-alert-digest:{facility_id}"
+    # The cache key only coalesces scheduling. The sent marker on StockAlert is
+    # durable, so a cache eviction can at most cause a harmless duplicate task.
+    if cache.add(key, "1", timeout=interval * 120):
+        send_stock_alert_digest.apply_async(args=[facility_id], countdown=interval * 60)
+
+
+@shared_task(name="hmis.apps.pharmacy.tasks.send_stock_alert_digest")
+def send_stock_alert_digest(facility_id: int) -> dict[str, int | bool]:
+    """Email one facility-scoped, de-duplicated digest of pending stock alerts."""
+    from hmis.apps.core.models import Facility
+    from hmis.apps.pharmacy.models import AlertSettings, StockAlert
+
+    cache.delete(f"pharmacy:stock-alert-digest:{facility_id}")
+    facility = Facility.objects.filter(pk=facility_id).first()
+    if facility is None:
+        return {"sent": False, "alerts": 0}
+
+    alert_settings = AlertSettings.get_settings(facility)
+    if not alert_settings.enable_email_notifications:
+        return {"sent": False, "alerts": 0}
+    recipients = alert_settings.resolve_stock_alert_email_recipients()
+    if not recipients:
+        return {"sent": False, "alerts": 0}
+
+    with transaction.atomic():
+        alerts = list(
+            StockAlert.objects.select_for_update()
+            .filter(
+                facility_id=facility_id,
+                is_resolved=False,
+                stock_digest_sent_at__isnull=True,
+                alert_type__in=["LOW_STOCK", "OUT_OF_STOCK"],
+            )
+            .select_related("drug", "batch")
+            .order_by("-severity", "-created_at")
+        )
+        if not alerts:
+            return {"sent": False, "alerts": 0}
+
+        displayed_alerts = alerts[:STOCK_DIGEST_MAX_ITEMS]
+        grouped = {}
+        for alert in displayed_alerts:
+            grouped.setdefault(alert.severity, {}).setdefault(alert.alert_type, []).append(alert)
+        counts = list(
+            StockAlert.objects.filter(pk__in=[alert.pk for alert in alerts])
+            .values("severity", "alert_type")
+            .annotate(total=Count("id"))
+            .order_by("-total")
+        )
+        context = {
+            "facility_name": facility.name,
+            "total_alerts": len(alerts),
+            "groups": grouped,
+            "counts": counts,
+            "alerts": displayed_alerts,
+            "remaining_alerts": max(0, len(alerts) - len(displayed_alerts)),
+            "inventory_url": f"{getattr(settings, 'FRONTEND_URL', '').rstrip('/')}/pharmacy/inventory",
+        }
+        html_body = render_to_string("pharmacy/email/stock_alert_digest.html", context)
+        text_body = render_to_string("pharmacy/email/stock_alert_digest.txt", context)
+        subject = f"[{facility.name}] Pharmacy stock alert digest ({len(alerts):,})"
+
+        accepted = True
+        for recipient in recipients:
+            result = send_transactional_email(
+                subject=subject,
+                html_body=html_body or text_body.replace("\n", "<br>"),
+                to_email=recipient,
+                facility=facility,
+            )
+            accepted = accepted and bool(result.get("accepted", False))
+
+        if accepted:
+            StockAlert.objects.filter(pk__in=[alert.pk for alert in alerts]).update(
+                stock_digest_sent_at=timezone.now()
+            )
+            return {"sent": True, "alerts": len(alerts)}
+
+    # Leave alerts pending after a provider rejection so a later stock event
+    # schedules a retry without losing the digest.
+    return {"sent": False, "alerts": len(alerts)}
 
 
 @shared_task(name="hmis.apps.pharmacy.tasks.expire_prescriptions")
@@ -116,6 +212,7 @@ def generate_prescription_expiry_alerts():
         existing = StockAlert.objects.filter(
             alert_type="RX_EXPIRING",
             is_resolved=False,
+            facility=rx.facility,
             message__startswith=prefix,
         ).exists()
 
@@ -125,6 +222,7 @@ def generate_prescription_expiry_alerts():
                 drug=remaining[0].drug,
                 severity=severity,
                 message=message,
+                facility=rx.facility,
             )
             alerts_created += 1
 

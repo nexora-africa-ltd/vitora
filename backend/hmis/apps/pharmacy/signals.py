@@ -14,7 +14,6 @@ from decimal import Decimal
 
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import DatabaseError, IntegrityError
-from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
@@ -573,13 +572,10 @@ def _notify_prescription_created(instance):
 
 
 def _notify_stock_alert(instance, critical: bool):
-    """Notify pharmacy managers about stock level alerts."""
+    """Notify configured facility recipients about stock level alerts."""
     try:
-        from django.contrib.auth import get_user_model
-
         from hmis.apps.core.services.notification_service import notify_users
-
-        User = get_user_model()
+        from hmis.apps.pharmacy.models import AlertSettings
 
         facility_id = getattr(instance, "facility_id", None) or getattr(
             instance.drug, "facility_id", None
@@ -587,18 +583,8 @@ def _notify_stock_alert(instance, critical: bool):
         if not facility_id:
             return
 
-        # Notify pharmacists and managers
-        staff = User.objects.filter(
-            Q(staff_profile__primary_facility_id=facility_id)
-            | Q(staff_profile__secondary_facilities__id=facility_id),
-            staff_profile__primary_role__code__in=[
-                "PHARMACIST",
-                "PHARMACY_TECH",
-                "ADMIN",
-                "ORG-ADMIN",
-            ],
-            is_active=True,
-        ).distinct()
+        alert_settings = AlertSettings.get_settings(instance.facility)
+        staff = alert_settings.resolve_stock_alert_recipients()
 
         if not staff.exists():
             return
@@ -621,6 +607,10 @@ def _notify_stock_alert(instance, critical: bool):
             related_id=instance.id,
             action_url="/pharmacy/inventory",
         )
+        if alert_settings.enable_email_notifications:
+            from hmis.apps.pharmacy.tasks import queue_stock_alert_digest
+
+            queue_stock_alert_digest(facility_id, alert_settings.stock_alert_digest_minutes)
     except _pharmacy_signal_handled_exceptions():
         logger.exception("Failed to notify about stock alert for batch %s", instance.id)
 

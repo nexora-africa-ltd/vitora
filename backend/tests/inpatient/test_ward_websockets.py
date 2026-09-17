@@ -831,9 +831,11 @@ class TestNotifySupervisorsCriticalViolationTask:
         email_body = call_kwargs["html_body"]
         assert sample_patient.first_name in email_body
         assert sample_patient.last_name in email_body
+        assert sample_patient.mrn in email_body
         assert non_isolation_ward_ws.name in email_body
         # The task uses message text, not code
         assert "Patient requires isolation" in email_body
+        assert "No isolation beds" in email_body
 
     @patch("hmis.apps.inpatient.signals.notify_supervisors_critical_violation.delay")
     @patch("hmis.apps.inpatient.tasks.send_transactional_email")

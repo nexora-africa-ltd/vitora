@@ -13,9 +13,61 @@ The backend foundation is implemented: `FacilityEmailConfig` provides
 facility-scoped KMS-encrypted SMTP credentials, `send_transactional_email()`
 selects facility SMTP when Custom Email is enabled, and
 `/api/core/facility-email-config/` provides tenant-scoped configuration plus an
-SMTP connection-test action. Delivery ledger records, per-facility alert
-recipients, and migration of all email callers to pass facility context remain
-follow-up work.
+ SMTP connection-test action. Facility-scoped stock and critical-lab alert
+ recipients are implemented. Delivery ledger records and migration of all email
+ callers to pass facility context remain follow-up work.
+
+## Alert Recipient Routing
+
+`pharmacy.AlertSettings` is facility-scoped. The legacy
+`/api/pharmacy/alert-settings/` URL resolves the authenticated user's active
+facility and returns or creates only that facility's record. It stores separate
+recipient sets for `stock_alert_roles` / `stock_alert_users`.
+
+`laboratory.LaboratoryAlertSettings` owns critical result escalation routing.
+`/api/lab/settings/alerts/` resolves the active facility and returns or creates
+that facility's configuration, with `lab_critical_alert_roles` and
+`lab_critical_alert_users`. This keeps pharmacy stock routing and clinical
+laboratory escalation configuration independently deployable and auditable.
+
+Configured roles resolve to active staff whose primary or secondary role
+matches and whose primary or secondary facility is the active facility.
+Explicit users are subject to the same facility assignment check. This prevents
+cross-facility escalation even when a user or role is mistakenly selected.
+
+### Pharmacy Stock Digest Batching
+
+When `enable_email_notifications` is enabled, pharmacy stock events keep their
+in-app notification and queue a single Celery task for the active facility.
+`stock_alert_digest_minutes` defaults to 15 minutes and can be configured from
+the Pharmacy Stock Alert Settings dialog. The Celery task receives only the
+facility ID, loads only unresolved `LOW_STOCK` and `OUT_OF_STOCK` alerts for
+that facility, and sends one digest to each unique configured recipient.
+
+The digest groups the complete count by severity and type, lists at most 100
+items, and reports the remaining count. It contains operational stock details
+only, never patient data. `StockAlert.stock_digest_sent_at` is updated only
+after every recipient accepts delivery, so duplicate/retried tasks skip
+completed alerts. Every digest calls `send_transactional_email` with the
+facility to preserve Custom Email transport selection.
+
+Stock batch alerts and scheduled expiry alerts retain the batch or prescription
+facility and organization; deduplication includes that facility. Critical lab
+results always retain the ordering clinician's in-app notification and email.
+They additionally send in-app and email escalations to the configured facility
+recipients, deduplicated by user. Every critical-lab email calls
+`send_transactional_email(..., facility=lab_order.facility)` so the facility
+sender policy applies. Nexora lifecycle email routing is intentionally unchanged.
+
+### Facility Admin Setup
+
+1. Switch to the target facility in the application.
+2. Open Pharmacy, then Stock Alerts, and select **Settings** to configure
+   Pharmacy Stock Alert Recipients.
+3. Open Laboratory, then Settings and the **Alerts** tab to configure Critical
+   Result Escalation recipients.
+4. Select roles and/or assigned staff and save. The server rejects staff not assigned to that
+   facility.
 
 ## Decision
 
