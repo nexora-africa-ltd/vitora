@@ -703,10 +703,14 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
     def _patient_copay_total(self, obj) -> Decimal:
         total_copay = Decimal("0.00")
+        has_linked_claim = False
 
         sha_claims = getattr(obj, "sha_claims", None)
         if sha_claims is not None:
-            for claim in sha_claims.all():
+            claims = list(sha_claims.all())
+            if claims:
+                has_linked_claim = True
+            for claim in claims:
                 total_copay += self._money(getattr(claim, "patient_copay", None))
 
         # Private insurance claims may carry patient copay on the claim itself.
@@ -716,7 +720,10 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
         insurance_claims = getattr(obj, "insurance_claims", None)
         if insurance_claims is not None:
-            for claim in insurance_claims.all():
+            claims = list(insurance_claims.all())
+            if claims:
+                has_linked_claim = True
+            for claim in claims:
                 claim_id = getattr(claim, "id", None)
                 if claim_id in insurance_claim_ids:
                     continue
@@ -730,6 +737,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
                 claim = getattr(payer, "insurance_claim", None)
                 if claim is None:
                     continue
+                has_linked_claim = True
                 claim_id = getattr(claim, "id", None)
                 if claim_id in insurance_claim_ids:
                     continue
@@ -738,7 +746,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
                 total_copay += self._money(getattr(claim, "copay_amount", None))
 
         total_copay = total_copay.quantize(Decimal("0.01"))
-        if total_copay == Decimal("0.00"):
+        if total_copay == Decimal("0.00") and has_linked_claim:
             _, item_patient_total = self._item_allocation_breakdown(obj)
             if item_patient_total > Decimal("0.00"):
                 return item_patient_total
