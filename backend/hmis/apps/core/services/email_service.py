@@ -17,11 +17,50 @@ import logging
 from typing import Any
 
 from django.conf import settings
-from django.core.mail import send_mail
+from django.core.mail import EmailMultiAlternatives, get_connection, send_mail
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 
 logger = logging.getLogger(__name__)
+
+# Safe connection metadata for frontend SMTP setup. Never include credentials.
+SMTP_PROVIDER_PRESETS = [
+    {
+        "id": "gmail",
+        "name": "Gmail",
+        "smtp_host": "smtp.gmail.com",
+        "smtp_port": 587,
+        "security_mode": "STARTTLS",
+    },
+    {
+        "id": "outlook",
+        "name": "Microsoft 365 / Outlook",
+        "smtp_host": "smtp.office365.com",
+        "smtp_port": 587,
+        "security_mode": "STARTTLS",
+    },
+    {
+        "id": "yahoo",
+        "name": "Yahoo Mail",
+        "smtp_host": "smtp.mail.yahoo.com",
+        "smtp_port": 465,
+        "security_mode": "SSL_TLS",
+    },
+    {
+        "id": "zoho",
+        "name": "Zoho Mail",
+        "smtp_host": "smtp.zoho.com",
+        "smtp_port": 465,
+        "security_mode": "SSL_TLS",
+    },
+    {
+        "id": "custom",
+        "name": "Custom SMTP",
+        "smtp_host": "",
+        "smtp_port": 587,
+        "security_mode": "STARTTLS",
+    },
+]
 
 
 def _get_frontend_url() -> str:
@@ -59,8 +98,21 @@ def send_transactional_email(
     from_email: str | None = None,
     headers: dict[str, str] | None = None,
     tags: list[dict[str, str]] | None = None,
+    facility: Any | None = None,
 ) -> dict[str, Any]:
     """Send email and return provider-aware metadata for delivery workflows."""
+    if facility is not None:
+        from hmis.apps.core.models import FacilityEmailConfig
+
+        config = FacilityEmailConfig.objects.filter(facility=facility).first()
+        if getattr(facility, "has_custom_email", False) and config and config.custom_email_enabled:
+            return _send_via_facility_smtp(
+                config=config,
+                subject=subject,
+                html_body=html_body,
+                to_email=to_email,
+            )
+
     sender = from_email or getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@vitora.health")
     resend_key = getattr(settings, "RESEND_API_KEY", "") or ""
 
@@ -142,6 +194,64 @@ def send_transactional_email(
         return {
             "accepted": False,
             "provider": "django",
+            "provider_message_id": None,
+            "terminal_state": "failed",
+        }
+
+
+def _send_via_facility_smtp(
+    *, config: Any, subject: str, html_body: str, to_email: str
+) -> dict[str, Any]:
+    """Send through the selected facility SMTP account without global fallback."""
+    if not config.is_configured or config.status != config.Status.HEALTHY:
+        logger.warning("Facility SMTP unavailable for facility_id=%s", config.facility_id)
+        return {
+            "accepted": False,
+            "provider": "smtp",
+            "provider_message_id": None,
+            "terminal_state": "failed",
+        }
+
+    try:
+        connection = get_connection(
+            backend="django.core.mail.backends.smtp.EmailBackend",
+            host=config.smtp_host,
+            port=config.smtp_port,
+            username=config.smtp_username,
+            password=config.smtp_password,
+            use_tls=config.security_mode == config.SecurityMode.STARTTLS,
+            use_ssl=config.security_mode == config.SecurityMode.SSL_TLS,
+            fail_silently=False,
+        )
+        message = EmailMultiAlternatives(
+            subject=subject,
+            body=strip_tags(html_body),
+            from_email=config.from_address,
+            to=[to_email],
+            reply_to=[config.reply_to_address] if config.reply_to_address else None,
+            connection=connection,
+        )
+        message.attach_alternative(html_body, "text/html")
+        accepted = bool(connection.send_messages([message]))
+        return {
+            "accepted": accepted,
+            "provider": "smtp",
+            "provider_message_id": None,
+            "terminal_state": "delivered" if accepted else "failed",
+        }
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        RuntimeError,
+        OSError,
+        AssertionError,
+        ImportError,
+    ):
+        logger.exception("Facility SMTP send failed for facility_id=%s", config.facility_id)
+        return {
+            "accepted": False,
+            "provider": "smtp",
             "provider_message_id": None,
             "terminal_state": "failed",
         }

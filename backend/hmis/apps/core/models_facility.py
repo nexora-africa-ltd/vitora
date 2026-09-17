@@ -551,6 +551,10 @@ class Facility(TimeStampedModel):
         default=True,
         help_text="Appointment scheduling and roster management.",
     )
+    has_custom_email = models.BooleanField(
+        default=False,
+        help_text="Facility-managed SMTP sender configuration.",
+    )
     has_surveillance = models.BooleanField(
         default=False,
         help_text="Disease surveillance and outbreak reporting.",
@@ -828,6 +832,7 @@ class Facility(TimeStampedModel):
                 "has_inventory",
                 "has_triage",
                 "has_scheduling",
+                "has_custom_email",
                 "has_surveillance",
                 "has_immunizations",
                 "has_allied_health",
@@ -959,6 +964,7 @@ class Facility(TimeStampedModel):
         "has_imaging_standalone": "imaging_standalone",
         "has_triage": "triage",
         "has_scheduling": "scheduling",
+        "has_custom_email": "custom_email",
         "has_surveillance": "surveillance",
         "has_immunizations": "immunizations",
         "has_allied_health": "allied_health",
@@ -1053,6 +1059,7 @@ class Facility(TimeStampedModel):
             "imaging_standalone": self.has_imaging_standalone,
             "triage": self.has_triage,
             "scheduling": self.has_scheduling,
+            "custom_email": self.has_custom_email,
             "surveillance": self.has_surveillance,
             "immunizations": self.has_immunizations,
             "allied_health": self.has_allied_health,

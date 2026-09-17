@@ -18,7 +18,7 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
-from hmis.apps.core.mixins import OrganizationScopedModel
+from hmis.apps.core.mixins import FacilityScopedModel, OrganizationScopedModel
 from hmis.apps.core.models_audit_sync import TimeStampedModel
 from hmis.apps.core.models_reference import Department, Role
 from hmis.apps.core.pii import encrypted_pii_property
@@ -109,6 +109,59 @@ class DHIS2Config(OrganizationScopedModel, TimeStampedModel):
 
         kms = get_kms_provider()
         return kms.decrypt(self._password.encode()).decode()
+
+
+class FacilityEmailConfig(FacilityScopedModel, TimeStampedModel):
+    """Facility SMTP override used only when Custom Email is enabled."""
+
+    class SecurityMode(models.TextChoices):
+        STARTTLS = "STARTTLS", "STARTTLS"
+        SSL_TLS = "SSL_TLS", "SSL/TLS"
+
+    class Status(models.TextChoices):
+        UNCONFIGURED = "UNCONFIGURED", "Unconfigured"
+        HEALTHY = "HEALTHY", "Healthy"
+        UNHEALTHY = "UNHEALTHY", "Unhealthy"
+        DISABLED = "DISABLED", "Disabled"
+
+    custom_email_enabled = models.BooleanField(default=False)
+    smtp_host = models.CharField(max_length=255, blank=True)
+    smtp_port = models.PositiveIntegerField(default=587)
+    security_mode = models.CharField(
+        max_length=10, choices=SecurityMode.choices, default=SecurityMode.STARTTLS
+    )
+    smtp_username_encrypted = models.TextField(blank=True, default="")
+    smtp_password_encrypted = models.TextField(blank=True, default="")
+    from_address = models.EmailField(blank=True)
+    from_display_name = models.CharField(max_length=150, blank=True)
+    reply_to_address = models.EmailField(blank=True)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.UNCONFIGURED)
+    last_tested_at = models.DateTimeField(null=True, blank=True)
+    last_test_error = models.CharField(max_length=500, blank=True)
+
+    smtp_username = encrypted_pii_property("smtp_username")
+    smtp_password = encrypted_pii_property("smtp_password")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility"], name="unique_facility_email_config_per_facility"
+            )
+        ]
+        verbose_name = "Facility email configuration"
+        verbose_name_plural = "Facility email configurations"
+
+    @property
+    def is_configured(self) -> bool:
+        """Return whether all SMTP inputs needed for a secure send exist."""
+        return bool(
+            self.smtp_host and self.smtp_username and self.smtp_password and self.from_address
+        )
+
+    @property
+    def password_configured(self) -> bool:
+        """Expose credential presence without exposing the credential."""
+        return bool(self.smtp_password_encrypted)
 
     # -- Convenience helpers --------------------------------------------
 

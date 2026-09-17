@@ -23,6 +23,7 @@ from django.conf import settings as django_settings
 from django.contrib.auth.models import Permission
 from django.contrib.auth.signals import user_logged_in, user_login_failed
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.mail import get_connection
 from django.db import models, transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
@@ -53,6 +54,7 @@ from .models import (
     DocumentShare,
     DocumentSignature,
     Facility,
+    FacilityEmailConfig,
     FeatureFlag,
     FrontendEvent,
     Notification,
@@ -93,6 +95,7 @@ from .serializers import (
     DocumentSignatureSerializer,
     FacilityCreateSerializer,
     FacilityDetailSerializer,
+    FacilityEmailConfigSerializer,
     FacilityListSerializer,
     FeatureFlagSerializer,
     FrontendEventBatchSerializer,
@@ -1131,7 +1134,7 @@ class FacilityViewSet(viewsets.ModelViewSet):
         Write operations require facility-admin privileges (Nexora staff
         or tenant ADMIN/ORG-ADMIN/OWNER roles).
         """
-        if self.action in ["create", "update", "partial_update", "destroy"]:
+        if self.action in ["create", "update", "partial_update", "destroy", "test_connection"]:
             permission_classes = [
                 IsAuthenticated,
                 FacilityAdminPermission,
@@ -1937,3 +1940,91 @@ class DHIS2ConfigViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 # =============================================================================
 # PKI & Digital Signature ViewSets (DHA Gap #32 — Sprint 3.C)
 # =============================================================================
+
+
+class FacilityEmailConfigViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
+    """Manage the current facility's encrypted SMTP configuration."""
+
+    queryset = FacilityEmailConfig.objects.select_related("facility", "organization")
+    serializer_class = FacilityEmailConfigSerializer
+    tenant_scope = "facility"
+
+    def get_permissions(self):
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return [FacilityAdminPermission()]
+        return [IsAuthenticated()]
+
+    def create(self, request, *args, **kwargs):
+        """Upsert the one allowed configuration for the request facility."""
+        resolve_request_tenant(request)
+        tenant_kwargs = self.get_tenant_save_kwargs()
+        facility = tenant_kwargs.get(self.tenant_facility_field) or getattr(
+            request, "facility", None
+        )
+        if facility is None:
+            return Response(
+                {"detail": "A facility context is required."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        existing = FacilityEmailConfig.objects.filter(facility=facility).first()
+        if existing:
+            serializer = self.get_serializer(existing, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(**tenant_kwargs)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=["get"], url_path="providers")
+    def providers(self, request):
+        """Return safe SMTP presets for the facility configuration form."""
+        from .services.email_service import SMTP_PROVIDER_PRESETS
+
+        return Response({"providers": SMTP_PROVIDER_PRESETS})
+
+    @action(detail=True, methods=["post"], url_path="test-connection")
+    def test_connection(self, request, pk=None):
+        """Verify SMTP authentication before the facility can enable Custom Email."""
+        config = self.get_object()
+        if not config.is_configured:
+            return Response(
+                {"detail": "Complete SMTP configuration is required before testing."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            connection = get_connection(
+                backend="django.core.mail.backends.smtp.EmailBackend",
+                host=config.smtp_host,
+                port=config.smtp_port,
+                username=config.smtp_username,
+                password=config.smtp_password,
+                use_tls=config.security_mode == config.SecurityMode.STARTTLS,
+                use_ssl=config.security_mode == config.SecurityMode.SSL_TLS,
+                fail_silently=False,
+            )
+            connection.open()
+            connection.close()
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
+            config.status = FacilityEmailConfig.Status.UNHEALTHY
+            config.last_test_error = "SMTP connection or authentication failed."
+            config.last_tested_at = timezone.now()
+            config.save(update_fields=["status", "last_test_error", "last_tested_at", "updated_at"])
+            return Response({"detail": config.last_test_error}, status=status.HTTP_400_BAD_REQUEST)
+
+        config.status = FacilityEmailConfig.Status.HEALTHY
+        config.last_test_error = ""
+        config.last_tested_at = timezone.now()
+        config.save(update_fields=["status", "last_test_error", "last_tested_at", "updated_at"])
+        return Response(FacilityEmailConfigSerializer(config).data)

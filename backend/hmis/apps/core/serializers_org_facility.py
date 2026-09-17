@@ -33,6 +33,7 @@ from .models import (
     DocumentShare,
     DocumentSignature,
     Facility,
+    FacilityEmailConfig,
     FeatureFlag,
     FrontendEvent,
     Notification,
@@ -48,6 +49,89 @@ from .models import (
     UserCertificate,
     Ward,
 )
+
+
+class FacilityEmailConfigSerializer(serializers.ModelSerializer):
+    """Facility SMTP configuration with write-only encrypted credentials."""
+
+    smtp_username = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    smtp_password = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    password_configured = serializers.BooleanField(read_only=True)
+    is_configured = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = FacilityEmailConfig
+        fields = [
+            "id",
+            "custom_email_enabled",
+            "smtp_host",
+            "smtp_port",
+            "security_mode",
+            "smtp_username",
+            "smtp_password",
+            "from_address",
+            "from_display_name",
+            "reply_to_address",
+            "status",
+            "last_tested_at",
+            "last_test_error",
+            "password_configured",
+            "is_configured",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "last_tested_at",
+            "last_test_error",
+            "status",
+            "password_configured",
+            "is_configured",
+            "created_at",
+            "updated_at",
+        ]
+
+    def validate(self, attrs):
+        """Require a healthy complete SMTP configuration before enabling it."""
+        enabled = attrs.get(
+            "custom_email_enabled", getattr(self.instance, "custom_email_enabled", False)
+        )
+        status = attrs.get("status", getattr(self.instance, "status", ""))
+        if enabled and status != FacilityEmailConfig.Status.HEALTHY:
+            raise serializers.ValidationError(
+                {"custom_email_enabled": "SMTP must be healthy before Custom Email can be enabled."}
+            )
+        return attrs
+
+    def create(self, validated_data):
+        credentials = self._pop_credentials(validated_data)
+        return self._save_credentials(super().create(validated_data), credentials)
+
+    def update(self, instance, validated_data):
+        credentials = self._pop_credentials(validated_data)
+        return self._save_credentials(super().update(instance, validated_data), credentials)
+
+    @staticmethod
+    def _pop_credentials(validated_data):
+        return {
+            "smtp_username": validated_data.pop("smtp_username", ""),
+            "smtp_password": validated_data.pop("smtp_password", ""),
+        }
+
+    @staticmethod
+    def _save_credentials(instance, credentials):
+        username = credentials["smtp_username"]
+        password = credentials["smtp_password"]
+        update_fields = []
+        if username:
+            instance.smtp_username = username
+            update_fields.append("smtp_username_encrypted")
+        if password:
+            instance.smtp_password = password
+            update_fields.append("smtp_password_encrypted")
+        if update_fields:
+            instance.save(update_fields=[*update_fields, "updated_at"])
+        return instance
 
 
 class SubscriptionPlanListSerializer(serializers.ModelSerializer):
@@ -625,6 +709,7 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
             "has_imaging_standalone",
             "has_triage",
             "has_scheduling",
+            "has_custom_email",
             "has_surveillance",
             "has_immunizations",
             "has_allied_health",
@@ -787,6 +872,7 @@ class FacilityCreateSerializer(serializers.ModelSerializer):
             "has_imaging_standalone",
             "has_triage",
             "has_scheduling",
+            "has_custom_email",
             "has_surveillance",
             "has_immunizations",
             "has_allied_health",
