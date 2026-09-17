@@ -164,6 +164,17 @@ export default function VerifyPage() {
     }
   };
 
+  const handleDocumentTypeChange = (type: string) => {
+    setManualData({
+      type,
+      number: '',
+      amount: '',
+      date: '',
+      signature: '',
+    });
+    setResult(null);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto max-w-2xl px-4 py-12">
@@ -277,7 +288,7 @@ export default function VerifyPage() {
                     <Label htmlFor="doc-type">Document Type</Label>
                     <Select
                       value={manualData.type}
-                      onValueChange={(v) => setManualData({ ...manualData, type: v })}
+                      onValueChange={handleDocumentTypeChange}
                     >
                       <SelectTrigger id="doc-type">
                         <SelectValue />

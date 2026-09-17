@@ -115,12 +115,14 @@ body {
 
 .qr {
   width: 60px;
-  height: 60px;
+  min-height: 60px;
+  height: auto;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   font-size: 9px;
   margin-top: 6px;
+  overflow: visible;
 }
 
 .qr img { width: 60px; height: 60px; }

@@ -299,10 +299,12 @@ body {
 
 .qr {
   width: 60px;
-  height: 60px;
+  min-height: 60px;
+  height: auto;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  overflow: visible;
 }
 .qr img { width: 100%; height: 100%; }
 

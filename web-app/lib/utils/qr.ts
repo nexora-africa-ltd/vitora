@@ -542,7 +542,7 @@ export async function generateQRBlockHtml(
       </div>
       ${
         verificationCode
-          ? `<div class="qr-verification-code" style="font-size: 9px; margin-top: 2px; letter-spacing: 0.8px; font-weight: 600;">Code: ${verificationCode}</div>`
+          ? `<div class="qr-verification-code" style="font-size: 9px; margin-top: 2px; letter-spacing: 0.8px; font-weight: 600; background: #fff; padding: 0 2px; line-height: 1.2;">Code: ${verificationCode}</div>`
           : ''
       }
     </div>
@@ -569,7 +569,7 @@ export function generateQRBlockHtmlSync(qrContent: QRContent, options: QRCodeOpt
       </div>
       ${
         verificationCode
-          ? `<div class="qr-verification-code" style="font-size: 9px; margin-top: 2px; letter-spacing: 0.8px; font-weight: 600;">Code: ${verificationCode}</div>`
+          ? `<div class="qr-verification-code" style="font-size: 9px; margin-top: 2px; letter-spacing: 0.8px; font-weight: 600; background: #fff; padding: 0 2px; line-height: 1.2;">Code: ${verificationCode}</div>`
           : ''
       }
     </div>
