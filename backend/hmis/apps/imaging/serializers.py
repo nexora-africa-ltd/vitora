@@ -9,6 +9,7 @@ import re
 from django.utils import timezone
 from rest_framework import serializers
 
+from hmis.apps.core.qr_utils import generate_document_verification_url
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.patients.models import Patient
 
@@ -714,6 +715,7 @@ class RadiologyReportSerializer(serializers.ModelSerializer):
     can_edit = serializers.BooleanField(read_only=True)
     can_sign = serializers.BooleanField(read_only=True)
     can_amend = serializers.BooleanField(read_only=True)
+    verification_url = serializers.SerializerMethodField()
 
     class Meta:
         model = RadiologyReport
@@ -761,6 +763,7 @@ class RadiologyReportSerializer(serializers.ModelSerializer):
             "can_edit",
             "can_sign",
             "can_amend",
+            "verification_url",
             # Timestamps
             "created_at",
             "updated_at",
@@ -822,6 +825,14 @@ class RadiologyReportSerializer(serializers.ModelSerializer):
         if items.exists():
             return items.first().procedure.name
         return ""
+
+    def get_verification_url(self, obj) -> str:
+        report_date = obj.signed_at.isoformat() if obj.signed_at else obj.created_at.isoformat()
+        return generate_document_verification_url(
+            document_type="RADIOLOGY_REPORT",
+            document_number=obj.report_number,
+            date=report_date,
+        )
 
 
 class RadiologyReportCreateSerializer(serializers.ModelSerializer):

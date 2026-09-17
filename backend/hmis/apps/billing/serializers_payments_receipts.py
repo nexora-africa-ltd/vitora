@@ -172,6 +172,7 @@ class ReceiptSerializer(serializers.ModelSerializer):
     line_items = serializers.SerializerMethodField()
     # QR code for validation
     qr_code = serializers.SerializerMethodField()
+    verification_url = serializers.SerializerMethodField()
     # M-Pesa details (phone obscured for privacy)
     mpesa_phone_display = serializers.SerializerMethodField()
     mpesa_receipt_number = serializers.SerializerMethodField()
@@ -204,6 +205,7 @@ class ReceiptSerializer(serializers.ModelSerializer):
             "payment_point_code",
             "line_items",
             "qr_code",
+            "verification_url",
             "mpesa_phone_display",
             "mpesa_receipt_number",
             "created_at",
@@ -223,6 +225,7 @@ class ReceiptSerializer(serializers.ModelSerializer):
             "payment_point_code",
             "line_items",
             "qr_code",
+            "verification_url",
             "mpesa_phone_display",
             "mpesa_receipt_number",
             "created_at",
@@ -256,6 +259,14 @@ class ReceiptSerializer(serializers.ModelSerializer):
             receipt_date=obj.receipt_date.isoformat() if obj.receipt_date else "",
         )
         return generate_qr_data_uri(verification_url)
+
+    def get_verification_url(self, obj) -> str:
+        """Generate verification URL used by QR code and manual verification."""
+        return generate_receipt_qr_url(
+            receipt_number=obj.receipt_number,
+            amount=str(obj.amount),
+            receipt_date=obj.receipt_date.isoformat() if obj.receipt_date else "",
+        )
 
     def get_line_items(self, obj) -> list[dict]:
         """Get line items from the related invoice."""

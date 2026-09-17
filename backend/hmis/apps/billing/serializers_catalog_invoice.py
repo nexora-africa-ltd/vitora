@@ -451,6 +451,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
     # QR code for validation
     qr_code = serializers.SerializerMethodField()
+    verification_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Invoice
@@ -507,6 +508,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "items",
             "payers",
             "qr_code",
+            "verification_url",
             "created_at",
             "updated_at",
         ]
@@ -541,6 +543,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "items",
             "payers",
             "qr_code",
+            "verification_url",
             "created_at",
             "updated_at",
         ]
@@ -764,6 +767,14 @@ class InvoiceSerializer(serializers.ModelSerializer):
             invoice_date=obj.invoice_date.isoformat() if obj.invoice_date else "",
         )
         return generate_qr_data_uri(verification_url)
+
+    def get_verification_url(self, obj) -> str:
+        """Generate verification URL used by QR code and manual verification."""
+        return generate_invoice_qr_url(
+            invoice_number=obj.invoice_number,
+            total_amount=str(obj.total_amount),
+            invoice_date=obj.invoice_date.isoformat() if obj.invoice_date else "",
+        )
 
     def create(self, validated_data):
         # Set created_by from request user

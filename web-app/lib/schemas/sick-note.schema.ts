@@ -19,6 +19,7 @@ export const SickNoteListItemSchema = z.object({
   leave_days: z.number(),
   issued_by: z.number(),
   issued_by_name: z.string(),
+  verification_url: z.string().nullable().optional(),
   issued_at: z.string().nullable(),
   created_at: z.string(),
 });
@@ -44,6 +45,7 @@ export const SickNoteSchema = z.object({
   status: z.string(),
   status_display: z.string(),
   is_active: z.boolean(),
+  verification_url: z.string().nullable().optional(),
   issued_at: z.string().nullable(),
   revoked_at: z.string().nullable(),
   revoked_by: z.number().nullable(),

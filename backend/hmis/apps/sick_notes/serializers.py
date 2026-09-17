@@ -13,6 +13,7 @@ role-appropriate field exposure:
 
 from rest_framework import serializers
 
+from hmis.apps.core.qr_utils import generate_document_verification_url
 from hmis.apps.sick_notes.models import SickNote
 
 
@@ -24,6 +25,7 @@ class SickNoteListSerializer(serializers.ModelSerializer):
     patient_mrn = serializers.SerializerMethodField()
     issued_by_name = serializers.SerializerMethodField()
     leave_days = serializers.IntegerField(read_only=True)
+    verification_url = serializers.SerializerMethodField()
 
     class Meta:
         model = SickNote
@@ -42,6 +44,7 @@ class SickNoteListSerializer(serializers.ModelSerializer):
             "leave_days",
             "issued_by",
             "issued_by_name",
+            "verification_url",
             "issued_at",
             "created_at",
         ]
@@ -62,6 +65,14 @@ class SickNoteListSerializer(serializers.ModelSerializer):
             return name or obj.issued_by.username
         return ""
 
+    def get_verification_url(self, obj) -> str:
+        issue_date = obj.issued_at.isoformat() if obj.issued_at else obj.created_at.isoformat()
+        return generate_document_verification_url(
+            document_type="SICK_NOTE",
+            document_number=obj.note_number,
+            date=issue_date,
+        )
+
 
 class SickNoteSerializer(serializers.ModelSerializer):
     """Full detail serializer for SickNote."""
@@ -74,6 +85,7 @@ class SickNoteSerializer(serializers.ModelSerializer):
     cancelled_by_name = serializers.SerializerMethodField()
     leave_days = serializers.IntegerField(read_only=True)
     is_active = serializers.BooleanField(read_only=True)
+    verification_url = serializers.SerializerMethodField()
 
     class Meta:
         model = SickNote
@@ -105,6 +117,7 @@ class SickNoteSerializer(serializers.ModelSerializer):
             "status",
             "status_display",
             "is_active",
+            "verification_url",
             "issued_at",
             "revoked_at",
             "revoked_by",
@@ -158,6 +171,14 @@ class SickNoteSerializer(serializers.ModelSerializer):
             name = f"{obj.cancelled_by.first_name} {obj.cancelled_by.last_name}".strip()
             return name or obj.cancelled_by.username
         return ""
+
+    def get_verification_url(self, obj) -> str:
+        issue_date = obj.issued_at.isoformat() if obj.issued_at else obj.created_at.isoformat()
+        return generate_document_verification_url(
+            document_type="SICK_NOTE",
+            document_number=obj.note_number,
+            date=issue_date,
+        )
 
 
 class SickNoteCreateSerializer(serializers.ModelSerializer):

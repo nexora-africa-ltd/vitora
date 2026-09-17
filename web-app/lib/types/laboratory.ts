@@ -237,6 +237,7 @@ export interface DiagnosticReport {
   cancellation_reason?: string | null;
   pdf_file?: string | null;
   pdf_url?: string | null;
+  verification_url?: string | null;
   fhir_resource_id?: string | null;
   supersedes?: number | null;
   supersedes_report_number?: string | null;

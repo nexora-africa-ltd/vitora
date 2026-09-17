@@ -13,6 +13,7 @@ import {
   formatDate,
   renderSignatureColumn,
 } from './renderer';
+import { generateQRDataUriSync } from '@/lib/utils/qr';
 
 // =============================================================================
 // REFERRAL LETTER TEMPLATE
@@ -29,6 +30,7 @@ const REFERRAL_TEMPLATE = `
     </div>
     <div class="doc-type">
       REFERRAL LETTER
+      <div class="qr">QR</div>
     </div>
   </div>
 
@@ -121,6 +123,9 @@ const REFERRAL_CSS = `
     border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px; }
   .clinic-info { font-size: 12px; line-height: 1.5; }
   .doc-type { font-size: 20px; font-weight: bold; letter-spacing: 1px; }
+  .qr { margin-top: 8px; width: 84px; height: 84px; border: 1px dashed #999;
+    display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 400; }
+  .qr img { width: 80px; height: 80px; }
   .ref-bar { display: flex; justify-content: space-between; font-size: 13px;
     margin-bottom: 16px; padding: 8px; background: #f5f5f5; border: 1px solid #ddd; }
   .addressee { font-size: 14px; margin-bottom: 16px; }
@@ -294,6 +299,10 @@ export function printReferralLetter(options: PrintReferralOptions): Window | nul
 
   // Digital signature
   html = html.replace(/\{\{signature_column\}\}/g, renderSignatureColumn(signature));
+
+  const qrPayload = referral.verification_url || `VITORA:REFERRAL:${referral.referral_number}`;
+  const qrDataUri = generateQRDataUriSync(qrPayload, { size: 80 });
+  html = html.replace(/>QR<\/div>/g, `><img src="${qrDataUri}" alt="QR Code" /></div>`);
 
   const fullHtml = buildPrintDocument(
     html,

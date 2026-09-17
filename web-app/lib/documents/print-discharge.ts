@@ -270,6 +270,8 @@ export interface DischargeDocumentData {
   showSignatureLines?: boolean;
   /** Whether to show QR code */
   showQrCode?: boolean;
+  /** Backend-signed public verification URL for this discharge document */
+  verificationUrl?: string;
   /** Facility logo URL (effective_logo_url from API) */
   facilityLogoUrl?: string | null;
   /** Digital signature data. When provided, renders signer identity in the signature block. */
@@ -921,9 +923,10 @@ const MINIMAL_CSS = `
 export async function printDischargeDocument(data: DischargeDocumentData): Promise<Window | null> {
   const showQr = data.showQrCode !== false;
   let qrDataUri: string | undefined;
-  if (showQr && data.admissionNumber) {
+  if (showQr && (data.verificationUrl || data.admissionNumber)) {
     try {
-      qrDataUri = await generateQRDataUri(`VITORA:ADM:${data.admissionNumber}`, { size: 80 });
+      const qrPayload = data.verificationUrl || `VITORA:ADM:${data.admissionNumber}`;
+      qrDataUri = await generateQRDataUri(qrPayload, { size: 80 });
     } catch {
       // QR generation is best-effort — print without it
     }

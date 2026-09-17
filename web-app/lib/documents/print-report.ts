@@ -317,8 +317,15 @@ body {
  * Generate QR content for a radiology report
  */
 export function getRadiologyReportQRContent(report: RadiologyReport): QRContent {
-  // For now, encode report number + order number
-  // In production, this could be a verifiable URL
+  if (report.verification_url) {
+    return {
+      data: report.verification_url,
+      isVerifiable: true,
+      label: 'Scan to verify report',
+    };
+  }
+
+  // Fallback reference QR if backend verification URL is unavailable.
   const data = `RPT:${report.report_number}|ORD:${report.order_number}`;
 
   return {

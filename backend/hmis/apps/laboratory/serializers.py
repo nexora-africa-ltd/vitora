@@ -5,6 +5,8 @@ Serializers for laboratory models.
 
 from rest_framework import serializers
 
+from hmis.apps.core.qr_utils import generate_document_verification_url
+
 from .models import (
     AnalyzerRun,
     DiagnosticReport,
@@ -1199,6 +1201,7 @@ class DiagnosticReportSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     is_finalized = serializers.BooleanField(read_only=True)
     pdf_url = serializers.SerializerMethodField()
+    verification_url = serializers.SerializerMethodField()
     supersedes_report_number = serializers.CharField(
         source="supersedes.report_number", read_only=True
     )
@@ -1229,6 +1232,7 @@ class DiagnosticReportSerializer(serializers.ModelSerializer):
             "cancellation_reason",
             "pdf_file",
             "pdf_url",
+            "verification_url",
             "fhir_resource_id",
             "supersedes",
             "supersedes_report_number",
@@ -1249,9 +1253,18 @@ class DiagnosticReportSerializer(serializers.ModelSerializer):
             "issued_by_name",
             "amended_by_name",
             "pdf_url",
+            "verification_url",
             "created_at",
             "updated_at",
         ]
+
+    def get_verification_url(self, obj) -> str:
+        report_date = obj.issued_at.isoformat() if obj.issued_at else obj.created_at.isoformat()
+        return generate_document_verification_url(
+            document_type="LAB_RESULT",
+            document_number=obj.report_number,
+            date=report_date,
+        )
 
     def get_superseded_by_report_number(self, obj) -> str | None:
         newer = obj.superseding_reports.order_by("-created_at").first()

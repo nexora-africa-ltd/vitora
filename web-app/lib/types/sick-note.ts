@@ -34,6 +34,7 @@ export interface SickNote {
   // Clinician
   issued_by: number;
   issued_by_name: string;
+  verification_url?: string | null;
   // Leave dates
   leave_start_date: string;
   leave_end_date: string;
@@ -80,6 +81,7 @@ export interface SickNoteListItem {
   leave_days: number;
   issued_by: number;
   issued_by_name: string;
+  verification_url?: string | null;
   issued_at: string | null;
   created_at: string;
 }

@@ -343,6 +343,7 @@ export function DiagnosticReportDetail({ reportNumber }: DiagnosticReportDetailP
           clinical_info: report.clinical_info,
           issued_by_name: report.issued_by_name,
           issued_at: report.issued_at,
+          verification_url: report.verification_url,
         },
         patient: {
           full_name: report.patient_name,

@@ -13,6 +13,7 @@ role-appropriate field exposure:
 from rest_framework import serializers
 
 from hmis.apps.clinics.models import Clinic
+from hmis.apps.core.qr_utils import generate_document_verification_url
 from hmis.apps.referrals.models import ClinicalReferral
 
 
@@ -33,6 +34,7 @@ class ClinicalReferralListSerializer(serializers.ModelSerializer):
     destination_clinic_name = serializers.CharField(
         source="destination_clinic.name", read_only=True
     )
+    verification_url = serializers.SerializerMethodField()
 
     class Meta:
         model = ClinicalReferral
@@ -55,6 +57,7 @@ class ClinicalReferralListSerializer(serializers.ModelSerializer):
             "status_display",
             "referred_by",
             "referred_by_name",
+            "verification_url",
             "is_sensitive",
             "created_at",
             "updated_at",
@@ -78,6 +81,13 @@ class ClinicalReferralListSerializer(serializers.ModelSerializer):
             name = f"{obj.referred_by.first_name} {obj.referred_by.last_name}".strip()
             return name or obj.referred_by.username
         return ""
+
+    def get_verification_url(self, obj) -> str:
+        return generate_document_verification_url(
+            document_type="REFERRAL",
+            document_number=obj.referral_number,
+            date=obj.created_at.isoformat(),
+        )
 
 
 class ClinicalReferralSerializer(serializers.ModelSerializer):
@@ -107,6 +117,7 @@ class ClinicalReferralSerializer(serializers.ModelSerializer):
     )
     is_active = serializers.BooleanField(read_only=True)
     is_terminal = serializers.BooleanField(read_only=True)
+    verification_url = serializers.SerializerMethodField()
 
     class Meta:
         model = ClinicalReferral
@@ -169,6 +180,7 @@ class ClinicalReferralSerializer(serializers.ModelSerializer):
             "linked_object_id",
             # Other
             "clinic_visit",
+            "verification_url",
             "is_sensitive",
             "is_active",
             "is_terminal",
@@ -234,6 +246,13 @@ class ClinicalReferralSerializer(serializers.ModelSerializer):
             name = f"{obj.cancelled_by.first_name} {obj.cancelled_by.last_name}".strip()
             return name or obj.cancelled_by.username
         return ""
+
+    def get_verification_url(self, obj) -> str:
+        return generate_document_verification_url(
+            document_type="REFERRAL",
+            document_number=obj.referral_number,
+            date=obj.created_at.isoformat(),
+        )
 
 
 class ClinicalReferralCreateSerializer(serializers.ModelSerializer):

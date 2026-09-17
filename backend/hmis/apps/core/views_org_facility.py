@@ -406,7 +406,10 @@ def generate_case_number_view(request):
         OpenApiParameter(
             "type",
             OpenApiTypes.STR,
-            description="Document type ('RECEIPT' or 'INVOICE')",
+            description=(
+                "Document type (RECEIPT, INVOICE, PRESCRIPTION, LAB_RESULT, "
+                "RADIOLOGY_REPORT, SICK_NOTE, REFERRAL, DISCHARGE_SUMMARY)"
+            ),
             required=False,
         ),
         OpenApiParameter("number", OpenApiTypes.STR, description="Document number", required=False),
@@ -461,9 +464,10 @@ def verify_document(request):
     GET Parameters or POST Body:
         qr_data: Full QR code string (if provided, other params are ignored)
         -- OR --
-        type: Document type ('RECEIPT' or 'INVOICE')
+        type: Document type (RECEIPT, INVOICE, PRESCRIPTION, LAB_RESULT,
+              RADIOLOGY_REPORT, SICK_NOTE, REFERRAL, DISCHARGE_SUMMARY)
         number: Document number
-        amount: Amount as string
+        amount: Amount as string (required for RECEIPT/INVOICE)
         date: Date (YYYY-MM-DD)
         signature: 8-character hex signature
 
@@ -478,6 +482,18 @@ def verify_document(request):
         }
     """
     from .qr_utils import verify_document_signature
+
+    supported_types = {
+        "RECEIPT",
+        "INVOICE",
+        "PRESCRIPTION",
+        "LAB_RESULT",
+        "RADIOLOGY_REPORT",
+        "SICK_NOTE",
+        "REFERRAL",
+        "DISCHARGE_SUMMARY",
+    }
+    amount_required_types = {"RECEIPT", "INVOICE"}
 
     # Get data from query params (GET) or body (POST)
     data = request.query_params if request.method == "GET" else request.data
@@ -507,32 +523,47 @@ def verify_document(request):
         signature = data.get("signature", "")
 
     # Validate required fields
-    if not all([doc_type, doc_number, amount, date, signature]):
+    if not all([doc_type, doc_number, date, signature]):
         return Response(
             {
                 "valid": False,
                 "error": "Missing required fields",
-                "message": "Please provide: type, number, amount, date, and signature (or qr_data)",
+                "message": "Please provide: type, number, date, and signature (or qr_data)",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if doc_type in amount_required_types and not amount:
+        return Response(
+            {
+                "valid": False,
+                "error": "Missing required fields",
+                "message": "Please provide amount for RECEIPT and INVOICE verification",
             },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     # Validate document type
-    if doc_type not in ("RECEIPT", "INVOICE"):
+    if doc_type not in supported_types:
         return Response(
             {
                 "valid": False,
                 "error": "Invalid document type",
-                "message": "Document type must be 'RECEIPT' or 'INVOICE'",
+                "message": (
+                    "Document type must be one of: RECEIPT, INVOICE, PRESCRIPTION, "
+                    "LAB_RESULT, RADIOLOGY_REPORT, SICK_NOTE, REFERRAL, DISCHARGE_SUMMARY"
+                ),
             },
             status=status.HTTP_400_BAD_REQUEST,
         )
+
+    normalized_amount = amount if doc_type in amount_required_types else (amount or "0")
 
     # Verify the signature
     is_valid = verify_document_signature(
         document_type=doc_type,
         document_number=doc_number,
-        amount=amount,
+        amount=normalized_amount,
         date=date,
         signature=signature,
     )
@@ -573,6 +604,19 @@ def _parse_qr_data(qr_data: str) -> tuple | None:
         Tuple of (doc_type, doc_number, amount, date, signature) or None if invalid
     """
     try:
+        from urllib.parse import parse_qs, urlparse
+
+        parsed_url = urlparse(qr_data)
+        if parsed_url.scheme and parsed_url.netloc and parsed_url.query:
+            params = parse_qs(parsed_url.query)
+            doc_type = str((params.get("type") or [""])[0]).strip().upper()
+            doc_number = str((params.get("number") or [""])[0]).strip()
+            amount = str((params.get("amount") or [""])[0]).strip()
+            date = str((params.get("date") or [""])[0]).strip()
+            signature = str((params.get("signature") or [""])[0]).strip()
+            if doc_type and doc_number and date and signature:
+                return (doc_type, doc_number, amount, date, signature)
+
         parts = qr_data.split("|")
         if len(parts) < 5:
             return None
@@ -583,6 +627,8 @@ def _parse_qr_data(qr_data: str) -> tuple | None:
             doc_type = "RECEIPT"
         elif type_id == "VITORA-INV":
             doc_type = "INVOICE"
+        elif type_id == "VITORA-RX":
+            doc_type = "PRESCRIPTION"
         else:
             return None
 
@@ -595,11 +641,14 @@ def _parse_qr_data(qr_data: str) -> tuple | None:
 
         # Extract required fields
         doc_number = data.get("N")
-        amount = data.get("A")
+        amount = data.get("A", "")
         date = data.get("D")
         signature = data.get("S")
 
-        if not all([doc_number, amount, date, signature]):
+        if not all([doc_number, date, signature]):
+            return None
+
+        if doc_type in {"RECEIPT", "INVOICE"} and not amount:
             return None
 
         return (doc_type, doc_number, amount, date, signature)

@@ -687,6 +687,7 @@ export const RadiologyReportSchema = z.object({
   can_edit: z.boolean(),
   can_sign: z.boolean(),
   can_amend: z.boolean(),
+  verification_url: z.string().nullable().optional(),
 
   // Timestamps
   created_at: z.string(),

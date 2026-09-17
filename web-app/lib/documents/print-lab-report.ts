@@ -44,6 +44,7 @@ export interface PrintLabReportData {
     clinical_info?: string | null;
     issued_by_name?: string;
     issued_at?: string | null;
+    verification_url?: string | null;
   };
   patient?: LabReportPatientInfo;
   facility?: Partial<FacilityInfo>;
@@ -496,7 +497,7 @@ function buildTemplateData(data: PrintLabReportData): Record<string, unknown> {
 function getLabReportQRContent(data: PrintLabReportData): QRContent {
   return getLabResultQRContent({
     order_number: data.order.order_number,
-    verification_url: data.verificationUrl,
+    verification_url: data.verificationUrl || data.diagnosticReport?.verification_url || undefined,
   });
 }
 

@@ -256,7 +256,7 @@ export function getDispensingQRContent(dispensing: {
  */
 export function getReceiptQRContent(receipt: {
   receipt_number: string;
-  verification_url?: string;
+  verification_url?: string | null;
   amount?: number | string;
 }): QRContent {
   if (receipt.verification_url) {
@@ -282,7 +282,7 @@ export function getReceiptQRContent(receipt: {
  */
 export function getInvoiceQRContent(invoice: {
   invoice_number: string;
-  verification_url?: string;
+  verification_url?: string | null;
   total_amount?: number | string;
 }): QRContent {
   if (invoice.verification_url) {
@@ -532,6 +532,7 @@ export async function generateQRBlockHtml(
   const labelClass = qrContent.isVerifiable ? 'qr-label-verified' : 'qr-label-draft';
   const labelText =
     qrContent.label || (qrContent.isVerifiable ? 'Scan to verify' : 'Reference only');
+  const verificationCode = extractVerificationCode(qrContent.data);
 
   return `
     <div class="qr-block" style="text-align: center;">
@@ -539,6 +540,11 @@ export async function generateQRBlockHtml(
       <div class="${labelClass}" style="font-size: 9px; margin-top: 4px; color: ${qrContent.isVerifiable ? '#166534' : '#92400e'};">
         ${qrContent.isVerifiable ? '✓ ' : '⚠ '}${labelText}
       </div>
+      ${
+        verificationCode
+          ? `<div class="qr-verification-code" style="font-size: 9px; margin-top: 2px; letter-spacing: 0.8px; font-weight: 600;">Code: ${verificationCode}</div>`
+          : ''
+      }
     </div>
   `.trim();
 }
@@ -553,6 +559,7 @@ export function generateQRBlockHtmlSync(qrContent: QRContent, options: QRCodeOpt
   const labelClass = qrContent.isVerifiable ? 'qr-label-verified' : 'qr-label-draft';
   const labelText =
     qrContent.label || (qrContent.isVerifiable ? 'Scan to verify' : 'Reference only');
+  const verificationCode = extractVerificationCode(qrContent.data);
 
   return `
     <div class="qr-block" style="text-align: center;">
@@ -560,6 +567,32 @@ export function generateQRBlockHtmlSync(qrContent: QRContent, options: QRCodeOpt
       <div class="${labelClass}" style="font-size: 9px; margin-top: 4px; color: ${qrContent.isVerifiable ? '#166534' : '#92400e'};">
         ${qrContent.isVerifiable ? '✓ ' : '⚠ '}${labelText}
       </div>
+      ${
+        verificationCode
+          ? `<div class="qr-verification-code" style="font-size: 9px; margin-top: 2px; letter-spacing: 0.8px; font-weight: 600;">Code: ${verificationCode}</div>`
+          : ''
+      }
     </div>
   `.trim();
+}
+
+function extractVerificationCode(qrData: string): string | null {
+  if (!qrData) return null;
+
+  const signatureInStructuredPayload = qrData.match(/(?:\||^)S:([A-Z0-9]{6,16})(?:\||$)/i);
+  if (signatureInStructuredPayload?.[1]) {
+    return signatureInStructuredPayload[1].toUpperCase();
+  }
+
+  try {
+    const parsed = new URL(qrData);
+    const code = parsed.searchParams.get('signature');
+    if (code) {
+      return code.toUpperCase();
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 }

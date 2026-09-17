@@ -338,6 +338,7 @@ export interface Discharge {
   length_of_stay?: number;
   /** Death record ID, populated for DECEASED discharges */
   death_record_id?: number | null;
+  verification_url?: string | null;
   created_at?: string;
   updated_at?: string;
 }
