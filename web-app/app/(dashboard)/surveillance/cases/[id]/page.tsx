@@ -123,6 +123,15 @@ export default function NotifiableCaseDetailPage() {
     },
   });
 
+  const { mutateAsync: markCountyNotified, isPending: markingCountyNotified } = useMutation({
+    mutationFn: () => surveillanceApi.markCountyNotified(caseId),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['notifiable-case', caseId], data);
+      queryClient.invalidateQueries({ queryKey: ['notifiable-cases'] });
+      toast({ title: 'County notified', description: 'Manual county notification has been recorded.' });
+    },
+  });
+
   const { mutateAsync: retryDeliveries, isPending: retryingDeliveries } = useMutation({
     mutationFn: () => surveillanceApi.retryCaseNotificationDeliveries(caseId),
     onSuccess: () => {
@@ -318,15 +327,22 @@ export default function NotifiableCaseDetailPage() {
         helpContent="View details of a notifiable disease case including patient information, notification status, and investigation details."
         actions={
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Button onClick={() => notifyCounty()} disabled={notifying || countyNotified || awaitingCountyDelivery}>
-              {notifying
-                ? 'Notifying...'
-                : countyNotified
-                  ? 'County Notified'
-                  : awaitingCountyDelivery
-                    ? 'Awaiting Delivery'
-                    : 'Notify County'}
-            </Button>
+            {caseData.requires_county_notification && (
+              <Button onClick={() => notifyCounty()} disabled={notifying || countyNotified || awaitingCountyDelivery}>
+                {notifying
+                  ? 'Notifying...'
+                  : countyNotified
+                    ? 'County Notified'
+                    : awaitingCountyDelivery
+                      ? 'Pending Notification'
+                      : 'Notify County'}
+              </Button>
+            )}
+            {caseData.requires_county_notification && !countyNotified && (
+              <Button variant="outline" onClick={() => markCountyNotified()} disabled={markingCountyNotified}>
+                {markingCountyNotified ? 'Recording...' : 'Mark County Notified'}
+              </Button>
+            )}
             {canMarkInvestigated && (
               <Button
                 variant="outline"

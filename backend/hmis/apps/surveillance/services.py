@@ -671,7 +671,7 @@ class SurveillanceService:
 
     @classmethod
     def has_case_delivery_success(cls, case: "NotifiableCase") -> bool:
-        """Return True when case has at least one confirmed successful channel."""
+        """Return True when at least one county transport accepted the notification."""
         from .models import CountyNotificationChannel, CountyNotificationDeliveryStatus
 
         deliveries = case.county_notification_deliveries.all()
@@ -685,7 +685,10 @@ class SurveillanceService:
             )
             | models.Q(
                 channel=CountyNotificationChannel.EMAIL,
-                status=CountyNotificationDeliveryStatus.DELIVERED,
+                status__in=[
+                    CountyNotificationDeliveryStatus.SENT,
+                    CountyNotificationDeliveryStatus.DELIVERED,
+                ],
             )
         ).exists()
 

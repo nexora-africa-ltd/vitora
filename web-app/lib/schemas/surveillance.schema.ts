@@ -11,6 +11,7 @@ export const NotifiableDiseaseListItemSchema = z.object({
   category: NotifiableDiseaseCategorySchema,
   reporting_hours: z.number(),
   is_immediate: z.boolean(),
+  requires_county_notification: z.boolean(),
   is_active: z.boolean(),
 });
 
@@ -73,6 +74,7 @@ export const NotifiableCaseDetailSchema = z.object({
   is_overdue: z.boolean(),
   hours_until_deadline: z.number(),
   is_immediate: z.boolean(),
+  requires_county_notification: z.boolean(),
   county: z.number().nullable(),
   county_name: z.string().nullable(),
   sub_county: z.number().nullable(),

@@ -308,6 +308,14 @@ class NotifiableCaseViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
         """
         case = self.get_object()
 
+        if not case.requires_county_notification:
+            return Response(
+                {
+                    "error": "Routine IDSR cases are reported through aggregate surveillance reporting."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         if case.notification_status != NotificationStatus.PENDING:
             return Response(
                 {"error": f"Case already has status: {case.get_notification_status_display()}"},
@@ -389,6 +397,42 @@ class NotifiableCaseViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
             deliveries, many=True
         ).data
         return Response(payload)
+
+    @action(detail=True, methods=["post"], serializer_class=NotificationStatusActionSerializer)
+    def mark_county_notified(self, request, pk=None):
+        """Record a county notification completed through an external channel."""
+        case = self.get_object()
+        if not case.requires_county_notification:
+            return Response(
+                {
+                    "error": "Routine IDSR cases are reported through aggregate surveillance reporting."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if case.notification_status != NotificationStatus.PENDING:
+            return Response(
+                {"error": f"Case already has status: {case.get_notification_status_display()}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = NotificationStatusActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        notes = serializer.validated_data.get("notes", "")
+        case.mark_notified(user=request.user)
+        if notes:
+            case.investigation_notes = (
+                f"{case.investigation_notes}\n[Manual county notification] {notes}".strip()
+            )
+            case.save(update_fields=["investigation_notes"])
+
+        AuditLog.log(
+            action="notifiable_case_manual_county_notify",
+            user=request.user,
+            resource_type="NotifiableCase",
+            resource_id=case.id,
+            details={"channel": "manual", "county": case.county.name if case.county else None},
+        )
+        return Response(NotifiableCaseSerializer(case).data)
 
     @action(detail=True, methods=["get"])
     def notification_deliveries(self, request, pk=None):

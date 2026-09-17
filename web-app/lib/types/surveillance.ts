@@ -12,6 +12,7 @@ export interface NotifiableDiseaseListItem {
   category: NotifiableDiseaseCategory;
   reporting_hours: number;
   is_immediate: boolean;
+  requires_county_notification: boolean;
   is_active: boolean;
 }
 
@@ -72,6 +73,7 @@ export interface NotifiableCaseDetail {
   is_overdue: boolean;
   hours_until_deadline: number;
   is_immediate: boolean;
+  requires_county_notification: boolean;
   county: number | null;
   county_name: string | null;
   sub_county: number | null;

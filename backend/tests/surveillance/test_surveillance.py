@@ -824,7 +824,7 @@ class TestNotifiableCaseAPI:
         assert "review this case in Vitora HMIS" not in html_body
 
     @patch("hmis.apps.surveillance.services.send_transactional_email")
-    def test_notify_county_email_only_returns_pending_until_webhook_delivery(
+    def test_notify_county_email_only_marks_case_notified_when_provider_accepts(
         self,
         mock_send_transactional_email,
         authenticated_client,
@@ -834,7 +834,7 @@ class TestNotifiableCaseAPI:
         sample_facility,
         sample_organization,
     ):
-        """Email-only notify should remain pending until webhook confirms delivery."""
+        """Email acceptance should mark the case notified without awaiting a webhook."""
         from hmis.apps.surveillance.models import (
             CountyNotificationDelivery,
             NotifiableCase,
@@ -868,9 +868,9 @@ class TestNotifiableCaseAPI:
             {"notification_notes": "Email only"},
         )
 
-        assert notify_response.status_code == status.HTTP_202_ACCEPTED
+        assert notify_response.status_code == status.HTTP_200_OK
         case.refresh_from_db()
-        assert case.notification_status == "PENDING"
+        assert case.notification_status == "NOTIFIED"
 
         delivery = CountyNotificationDelivery.objects.get(case=case, channel="EMAIL")
         assert delivery.status == "SENT"

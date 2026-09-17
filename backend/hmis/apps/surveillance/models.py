@@ -312,6 +312,14 @@ class NotifiableCase(FacilityScopedModel):
     def __str__(self) -> str:
         return f"{self.disease.name} - {self.patient} ({self.get_notification_status_display()})"
 
+    @property
+    def requires_county_notification(self) -> bool:
+        """Whether this case needs individual county notification or escalation."""
+        return (
+            self.is_immediate
+            or self.alerts.filter(alert_type=SurveillanceAlert.AlertType.OUTBREAK).exists()
+        )
+
     def save(self, *args, **kwargs):
         """Calculate notification deadline and auto-resolve tenant on save."""
         if not self.notification_deadline and self.disease:

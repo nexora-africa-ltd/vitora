@@ -147,6 +147,16 @@ export const surveillanceApi = {
     });
   },
 
+  async markCountyNotified(id: number, notes?: string): Promise<NotifiableCaseDetail> {
+    const response = await apiClient.post<NotifiableCaseDetail>(
+      `/api/surveillance/cases/${id}/mark_county_notified/`,
+      { notes: notes ?? '' }
+    );
+    return parseResponse(NotifiableCaseDetailSchema, response.data, {
+      context: 'surveillanceApi.markCountyNotified',
+    });
+  },
+
   async markCaseInvestigated(id: number, notes?: string): Promise<NotifiableCaseDetail> {
     const response = await apiClient.post<NotifiableCaseDetail>(
       `/api/surveillance/cases/${id}/mark_investigated/`,

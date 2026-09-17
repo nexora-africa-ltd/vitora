@@ -168,6 +168,7 @@ class NotifiableDiseaseSerializer(serializers.ModelSerializer):
 
     icd10_code_list = serializers.SerializerMethodField()
     is_immediate = serializers.BooleanField(read_only=True)
+    requires_county_notification = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = NotifiableDisease
@@ -184,6 +185,7 @@ class NotifiableDiseaseSerializer(serializers.ModelSerializer):
             "is_ihr_notifiable",
             "is_active",
             "is_immediate",
+            "requires_county_notification",
             "created_at",
             "updated_at",
         ]
