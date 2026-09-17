@@ -196,6 +196,24 @@ export default function DocumentHubPage() {
     [previewItem]
   );
   const iframeSrc = previewHrefs[previewUrlIndex] ?? null;
+
+  useEffect(() => {
+    if (!previewItem || !iframeSrc || !iframeLoading) return;
+
+    const timeout = window.setTimeout(() => {
+      if (previewUrlIndex < previewHrefs.length - 1) {
+        setPreviewUrlIndex((current) => current + 1);
+        setIframeLoading(true);
+        return;
+      }
+
+      setIframeLoading(false);
+      setIframeError(true);
+    }, 8000);
+
+    return () => window.clearTimeout(timeout);
+  }, [iframeLoading, iframeSrc, previewHrefs.length, previewItem, previewUrlIndex]);
+
   const formatDateTime = (value: string | null) => {
     if (!value) return 'N/A';
     const parsed = new Date(value);

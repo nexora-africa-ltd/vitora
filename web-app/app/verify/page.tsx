@@ -30,6 +30,8 @@ import { QRScannerDialog } from '@/components/patients/qr-scanner-dialog';
 
 interface VerificationResult {
   valid: boolean;
+  is_signed?: boolean;
+  signature_status?: 'SIGNED' | 'UNSIGNED';
   document_type?: string;
   document_number?: string;
   amount?: string;
@@ -386,7 +388,11 @@ export default function VerifyPage() {
                     <XCircle className="h-5 w-5" />
                   )}
                   <AlertTitle className={result.valid ? 'text-green-600' : ''}>
-                    {result.valid ? 'Document Verified' : 'Verification Failed'}
+                    {result.valid
+                      ? result.is_signed
+                        ? 'Authentic and Signed'
+                        : 'Authentic but Unsigned'
+                      : 'Verification Failed'}
                   </AlertTitle>
                   <AlertDescription>
                     <p className="mb-2">{result.message}</p>
@@ -410,6 +416,14 @@ export default function VerifyPage() {
                           <span className="text-muted-foreground">Date:</span>
                           <span>{result.date}</span>
                         </div>
+                        {result.valid && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Signature:</span>
+                            <span className="font-medium">
+                              {result.is_signed ? 'Electronically signed' : 'Not electronically signed'}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </AlertDescription>

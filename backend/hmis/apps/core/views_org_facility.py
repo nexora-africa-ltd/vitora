@@ -439,6 +439,8 @@ def generate_case_number_view(request):
             name="VerifyDocumentResponse",
             fields={
                 "valid": serializers.BooleanField(),
+                "is_signed": serializers.BooleanField(required=False),
+                "signature_status": serializers.CharField(required=False),
                 "document_type": serializers.CharField(required=False),
                 "document_number": serializers.CharField(required=False),
                 "amount": serializers.CharField(required=False),
@@ -568,21 +570,32 @@ def verify_document(request):
         signature=signature,
     )
 
+    is_signed = _is_document_electronically_signed(doc_type, doc_number)
+    signature_status = "SIGNED" if is_signed else "UNSIGNED"
+
     if is_valid:
+        if is_signed:
+            message = "✓ Document is valid and authentic, and electronically signed."
+        else:
+            message = "✓ Document is valid and authentic, but not electronically signed."
         return Response(
             {
                 "valid": True,
+                "is_signed": is_signed,
+                "signature_status": signature_status,
                 "document_type": doc_type,
                 "document_number": doc_number,
                 "amount": amount,
                 "date": date,
-                "message": "✓ Document is valid and authentic",
+                "message": message,
             }
         )
     else:
         return Response(
             {
                 "valid": False,
+                "is_signed": is_signed,
+                "signature_status": signature_status,
                 "document_type": doc_type,
                 "document_number": doc_number,
                 "amount": amount,
@@ -590,6 +603,79 @@ def verify_document(request):
                 "message": "✗ Document signature is invalid. This document may have been tampered with.",
             }
         )
+
+
+def _is_document_electronically_signed(document_type: str, document_number: str) -> bool:
+    """Best-effort lookup for whether this verified document has a digital signature."""
+    mapping = {
+        "PRESCRIPTION": {
+            "app": "pharmacy",
+            "model": "Prescription",
+            "lookup": "prescription_number",
+            "signature_type": "Prescription",
+        },
+        "LAB_RESULT": {
+            "app": "laboratory",
+            "model": "DiagnosticReport",
+            "lookup": "report_number",
+            "signature_type": "DiagnosticReport",
+        },
+        "RADIOLOGY_REPORT": {
+            "app": "imaging",
+            "model": "RadiologyReport",
+            "lookup": "report_number",
+            "signature_type": "RadiologyReport",
+        },
+        "SICK_NOTE": {
+            "app": "sick_notes",
+            "model": "SickNote",
+            "lookup": "note_number",
+            "signature_type": "SickNote",
+        },
+        "REFERRAL": {
+            "app": "referrals",
+            "model": "ClinicalReferral",
+            "lookup": "referral_number",
+            "signature_type": "ClinicalReferral",
+        },
+        "DISCHARGE_SUMMARY": {
+            "app": "inpatient",
+            "model": "Discharge",
+            "lookup": "admission__admission_number",
+            "signature_type": "Discharge",
+        },
+        "INVOICE": {
+            "app": "billing",
+            "model": "Invoice",
+            "lookup": "invoice_number",
+            "signature_type": "Invoice",
+        },
+        "RECEIPT": {
+            "app": "billing",
+            "model": "Receipt",
+            "lookup": "receipt_number",
+            "signature_type": "Receipt",
+        },
+    }
+
+    config = mapping.get(document_type)
+    if not config:
+        return False
+
+    try:
+        model = apps.get_model(config["app"], config["model"])
+    except LookupError:
+        return False
+
+    queryset = model.objects.filter(**{config["lookup"]: document_number})
+    document = queryset.order_by("-id").first()
+    if document is None:
+        return False
+
+    return DocumentSignature.objects.filter(
+        document_type=config["signature_type"],
+        document_id=document.pk,
+    ).exists()
 
 
 def _parse_qr_data(qr_data: str) -> tuple | None:

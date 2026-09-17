@@ -476,6 +476,7 @@ class TestVerifyDocumentAPI:
 
         assert response.status_code == 200
         assert response.data["valid"] is True
+        assert response.data["signature_status"] == "UNSIGNED"
         assert response.data["document_type"] == "RECEIPT"
         assert response.data["document_number"] == "RCP-001"
         assert "valid and authentic" in response.data["message"]
@@ -523,6 +524,7 @@ class TestVerifyDocumentAPI:
 
         assert response.status_code == 200
         assert response.data["valid"] is False
+        assert response.data["signature_status"] == "UNSIGNED"
         assert "invalid" in response.data["message"].lower()
 
     def test_verify_tampered_amount(self, api_client):
