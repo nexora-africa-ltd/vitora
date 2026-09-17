@@ -38,6 +38,7 @@ router.register(
 )
 router.register(r"thresholds", OutbreakThresholdViewSet, basename="threshold")
 router.register(r"idsr", IDSRWeeklyReportViewSet, basename="idsr")
+router.register(r"idsr-reports", IDSRWeeklyReportViewSet, basename="idsr-reports")
 router.register(r"ihr", IHRNotificationViewSet, basename="ihr")
 
 urlpatterns = [

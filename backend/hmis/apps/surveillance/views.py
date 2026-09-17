@@ -1502,7 +1502,7 @@ class IDSRWeeklyReportViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             }
         )
 
-    @action(detail=True, methods=["get"], url_path="export-sdmx")
+    @action(detail=True, methods=["get", "post"], url_path=r"export[-_]sdmx")
     def export_sdmx(self, request, pk=None):
         """
         Export IDSR weekly report as SDMX-ML.
@@ -1522,7 +1522,7 @@ class IDSRWeeklyReportViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         )
         return response
 
-    @action(detail=True, methods=["get"], url_path="export-adx")
+    @action(detail=True, methods=["get", "post"], url_path=r"export[-_]adx")
     def export_adx(self, request, pk=None):
         """
         Export IDSR weekly report as ADX XML for DHIS2.

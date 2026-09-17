@@ -627,6 +627,35 @@ class TestIDSRAPIEndpoints:
         assert "payload" in response.data
         assert response.data["payload"]["period"] == "2026W08"
 
+    def test_export_endpoints_support_legacy_idsr_reports_post_paths(
+        self, authenticated_client, db
+    ):
+        """Should support legacy idsr-reports POST export endpoints with underscore action names."""
+        from hmis.apps.surveillance.models import IDSRWeeklyReport
+
+        report = IDSRWeeklyReport.objects.create(
+            epi_year=2026,
+            epi_week=8,
+            week_start_date=date(2026, 2, 16),
+            week_end_date=date(2026, 2, 22),
+            facility_code="MFL001",
+            facility_name="Test Facility",
+        )
+
+        adx_response = authenticated_client.post(
+            f"/api/surveillance/idsr-reports/{report.id}/export_adx/",
+            {},
+        )
+        sdmx_response = authenticated_client.post(
+            f"/api/surveillance/idsr-reports/{report.id}/export_sdmx/",
+            {},
+        )
+
+        assert adx_response.status_code == status.HTTP_200_OK
+        assert sdmx_response.status_code == status.HTTP_200_OK
+        assert adx_response["Content-Type"].startswith("application/xml")
+        assert sdmx_response["Content-Type"].startswith("application/xml")
+
     def test_filter_by_status(self, authenticated_client, db):
         """Should filter reports by status."""
         from hmis.apps.surveillance.models import IDSRWeeklyReport
