@@ -1950,9 +1950,17 @@ class FacilityEmailConfigViewSet(ReadOnCreateMixin, TenantScopedViewMixin, views
     tenant_scope = "facility"
 
     def get_permissions(self):
-        if self.action in ["create", "update", "partial_update", "destroy"]:
-            return [FacilityAdminPermission()]
-        return [IsAuthenticated()]
+        return [FacilityAdminPermission()]
+
+    @action(detail=False, methods=["get"], url_path="current")
+    def current(self, request):
+        """Return the SMTP configuration for the active facility, if configured."""
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        config = FacilityEmailConfig.objects.filter(facility=facility).first()
+        if config is None:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(FacilityEmailConfigSerializer(config).data)
 
     def create(self, request, *args, **kwargs):
         """Upsert the one allowed configuration for the request facility."""

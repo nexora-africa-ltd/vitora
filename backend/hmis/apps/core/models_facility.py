@@ -964,7 +964,6 @@ class Facility(TimeStampedModel):
         "has_imaging_standalone": "imaging_standalone",
         "has_triage": "triage",
         "has_scheduling": "scheduling",
-        "has_custom_email": "custom_email",
         "has_surveillance": "surveillance",
         "has_immunizations": "immunizations",
         "has_allied_health": "allied_health",

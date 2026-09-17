@@ -98,6 +98,7 @@ const FacilityModulesSchema = z.object({
   imaging_standalone: z.boolean().default(false),
   triage: z.boolean().default(true),
   scheduling: z.boolean().default(true),
+  custom_email: z.boolean().default(false),
   surveillance: z.boolean().default(false),
   immunizations: z.boolean().default(false),
   allied_health: z.boolean().default(false),

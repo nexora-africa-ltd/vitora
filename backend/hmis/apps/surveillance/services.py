@@ -235,7 +235,7 @@ class SurveillanceService:
         sub_county_name = case.sub_county.name if case.sub_county else "N/A"
         reporter_name = _display_user_name(case.reported_by)
         notifier_name = _display_user_name(triggered_by)
-        icd_codes = (case.disease.icd10_codes or "").strip() if case.disease else ""
+        icd_codes = cls._encounter_icd10_codes(case)
         patient_line = f"Patient MRN: {case.patient.mrn}" if include_patient_identifiers else ""
         notes_clean = notes.strip()
         text_lines = [
@@ -325,6 +325,25 @@ class SurveillanceService:
             "</div></div>"
         )
         return text_body, html_body
+
+    @staticmethod
+    def _encounter_icd10_codes(case: "NotifiableCase") -> str:
+        """Return the actual ICD-10 diagnoses recorded on the case encounter."""
+        if not case.encounter_id:
+            return ""
+
+        codes: list[str] = []
+        seen: set[str] = set()
+        for diagnosis in case.encounter.diagnoses.select_related("icd10_code").order_by(
+            "created_at"
+        ):
+            if not diagnosis.icd10_code_id:
+                continue
+            code = diagnosis.icd10_code.code.strip().upper()
+            if code and code not in seen:
+                seen.add(code)
+                codes.append(code)
+        return ", ".join(codes)
 
     @classmethod
     def build_county_ack_token(cls, delivery: "CountyNotificationDelivery") -> str:
@@ -495,6 +514,7 @@ class SurveillanceService:
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     headers=headers,
                     tags=tags,
+                    facility=delivery.facility,
                 )
                 accepted = bool(email_result.get("accepted", False))
                 provider = str(email_result.get("provider") or "")

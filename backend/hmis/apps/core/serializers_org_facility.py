@@ -54,10 +54,12 @@ from .models import (
 class FacilityEmailConfigSerializer(serializers.ModelSerializer):
     """Facility SMTP configuration with write-only encrypted credentials."""
 
-    smtp_username = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    smtp_username = serializers.CharField(required=False, allow_blank=True)
     smtp_password = serializers.CharField(write_only=True, required=False, allow_blank=True)
     password_configured = serializers.BooleanField(read_only=True)
     is_configured = serializers.BooleanField(read_only=True)
+    effective_from_address = serializers.CharField(read_only=True)
+    effective_reply_to_address = serializers.CharField(read_only=True)
 
     class Meta:
         model = FacilityEmailConfig
@@ -77,6 +79,8 @@ class FacilityEmailConfigSerializer(serializers.ModelSerializer):
             "last_test_error",
             "password_configured",
             "is_configured",
+            "effective_from_address",
+            "effective_reply_to_address",
             "created_at",
             "updated_at",
         ]
@@ -87,6 +91,8 @@ class FacilityEmailConfigSerializer(serializers.ModelSerializer):
             "status",
             "password_configured",
             "is_configured",
+            "effective_from_address",
+            "effective_reply_to_address",
             "created_at",
             "updated_at",
         ]

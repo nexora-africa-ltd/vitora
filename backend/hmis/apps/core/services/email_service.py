@@ -226,9 +226,9 @@ def _send_via_facility_smtp(
         message = EmailMultiAlternatives(
             subject=subject,
             body=strip_tags(html_body),
-            from_email=config.from_address,
+            from_email=config.effective_from_address,
             to=[to_email],
-            reply_to=[config.reply_to_address] if config.reply_to_address else None,
+            reply_to=[config.effective_reply_to_address],
             connection=connection,
         )
         message.attach_alternative(html_body, "text/html")

@@ -72,6 +72,7 @@ export interface FacilityDetail extends FacilityListItem {
   has_imaging_standalone: boolean;
   has_triage: boolean;
   has_scheduling: boolean;
+  has_custom_email: boolean;
   has_surveillance: boolean;
   has_immunizations: boolean;
   has_allied_health: boolean;

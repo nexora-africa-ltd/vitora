@@ -154,9 +154,17 @@ class FacilityEmailConfig(FacilityScopedModel, TimeStampedModel):
     @property
     def is_configured(self) -> bool:
         """Return whether all SMTP inputs needed for a secure send exist."""
-        return bool(
-            self.smtp_host and self.smtp_username and self.smtp_password and self.from_address
-        )
+        return bool(self.smtp_host and self.smtp_username and self.smtp_password)
+
+    @property
+    def effective_from_address(self) -> str:
+        """Use the SMTP username when no facility-specific sender is configured."""
+        return self.from_address or self.smtp_username
+
+    @property
+    def effective_reply_to_address(self) -> str:
+        """Use the SMTP username when no reply mailbox is configured."""
+        return self.reply_to_address or self.smtp_username
 
     @property
     def password_configured(self) -> bool:

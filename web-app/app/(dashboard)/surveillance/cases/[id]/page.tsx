@@ -100,7 +100,9 @@ export default function NotifiableCaseDetailPage() {
           ? 'Email accepted and waiting for delivery confirmation from provider.'
           : 'The case has been reported to the county health office.',
       });
-      queryClient.invalidateQueries({ queryKey: ['notifiable-case', caseId] });
+      // The action response contains the persisted notification status. Update
+      // the detail cache immediately instead of waiting for a refetch race.
+      queryClient.setQueryData(['notifiable-case', caseId], data);
       queryClient.invalidateQueries({ queryKey: ['notifiable-cases'] });
       queryClient.invalidateQueries({ queryKey: ['notifiable-case-deliveries', caseId] });
     },
@@ -292,7 +294,7 @@ export default function NotifiableCaseDetailPage() {
     );
   }
 
-  const canNotify = caseData.notification_status === 'PENDING';
+  const countyNotified = caseData.notification_status !== 'PENDING';
   const canManageCaseStatus = hasPermission('surveillance.change_notifiablecase');
   const canEditSeverity = hasPermission('surveillance.change_notifiablecase');
   const canEditOnsetDate = hasPermission('surveillance.change_notifiablecase');
@@ -305,6 +307,9 @@ export default function NotifiableCaseDetailPage() {
   const hasRetryableDeliveries = deliveryStatus.some((item) =>
     ['FAILED', 'RETRY_SCHEDULED'].includes(item.status)
   );
+  const awaitingCountyDelivery = deliveryStatus.some(
+    (item) => item.channel === 'EMAIL' && item.status === 'SENT'
+  );
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -313,11 +318,15 @@ export default function NotifiableCaseDetailPage() {
         helpContent="View details of a notifiable disease case including patient information, notification status, and investigation details."
         actions={
           <div className="flex flex-col gap-2 sm:flex-row">
-            {canNotify && (
-              <Button onClick={() => notifyCounty()} disabled={notifying}>
-                {notifying ? 'Notifying...' : 'Notify County'}
-              </Button>
-            )}
+            <Button onClick={() => notifyCounty()} disabled={notifying || countyNotified || awaitingCountyDelivery}>
+              {notifying
+                ? 'Notifying...'
+                : countyNotified
+                  ? 'County Notified'
+                  : awaitingCountyDelivery
+                    ? 'Awaiting Delivery'
+                    : 'Notify County'}
+            </Button>
             {canMarkInvestigated && (
               <Button
                 variant="outline"

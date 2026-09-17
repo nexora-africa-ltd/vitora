@@ -810,6 +810,7 @@ class TestNotifiableCaseAPI:
         assert all(d.attempt_count == 1 for d in deliveries)
         email_call = mock_send_transactional_email.call_args
         assert email_call is not None
+        assert email_call.kwargs["facility"] == sample_facility
         html_body = str(email_call.kwargs.get("html_body") or "")
         assert "Facility" in html_body
         assert sample_facility.name in html_body

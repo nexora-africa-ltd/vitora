@@ -30,6 +30,19 @@ class TestFacilityEmailConfig:
         assert config.smtp_password == "app-password"
         assert config.is_configured is True
 
+    def test_blank_sender_addresses_fall_back_to_smtp_username(self, sample_facility):
+        """SMTP credentials provide a safe sender default for simple provider setups."""
+        config = FacilityEmailConfig.objects.create(
+            facility=sample_facility,
+            smtp_host="smtp.facility.test",
+            smtp_username="notifications@facility.test",
+        )
+        config.smtp_password = "app-password"
+        config.save()
+
+        assert config.effective_from_address == "notifications@facility.test"
+        assert config.effective_reply_to_address == "notifications@facility.test"
+
     def test_custom_email_is_exposed_as_a_facility_module(self, sample_facility):
         """Facility settings expose the Custom Email module for configuration."""
         assert sample_facility.modules["custom_email"] is False
