@@ -14,6 +14,7 @@ Configuration (settings / env vars):
 from __future__ import annotations
 
 import logging
+from email.utils import formataddr
 from typing import Any
 
 from django.conf import settings
@@ -226,7 +227,9 @@ def _send_via_facility_smtp(
         message = EmailMultiAlternatives(
             subject=subject,
             body=strip_tags(html_body),
-            from_email=config.effective_from_address,
+            from_email=formataddr((config.from_display_name, config.effective_from_address))
+            if config.from_display_name
+            else config.effective_from_address,
             to=[to_email],
             reply_to=[config.effective_reply_to_address],
             connection=connection,

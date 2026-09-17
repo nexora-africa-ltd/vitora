@@ -31,6 +31,7 @@ from hmis.apps.core.models import County, SubCounty
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.inpatient.models import Admission, Bed, Ward
 from hmis.apps.patients.models import Patient
+from tests.conftest import ensure_staff_profile
 
 User = get_user_model()
 
@@ -216,7 +217,7 @@ def non_isolation_ward_ws(db, sample_facility, sample_organization):
 
 
 @pytest.fixture
-def supervisor_user(db):
+def supervisor_user(db, sample_organization, sample_facility):
     """Create a supervisor user with critical alerts permission."""
     user = User.objects.create_user(
         username="supervisor_ws",
@@ -225,6 +226,7 @@ def supervisor_user(db):
     )
     perm = Permission.objects.get(codename="receive_critical_alerts")
     user.user_permissions.add(perm)
+    ensure_staff_profile(user, sample_organization, sample_facility)
     return user
 
 
@@ -711,10 +713,10 @@ class TestNotifySupervisorsCriticalViolationTask:
     """Tests for the Celery task that notifies supervisors of critical violations."""
 
     @patch("hmis.apps.inpatient.signals.notify_supervisors_critical_violation.delay")
-    @patch("hmis.apps.inpatient.tasks.send_mail")
+    @patch("hmis.apps.inpatient.tasks.send_transactional_email")
     def test_task_sends_email_to_supervisors(
         self,
-        mock_send_mail,
+        mock_send_transactional_email,
         mock_signal_task,  # Prevent signal from also calling task
         supervisor_user,
         non_isolation_ward_ws,
@@ -760,20 +762,21 @@ class TestNotifySupervisorsCriticalViolationTask:
             ],
         )
 
-        # Run the task synchronously (isolated from signal)
+        mock_send_transactional_email.return_value = {"accepted": True}
         notify_supervisors_critical_violation(admission.id)
 
         # Verify email was sent exactly once by our explicit call
-        mock_send_mail.assert_called_once()
-        call_kwargs = mock_send_mail.call_args.kwargs
+        mock_send_transactional_email.assert_called_once()
+        call_kwargs = mock_send_transactional_email.call_args.kwargs
         assert "CRITICAL" in call_kwargs["subject"]
-        assert supervisor_user.email in call_kwargs["recipient_list"]
+        assert supervisor_user.email == call_kwargs["to_email"]
+        assert call_kwargs["facility"] == sample_facility
 
     @patch("hmis.apps.inpatient.signals.notify_supervisors_critical_violation.delay")
-    @patch("hmis.apps.inpatient.tasks.send_mail")
+    @patch("hmis.apps.inpatient.tasks.send_transactional_email")
     def test_task_includes_violation_details_in_email(
         self,
-        mock_send_mail,
+        mock_send_transactional_email,
         mock_signal_task,  # Prevent signal from also calling task
         supervisor_user,
         non_isolation_ward_ws,
@@ -819,12 +822,13 @@ class TestNotifySupervisorsCriticalViolationTask:
             ],
         )
 
+        mock_send_transactional_email.return_value = {"accepted": True}
         notify_supervisors_critical_violation(admission.id)
 
         # Verify email body contains key details
-        mock_send_mail.assert_called_once()
-        call_kwargs = mock_send_mail.call_args.kwargs
-        email_body = call_kwargs["message"]
+        mock_send_transactional_email.assert_called_once()
+        call_kwargs = mock_send_transactional_email.call_args.kwargs
+        email_body = call_kwargs["html_body"]
         assert sample_patient.first_name in email_body
         assert sample_patient.last_name in email_body
         assert non_isolation_ward_ws.name in email_body
@@ -832,10 +836,10 @@ class TestNotifySupervisorsCriticalViolationTask:
         assert "Patient requires isolation" in email_body
 
     @patch("hmis.apps.inpatient.signals.notify_supervisors_critical_violation.delay")
-    @patch("hmis.apps.inpatient.tasks.send_mail")
+    @patch("hmis.apps.inpatient.tasks.send_transactional_email")
     def test_task_handles_no_supervisors_gracefully(
         self,
-        mock_send_mail,
+        mock_send_transactional_email,
         mock_signal_task,  # Prevent signal from also calling task
         non_isolation_ward_ws,
         sample_patient,
@@ -887,7 +891,7 @@ class TestNotifySupervisorsCriticalViolationTask:
         notify_supervisors_critical_violation(admission.id)
 
         # Verify email was NOT sent (no recipients)
-        mock_send_mail.assert_not_called()
+        mock_send_transactional_email.assert_not_called()
 
 
 # =============================================================================

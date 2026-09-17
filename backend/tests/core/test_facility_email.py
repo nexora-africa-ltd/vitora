@@ -53,6 +53,27 @@ class TestFacilityEmailConfig:
         assert sample_facility.modules["custom_email"] is True
         assert "custom_email" in sample_facility.enabled_module_names
 
+    def test_editing_healthy_connection_settings_requires_retest(self, sample_facility):
+        """Connection or sender changes disable a previously healthy custom sender."""
+        config = FacilityEmailConfig.objects.create(
+            facility=sample_facility,
+            custom_email_enabled=True,
+            smtp_host="smtp.facility.test",
+            smtp_username="notifications@facility.test",
+            status=FacilityEmailConfig.Status.HEALTHY,
+        )
+
+        from hmis.apps.core.serializers_org_facility import FacilityEmailConfigSerializer
+
+        serializer = FacilityEmailConfigSerializer(
+            config, data={"from_display_name": "New Sender"}, partial=True
+        )
+        assert serializer.is_valid(), serializer.errors
+        updated = serializer.save()
+
+        assert updated.status == FacilityEmailConfig.Status.UNHEALTHY
+        assert updated.custom_email_enabled is False
+
 
 def test_smtp_provider_presets_do_not_include_credentials():
     """Frontend presets provide connection metadata only, never secrets."""
@@ -114,3 +135,32 @@ class TestFacilityEmailProviderSelection:
         )
 
         assert result["provider"] == "django"
+
+    @patch("hmis.apps.core.services.email_service.get_connection")
+    def test_facility_smtp_uses_display_name_in_from_header(self, mock_connection, sample_facility):
+        """The configured sender name is included in the SMTP RFC 5322 From header."""
+        sample_facility.has_custom_email = True
+        sample_facility.save()
+        config = FacilityEmailConfig.objects.create(
+            facility=sample_facility,
+            custom_email_enabled=True,
+            smtp_host="smtp.facility.test",
+            smtp_username="notifications@facility.test",
+            from_display_name="Sample Clinic",
+            status=FacilityEmailConfig.Status.HEALTHY,
+        )
+        config.smtp_password = "app-password"
+        config.save()
+        connection = MagicMock()
+        connection.send_messages.return_value = 1
+        mock_connection.return_value = connection
+
+        send_transactional_email(
+            subject="Facility test",
+            html_body="<p>Test</p>",
+            to_email="recipient@example.test",
+            facility=sample_facility,
+        )
+
+        message = connection.send_messages.call_args.args[0][0]
+        assert message.from_email == "Sample Clinic <notifications@facility.test>"

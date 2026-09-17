@@ -600,29 +600,46 @@ class TestEmergencyAccessTasks:
     """Tests for Emergency Access Celery tasks."""
 
     @patch("hmis.apps.core.sms_gateway.SMSGateway")
-    @patch("hmis.apps.core.emergency_access.tasks.send_mail")
+    @patch("hmis.apps.core.emergency_access.tasks.send_transactional_email")
     def test_send_escalation_sends_email(
-        self, mock_send_mail, mock_sms_class, sample_emergency_access, admin_user, db
+        self,
+        mock_send_transactional_email,
+        mock_sms_class,
+        sample_emergency_access,
+        admin_user,
+        sample_organization,
+        sample_facility,
+        db,
     ):
         """Should send escalation email to admins."""
         from hmis.apps.core.emergency_access.tasks import send_emergency_access_escalation
 
-        # Run the task synchronously
+        ensure_staff_profile(admin_user, sample_organization, sample_facility)
+        mock_send_transactional_email.return_value = {"accepted": True}
         result = send_emergency_access_escalation(sample_emergency_access.id)
 
         assert result["status"] == "success"
-        mock_send_mail.assert_called_once()
-        call_kwargs = mock_send_mail.call_args[1]
-        assert "EMERGENCY ACCESS ALERT" in call_kwargs["message"]
-        assert sample_emergency_access.user.username in call_kwargs["message"]
+        mock_send_transactional_email.assert_called_once()
+        call_kwargs = mock_send_transactional_email.call_args.kwargs
+        assert "EMERGENCY ACCESS ALERT" in call_kwargs["html_body"]
+        assert sample_emergency_access.user.username in call_kwargs["html_body"]
+        assert call_kwargs["facility"] is None
 
-    @patch("hmis.apps.core.emergency_access.tasks.send_mail")
+    @patch("hmis.apps.core.emergency_access.tasks.send_transactional_email")
     def test_send_escalation_marks_sent(
-        self, mock_send_mail, sample_emergency_access, admin_user, db
+        self,
+        mock_send_transactional_email,
+        sample_emergency_access,
+        admin_user,
+        sample_organization,
+        sample_facility,
+        db,
     ):
         """Should mark escalation_sent after sending."""
         from hmis.apps.core.emergency_access.tasks import send_emergency_access_escalation
 
+        ensure_staff_profile(admin_user, sample_organization, sample_facility)
+        mock_send_transactional_email.return_value = {"accepted": True}
         assert sample_emergency_access.escalation_sent is False
 
         send_emergency_access_escalation(sample_emergency_access.id)
@@ -631,9 +648,9 @@ class TestEmergencyAccessTasks:
         assert sample_emergency_access.escalation_sent is True
         assert sample_emergency_access.escalation_sent_at is not None
 
-    @patch("hmis.apps.core.emergency_access.tasks.send_mail")
+    @patch("hmis.apps.core.emergency_access.tasks.send_transactional_email")
     def test_send_escalation_skips_if_already_sent(
-        self, mock_send_mail, sample_emergency_access, admin_user, db
+        self, mock_send_transactional_email, sample_emergency_access, admin_user, db
     ):
         """Should skip if escalation already sent."""
         from hmis.apps.core.emergency_access.tasks import send_emergency_access_escalation
@@ -644,7 +661,7 @@ class TestEmergencyAccessTasks:
         result = send_emergency_access_escalation(sample_emergency_access.id)
 
         assert result["status"] == "skipped"
-        mock_send_mail.assert_not_called()
+        mock_send_transactional_email.assert_not_called()
 
     def test_expire_emergency_access_task(self, regular_user, db):
         """Should expire active records past their expiration time."""

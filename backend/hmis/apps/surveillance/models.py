@@ -1665,5 +1665,6 @@ from .models_notifications import (  # noqa: E402,F401
     CountyNotificationChannel,
     CountyNotificationDelivery,
     CountyNotificationDeliveryStatus,
+    ResendWebhookEvent,
     SurveillanceFacilitySettings,
 )

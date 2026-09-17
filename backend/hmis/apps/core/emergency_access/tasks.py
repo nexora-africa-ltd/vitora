@@ -8,8 +8,10 @@ import logging
 from celery import shared_task
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.mail import send_mail
+from django.db.models import Q
 from django.utils import timezone
+
+from hmis.apps.core.services.email_service import send_transactional_email
 
 logger = logging.getLogger(__name__)
 
@@ -58,17 +60,35 @@ def send_emergency_access_escalation(self, emergency_access_id: int) -> dict:  #
         logger.info("Escalation already sent for EmergencyAccess %s", emergency_access_id)
         return {"status": "skipped", "message": "Already sent"}
 
-    # Get administrators to notify (superusers and those with approve permission)
-    admins = User.objects.filter(
-        is_active=True,
-    ).filter(
-        # Superusers OR users with approve permission
-        is_superuser=True,
-    ) | User.objects.filter(
-        is_active=True,
-        user_permissions__codename="approve_emergency_access",
+    organization = getattr(emergency_access.patient, "organization", None)
+    if organization is None:
+        organization = getattr(
+            getattr(emergency_access.user, "staff_profile", None), "organization", None
+        )
+    if organization is None:
+        logger.error(
+            "Emergency access %s has no resolvable tenant; escalation suppressed",
+            emergency_access_id,
+        )
+        return {"status": "error", "message": "No tenant resolved", "emails_sent": 0, "sms_sent": 0}
+
+    facility = getattr(
+        getattr(emergency_access.user, "staff_profile", None), "primary_facility", None
     )
-    admins = admins.distinct()
+    if facility is not None and facility.organization_id != organization.id:
+        facility = None
+
+    # Limit recipients to the emergency tenant; group permissions are equivalent
+    # to direct permissions and avoid excluding role-managed administrators.
+    admins = (
+        User.objects.filter(is_active=True, staff_profile__organization=organization)
+        .filter(
+            Q(is_superuser=True)
+            | Q(user_permissions__codename="approve_emergency_access")
+            | Q(groups__permissions__codename="approve_emergency_access")
+        )
+        .distinct()
+    )
 
     # Prepare notification content
     patient_info = (
@@ -112,18 +132,20 @@ This is an automated alert. Do not reply to this email.
     sms_sent = 0
     errors = []
 
-    # Send emails
-    admin_emails = list(admins.exclude(email="").values_list("email", flat=True))
-    if admin_emails:
+    if admins.exclude(email="").exists():
         try:
-            send_mail(
-                subject=subject,
-                message=message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=admin_emails,
-                fail_silently=False,
-            )
-            emails_sent = len(admin_emails)
+            for admin in admins.exclude(email=""):
+                result = send_transactional_email(
+                    subject=subject,
+                    html_body=message.replace("\n", "<br>"),
+                    to_email=admin.email,
+                    facility=facility,
+                )
+                if not result.get("accepted", False):
+                    raise RuntimeError(
+                        "Emergency escalation email was not accepted by the provider."
+                    )
+                emails_sent += 1
             logger.info("Sent emergency access escalation email to %d admins", emails_sent)
         except (
             AttributeError,
@@ -135,7 +157,7 @@ This is an automated alert. Do not reply to this email.
             ImportError,
         ) as exc:
             logger.exception("Failed to send escalation email (%s)", type(exc).__name__)
-            errors.append("Email: notification send failed")
+            raise
     else:
         logger.warning("No admin emails configured for emergency access escalation")
 

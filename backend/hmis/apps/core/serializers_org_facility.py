@@ -114,8 +114,37 @@ class FacilityEmailConfigSerializer(serializers.ModelSerializer):
         return self._save_credentials(super().create(validated_data), credentials)
 
     def update(self, instance, validated_data):
+        requires_retest = any(
+            field in validated_data
+            for field in (
+                "smtp_host",
+                "smtp_port",
+                "security_mode",
+                "from_address",
+                "from_display_name",
+                "reply_to_address",
+            )
+        )
         credentials = self._pop_credentials(validated_data)
-        return self._save_credentials(super().update(instance, validated_data), credentials)
+        requires_retest = requires_retest or bool(
+            credentials["smtp_username"] or credentials["smtp_password"]
+        )
+        instance = self._save_credentials(super().update(instance, validated_data), credentials)
+        if requires_retest and instance.status == FacilityEmailConfig.Status.HEALTHY:
+            instance.status = FacilityEmailConfig.Status.UNHEALTHY
+            instance.custom_email_enabled = False
+            instance.last_test_error = (
+                "SMTP settings changed; test the connection before enabling Custom Email."
+            )
+            instance.save(
+                update_fields=[
+                    "status",
+                    "custom_email_enabled",
+                    "last_test_error",
+                    "updated_at",
+                ]
+            )
+        return instance
 
     @staticmethod
     def _pop_credentials(validated_data):

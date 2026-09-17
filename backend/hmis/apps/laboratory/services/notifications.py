@@ -8,10 +8,10 @@ with special handling for critical values.
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.mail import send_mail
 from django.template.loader import render_to_string
 
 from hmis.apps.core.models import Notification
+from hmis.apps.core.services.email_service import send_transactional_email
 from hmis.apps.core.services.notification_service import notify_user
 from hmis.apps.laboratory.models import LabOrder
 
@@ -197,12 +197,11 @@ View results: {context["action_url"]}
 """
             html_message = None
 
-        # Send email
-        send_mail(
+        result = send_transactional_email(
             subject=subject,
-            message=plain_message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[clinician.email],
-            html_message=html_message,
-            fail_silently=True,
+            html_body=html_message or plain_message.replace("\n", "<br>"),
+            to_email=clinician.email,
+            facility=lab_order.facility,
         )
+        if not result.get("accepted", False):
+            raise RuntimeError("Critical laboratory result email was not accepted by the provider.")

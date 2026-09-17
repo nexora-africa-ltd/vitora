@@ -129,3 +129,17 @@ class CountyNotificationDelivery(FacilityScopedModel):
             models.Index(fields=["case", "channel"]),
             models.Index(fields=["status", "next_retry_at"]),
         ]
+
+
+class ResendWebhookEvent(models.Model):
+    """Durable idempotency record for authenticated Resend/Svix webhook deliveries."""
+
+    event_id = models.CharField(max_length=255, unique=True)
+    received_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["received_at"], name="surveillanc_receive_aa7f47_idx")]
+
+    def __str__(self) -> str:
+        """Return the provider event identifier for administrative inspection."""
+        return self.event_id

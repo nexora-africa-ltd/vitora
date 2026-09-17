@@ -14,6 +14,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from django.conf import settings
+from django.db import IntegrityError
 from django.db.models import Count, Q
 from django.http import HttpResponse
 from django.template.loader import render_to_string
@@ -929,6 +930,13 @@ class SurveillanceEmailWebhookView(APIView):
             "X-Webhook-Signature"
         )
 
+        if not webhook_secret and not (
+            getattr(settings, "TESTING", False) or getattr(settings, "DEBUG", False)
+        ):
+            return Response(
+                {"error": "Webhook is not configured"}, status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
         if webhook_secret and not self._verify_signature(
             request.body,
             signature or "",
@@ -936,6 +944,23 @@ class SurveillanceEmailWebhookView(APIView):
             headers=request.headers,
         ):
             return Response({"error": "Invalid signature"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        svix_event_id = str(
+            request.headers.get("svix-id") or request.headers.get("webhook-id") or ""
+        )
+        if webhook_secret and not svix_event_id:
+            return Response(
+                {"error": "Missing webhook event ID"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+        if svix_event_id:
+            from .models import ResendWebhookEvent
+
+            try:
+                _, created = ResendWebhookEvent.objects.get_or_create(event_id=svix_event_id)
+            except IntegrityError:
+                created = False
+            if not created:
+                return Response({"ok": True, "replayed": True})
 
         payload = request.data if isinstance(request.data, dict) else {}
         event_type = str(payload.get("type") or payload.get("event") or "")
@@ -983,6 +1008,10 @@ class SurveillanceEmailWebhookView(APIView):
 
         if svix_id and svix_ts and svix_sig:
             try:
+                timestamp = int(svix_ts)
+                max_age_seconds = int(getattr(settings, "RESEND_WEBHOOK_MAX_AGE_SECONDS", 300))
+                if abs(timezone.now().timestamp() - timestamp) > max_age_seconds:
+                    return False
                 secret_key = secret
                 if secret.startswith("whsec_"):
                     secret_key = secret.split("_", 1)[1]

@@ -14,7 +14,6 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.conf import settings
 from django.core import signing
-from django.core.mail import send_mail
 from django.db import models
 from django.utils import timezone
 from django.utils.html import escape
@@ -686,7 +685,6 @@ class SurveillanceService:
             | models.Q(
                 channel=CountyNotificationChannel.EMAIL,
                 status__in=[
-                    CountyNotificationDeliveryStatus.SENT,
                     CountyNotificationDeliveryStatus.DELIVERED,
                 ],
             )
@@ -720,6 +718,10 @@ class SurveillanceService:
             return None
 
         now = timezone.now()
+        # Provider events can arrive out of order. A successful delivery is
+        # terminal and must never be regressed by a later failure/bounce event.
+        if delivery.status == CountyNotificationDeliveryStatus.DELIVERED:
+            return delivery
         delivery.provider_event = normalized
         if normalized == "email.delivered":
             delivery.status = CountyNotificationDeliveryStatus.DELIVERED
@@ -974,13 +976,16 @@ Case Details:
 Please follow the designated county public-health response process.
 """
 
-            send_mail(
+            result = send_transactional_email(
                 subject=subject,
-                message=body,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[recipient],
-                fail_silently=False,
+                html_body=body.replace("\n", "<br>"),
+                to_email=recipient,
+                facility=alert.case.facility,
             )
+            if not result.get("accepted", False):
+                raise RuntimeError(
+                    "Immediate surveillance alert email was not accepted by the provider."
+                )
 
             alert.sent_via_email = True
             alert.email_recipient = recipient

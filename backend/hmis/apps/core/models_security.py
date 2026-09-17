@@ -110,6 +110,29 @@ class DHIS2Config(OrganizationScopedModel, TimeStampedModel):
         kms = get_kms_provider()
         return kms.decrypt(self._password.encode()).decode()
 
+    @property
+    def api_url(self) -> str:
+        """Return the base URL with trailing slash stripped."""
+        return self.base_url.rstrip("/")
+
+    @classmethod
+    def get_for_facility(cls, facility) -> "DHIS2Config | None":
+        """Return the active DHIS2 config for a facility's organization.
+
+        Falls back to global Django settings if no DB config exists
+        (backward-compatible with env-var-only deployments).
+        """
+        if not facility or not facility.organization_id:
+            return None
+        return (
+            cls.objects.filter(
+                organization=facility.organization,
+                is_active=True,
+            )
+            .select_related("organization")
+            .first()
+        )
+
 
 class FacilityEmailConfig(FacilityScopedModel, TimeStampedModel):
     """Facility SMTP override used only when Custom Email is enabled."""
@@ -172,29 +195,6 @@ class FacilityEmailConfig(FacilityScopedModel, TimeStampedModel):
         return bool(self.smtp_password_encrypted)
 
     # -- Convenience helpers --------------------------------------------
-
-    @property
-    def api_url(self) -> str:
-        """Return the base URL with trailing slash stripped."""
-        return self.base_url.rstrip("/")
-
-    @classmethod
-    def get_for_facility(cls, facility) -> "DHIS2Config | None":
-        """Return the active DHIS2 config for a facility's organization.
-
-        Falls back to global Django settings if no DB config exists
-        (backward-compatible with env-var-only deployments).
-        """
-        if not facility or not facility.organization_id:
-            return None
-        return (
-            cls.objects.filter(
-                organization=facility.organization,
-                is_active=True,
-            )
-            .select_related("organization")
-            .first()
-        )
 
 
 class CertificateAuthority(models.Model):

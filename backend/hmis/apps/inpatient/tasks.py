@@ -8,9 +8,10 @@ Provides background tasks for supervisor notifications on critical violations.
 import logging
 
 from celery import shared_task
-from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.mail import send_mail
+from django.db.models import Q
+
+from hmis.apps.core.services.email_service import send_transactional_email
 
 logger = logging.getLogger(__name__)
 
@@ -50,14 +51,23 @@ def notify_supervisors_critical_violation(self, admission_id: int) -> dict:  # n
         logger.error("Admission %s not found for critical violation notification", admission_id)
         return {"status": "error", "message": f"Admission {admission_id} not found"}
 
-    # Get all users with receive_critical_alerts permission
+    facility = admission.facility or admission.ward.facility
+    # Restrict recipients to staff assigned to the admission facility. Permissions
+    # can be granted directly or through a same-tenant Django group.
     supervisors = (
         User.objects.filter(
-            user_permissions__codename="receive_critical_alerts",
             is_active=True,
             email__isnull=False,
         )
         .exclude(email="")
+        .filter(
+            Q(staff_profile__primary_facility=facility)
+            | Q(staff_profile__secondary_facilities=facility)
+        )
+        .filter(
+            Q(user_permissions__codename="receive_critical_alerts")
+            | Q(groups__permissions__codename="receive_critical_alerts")
+        )
         .distinct()
     )
 
@@ -112,23 +122,24 @@ Vitora HMIS - Nexora Consulting Ltd
 This is an automated notification. Do not reply to this email.
 """
 
-    # Collect supervisor emails
-    supervisor_emails = list(supervisors.values_list("email", flat=True))
-
     try:
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=supervisor_emails,
-            fail_silently=False,
-        )
+        for supervisor in supervisors:
+            result = send_transactional_email(
+                subject=subject,
+                html_body=message.replace("\n", "<br>"),
+                to_email=supervisor.email,
+                facility=facility,
+            )
+            if not result.get("accepted", False):
+                raise RuntimeError(
+                    "Critical ward violation email was not accepted by the provider."
+                )
         logger.info(
             "Sent critical violation email for admission %s to %s supervisors",
             admission_id,
-            len(supervisor_emails),
+            supervisors.count(),
         )
-        return {"status": "success", "emails_sent": len(supervisor_emails)}
+        return {"status": "success", "emails_sent": supervisors.count()}
     except (
         AttributeError,
         TypeError,

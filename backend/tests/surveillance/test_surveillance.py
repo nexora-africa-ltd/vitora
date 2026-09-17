@@ -824,7 +824,7 @@ class TestNotifiableCaseAPI:
         assert "review this case in Vitora HMIS" not in html_body
 
     @patch("hmis.apps.surveillance.services.send_transactional_email")
-    def test_notify_county_email_only_marks_case_notified_when_provider_accepts(
+    def test_notify_county_email_only_returns_accepted_until_delivery_confirmation(
         self,
         mock_send_transactional_email,
         authenticated_client,
@@ -834,7 +834,7 @@ class TestNotifiableCaseAPI:
         sample_facility,
         sample_organization,
     ):
-        """Email acceptance should mark the case notified without awaiting a webhook."""
+        """Email acceptance should keep case pending until provider confirms delivery."""
         from hmis.apps.surveillance.models import (
             CountyNotificationDelivery,
             NotifiableCase,
@@ -868,9 +868,9 @@ class TestNotifiableCaseAPI:
             {"notification_notes": "Email only"},
         )
 
-        assert notify_response.status_code == status.HTTP_200_OK
+        assert notify_response.status_code == status.HTTP_202_ACCEPTED
         case.refresh_from_db()
-        assert case.notification_status == "NOTIFIED"
+        assert case.notification_status == "PENDING"
 
         delivery = CountyNotificationDelivery.objects.get(case=case, channel="EMAIL")
         assert delivery.status == "SENT"
@@ -947,7 +947,7 @@ class TestNotifiableCaseAPI:
         payload = {"type": "email.delivered", "data": {"id": "svix-email-abc"}}
         body_text = json.dumps(payload)
         msg_id = "msg_123"
-        timestamp = "1730000000"
+        timestamp = str(int(timezone.now().timestamp()))
         signed_content = f"{msg_id}.{timestamp}.{body_text}".encode()
         signature = base64.b64encode(
             hmac.new(signing_key, signed_content, hashlib.sha256).digest()
@@ -967,6 +967,44 @@ class TestNotifiableCaseAPI:
         case.refresh_from_db()
         assert delivery.status == "DELIVERED"
         assert case.notification_status == "NOTIFIED"
+
+    def test_webhook_rejects_missing_secret_outside_development(self, api_client, settings):
+        """A public webhook cannot be left unsigned in a deployed environment."""
+        settings.TESTING = False
+        settings.DEBUG = False
+        settings.RESEND_WEBHOOK_SECRET = ""
+
+        response = api_client.post(
+            "/api/surveillance/webhooks/email-delivery/",
+            {"type": "email.delivered", "data": {"id": "ignored"}},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+
+    def test_webhook_rejects_stale_svix_timestamp(self, api_client, settings):
+        """Svix signatures are only accepted inside the configured freshness window."""
+        signing_key = b"svix-test-secret"
+        settings.RESEND_WEBHOOK_SECRET = "whsec_" + base64.urlsafe_b64encode(
+            signing_key
+        ).decode().rstrip("=")
+        body = json.dumps({"type": "email.delivered", "data": {"id": "ignored"}})
+        msg_id = "msg_stale"
+        timestamp = "1"
+        signature = base64.b64encode(
+            hmac.new(signing_key, f"{msg_id}.{timestamp}.{body}".encode(), hashlib.sha256).digest()
+        ).decode()
+
+        response = api_client.post(
+            "/api/surveillance/webhooks/email-delivery/",
+            data=body,
+            content_type="application/json",
+            HTTP_SVIX_ID=msg_id,
+            HTTP_SVIX_TIMESTAMP=timestamp,
+            HTTP_SVIX_SIGNATURE=f"v1,{signature}",
+        )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @patch("hmis.apps.surveillance.services.send_transactional_email")
     def test_county_ack_link_marks_case_acknowledged(
