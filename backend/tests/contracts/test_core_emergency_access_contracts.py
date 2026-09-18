@@ -34,7 +34,11 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "by_reason",
+                "by_reason_facility",
+                "by_reason_role",
                 "by_status",
+                "median_review_minutes",
+                "overdue_reviews",
                 "total_active",
                 "total_pending_review",
                 "total_this_week",

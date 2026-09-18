@@ -158,6 +158,16 @@ app.conf.beat_schedule = {
         "task": "hmis.apps.triage.tasks.auto_resolve_breaches",
         "schedule": 300.0,  # Every 5 minutes
     },
+    # Core emergency access: flag overdue compliance reviews every 30 minutes
+    "core-emergency-access-flag-overdue-reviews": {
+        "task": "hmis.apps.core.emergency_access.tasks.flag_overdue_emergency_access_reviews",
+        "schedule": crontab(minute="*/30"),
+    },
+    # Core emergency access: send compliance digest daily at 7 AM
+    "core-emergency-access-daily-digest": {
+        "task": "hmis.apps.core.emergency_access.tasks.send_emergency_access_daily_digest",
+        "schedule": crontab(minute=0, hour=7),
+    },
     # Billing agent: Daily bed charges for active IPD admissions at midnight
     "billing-apply-daily-bed-charges": {
         "task": "hmis.apps.billing.tasks.apply_daily_bed_charges",

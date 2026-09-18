@@ -237,5 +237,13 @@ class EmergencyAccessDashboardStatsSerializer(serializers.Serializer):
     total_pending_review = serializers.IntegerField()
     total_today = serializers.IntegerField()
     total_this_week = serializers.IntegerField()
+    overdue_reviews = serializers.IntegerField()
+    median_review_minutes = serializers.FloatField()
     by_reason = serializers.DictField(child=serializers.IntegerField())
     by_status = serializers.DictField(child=serializers.IntegerField())
+    by_reason_role = serializers.DictField(
+        child=serializers.DictField(child=serializers.IntegerField())
+    )
+    by_reason_facility = serializers.DictField(
+        child=serializers.DictField(child=serializers.IntegerField())
+    )

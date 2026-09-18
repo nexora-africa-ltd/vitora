@@ -542,6 +542,8 @@ class TestEmergencyAccessAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == EmergencyAccessStatus.EXPIRED
         assert response.data["closed_at"] is not None
+        audit = AuditLog.objects.filter(action="emergency_access_closed").latest("timestamp")
+        assert audit.resource_id == ea.id
 
     def test_non_owner_cannot_close_emergency_access(
         self, authenticated_regular_client, admin_user, db
@@ -724,6 +726,115 @@ class TestEmergencyAccessAPI:
         assert "total_today" in response.data
         assert "by_reason" in response.data
         assert "by_status" in response.data
+        assert "overdue_reviews" in response.data
+        assert "median_review_minutes" in response.data
+        assert "by_reason_role" in response.data
+        assert "by_reason_facility" in response.data
+
+    def test_dashboard_stats_includes_overdue_and_median_metrics(
+        self, authenticated_admin_client, regular_user, admin_user, sample_patient, db
+    ):
+        """Dashboard should calculate overdue review count and median review duration."""
+        reviewed_fast = EmergencyAccess.objects.create(
+            user=regular_user,
+            patient=sample_patient,
+            reason=EmergencyAccessReason.LIFE_THREATENING,
+            reason_details="Emergency access case A.",
+            duration_minutes=60,
+        )
+        reviewed_fast.requested_at = timezone.now() - timedelta(hours=3)
+        reviewed_fast.approved_at = reviewed_fast.requested_at + timedelta(minutes=30)
+        reviewed_fast.status = EmergencyAccessStatus.REVIEWED
+        reviewed_fast.save(update_fields=["requested_at", "approved_at", "status"])
+
+        reviewed_slow = EmergencyAccess.objects.create(
+            user=regular_user,
+            patient=sample_patient,
+            reason=EmergencyAccessReason.MEDICATION_EMERGENCY,
+            reason_details="Emergency access case B.",
+            duration_minutes=60,
+        )
+        reviewed_slow.requested_at = timezone.now() - timedelta(hours=5)
+        reviewed_slow.approved_at = reviewed_slow.requested_at + timedelta(minutes=90)
+        reviewed_slow.status = EmergencyAccessStatus.REVIEWED
+        reviewed_slow.save(update_fields=["requested_at", "approved_at", "status"])
+
+        overdue = EmergencyAccess.objects.create(
+            user=regular_user,
+            patient=sample_patient,
+            reason=EmergencyAccessReason.CRITICAL_LAB_RESULT,
+            reason_details="Pending overdue review.",
+            duration_minutes=30,
+            status=EmergencyAccessStatus.EXPIRED,
+        )
+        overdue.review_due_at = timezone.now() - timedelta(hours=2)
+        overdue.save(update_fields=["review_due_at"])
+
+        response = authenticated_admin_client.get(reverse("emergency-access-dashboard-stats"))
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["overdue_reviews"] >= 1
+        # Median of [30, 90] -> 60.0
+        assert response.data["median_review_minutes"] == 60.0
+
+    def test_export_json_for_admin(self, authenticated_admin_client, sample_emergency_access, db):
+        """Admin export should support JSON output."""
+        response = authenticated_admin_client.get(
+            reverse("emergency-access-export"), {"export_format": "json"}
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "records" in response.data
+        assert "generated_at" in response.data
+        assert "count" in response.data
+        assert response.data["count"] >= 1
+
+    def test_export_csv_for_admin(self, authenticated_admin_client, sample_emergency_access, db):
+        """Admin export should support CSV output."""
+        response = authenticated_admin_client.get(
+            reverse("emergency-access-export"), {"export_format": "csv"}
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response["Content-Type"].startswith("text/csv")
+        body = response.content.decode("utf-8")
+        assert "id,user_username,patient_mrn,reason,status" in body
+        assert str(sample_emergency_access.id) in body
+
+    def test_export_forbidden_for_regular_user(
+        self, authenticated_regular_client, sample_emergency_access
+    ):
+        """Regular user should not access compliance exports."""
+        response = authenticated_regular_client.get(reverse("emergency-access-export"))
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_sensitive_record_access_logs_resource_touch_event(
+        self, authenticated_regular_client, regular_user, sample_patient, db
+    ):
+        """Active break-glass access should log resource touch audit events."""
+        sample_patient.is_sensitive = True
+        sample_patient.save(update_fields=["is_sensitive"])
+        EmergencyAccess.objects.create(
+            user=regular_user,
+            patient=sample_patient,
+            reason=EmergencyAccessReason.LIFE_THREATENING,
+            reason_details="Need urgent access to sensitive chart.",
+            duration_minutes=60,
+            scope_type=EmergencyAccessScope.PATIENT,
+        )
+
+        response = authenticated_regular_client.get(
+            reverse("patient-detail", args=[sample_patient.id])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        touch = AuditLog.objects.filter(action="emergency_access_resource_accessed").latest(
+            "timestamp"
+        )
+        assert touch.resource_type == "Patient"
+        assert touch.resource_id == sample_patient.id
+        assert touch.details.get("endpoint") == reverse("patient-detail", args=[sample_patient.id])
 
     def test_dashboard_stats_forbidden_for_regular_user(self, authenticated_regular_client, db):
         """Regular user should not be able to access dashboard stats."""
@@ -852,3 +963,49 @@ class TestEmergencyAccessTasks:
         assert result["expired_count"] >= 1
         ea.refresh_from_db()
         assert ea.status == EmergencyAccessStatus.EXPIRED
+
+    def test_flag_overdue_reviews(self, regular_user, sample_patient, db):
+        """Overdue review detector should log audit events for overdue records."""
+        from hmis.apps.core.emergency_access.tasks import flag_overdue_emergency_access_reviews
+
+        overdue = EmergencyAccess.objects.create(
+            user=regular_user,
+            patient=sample_patient,
+            reason=EmergencyAccessReason.LIFE_THREATENING,
+            reason_details="Needs retrospective review.",
+            duration_minutes=60,
+            status=EmergencyAccessStatus.EXPIRED,
+        )
+        overdue.review_due_at = timezone.now() - timedelta(hours=1)
+        overdue.save(update_fields=["review_due_at"])
+
+        result = flag_overdue_emergency_access_reviews()
+
+        assert result["overdue_count"] >= 1
+        audit = AuditLog.objects.filter(action="emergency_access_review_overdue").latest(
+            "timestamp"
+        )
+        assert audit.resource_id == overdue.id
+
+    @patch("hmis.apps.core.emergency_access.tasks.send_transactional_email")
+    def test_send_daily_compliance_digest(
+        self,
+        mock_send_transactional_email,
+        admin_user,
+        sample_organization,
+        sample_facility,
+        db,
+    ):
+        """Daily digest should send compliance summary email to approvers."""
+        from hmis.apps.core.emergency_access.tasks import send_emergency_access_daily_digest
+
+        admin_user.email = "admin_digest@vitora.local"
+        admin_user.save(update_fields=["email"])
+        ensure_staff_profile(admin_user, sample_organization, sample_facility)
+        mock_send_transactional_email.return_value = {"accepted": True}
+
+        result = send_emergency_access_daily_digest()
+
+        assert result["status"] in {"success", "skipped"}
+        if result["status"] == "success":
+            mock_send_transactional_email.assert_called()

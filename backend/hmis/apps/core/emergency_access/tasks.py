@@ -25,6 +25,20 @@ def _sanitize_log_field(value: object) -> str:
     return text.replace("\r", " ").replace("\n", " ")
 
 
+def _get_tenant_approvers(organization):
+    if organization is None:
+        return User.objects.none()
+    return (
+        User.objects.filter(is_active=True, staff_profile__organization=organization)
+        .filter(
+            Q(is_superuser=True)
+            | Q(user_permissions__codename="approve_emergency_access")
+            | Q(groups__permissions__codename="approve_emergency_access")
+        )
+        .distinct()
+    )
+
+
 @shared_task(
     bind=True,
     name="hmis.apps.core.emergency_access.tasks.send_emergency_access_escalation",
@@ -82,15 +96,7 @@ def send_emergency_access_escalation(self, emergency_access_id: int) -> dict:  #
 
     # Limit recipients to the emergency tenant; group permissions are equivalent
     # to direct permissions and avoid excluding role-managed administrators.
-    admins = (
-        User.objects.filter(is_active=True, staff_profile__organization=organization)
-        .filter(
-            Q(is_superuser=True)
-            | Q(user_permissions__codename="approve_emergency_access")
-            | Q(groups__permissions__codename="approve_emergency_access")
-        )
-        .distinct()
-    )
+    admins = _get_tenant_approvers(organization)
 
     # Prepare notification content
     patient_info = (
@@ -245,3 +251,126 @@ def expire_emergency_access() -> dict:
         logger.info("Expired %d emergency access records", expired_count)
 
     return {"expired_count": expired_count}
+
+
+@shared_task(name="hmis.apps.core.emergency_access.tasks.flag_overdue_emergency_access_reviews")
+def flag_overdue_emergency_access_reviews() -> dict:
+    """Detect and log emergency access records overdue for compliance review."""
+    from hmis.apps.core.emergency_access.models import EmergencyAccess, EmergencyAccessStatus
+    from hmis.apps.core.models import AuditLog
+
+    now = timezone.now()
+    overdue_records = EmergencyAccess.objects.select_related("user").filter(
+        status__in=[EmergencyAccessStatus.ACTIVE, EmergencyAccessStatus.EXPIRED],
+        review_due_at__lt=now,
+    )
+
+    overdue_count = overdue_records.count()
+    logged_count = 0
+
+    for record in overdue_records:
+        recently_logged = AuditLog.objects.filter(
+            action="emergency_access_review_overdue",
+            resource_type="EmergencyAccess",
+            resource_id=record.id,
+            timestamp__gte=now - timezone.timedelta(hours=24),
+        ).exists()
+        if recently_logged:
+            continue
+
+        AuditLog.log(
+            action="emergency_access_review_overdue",
+            user=record.user,
+            resource_type="EmergencyAccess",
+            resource_id=record.id,
+            patient_id=record.patient_id,
+            details={
+                "status": record.status,
+                "requested_at": record.requested_at.isoformat() if record.requested_at else "",
+                "review_due_at": record.review_due_at.isoformat() if record.review_due_at else "",
+                "hours_overdue": round(
+                    max(0.0, (now - record.review_due_at).total_seconds() / 3600.0),
+                    2,
+                )
+                if record.review_due_at
+                else 0.0,
+            },
+        )
+        logged_count += 1
+
+    if overdue_count:
+        logger.warning(
+            "Detected %d overdue emergency-access review(s); logged %d alerts",
+            overdue_count,
+            logged_count,
+        )
+
+    return {"overdue_count": overdue_count, "logged_count": logged_count}
+
+
+@shared_task(name="hmis.apps.core.emergency_access.tasks.send_emergency_access_daily_digest")
+def send_emergency_access_daily_digest() -> dict:
+    """Send a daily compliance digest to emergency-access approvers."""
+    from hmis.apps.core.emergency_access.models import EmergencyAccess, EmergencyAccessStatus
+    from hmis.apps.core.models import Organization
+
+    now = timezone.now()
+    today = timezone.localdate()
+    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    day_end = day_start + timezone.timedelta(days=1)
+
+    orgs = Organization.objects.all()
+    total_sent = 0
+
+    for org in orgs:
+        approvers = _get_tenant_approvers(org).exclude(email="")
+        if not approvers.exists():
+            continue
+
+        org_records = EmergencyAccess.objects.filter(
+            Q(user__staff_profile__organization=org)
+            | Q(patient__organization=org)
+            | Q(approver__staff_profile__organization=org)
+        ).distinct()
+
+        invoked_today = org_records.filter(
+            requested_at__gte=day_start, requested_at__lt=day_end
+        ).count()
+        reviewed_today = org_records.filter(
+            approved_at__gte=day_start, approved_at__lt=day_end
+        ).count()
+        pending_review = org_records.filter(
+            status__in=[EmergencyAccessStatus.ACTIVE, EmergencyAccessStatus.EXPIRED]
+        ).count()
+        overdue_reviews = org_records.filter(
+            status__in=[EmergencyAccessStatus.ACTIVE, EmergencyAccessStatus.EXPIRED],
+            review_due_at__lt=now,
+        ).count()
+
+        subject = f"Emergency Access Daily Digest ({today.isoformat()})"
+        html_body = (
+            "<h3>Emergency Access Compliance Digest</h3>"
+            f"<p>Organization: {org.name}</p>"
+            f"<p>Date: {today.isoformat()}</p>"
+            f"<ul><li>Invoked today: {invoked_today}</li>"
+            f"<li>Reviewed today: {reviewed_today}</li>"
+            f"<li>Pending review: {pending_review}</li>"
+            f"<li>Overdue reviews: {overdue_reviews}</li></ul>"
+        )
+
+        for approver in approvers:
+            result = send_transactional_email(
+                subject=subject,
+                html_body=html_body,
+                to_email=approver.email,
+                facility=getattr(
+                    getattr(approver, "staff_profile", None), "primary_facility", None
+                ),
+            )
+            if result.get("accepted", False):
+                total_sent += 1
+
+    if total_sent == 0:
+        return {"status": "skipped", "emails_sent": 0}
+
+    return {"status": "success", "emails_sent": total_sent}
