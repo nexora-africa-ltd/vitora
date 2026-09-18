@@ -7,28 +7,17 @@
 'use client';
 
 import * as React from 'react';
-import { Check, ChevronsUpDown, Loader2, Search, User } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/searchable-select';
 import { Button } from '@/components/ui/button';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Badge } from '@/components/ui/badge';
-import { useStaffList } from '@/lib/hooks/use-rbac';
+import { useStaffLookup } from '@/lib/hooks/use-rbac';
 import { useDebounce } from '@/lib/hooks/use-debounce';
-import type { StaffProfile } from '@/lib/types/rbac';
+import type { StaffLookup } from '@/lib/types/rbac';
 
 interface StaffSearchComboboxProps {
   /** Currently selected user ID */
   value: number | undefined;
   /** Callback when a staff member is selected */
-  onSelect: (userId: number, staff: StaffProfile) => void;
+  onSelect: (userId: number, staff: StaffLookup) => void;
   /** Placeholder text when no selection */
   placeholder?: string;
   /** Search input placeholder */
@@ -62,14 +51,19 @@ export function StaffSearchCombobox({
   className,
   excludeUserIds = [],
 }: StaffSearchComboboxProps) {
-  const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
-  const debouncedSearch = useDebounce(searchQuery, 300);
+  const [selectedSnapshot, setSelectedSnapshot] = React.useState<StaffLookup | null>(null);
+  const debouncedSearch = useDebounce(searchQuery.trim(), 300);
 
-  // Fetch staff list with search
-  const { data: staffData, isLoading } = useStaffList({
+  // Search the compact clinical directory, not the permission-restricted HR endpoint.
+  const {
+    data: staffData,
+    isLoading,
+    isError,
+    refetch,
+  } = useStaffLookup({
     search: debouncedSearch.length >= 2 ? debouncedSearch : undefined,
-    employment_status: 'ACTIVE',
+    page_size: 50,
   });
 
   // Filter out excluded users
@@ -80,112 +74,75 @@ export function StaffSearchCombobox({
 
   // Find selected staff for display
   const selectedStaff = React.useMemo(() => {
-    if (!value || !staffData?.results) return null;
-    return staffData.results.find((s) => s.user === value);
-  }, [value, staffData?.results]);
+    if (!value) return null;
+    const fromResults = staffData?.results?.find((s) => s.user === value) ?? null;
+    if (fromResults) return fromResults;
+    if (selectedSnapshot && selectedSnapshot.user === value) return selectedSnapshot;
+    return null;
+  }, [value, staffData?.results, selectedSnapshot]);
+
+  const options = React.useMemo<SearchableSelectOption[]>(
+    () =>
+      availableStaff.map((staff) => ({
+        value: String(staff.user),
+        label: staff.full_name || staff.user_email,
+        sublabel: [
+          staff.user_email,
+          staff.employee_id,
+          staff.primary_role_name,
+          staff.primary_department_name,
+        ]
+          .filter(Boolean)
+          .join(' • '),
+      })),
+    [availableStaff]
+  );
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn('w-full justify-between font-normal', className)}
-          disabled={disabled}
-        >
-          {selectedStaff ? (
-            <div className="flex items-center gap-2 truncate">
-              <User className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span className="truncate">{selectedStaff.full_name}</span>
-              {selectedStaff.primary_role_name && (
-                <Badge variant="secondary" className="ml-1 shrink-0 text-xs">
-                  {selectedStaff.primary_role_name}
-                </Badge>
-              )}
-            </div>
-          ) : (
-            <span className="text-muted-foreground">{placeholder}</span>
-          )}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-[--radix-popover-trigger-width] p-0"
-        align="start"
-        style={{ pointerEvents: 'auto' }}
-        onWheel={(e) => e.stopPropagation()}
-        onOpenAutoFocus={(e) => e.preventDefault()}
-      >
-        <Command shouldFilter={false}>
-          <CommandInput
-            placeholder={searchPlaceholder}
-            value={searchQuery}
-            onValueChange={setSearchQuery}
-          />
-          <CommandList className="max-h-[200px]">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-6">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                <span className="text-sm text-muted-foreground">Searching...</span>
-              </div>
-            ) : searchQuery.length > 0 && searchQuery.length < 2 ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                Type at least 2 characters to search
-              </div>
-            ) : availableStaff.length === 0 ? (
-              <CommandEmpty>{emptyMessage}</CommandEmpty>
-            ) : (
-              <CommandGroup>
-                {availableStaff.map((staff) => (
-                  <CommandItem
-                    key={staff.id}
-                    value={staff.id.toString()}
-                    onSelect={() => {
-                      onSelect(staff.user, staff);
-                      setOpen(false);
-                      setSearchQuery('');
-                    }}
-                    className="flex items-start gap-3 py-3"
-                  >
-                    <Check
-                      className={cn(
-                        'mt-0.5 h-4 w-4 shrink-0',
-                        value === staff.user ? 'opacity-100' : 'opacity-0'
-                      )}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate font-medium">{staff.full_name}</span>
-                        {staff.employee_id && (
-                          <Badge variant="outline" className="shrink-0 font-mono text-xs">
-                            {staff.employee_id}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="truncate text-sm text-muted-foreground">
-                        {staff.user_email}
-                      </div>
-                      <div className="mt-1 flex items-center gap-2">
-                        {staff.primary_role_name && (
-                          <Badge variant="secondary" className="text-xs">
-                            {staff.primary_role_name}
-                          </Badge>
-                        )}
-                        {staff.primary_department_name && (
-                          <span className="text-xs text-muted-foreground">
-                            {staff.primary_department_name}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+    <div className="space-y-2">
+      <SearchableSelect
+        options={searchQuery.length === 1 || isError ? [] : options}
+        value={value ? String(value) : undefined}
+        onValueChange={(nextValue) => {
+          const userId = Number(nextValue);
+          const staff = availableStaff.find((entry) => entry.user === userId);
+          if (!staff) return;
+          setSelectedSnapshot(staff);
+          setSearchQuery('');
+          onSelect(userId, staff);
+        }}
+        placeholder={selectedStaff?.full_name || placeholder}
+        searchPlaceholder={searchPlaceholder}
+        emptyMessage={
+          searchQuery.length === 1 ? 'Type at least 2 characters to search' : emptyMessage
+        }
+        disabled={disabled || isError}
+        isLoading={isLoading}
+        className={className}
+        onSearchChange={setSearchQuery}
+        filterOptions={false}
+        footer={
+          staffData && staffData.count > staffData.results.length ? (
+            <p className="text-xs text-muted-foreground">
+              More staff available. Search by name, email, or employee ID.
+            </p>
+          ) : undefined
+        }
+      />
+      {isError && (
+        <div role="alert" className="flex items-center gap-2 text-sm text-destructive">
+          <span>Unable to load staff. Check your connection or access permissions.</span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            aria-label="Retry staff lookup"
+          >
+            Retry
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }

@@ -15,6 +15,7 @@ import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
 import { MFAGraceBanner } from '@/components/auth/mfa-grace-banner';
 import { MFAEnforcementOverlay } from '@/components/auth/mfa-enforcement-overlay';
 import { OnboardingBanner } from '@/components/auth/onboarding-banner';
+import { EmergencyAccessBanner } from '@/components/shared/emergency-access-banner';
 import { OfflineBanner } from '@/components/shared/offline-banner';
 import { LicenseBanner } from '@/components/shared/license-banner';
 import { LicenseGuard } from '@/components/shared/license-guard';
@@ -105,6 +106,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <LicenseBanner />
                     <MFAGraceBanner />
                     <OnboardingBanner />
+                    <EmergencyAccessBanner />
                     <RouteGuard>{children}</RouteGuard>
                   </main>
                 </div>

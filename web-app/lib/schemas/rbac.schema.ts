@@ -6,6 +6,24 @@
  */
 import { z } from 'zod';
 
+export const StaffLookupSchema = z.object({
+  id: z.number(),
+  user: z.number(),
+  full_name: z.string(),
+  user_email: z.string(),
+  employee_id: z.string(),
+  primary_role_name: z.string().nullable(),
+  primary_department_name: z.string().nullable(),
+  license_number: z.string().nullable(),
+});
+
+export const PaginatedStaffLookupSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(StaffLookupSchema),
+});
+
 // =============================================================================
 // ENUMS
 // =============================================================================

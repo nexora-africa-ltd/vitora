@@ -260,6 +260,10 @@ export type FeatureFlagSchemaType = z.infer<typeof FeatureFlagSchema>;
 
 export const EmergencyAccessStatusSchema = z.enum(['ACTIVE', 'EXPIRED', 'REVOKED', 'REVIEWED']);
 
+export const EmergencyAccessScopeSchema = z.enum(['PATIENT', 'SYSTEM']);
+
+export const EmergencyAccessModeSchema = z.enum(['READ_ONLY', 'LIMITED_WRITE']);
+
 export const EmergencyAccessReasonSchema = z.enum([
   'LIFE_THREATENING',
   'UNCONSCIOUS_PATIENT',
@@ -284,6 +288,13 @@ export const EmergencyAccessSchema = z.object({
   requested_at: z.string(),
   expires_at: z.string(),
   duration_minutes: z.number(),
+  scope_type: EmergencyAccessScopeSchema,
+  scope_type_display: z.string(),
+  access_mode: EmergencyAccessModeSchema,
+  access_mode_display: z.string(),
+  granted_permissions: z.array(z.string()),
+  review_due_at: z.string().nullable(),
+  closed_at: z.string().nullable(),
   status: EmergencyAccessStatusSchema,
   status_display: z.string(),
   is_active: z.boolean(),

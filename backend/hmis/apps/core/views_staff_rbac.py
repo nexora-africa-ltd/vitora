@@ -526,6 +526,33 @@ class RoleViewSet(viewsets.ModelViewSet):
         )
 
 
+class StaffLookupSerializer(serializers.ModelSerializer):
+    """Minimal staff directory fields needed by clinical assignment selectors."""
+
+    full_name = serializers.CharField(source="get_full_name", read_only=True)
+    user_email = serializers.EmailField(source="user.email", read_only=True)
+    primary_role_name = serializers.CharField(
+        source="primary_role.name", read_only=True, allow_null=True
+    )
+    primary_department_name = serializers.CharField(
+        source="primary_department.name", read_only=True, allow_null=True
+    )
+
+    class Meta:
+        model = StaffProfile
+        fields = (
+            "id",
+            "user",
+            "full_name",
+            "user_email",
+            "employee_id",
+            "primary_role_name",
+            "primary_department_name",
+            "license_number",
+        )
+        read_only_fields = fields
+
+
 class StaffProfileViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for StaffProfile CRUD operations.
@@ -563,6 +590,8 @@ class StaffProfileViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         """Return appropriate serializer class based on action."""
         from .serializers import StaffProfileCreateSerializer
 
+        if self.action == "lookup":
+            return StaffLookupSerializer
         if self.action == "create":
             return StaffProfileCreateSerializer
         if self.action in ["update", "partial_update"]:
@@ -571,7 +600,9 @@ class StaffProfileViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     def get_permissions(self):
         """Set permissions based on action."""
-        if self.action in ["create", "destroy", "reset_password"]:
+        if self.action == "lookup":
+            permission_classes = [IsAuthenticated]
+        elif self.action in ["create", "destroy", "reset_password"]:
             permission_classes = [FacilityAdminPermission]
         else:
             permission_classes = [
@@ -580,6 +611,28 @@ class StaffProfileViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 ReadRequiresModelPermission,
             ]
         return [permission() for permission in permission_classes]
+
+    @action(detail=False, methods=["get"], serializer_class=StaffLookupSerializer)
+    def lookup(self, request):
+        """Search active staff for selection without exposing restricted HR records."""
+        queryset = self.get_queryset().prefetch_related(None)
+        organization = getattr(request, "organization", None)
+        # Even platform staff must select a tenant for a clinical assignment lookup.
+        queryset = queryset.filter(organization=organization) if organization else queryset.none()
+        queryset = self.filter_queryset(
+            queryset.filter(employment_status="ACTIVE", user__is_active=True)
+        )
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            return self.get_paginated_response(self.get_serializer(page, many=True).data)
+        return Response(
+            {
+                "count": queryset.count(),
+                "next": None,
+                "previous": None,
+                "results": self.get_serializer(queryset, many=True).data,
+            }
+        )
 
     def create(self, request, *args, **kwargs):
         """Create a new staff profile with user account.

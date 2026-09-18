@@ -241,6 +241,18 @@ export interface StaffProfile {
   email_sent?: boolean;
 }
 
+/** Compact staff identity returned by the authenticated clinical directory lookup. */
+export interface StaffLookup {
+  id: number;
+  user: number;
+  full_name: string;
+  user_email: string;
+  employee_id: string;
+  primary_role_name: string | null;
+  primary_department_name: string | null;
+  license_number: string | null;
+}
+
 export interface OrgChartSummary {
   department_count: number;
   staff_count: number;

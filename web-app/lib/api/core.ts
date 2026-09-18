@@ -42,6 +42,13 @@ export interface EmergencyAccess {
   requested_at: string;
   expires_at: string;
   duration_minutes: number;
+  scope_type: 'PATIENT' | 'SYSTEM';
+  scope_type_display: string;
+  access_mode: 'READ_ONLY' | 'LIMITED_WRITE';
+  access_mode_display: string;
+  granted_permissions: string[];
+  review_due_at: string | null;
+  closed_at: string | null;
   status: 'ACTIVE' | 'EXPIRED' | 'REVOKED' | 'REVIEWED';
   status_display: string;
   is_active: boolean;
@@ -130,6 +137,8 @@ export const coreApi = {
     reason_details: string;
     duration_minutes?: number;
     patient_mrn?: string;
+    scope_type?: EmergencyAccess['scope_type'];
+    access_mode?: EmergencyAccess['access_mode'];
   }): Promise<EmergencyAccess> {
     const response = await apiClient.post('/api/core/emergency-access/', data);
     return parseResponse(EmergencyAccessSchema, response.data, {
@@ -158,6 +167,13 @@ export const coreApi = {
     const response = await apiClient.get('/api/core/emergency-access/my_active/');
     return parseResponse(EmergencyAccessSchema.array(), response.data, {
       context: 'coreApi.myActiveEmergencyAccess',
+    });
+  },
+
+  async closeEmergencyAccess(id: number): Promise<EmergencyAccess> {
+    const response = await apiClient.post(`/api/core/emergency-access/${id}/close/`, {});
+    return parseResponse(EmergencyAccessSchema, response.data, {
+      context: 'coreApi.closeEmergencyAccess',
     });
   },
 };

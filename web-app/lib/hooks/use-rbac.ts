@@ -6,6 +6,8 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/lib/auth/context';
+import { useFacility } from '@/lib/context/facility-context';
 import {
   departmentsApi,
   rolesApi,
@@ -173,6 +175,18 @@ export function useStaffList(params?: StaffListParams) {
   return useQuery({
     queryKey: ['staff', params],
     queryFn: () => staffApi.list(params),
+  });
+}
+
+/** Tenant- and user-keyed selection data, distinct from the restricted HR staff list. */
+export function useStaffLookup(params?: { search?: string; page_size?: number }) {
+  const { user } = useAuth();
+  const { facility } = useFacility();
+  return useQuery({
+    queryKey: ['staff-lookup', user?.id, facility?.id, params],
+    queryFn: () => staffApi.lookup(params),
+    enabled: !!user,
+    retry: false,
   });
 }
 

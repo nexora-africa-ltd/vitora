@@ -21,11 +21,10 @@ export interface SearchableSelectOption {
   disabled?: boolean;
 }
 
-interface SearchableSelectProps
-  extends Pick<
-    React.ButtonHTMLAttributes<HTMLButtonElement>,
-    'id' | 'aria-describedby' | 'aria-invalid'
-  > {
+interface SearchableSelectProps extends Pick<
+  React.ButtonHTMLAttributes<HTMLButtonElement>,
+  'id' | 'aria-describedby' | 'aria-invalid'
+> {
   options: SearchableSelectOption[];
   value?: string;
   onValueChange: (value: string) => void;
@@ -37,6 +36,8 @@ interface SearchableSelectProps
   isLoading?: boolean;
   maxVisibleOptions?: number;
   onSearchChange?: (query: string) => void;
+  /** Disable local filtering when options are already filtered by a remote search. */
+  filterOptions?: boolean;
   footer?: React.ReactNode;
 }
 
@@ -52,6 +53,7 @@ export function SearchableSelect({
   isLoading = false,
   maxVisibleOptions = 500,
   onSearchChange,
+  filterOptions = true,
   footer,
   id,
   'aria-describedby': ariaDescribedBy,
@@ -65,18 +67,20 @@ export function SearchableSelect({
 
   const { filteredOptions, isTruncated } = React.useMemo(() => {
     const q = deferredQuery.trim().toLowerCase();
-    const matching = (q
-      ? options.filter((option) => {
-          const haystack = `${option.label} ${option.sublabel || ''} ${option.value}`.toLowerCase();
-          return haystack.includes(q);
-        })
-      : options);
+    const matching =
+      q && filterOptions
+        ? options.filter((option) => {
+            const haystack =
+              `${option.label} ${option.sublabel || ''} ${option.value}`.toLowerCase();
+            return haystack.includes(q);
+          })
+        : options;
     const visible = matching.slice(0, maxVisibleOptions);
     return {
       filteredOptions: visible,
       isTruncated: matching.length > maxVisibleOptions,
     };
-  }, [deferredQuery, options, maxVisibleOptions]);
+  }, [deferredQuery, options, maxVisibleOptions, filterOptions]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -131,6 +135,10 @@ export function SearchableSelect({
                     if (option.disabled) return;
                     onValueChange(option.value);
                     setOpen(false);
+                    if (!filterOptions) {
+                      setQuery('');
+                      onSearchChange?.('');
+                    }
                   }}
                 >
                   <Check
