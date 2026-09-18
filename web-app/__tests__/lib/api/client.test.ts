@@ -1,7 +1,13 @@
 import { transformAxiosError, apiClient, getApiErrorMessage } from '@/lib/api/client';
 import { AxiosError } from 'axios';
+import { toast } from 'sonner';
 
 jest.mock('@/lib/auth/storage');
+jest.mock('sonner', () => ({
+  toast: {
+    error: jest.fn(),
+  },
+}));
 
 describe('API Client', () => {
   beforeEach(() => {
@@ -283,5 +289,58 @@ describe('getApiErrorMessage', () => {
     expect(getApiErrorMessage('string error')).toBe('An unexpected error occurred');
     expect(getApiErrorMessage(null)).toBe('An unexpected error occurred');
     expect(getApiErrorMessage(undefined)).toBe('An unexpected error occurred');
+  });
+});
+
+describe('permission denied toasts', () => {
+  const getRejectedInterceptor = () => {
+    const handlers = (
+      apiClient.interceptors.response as unknown as {
+        handlers: Array<{ rejected?: (error: AxiosError) => Promise<unknown> }>;
+      }
+    ).handlers;
+    const rejected = handlers[0]?.rejected;
+    if (!rejected) {
+      throw new Error('Response rejected interceptor not found');
+    }
+    return rejected;
+  };
+
+  const buildPermissionDeniedError = (method: string): AxiosError => {
+    const error = new AxiosError('Forbidden') as AxiosError & {
+      config: Record<string, unknown>;
+    };
+    error.response = {
+      status: 403,
+      data: {
+        code: 'permission_denied',
+        detail: 'You do not have permission to view this resource',
+      },
+      statusText: 'Forbidden',
+      headers: {},
+      config: {} as unknown,
+    };
+    error.config = { method };
+    return error;
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('does not show permission toast for 403 GET requests', async () => {
+    const rejected = getRejectedInterceptor();
+    await rejected(buildPermissionDeniedError('get')).catch(() => undefined);
+
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it('shows permission toast for 403 write requests', async () => {
+    const rejected = getRejectedInterceptor();
+    await rejected(buildPermissionDeniedError('post')).catch(() => undefined);
+
+    expect(toast.error).toHaveBeenCalledWith('Permission denied', {
+      description: 'You do not have permission to view this resource',
+    });
   });
 });

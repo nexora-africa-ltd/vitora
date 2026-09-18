@@ -319,6 +319,11 @@ let lastPermissionToastAt = 0;
 
 function notifyPermissionDenied(error: AxiosError): void {
   if (typeof window === 'undefined') return;
+  const method = String(error.config?.method ?? '').toUpperCase();
+  const isReadRequest = method === 'GET' || method === 'HEAD' || method === 'OPTIONS';
+  if (isReadRequest) {
+    return;
+  }
   const data = (error.response?.data ?? {}) as Record<string, unknown>;
   const code = String(data.code ?? 'permission_denied');
   const detail = String(data.detail ?? 'You do not have permission to perform this action.');
