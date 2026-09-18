@@ -9,13 +9,177 @@ This module contains custom permission classes for:
 """
 
 import logging
+import re
 
+from django.utils import timezone
 from rest_framework import permissions
 
 from .emergency_access.service import has_sensitive_access_override
 from .models import AuditLog
 
 logger = logging.getLogger(__name__)
+
+
+def _coerce_int(value):
+    try:
+        return int(str(value))
+    except (TypeError, ValueError):
+        return None
+
+
+def _is_value_allowed(value, allowed_values) -> bool:
+    if value is None:
+        return False
+    return str(value) in {str(item) for item in allowed_values}
+
+
+def _matches_field_constraints(payload, constraints: dict) -> bool:
+    for field, rule in constraints.items():
+        field_value = payload.get(field)
+        if isinstance(field_value, list) and len(field_value) == 1:
+            field_value = field_value[0]
+        if not isinstance(rule, dict):
+            continue
+        if "equals" in rule and str(field_value) != str(rule["equals"]):
+            return False
+        if "in" in rule and not _is_value_allowed(field_value, rule["in"]):
+            return False
+    return True
+
+
+def _extract_patient_id_for_emergency_write(request, view, obj=None):
+    if obj is not None:
+        return getattr(obj, "id", None)
+
+    data = getattr(request, "data", None)
+    if hasattr(data, "get"):
+        data_patient = _coerce_int(data.get("patient") or data.get("patient_id"))
+        if data_patient is not None:
+            return data_patient
+
+    kwargs = getattr(view, "kwargs", {}) or {}
+    if getattr(view, "basename", "") == "patient":
+        patient_from_pk = _coerce_int(kwargs.get("pk"))
+        if patient_from_pk is not None:
+            return patient_from_pk
+
+    path = getattr(request, "path", "") or ""
+    encounter_match = re.match(r"^/api/encounters/(?P<encounter_id>\d+)/$", path)
+    if encounter_match:
+        encounter_id = _coerce_int(encounter_match.group("encounter_id"))
+        if encounter_id is not None:
+            from hmis.apps.encounters.models import Encounter
+
+            return (
+                Encounter.objects.filter(pk=encounter_id)
+                .values_list("patient_id", flat=True)
+                .first()
+            )
+
+    return None
+
+
+def _has_valid_emergency_write_policy(request, view, obj=None) -> tuple[bool, str]:
+    from hmis.apps.core.emergency_access.models import (
+        EmergencyAccess,
+        EmergencyAccessAccessMode,
+        EmergencyAccessScope,
+        EmergencyAccessStatus,
+    )
+    from hmis.apps.core.emergency_access.policy import (
+        EMERGENCY_SESSION_HEADER,
+        EMERGENCY_WRITE_ALLOWED_ROLE_CODES,
+        get_emergency_action_policy,
+        is_hard_denied_emergency_action,
+    )
+
+    denied, deny_reason = is_hard_denied_emergency_action(request.method, request.path)
+    if denied:
+        return False, deny_reason
+
+    policy = get_emergency_action_policy(request.method, request.path)
+    if policy is None:
+        return False, "Request is not in emergency action allowlist."
+
+    session_token = request.headers.get(EMERGENCY_SESSION_HEADER) or request.META.get(
+        "HTTP_X_EMERGENCY_ACCESS_ID"
+    )
+    session_id = _coerce_int(session_token)
+    if session_id is None:
+        return False, f"Missing or invalid {EMERGENCY_SESSION_HEADER}."
+
+    role_code = getattr(
+        getattr(getattr(request.user, "staff_profile", None), "primary_role", None),
+        "code",
+        "",
+    )
+    if role_code and role_code not in EMERGENCY_WRITE_ALLOWED_ROLE_CODES:
+        logger.info(
+            "Emergency write requested by role outside preferred allowlist: %s",
+            role_code,
+        )
+
+    emergency_access = EmergencyAccess.objects.filter(
+        id=session_id,
+        user=request.user,
+        status=EmergencyAccessStatus.ACTIVE,
+        expires_at__gt=timezone.now(),
+        access_mode=EmergencyAccessAccessMode.LIMITED_WRITE,
+        scope_type=EmergencyAccessScope.PATIENT,
+    ).first()
+    if emergency_access is None:
+        return False, "Emergency access session is not active for limited write mode."
+
+    payload = getattr(request, "data", None)
+    payload_dict = dict(payload) if hasattr(payload, "keys") else {}
+    request_fields = set(payload_dict.keys())
+
+    required_fields = set(policy.get("required_fields", set()))
+    if required_fields and not required_fields.issubset(request_fields):
+        missing = sorted(required_fields - request_fields)
+        return False, f"Emergency action missing required fields: {', '.join(missing)}"
+
+    allowed_fields = policy.get("allowed_fields")
+    if allowed_fields is not None:
+        disallowed = sorted(field for field in request_fields if field not in allowed_fields)
+        if disallowed:
+            return False, f"Emergency action contains disallowed fields: {', '.join(disallowed)}"
+
+    field_constraints = policy.get("field_constraints", {})
+    if field_constraints and not _matches_field_constraints(payload_dict, field_constraints):
+        return False, "Emergency action payload violates field constraints."
+
+    context_constraints = {
+        key: value
+        for key, value in policy.get("context_constraints", {}).items()
+        if isinstance(value, dict)
+    }
+    if context_constraints and not _matches_field_constraints(payload_dict, context_constraints):
+        return False, "Emergency action payload violates context constraints."
+
+    target_patient_id = _extract_patient_id_for_emergency_write(request, view, obj=obj)
+    if target_patient_id is None:
+        return False, "Unable to resolve target patient for emergency write action."
+    if emergency_access.patient_id != target_patient_id:
+        return False, "Emergency session is not scoped to the target patient."
+
+    AuditLog.log(
+        action="emergency_access_resource_accessed",
+        user=request.user if request.user.is_authenticated else None,
+        resource_type=getattr(view, "basename", view.__class__.__name__),
+        resource_id=target_patient_id,
+        ip_address=get_client_ip(request),
+        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+        patient_id=target_patient_id,
+        details={
+            "endpoint": request.path,
+            "method": request.method,
+            "emergency_access_id": emergency_access.id,
+            "policy_action": policy.get("action"),
+        },
+    )
+
+    return True, ""
 
 
 def get_client_ip(request):
@@ -93,17 +257,31 @@ class SensitiveAccessPermission(permissions.BasePermission):
             self._log_sensitive_access(request, obj, granted=True)
             return True
 
-        # Check for specific permission or active emergency override
-        has_permission = request.user.has_perm("patients.view_sensitive_patient") or (
-            has_sensitive_access_override(request.user, obj)
-        )
+        has_sensitive_permission = request.user.has_perm("patients.view_sensitive_patient")
+        has_break_glass_override = has_sensitive_access_override(request.user, obj)
+
+        if request.method in permissions.SAFE_METHODS:
+            has_permission = has_sensitive_permission or has_break_glass_override
+            denial_reason = ""
+        else:
+            has_permission = has_sensitive_permission
+            denial_reason = ""
+            if not has_permission and has_break_glass_override:
+                has_permission, denial_reason = _has_valid_emergency_write_policy(
+                    request, view, obj=obj
+                )
 
         # Log the access attempt
-        self._log_sensitive_access(request, obj, granted=has_permission)
+        self._log_sensitive_access(
+            request,
+            obj,
+            granted=has_permission,
+            denial_reason=denial_reason,
+        )
 
         return has_permission
 
-    def _log_sensitive_access(self, request, obj, granted: bool):
+    def _log_sensitive_access(self, request, obj, granted: bool, denial_reason: str = ""):
         """
         Log access attempt to sensitive patient record.
 
@@ -132,10 +310,11 @@ class SensitiveAccessPermission(permissions.BasePermission):
                 "is_sensitive": True,
                 "access_granted": granted,
                 "break_glass_override": has_break_glass_override,
+                "denial_reason": denial_reason,
             },
         )
 
-        if granted and has_break_glass_override:
+        if granted and has_break_glass_override and request.method in permissions.SAFE_METHODS:
             AuditLog.log(
                 action="emergency_access_resource_accessed",
                 user=request.user if request.user.is_authenticated else None,
@@ -803,7 +982,16 @@ class WriteRequiresRolePermission(permissions.BasePermission):
 
             # Explicit Django model permissions (direct or via groups) should
             # be able to grant access even when the role matrix denies.
-            return self._check_django_permission(user, action, resource)
+            has_django_permission = self._check_django_permission(user, action, resource)
+            if has_django_permission:
+                return True
+
+            emergency_override_allowed, deny_reason = _has_valid_emergency_write_policy(
+                request, view
+            )
+            if not emergency_override_allowed and deny_reason:
+                self.message = deny_reason
+            return emergency_override_allowed
 
         # No staff profile — allow through (in production all users have profiles;
         # profileless users are typically test fixtures or system accounts).

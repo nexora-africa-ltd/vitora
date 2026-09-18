@@ -836,6 +836,81 @@ class TestEmergencyAccessAPI:
         assert touch.resource_id == sample_patient.id
         assert touch.details.get("endpoint") == reverse("patient-detail", args=[sample_patient.id])
 
+    def test_sensitive_patient_write_denied_for_read_only_break_glass(
+        self, authenticated_regular_client, regular_user, sample_patient, db
+    ):
+        """Read-only break-glass should not allow write operations on sensitive patient records."""
+        sample_patient.is_sensitive = True
+        sample_patient.save(update_fields=["is_sensitive"])
+        emergency_access = EmergencyAccess.objects.create(
+            user=regular_user,
+            patient=sample_patient,
+            reason=EmergencyAccessReason.LIFE_THREATENING,
+            reason_details="Urgent read-only access needed.",
+            duration_minutes=60,
+            scope_type=EmergencyAccessScope.PATIENT,
+            access_mode=EmergencyAccessAccessMode.READ_ONLY,
+        )
+
+        response = authenticated_regular_client.patch(
+            reverse("patient-detail", args=[sample_patient.id]),
+            {"emergency_contact_name": "New Contact"},
+            format="json",
+            HTTP_X_EMERGENCY_ACCESS_ID=str(emergency_access.id),
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_sensitive_patient_write_allowed_for_limited_write_break_glass(
+        self, authenticated_regular_client, regular_user, sample_patient, db
+    ):
+        """Limited-write break-glass should allow allowlisted sensitive patient updates."""
+        sample_patient.is_sensitive = True
+        sample_patient.save(update_fields=["is_sensitive"])
+        emergency_access = EmergencyAccess.objects.create(
+            user=regular_user,
+            patient=sample_patient,
+            reason=EmergencyAccessReason.LIFE_THREATENING,
+            reason_details="Urgent update needed.",
+            duration_minutes=60,
+            scope_type=EmergencyAccessScope.PATIENT,
+            access_mode=EmergencyAccessAccessMode.LIMITED_WRITE,
+        )
+
+        response = authenticated_regular_client.patch(
+            reverse("patient-detail", args=[sample_patient.id]),
+            {"emergency_contact_name": "Updated Contact"},
+            format="json",
+            HTTP_X_EMERGENCY_ACCESS_ID=str(emergency_access.id),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_sensitive_patient_write_rejects_disallowed_fields_in_limited_write_mode(
+        self, authenticated_regular_client, regular_user, sample_patient, db
+    ):
+        """Limited-write break-glass should reject fields outside the emergency allowlist."""
+        sample_patient.is_sensitive = True
+        sample_patient.save(update_fields=["is_sensitive"])
+        emergency_access = EmergencyAccess.objects.create(
+            user=regular_user,
+            patient=sample_patient,
+            reason=EmergencyAccessReason.LIFE_THREATENING,
+            reason_details="Urgent update needed.",
+            duration_minutes=60,
+            scope_type=EmergencyAccessScope.PATIENT,
+            access_mode=EmergencyAccessAccessMode.LIMITED_WRITE,
+        )
+
+        response = authenticated_regular_client.patch(
+            reverse("patient-detail", args=[sample_patient.id]),
+            {"first_name": "Bypass"},
+            format="json",
+            HTTP_X_EMERGENCY_ACCESS_ID=str(emergency_access.id),
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
     def test_dashboard_stats_forbidden_for_regular_user(self, authenticated_regular_client, db):
         """Regular user should not be able to access dashboard stats."""
         url = reverse("emergency-access-dashboard-stats")
