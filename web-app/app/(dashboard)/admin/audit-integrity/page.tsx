@@ -54,9 +54,15 @@ export default function AuditIntegrityPage() {
 
   const hashCoverage = chainStatus
     ? chainStatus.total_entries > 0
-      ? Math.round((chainStatus.entries_with_hashes / chainStatus.total_entries) * 100)
+      ? Math.round((chainStatus.chained_entries / chainStatus.total_entries) * 100)
       : 100
     : 0;
+
+  const verificationDetails = verificationResult
+    ? verificationResult.first_mismatch_detail ||
+      verificationResult.errors.join('; ') ||
+      (verificationResult.valid ? 'Chain verification passed.' : 'Chain verification failed.')
+    : '';
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
@@ -156,9 +162,9 @@ export default function AuditIntegrityPage() {
                 <CardContent className="relative p-4">
                   <div className="mb-1 text-xs text-muted-foreground">Hash Coverage</div>
                   <div className="text-2xl font-bold">{hashCoverage}%</div>
-                  {chainStatus.entries_without_hashes > 0 && (
+                  {chainStatus.unchained_entries > 0 && (
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {chainStatus.entries_without_hashes} unhashed
+                      {chainStatus.unchained_entries} unhashed
                     </p>
                   )}
                 </CardContent>
@@ -215,7 +221,9 @@ export default function AuditIntegrityPage() {
                 <div>
                   <span className="text-muted-foreground">Checked At</span>
                   <p className="font-medium">
-                    {new Date(verificationResult.checked_at).toLocaleString()}
+                    {verificationResult.checked_at
+                      ? new Date(verificationResult.checked_at).toLocaleString()
+                      : '-'}
                   </p>
                 </div>
                 {verificationResult.first_mismatch_seq !== null && (
@@ -230,7 +238,7 @@ export default function AuditIntegrityPage() {
               <div className="text-sm">
                 <span className="text-muted-foreground">Details</span>
                 <p className="mt-1 rounded bg-muted p-2 font-mono text-xs">
-                  {verificationResult.details}
+                  {verificationDetails}
                 </p>
               </div>
             </CardContent>
@@ -248,20 +256,16 @@ export default function AuditIntegrityPage() {
                 <div className="flex justify-between sm:flex-col">
                   <span className="text-muted-foreground">Chain Length</span>
                   <span className="font-medium">
-                    {chainStatus.chain_length.toLocaleString()} entries
+                    {chainStatus.chained_entries.toLocaleString()} entries
                   </span>
                 </div>
                 <div className="flex justify-between sm:flex-col">
                   <span className="text-muted-foreground">Entries With Hashes</span>
-                  <span className="font-medium">
-                    {chainStatus.entries_with_hashes.toLocaleString()}
-                  </span>
+                  <span className="font-medium">{chainStatus.chained_entries.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between sm:flex-col">
                   <span className="text-muted-foreground">Entries Without Hashes</span>
-                  <span className="font-medium">
-                    {chainStatus.entries_without_hashes.toLocaleString()}
-                  </span>
+                  <span className="font-medium">{chainStatus.unchained_entries.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between sm:flex-col">
                   <span className="text-muted-foreground">Last Verified</span>
@@ -269,6 +273,18 @@ export default function AuditIntegrityPage() {
                     {chainStatus.last_verified_at
                       ? new Date(chainStatus.last_verified_at).toLocaleString()
                       : 'Never'}
+                  </span>
+                </div>
+                <div className="flex justify-between sm:flex-col">
+                  <span className="text-muted-foreground">Last Sequence</span>
+                  <span className="font-medium">{chainStatus.last_sequence_number ?? '-'}</span>
+                </div>
+                <div className="flex justify-between sm:flex-col">
+                  <span className="text-muted-foreground">Last Entry Timestamp</span>
+                  <span className="font-medium">
+                    {chainStatus.last_entry_timestamp
+                      ? new Date(chainStatus.last_entry_timestamp).toLocaleString()
+                      : '-'}
                   </span>
                 </div>
               </div>
