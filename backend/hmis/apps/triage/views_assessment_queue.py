@@ -44,7 +44,6 @@ from hmis.apps.core.permissions import (
     WriteRequiresRolePermission,
     get_client_ip,
 )
-from hmis.apps.encounters.models import Encounter
 
 from .models import (
     ERBed,
@@ -321,21 +320,10 @@ class TriageAssessmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     def _is_emergency_capture_request(self) -> bool:
         if self.request.method != "POST":
             return False
-        has_header = bool(
+        return bool(
             self.request.META.get("HTTP_X_EMERGENCY_ACCESS_ID")
             or self.request.headers.get("X-Emergency-Access-ID")
         )
-        if not has_header:
-            return False
-
-        encounter_id = self.request.data.get("encounter")
-        if encounter_id is None:
-            return False
-
-        return Encounter.objects.filter(
-            id=encounter_id,
-            encounter_type="EMERGENCY",
-        ).exists()
 
     def get_permissions(self):
         """Add perform_triage permission for create/update/delete."""

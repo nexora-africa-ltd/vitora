@@ -43,6 +43,10 @@ jest.mock('@/lib/hooks/use-permissions', () => ({
   usePermissions: jest.fn(() => ({ hasPermission: () => true })),
 }));
 
+jest.mock('@/lib/hooks/use-notifications', () => ({
+  useNotifications: jest.fn(),
+}));
+
 const mockPush = jest.fn();
 const mockUseRouter = useRouter as jest.Mock;
 
@@ -62,6 +66,7 @@ import {
   useTriageQueue,
   useTriageQueueActions,
 } from '@/lib/hooks/use-triage';
+import { useNotifications } from '@/lib/hooks/use-notifications';
 
 const mockedUseWaitingQueue = useWaitingQueue as jest.Mock;
 const mockedUseStartTriage = useStartTriage as jest.Mock;
@@ -77,6 +82,7 @@ const mockedUseCompleteEmergencyDeferredDocumentation =
   useCompleteEmergencyDeferredDocumentation as jest.Mock;
 const mockedUseTriageQueue = useTriageQueue as jest.Mock;
 const mockedUseTriageQueueActions = useTriageQueueActions as jest.Mock;
+const mockedUseNotifications = useNotifications as jest.Mock;
 
 // =============================================================================
 // TEST SETUP
@@ -183,6 +189,12 @@ describe('Triage Page - Phase 4.1 Updates', () => {
       refetch: jest.fn(),
     });
     mockedUseCompleteEmergencyDeferredDocumentation.mockReturnValue({ mutateAsync: jest.fn() });
+    mockedUseNotifications.mockReturnValue({
+      data: {
+        count: 2,
+        results: [],
+      },
+    });
     mockedUseTriageQueue.mockReturnValue({
       data: { results: [], count: 0 },
       isLoading: false,
@@ -408,6 +420,7 @@ describe('Triage Page - Phase 4.1 Updates', () => {
       expect(screen.getByRole('button', { name: /Open Record/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Complete/i })).toBeInTheDocument();
       expect(screen.getByText(/Open: 1/i)).toBeInTheDocument();
+      expect(screen.getByText(/Unread Alerts: 2/i)).toBeInTheDocument();
     });
   });
 

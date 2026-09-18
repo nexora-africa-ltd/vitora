@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useDashboardStats } from '@/lib/hooks/use-dashboard-stats';
 import { useUnreadCount } from '@/lib/hooks/use-notifications';
-import { useWaitingQueue } from '@/lib/hooks/use-triage';
+import { useEmergencyDeferredBacklog, useWaitingQueue } from '@/lib/hooks/use-triage';
 import { useActionableBadgeCounts } from '@/lib/hooks/use-actionable-badge-counts';
 import { useAuth } from '@/lib/auth/context';
 
@@ -28,6 +28,10 @@ export function useSidebarBadges(): SidebarBadges {
     { status: 'WAITING_TRIAGE' },
     { enabled: canQuery }
   );
+  const { data: overdueDeferredBacklog } = useEmergencyDeferredBacklog(
+    { overdue_only: true },
+    { enabled: canQuery, refetchInterval: 60000 }
+  );
   const { data: actionableCounts } = useActionableBadgeCounts(canQuery);
 
   return useMemo(() => {
@@ -40,8 +44,9 @@ export function useSidebarBadges(): SidebarBadges {
     }
 
     // Triage: patients still awaiting their initial assessment, not past assessments.
-    if ((waitingTriageQueue?.count ?? 0) > 0) {
-      badges['/triage'] = waitingTriageQueue?.count ?? 0;
+    const triageActionableCount = (waitingTriageQueue?.count ?? 0) + (overdueDeferredBacklog?.count ?? 0);
+    if (triageActionableCount > 0) {
+      badges['/triage'] = triageActionableCount;
     }
 
     // Encounters: in-progress encounters
@@ -144,5 +149,5 @@ export function useSidebarBadges(): SidebarBadges {
     }
 
     return badges;
-  }, [actionableCounts, stats, unreadCount, waitingTriageQueue?.count]);
+  }, [actionableCounts, overdueDeferredBacklog?.count, stats, unreadCount, waitingTriageQueue?.count]);
 }

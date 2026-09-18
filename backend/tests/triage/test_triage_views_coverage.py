@@ -188,6 +188,7 @@ class TestTriageAssessmentViewSetActions:
             "/api/triage/assessments/",
             {
                 "encounter": encounter.id,
+                "arrival_time": timezone.now().isoformat(),
                 "chief_complaint": "Severe bleeding",
                 "chief_complaint_category": "TRAUMA",
                 "mental_status": "V",
@@ -206,6 +207,8 @@ class TestTriageAssessmentViewSetActions:
         assert assessment.emergency_access_id == emergency_access.id
         assert assessment.deferred_completion_status == "PENDING"
         assert assessment.deferred_completion_due_at is not None
+        remaining = assessment.deferred_completion_due_at - timezone.now()
+        assert timedelta(minutes=28) <= remaining <= timedelta(minutes=30)
 
     def test_complete_triage_blocks_when_emergency_deferred_pending(
         self, authenticated_client, sample_patient, sample_facility, sample_organization
@@ -237,6 +240,7 @@ class TestTriageAssessmentViewSetActions:
             "/api/triage/assessments/",
             {
                 "encounter": encounter.id,
+                "arrival_time": timezone.now().isoformat(),
                 "chief_complaint": "Unresponsive patient",
                 "chief_complaint_category": "ALTERED_CONSCIOUSNESS",
                 "mental_status": "U",
@@ -288,6 +292,7 @@ class TestTriageAssessmentViewSetActions:
             "/api/triage/assessments/",
             {
                 "encounter": encounter.id,
+                "arrival_time": timezone.now().isoformat(),
                 "chief_complaint": "Severe abdominal pain",
                 "chief_complaint_category": "ABDOMINAL_PAIN",
                 "mental_status": "A",

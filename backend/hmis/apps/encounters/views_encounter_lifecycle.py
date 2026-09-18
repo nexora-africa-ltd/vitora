@@ -171,12 +171,10 @@ class EncounterViewSet(
     def _is_emergency_capture_request(self) -> bool:
         if self.request.method != "POST":
             return False
-        has_header = bool(
+        return bool(
             self.request.META.get("HTTP_X_EMERGENCY_ACCESS_ID")
             or self.request.headers.get("X-Emergency-Access-ID")
         )
-        encounter_type = str(self.request.data.get("encounter_type", "")).upper()
-        return has_header and encounter_type == "EMERGENCY"
 
     def retrieve(self, request, *args, **kwargs):
         """Override retrieve to add audit logging."""

@@ -69,6 +69,9 @@ app.conf.task_routes = {
     "hmis.apps.triage.tasks.check_wait_time_breaches": {"queue": "monitoring"},
     "hmis.apps.triage.tasks.auto_resolve_breaches": {"queue": "monitoring"},
     "hmis.apps.triage.tasks.flag_overdue_emergency_triage_documentation": {"queue": "monitoring"},
+    "hmis.apps.encounters.tasks.flag_overdue_emergency_encounter_documentation": {
+        "queue": "monitoring"
+    },
     # Analytics ETL tasks
     "hmis.apps.analytics.tasks.refresh_daily_analytics": {"queue": "reporting"},
     "hmis.apps.analytics.tasks.refresh_monthly_analytics": {"queue": "reporting"},
@@ -162,6 +165,11 @@ app.conf.beat_schedule = {
     # Triage: Mark overdue emergency deferred documentation every 15 minutes
     "triage-flag-overdue-emergency-deferred-docs": {
         "task": "hmis.apps.triage.tasks.flag_overdue_emergency_triage_documentation",
+        "schedule": crontab(minute="*/15"),
+    },
+    # Encounters: Mark overdue emergency deferred documentation every 15 minutes
+    "encounter-flag-overdue-emergency-deferred-docs": {
+        "task": "hmis.apps.encounters.tasks.flag_overdue_emergency_encounter_documentation",
         "schedule": crontab(minute="*/15"),
     },
     # Core emergency access: flag overdue compliance reviews every 30 minutes

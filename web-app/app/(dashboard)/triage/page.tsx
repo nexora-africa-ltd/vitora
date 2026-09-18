@@ -60,6 +60,7 @@ import {
 } from '@/lib/hooks/use-triage';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { usePermissions } from '@/lib/hooks/use-permissions';
+import { useNotifications } from '@/lib/hooks/use-notifications';
 import { toast } from '@/lib/hooks/use-toast';
 import { LEGACY_TRIAGE_FLOW } from '@/lib/utils/constants';
 import type { TriageCategory, TriageAssessment } from '@/lib/types/triage';
@@ -119,6 +120,10 @@ export default function TriageQueuePage() {
     useEmergencyDeferredBacklog({ overdue_only: deferredOverdueOnly });
   const { mutateAsync: completeEmergencyDeferredDocumentation } =
     useCompleteEmergencyDeferredDocumentation();
+  const { data: overdueDeferredNotifications } = useNotifications(
+    { notification_type: 'triage_emergency_deferred_overdue', is_read: false, page_size: 5 },
+    { refetchInterval: 60000 }
+  );
 
   // ============================================================================
   // HISTORY STATE & HOOKS
@@ -411,6 +416,9 @@ export default function TriageQueuePage() {
               <Badge variant="destructive">Overdue: {emergencyDeferredBacklog?.overdue_count ?? 0}</Badge>
               <Badge variant="secondary">
                 Due in 30m: {emergencyDeferredBacklog?.due_within_30m_count ?? 0}
+              </Badge>
+              <Badge variant="outline">
+                Unread Alerts: {overdueDeferredNotifications?.count ?? 0}
               </Badge>
             </div>
             {(emergencyDeferredBacklog?.results?.length ?? 0) === 0 ? (

@@ -976,7 +976,7 @@ class EmergencyTriageCreateSerializer(TriageAssessmentCreateSerializer):
     """Serializer for minimal emergency triage capture under break-glass access."""
 
     emergency_access_id = serializers.IntegerField(write_only=True, required=False)
-    arrival_time = serializers.DateTimeField(required=False)
+    arrival_time = serializers.DateTimeField(required=True)
 
     class Meta(TriageAssessmentCreateSerializer.Meta):
         fields = [
@@ -1020,6 +1020,28 @@ class EmergencyTriageCreateSerializer(TriageAssessmentCreateSerializer):
                 }
             )
 
+        has_any_core = (
+            any(
+                attrs.get(field) is not None
+                for field in [
+                    "spo2",
+                    "heart_rate",
+                    "systolic_bp",
+                    "diastolic_bp",
+                    "temperature",
+                    "respiratory_rate",
+                ]
+            )
+            or bool(attrs.get("mental_status"))
+            or attrs.get("pain_score") is not None
+        )
+
+        if not has_any_core:
+            raise serializers.ValidationError(
+                "Provide at least one core triage indicator "
+                "(vital sign, mental_status, or pain_score)."
+            )
+
         access_id = attrs.pop("emergency_access_id", None)
         if access_id is None and request is not None:
             header_value = request.META.get("HTTP_X_EMERGENCY_ACCESS_ID") or request.headers.get(
@@ -1055,7 +1077,6 @@ class EmergencyTriageCreateSerializer(TriageAssessmentCreateSerializer):
                 }
             )
 
-        attrs.setdefault("arrival_time", timezone.now())
         attrs["_emergency_access"] = emergency_access
         return attrs
 
@@ -1064,7 +1085,9 @@ class EmergencyTriageCreateSerializer(TriageAssessmentCreateSerializer):
         validated_data["is_emergency_capture"] = True
         validated_data["emergency_access"] = emergency_access
         validated_data["deferred_completion_status"] = "PENDING"
-        validated_data["deferred_completion_due_at"] = timezone.now() + timezone.timedelta(hours=2)
+        validated_data["deferred_completion_due_at"] = timezone.now() + timezone.timedelta(
+            minutes=30
+        )
         return super().create(validated_data)
 
 

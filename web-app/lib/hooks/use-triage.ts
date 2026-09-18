@@ -481,12 +481,16 @@ export function useCompleteTriageAssessment() {
 /**
  * Fetch emergency triage deferred documentation backlog.
  */
-export function useEmergencyDeferredBacklog(filters: EmergencyDeferredBacklogParams = {}) {
+export function useEmergencyDeferredBacklog(
+  filters: EmergencyDeferredBacklogParams = {},
+  options?: { enabled?: boolean; refetchInterval?: number | false }
+) {
   return useQuery({
     queryKey: triageKeys.emergencyDeferredBacklog(filters),
     queryFn: async () => triageApi.getEmergencyDeferredBacklog(filters),
     staleTime: 30000,
-    refetchInterval: 60000,
+    refetchInterval: options?.refetchInterval ?? 60000,
+    enabled: options?.enabled,
   });
 }
 

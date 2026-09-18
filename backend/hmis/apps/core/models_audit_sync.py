@@ -67,6 +67,7 @@ class AuditLog(models.Model):
         ("emergency_access_closed", "Emergency Access Closed"),
         ("emergency_access_resource_accessed", "Emergency Access Resource Accessed"),
         ("emergency_access_review_overdue", "Emergency Access Review Overdue"),
+        ("encounter_emergency_deferred_overdue", "Encounter Emergency Deferred Overdue"),
         ("triage_emergency_deferred_overdue", "Triage Emergency Deferred Overdue"),
         ("triage_emergency_deferred_completed", "Triage Emergency Deferred Completed"),
         # System actions
