@@ -11,20 +11,23 @@ import { z } from 'zod';
 
 export const AuditChainStatusSchema = z.object({
   total_entries: z.number(),
-  chain_length: z.number(),
+  chained_entries: z.number(),
+  unchained_entries: z.number(),
+  last_sequence_number: z.number().nullable(),
+  last_entry_hash: z.string().nullable(),
+  last_entry_timestamp: z.string().nullable(),
   last_verified_at: z.string().nullable(),
   last_verification_valid: z.boolean().nullable(),
   tamper_alerts_count: z.number(),
-  entries_with_hashes: z.number(),
-  entries_without_hashes: z.number(),
 });
 
 export const AuditIntegrityResultSchema = z.object({
   valid: z.boolean(),
   entries_checked: z.number(),
   first_mismatch_seq: z.number().nullable(),
-  details: z.string(),
-  checked_at: z.string(),
+  first_mismatch_detail: z.string(),
+  errors: z.array(z.string()),
+  checked_at: z.string().nullable(),
 });
 
 // =============================================================================

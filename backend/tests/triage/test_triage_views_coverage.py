@@ -13,6 +13,8 @@ import pytest  # type: ignore
 from django.utils import timezone
 from rest_framework import status
 
+from hmis.apps.core.emergency_access.models import EmergencyAccess
+from hmis.apps.encounters.models import Encounter
 from hmis.apps.triage.models import TriageAssessment, WaitingQueue
 
 
@@ -154,6 +156,308 @@ class TestTriageAssessmentViewSetActions:
         )
 
         assert response.status_code in [status.HTTP_200_OK, status.HTTP_403_FORBIDDEN]
+
+    def test_emergency_triage_create_sets_deferred_completion(
+        self, authenticated_client, sample_patient, sample_facility, sample_organization
+    ):
+        """Emergency triage create should mark deferred completion fields."""
+        user = authenticated_client.handler._force_user
+        user.is_superuser = True
+        user.is_staff = True
+        user.save(update_fields=["is_superuser", "is_staff"])
+        authenticated_client.force_authenticate(user=user)
+
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="EMERGENCY",
+            chief_complaint="Trauma",
+            organization=sample_organization,
+            facility=sample_facility,
+            created_by=user,
+        )
+        emergency_access = EmergencyAccess.objects.create(
+            user=user,
+            patient=sample_patient,
+            reason="LIFE_THREATENING",
+            reason_details="Emergency triage capture for critical trauma patient",
+            status="ACTIVE",
+            expires_at=timezone.now() + timedelta(hours=1),
+        )
+
+        response = authenticated_client.post(
+            "/api/triage/assessments/",
+            {
+                "encounter": encounter.id,
+                "arrival_time": timezone.now().isoformat(),
+                "chief_complaint": "Severe bleeding",
+                "chief_complaint_category": "TRAUMA",
+                "mental_status": "V",
+                "mobility": "STRETCHER",
+                "assigned_area": "ER_RESUS",
+                "triage_category": "RED",
+                "auto_calculated_category": "RED",
+            },
+            format="json",
+            HTTP_X_EMERGENCY_ACCESS_ID=str(emergency_access.id),
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assessment = TriageAssessment.objects.get(id=response.data["id"])
+        assert assessment.is_emergency_capture is True
+        assert assessment.emergency_access_id == emergency_access.id
+        assert assessment.deferred_completion_status == "PENDING"
+        assert assessment.deferred_completion_due_at is not None
+        remaining = assessment.deferred_completion_due_at - timezone.now()
+        assert timedelta(minutes=28) <= remaining <= timedelta(minutes=30)
+
+    def test_complete_triage_blocks_when_emergency_deferred_pending(
+        self, authenticated_client, sample_patient, sample_facility, sample_organization
+    ):
+        """Completing emergency triage should fail while deferred documentation is pending."""
+        user = authenticated_client.handler._force_user
+        user.is_superuser = True
+        user.is_staff = True
+        user.save(update_fields=["is_superuser", "is_staff"])
+        authenticated_client.force_authenticate(user=user)
+
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="EMERGENCY",
+            chief_complaint="Respiratory distress",
+            organization=sample_organization,
+            facility=sample_facility,
+            created_by=user,
+        )
+        emergency_access = EmergencyAccess.objects.create(
+            user=user,
+            patient=sample_patient,
+            reason="UNCONSCIOUS_PATIENT",
+            reason_details="Emergency triage capture",
+            status="ACTIVE",
+            expires_at=timezone.now() + timedelta(hours=1),
+        )
+        create_response = authenticated_client.post(
+            "/api/triage/assessments/",
+            {
+                "encounter": encounter.id,
+                "arrival_time": timezone.now().isoformat(),
+                "chief_complaint": "Unresponsive patient",
+                "chief_complaint_category": "ALTERED_CONSCIOUSNESS",
+                "mental_status": "U",
+                "mobility": "IMMOBILE",
+                "assigned_area": "ER_RESUS",
+                "triage_category": "RED",
+                "auto_calculated_category": "RED",
+            },
+            format="json",
+            HTTP_X_EMERGENCY_ACCESS_ID=str(emergency_access.id),
+        )
+        assert create_response.status_code == status.HTTP_201_CREATED
+
+        assessment_id = create_response.data["id"]
+        complete_response = authenticated_client.post(
+            f"/api/triage/assessments/{assessment_id}/complete/"
+        )
+
+        assert complete_response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "deferred" in complete_response.data["detail"].lower()
+
+    def test_complete_emergency_documentation_and_sla_endpoint(
+        self, authenticated_client, sample_patient, sample_facility, sample_organization
+    ):
+        """Deferred completion endpoint should complete emergency triage docs and SLA endpoint returns state."""
+        user = authenticated_client.handler._force_user
+        user.is_superuser = True
+        user.is_staff = True
+        user.save(update_fields=["is_superuser", "is_staff"])
+        authenticated_client.force_authenticate(user=user)
+
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="EMERGENCY",
+            chief_complaint="Acute abdomen",
+            organization=sample_organization,
+            facility=sample_facility,
+            created_by=user,
+        )
+        emergency_access = EmergencyAccess.objects.create(
+            user=user,
+            patient=sample_patient,
+            reason="LIFE_THREATENING",
+            reason_details="Emergency triage capture",
+            status="ACTIVE",
+            expires_at=timezone.now() + timedelta(hours=1),
+        )
+        create_response = authenticated_client.post(
+            "/api/triage/assessments/",
+            {
+                "encounter": encounter.id,
+                "arrival_time": timezone.now().isoformat(),
+                "chief_complaint": "Severe abdominal pain",
+                "chief_complaint_category": "ABDOMINAL_PAIN",
+                "mental_status": "A",
+                "mobility": "WHEELCHAIR",
+                "assigned_area": "ER_ACUTE",
+                "triage_category": "ORANGE",
+                "auto_calculated_category": "ORANGE",
+            },
+            format="json",
+            HTTP_X_EMERGENCY_ACCESS_ID=str(emergency_access.id),
+        )
+        assert create_response.status_code == status.HTTP_201_CREATED
+        assessment_id = create_response.data["id"]
+
+        assessment = TriageAssessment.objects.get(id=assessment_id)
+        assessment.deferred_completion_due_at = timezone.now() - timedelta(minutes=5)
+        assessment.save(update_fields=["deferred_completion_due_at", "updated_at"])
+
+        sla_response = authenticated_client.get(
+            f"/api/triage/assessments/{assessment_id}/emergency-documentation-sla/"
+        )
+        assert sla_response.status_code == status.HTTP_200_OK
+        assert sla_response.data["is_overdue"] is True
+        assert sla_response.data["deferred_completion_status"] == "OVERDUE"
+
+        complete_docs_response = authenticated_client.post(
+            f"/api/triage/assessments/{assessment_id}/complete-emergency-documentation/",
+            {
+                "allergies_noted": "No known drug allergies",
+                "pain_score": 9,
+                "triage_category": "RED",
+                "category_override_reason": "Condition worsened after initial stabilization",
+            },
+            format="json",
+        )
+        assert complete_docs_response.status_code == status.HTTP_200_OK
+        assert complete_docs_response.data["deferred_completion_status"] == "COMPLETED"
+
+        complete_triage_response = authenticated_client.post(
+            f"/api/triage/assessments/{assessment_id}/complete/"
+        )
+        assert complete_triage_response.status_code == status.HTTP_200_OK
+
+    def test_emergency_deferred_backlog_filters_and_counts(
+        self, authenticated_client, sample_patient, sample_facility, sample_organization
+    ):
+        """Backlog endpoint should filter by user and overdue status with summary counters."""
+        user = authenticated_client.handler._force_user
+        user.is_superuser = True
+        user.is_staff = True
+        user.save(update_fields=["is_superuser", "is_staff"])
+        authenticated_client.force_authenticate(user=user)
+
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="EMERGENCY",
+            chief_complaint="Critical trauma",
+            organization=sample_organization,
+            facility=sample_facility,
+            created_by=user,
+        )
+        assessment = TriageAssessment.objects.create(
+            encounter=encounter,
+            chief_complaint="Critical trauma",
+            chief_complaint_category="TRAUMA",
+            mental_status="A",
+            mobility="STRETCHER",
+            triage_category="RED",
+            auto_calculated_category="RED",
+            assigned_area="ER_RESUS",
+            arrival_time=timezone.now() - timedelta(minutes=20),
+            triage_start_time=timezone.now() - timedelta(minutes=18),
+            triaged_by=user,
+            facility=sample_facility,
+            organization=sample_organization,
+            is_emergency_capture=True,
+            deferred_completion_status="PENDING",
+            deferred_completion_due_at=timezone.now() - timedelta(minutes=5),
+        )
+
+        response = authenticated_client.get(
+            "/api/triage/assessments/emergency-deferred-backlog/",
+            {"triaged_by": user.id},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["count"] >= 1
+        assert response.data["pending_count"] >= 1
+
+        overdue_only = authenticated_client.get(
+            "/api/triage/assessments/emergency-deferred-backlog/",
+            {"overdue_only": "true"},
+        )
+        assert overdue_only.status_code == status.HTTP_200_OK
+        assert overdue_only.data["overdue_count"] >= 0
+
+        sla_refresh = authenticated_client.get(
+            f"/api/triage/assessments/{assessment.id}/emergency-documentation-sla/"
+        )
+        assert sla_refresh.status_code == status.HTTP_200_OK
+
+        overdue_only_after = authenticated_client.get(
+            "/api/triage/assessments/emergency-deferred-backlog/",
+            {"overdue_only": "true"},
+        )
+        assert overdue_only_after.status_code == status.HTTP_200_OK
+        assert overdue_only_after.data["overdue_count"] >= 1
+
+    def test_emergency_deferred_report_and_export(
+        self, authenticated_client, sample_patient, sample_facility, sample_organization
+    ):
+        """Report and export endpoints should return emergency deferred documentation metrics/data."""
+        user = authenticated_client.handler._force_user
+        user.is_superuser = True
+        user.is_staff = True
+        user.save(update_fields=["is_superuser", "is_staff"])
+        authenticated_client.force_authenticate(user=user)
+
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="EMERGENCY",
+            chief_complaint="Severe asthma",
+            organization=sample_organization,
+            facility=sample_facility,
+            created_by=user,
+        )
+        TriageAssessment.objects.create(
+            encounter=encounter,
+            chief_complaint="Severe asthma",
+            chief_complaint_category="DIFFICULTY_BREATHING",
+            mental_status="A",
+            mobility="WHEELCHAIR",
+            triage_category="ORANGE",
+            auto_calculated_category="ORANGE",
+            assigned_area="ER_ACUTE",
+            arrival_time=timezone.now() - timedelta(minutes=10),
+            triage_start_time=timezone.now() - timedelta(minutes=8),
+            triaged_by=user,
+            facility=sample_facility,
+            organization=sample_organization,
+            is_emergency_capture=True,
+            deferred_completion_status="PENDING",
+            deferred_completion_due_at=timezone.now() + timedelta(minutes=30),
+        )
+
+        report_response = authenticated_client.get(
+            "/api/triage/assessments/emergency-deferred-report/"
+        )
+        assert report_response.status_code == status.HTTP_200_OK
+        assert "total_open" in report_response.data
+        assert "pending" in report_response.data
+        assert "overdue" in report_response.data
+
+        json_export = authenticated_client.get(
+            "/api/triage/assessments/emergency-deferred-export/",
+            {"export_format": "json"},
+        )
+        assert json_export.status_code == status.HTTP_200_OK
+        assert "results" in json_export.data
+
+        csv_export = authenticated_client.get(
+            "/api/triage/assessments/emergency-deferred-export/",
+            {"export_format": "csv"},
+        )
+        assert csv_export.status_code == status.HTTP_200_OK
+        assert csv_export["Content-Type"].startswith("text/csv")
 
 
 @pytest.mark.django_db

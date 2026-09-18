@@ -110,6 +110,13 @@ export const WaitingQueueStatusSchema = z.enum([
   'CANCELLED',
 ]);
 
+export const DeferredCompletionStatusSchema = z.enum([
+  'NOT_REQUIRED',
+  'PENDING',
+  'COMPLETED',
+  'OVERDUE',
+]);
+
 // =============================================================================
 // TRIAGE ALERT SCHEMA
 // =============================================================================
@@ -233,6 +240,11 @@ export const TriageAssessmentSchema = z.object({
   triage_start_time: z.string(),
   triage_end_time: z.string().nullable(),
   seen_by_clinician_time: z.string().nullable(),
+  is_emergency_capture: z.boolean().optional().default(false),
+  emergency_access: z.number().optional().nullable(),
+  deferred_completion_due_at: z.string().optional().nullable(),
+  deferred_completion_completed_at: z.string().optional().nullable(),
+  deferred_completion_status: DeferredCompletionStatusSchema.optional().default('NOT_REQUIRED'),
   wait_time_minutes: z.number().optional().nullable(),
   is_wait_time_exceeded: z.boolean().optional(),
 
@@ -337,6 +349,41 @@ export const RouteToClinicResponseSchema = z.object({
 });
 
 export type RouteToClinicResponseSchemaType = z.infer<typeof RouteToClinicResponseSchema>;
+
+export const EmergencyDeferredBacklogItemSchema = z.object({
+  id: z.number(),
+  encounter_id: z.number(),
+  patient_id: z.number(),
+  patient_name: z.string(),
+  patient_mrn: z.string(),
+  triage_category: TriageCategorySchema,
+  assigned_area: AssignedAreaSchema,
+  triaged_by: z.number().nullable(),
+  triaged_by_name: z.string().nullable().optional(),
+  deferred_completion_status: DeferredCompletionStatusSchema,
+  deferred_completion_due_at: z.string().nullable(),
+  deferred_completion_completed_at: z.string().nullable(),
+  remaining_minutes: z.number().nullable(),
+  is_overdue: z.boolean(),
+  updated_at: z.string(),
+});
+
+export const EmergencyDeferredBacklogResponseSchema = z.object({
+  count: z.number(),
+  pending_count: z.number(),
+  overdue_count: z.number(),
+  due_within_30m_count: z.number(),
+  server_time: z.string(),
+  results: z.array(EmergencyDeferredBacklogItemSchema),
+});
+
+export const EmergencyDeferredReportSchema = z.object({
+  as_of: z.string(),
+  total_open: z.number(),
+  pending: z.number(),
+  overdue: z.number(),
+  due_within_30m: z.number(),
+});
 
 // =============================================================================
 // REPORT SCHEMAS
@@ -734,3 +781,7 @@ export const AvailableTriageRoomSchema = z.object({
 });
 
 export type AvailableTriageRoom = z.infer<typeof AvailableTriageRoomSchema>;
+export type DeferredCompletionStatus = z.infer<typeof DeferredCompletionStatusSchema>;
+export type EmergencyDeferredBacklogItem = z.infer<typeof EmergencyDeferredBacklogItemSchema>;
+export type EmergencyDeferredBacklogResponse = z.infer<typeof EmergencyDeferredBacklogResponseSchema>;
+export type EmergencyDeferredReport = z.infer<typeof EmergencyDeferredReportSchema>;

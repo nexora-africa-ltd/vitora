@@ -8,7 +8,7 @@
 'use client';
 
 import * as React from 'react';
-import { Loader2, User, Calendar, Clock, AlertCircle } from 'lucide-react';
+import { Loader2, User, Calendar, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,7 +25,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { StaffSearchCombobox } from '@/components/clinics/staff-search-combobox';
-import type { StaffProfile } from '@/lib/types/rbac';
+import type { StaffLookup } from '@/lib/types/rbac';
 
 // =============================================================================
 // Types
@@ -56,7 +56,7 @@ export interface OrderInfo {
  */
 export interface AssignmentData {
   therapistId: number;
-  therapist: StaffProfile;
+  therapist: StaffLookup;
   notes?: string;
   scheduledDate?: string;
 }
@@ -140,7 +140,7 @@ export function TherapistAssignmentDialog({
   showNotes = true,
 }: TherapistAssignmentDialogProps) {
   const [selectedTherapistId, setSelectedTherapistId] = React.useState<number | undefined>();
-  const [selectedTherapist, setSelectedTherapist] = React.useState<StaffProfile | null>(null);
+  const [selectedTherapist, setSelectedTherapist] = React.useState<StaffLookup | null>(null);
   const [scheduledDate, setScheduledDate] = React.useState<string>('');
   const [notes, setNotes] = React.useState<string>('');
   const [localError, setLocalError] = React.useState<string | null>(null);
@@ -161,7 +161,7 @@ export function TherapistAssignmentDialog({
   }, [open]);
 
   // Handle staff selection
-  const handleStaffSelect = (userId: number, staff: StaffProfile) => {
+  const handleStaffSelect = (userId: number, staff: StaffLookup) => {
     setSelectedTherapistId(userId);
     setSelectedTherapist(staff);
     setLocalError(null);

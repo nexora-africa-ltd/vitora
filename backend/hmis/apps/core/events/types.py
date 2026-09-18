@@ -199,6 +199,8 @@ class ClinicalEvents:
     ENCOUNTER_CREATED = "clinical.encounter.created"
     ENCOUNTER_UPDATED = "clinical.encounter.updated"
     TRIAGE_ASSESSED = "clinical.triage.assessed"
+    TRIAGE_EMERGENCY_DEFERRED_OVERDUE = "clinical.triage.emergency_deferred.overdue"
+    TRIAGE_EMERGENCY_DEFERRED_COMPLETED = "clinical.triage.emergency_deferred.completed"
     CLINIC_VISIT_CREATED = "clinical.clinic_visit.created"
     CLINIC_VISIT_STATUS_CHANGED = "clinical.clinic_visit.status_changed"
     CLINIC_SESSION_OPENED = "clinical.clinic_session.opened"

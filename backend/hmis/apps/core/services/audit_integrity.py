@@ -15,6 +15,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
@@ -49,6 +50,7 @@ class AuditIntegrityService:
         self,
         start_seq: int | None = None,
         end_seq: int | None = None,
+        facility=None,
     ) -> IntegrityResult:
         """
         Verify the audit log hash chain over a range of entries.
@@ -65,6 +67,10 @@ class AuditIntegrityService:
         queryset = AuditLog.objects.filter(
             sequence_number__isnull=False,
         ).order_by("sequence_number")
+        scoped_mode = facility is not None
+
+        if facility is not None:
+            queryset = queryset.filter(facility=facility)
 
         if start_seq is not None:
             queryset = queryset.filter(sequence_number__gte=start_seq)
@@ -75,6 +81,7 @@ class AuditIntegrityService:
             "sequence_number",
             "previous_hash",
             "entry_hash",
+            "hash_algorithm",
             "action",
             "user_id",
             "timestamp",
@@ -96,7 +103,7 @@ class AuditIntegrityService:
 
             # Verify previous_hash linkage (skip for the first entry in range
             # unless it's the absolute first entry)
-            if expected_prev_hash is not None:
+            if not scoped_mode and expected_prev_hash is not None:
                 if entry["previous_hash"] != expected_prev_hash:
                     detail = (
                         f"Chain break at seq {seq}: "
@@ -111,19 +118,21 @@ class AuditIntegrityService:
                         errors=[detail],
                     )
 
-            # Verify the entry's own hash
-            recomputed = AuditLog.compute_hash(
-                sequence_number=seq,
-                previous_hash=entry["previous_hash"],
-                action=entry["action"],
-                user_id=entry["user_id"] or 0,
-                timestamp=entry["timestamp"],
-                resource_type=entry["resource_type"],
-                resource_id=entry["resource_id"],
-                details=entry["details"],
-            )
+            # Verify the entry's own hash (supports algorithm versioning)
+            matched_algorithm = self._resolve_matching_algorithm(entry)
 
-            if recomputed != entry["entry_hash"]:
+            if not matched_algorithm:
+                recomputed = AuditLog.compute_hash(
+                    sequence_number=seq,
+                    previous_hash=entry["previous_hash"],
+                    action=entry["action"],
+                    user_id=entry["user_id"] or 0,
+                    timestamp=entry["timestamp"],
+                    resource_type=entry["resource_type"],
+                    resource_id=entry["resource_id"],
+                    details=entry["details"],
+                    hash_algorithm=entry.get("hash_algorithm") or AuditLog.HASH_ALGO_HMAC_SHA256,
+                )
                 detail = (
                     f"Hash mismatch at seq {seq}: "
                     f"stored={entry['entry_hash'][:16]}..., "
@@ -139,20 +148,21 @@ class AuditIntegrityService:
 
             expected_prev_hash = entry["entry_hash"]
 
-        # Check for sequence gaps
-        gap_result = self._check_sequence_gaps(start_seq, end_seq)
-        if gap_result:
-            errors.append(gap_result)
-            return IntegrityResult(
-                valid=False,
-                entries_checked=checked,
-                first_mismatch_detail=gap_result,
-                errors=errors,
-            )
+        # Check for sequence gaps (only in global mode)
+        if not scoped_mode:
+            gap_result = self._check_sequence_gaps(start_seq, end_seq)
+            if gap_result:
+                errors.append(gap_result)
+                return IntegrityResult(
+                    valid=False,
+                    entries_checked=checked,
+                    first_mismatch_detail=gap_result,
+                    errors=errors,
+                )
 
         return IntegrityResult(valid=True, entries_checked=checked)
 
-    def verify_latest(self, count: int = 100) -> IntegrityResult:
+    def verify_latest(self, count: int = 100, facility=None) -> IntegrityResult:
         """
         Verify the most recent N entries in the hash chain.
 
@@ -164,20 +174,22 @@ class AuditIntegrityService:
         """
         from hmis.apps.core.models import AuditLog
 
-        latest = (
-            AuditLog.objects.filter(sequence_number__isnull=False)
-            .order_by("-sequence_number")
-            .values_list("sequence_number", flat=True)[:count]
-        )
+        latest_qs = AuditLog.objects.filter(sequence_number__isnull=False)
+        if facility is not None:
+            latest_qs = latest_qs.filter(facility=facility)
+
+        latest = latest_qs.order_by("-sequence_number").values_list("sequence_number", flat=True)[
+            :count
+        ]
         seq_list = list(latest)
         if not seq_list:
             return IntegrityResult(valid=True, entries_checked=0)
 
         start_seq = min(seq_list)
         end_seq = max(seq_list)
-        return self.verify_chain(start_seq=start_seq, end_seq=end_seq)
+        return self.verify_chain(start_seq=start_seq, end_seq=end_seq, facility=facility)
 
-    def get_chain_status(self) -> dict:
+    def get_chain_status(self, facility=None) -> dict:
         """
         Get a summary of the audit chain health.
 
@@ -186,12 +198,16 @@ class AuditIntegrityService:
         """
         from hmis.apps.core.models import AuditLog
 
-        total_entries = AuditLog.objects.count()
-        chained_entries = AuditLog.objects.filter(sequence_number__isnull=False).count()
+        logs_qs = AuditLog.objects.all()
+        if facility is not None:
+            logs_qs = logs_qs.filter(facility=facility)
+
+        total_entries = logs_qs.count()
+        chained_entries = logs_qs.filter(sequence_number__isnull=False).count()
         unchained_entries = total_entries - chained_entries
 
         last_entry = (
-            AuditLog.objects.filter(sequence_number__isnull=False)
+            logs_qs.filter(sequence_number__isnull=False)
             .order_by("-sequence_number")
             .values("sequence_number", "entry_hash", "timestamp")
             .first()
@@ -227,6 +243,178 @@ class AuditIntegrityService:
                 last_verification["details"].get("valid") if last_verification else None
             ),
         }
+
+    def get_chain_diagnostics(self, count: int | None = None, facility=None) -> dict:
+        """Return mismatch ranges and transition points for chain diagnostics."""
+        from hmis.apps.core.models import AuditLog
+
+        queryset = AuditLog.objects.filter(sequence_number__isnull=False).order_by(
+            "sequence_number"
+        )
+        scoped_mode = facility is not None
+
+        if facility is not None:
+            queryset = queryset.filter(facility=facility)
+
+        if count is not None and count > 0:
+            latest_qs = AuditLog.objects.filter(sequence_number__isnull=False)
+            if facility is not None:
+                latest_qs = latest_qs.filter(facility=facility)
+
+            latest = latest_qs.order_by("-sequence_number").values_list(
+                "sequence_number", flat=True
+            )[:count]
+            latest_list = list(latest)
+            if latest_list:
+                queryset = queryset.filter(sequence_number__gte=min(latest_list))
+
+        rows = queryset.values(
+            "sequence_number",
+            "previous_hash",
+            "entry_hash",
+            "hash_algorithm",
+            "action",
+            "user_id",
+            "timestamp",
+            "resource_type",
+            "resource_id",
+            "details",
+        )
+
+        mismatch_ranges: list[dict] = []
+        sequence_gaps: list[dict] = []
+        link_break_sequences: list[int] = []
+        match_transitions: list[dict] = []
+        algorithm_transitions: list[dict] = []
+
+        analyzed_entries = 0
+        mismatch_count = 0
+        first_sequence = None
+        last_sequence = None
+        mismatch_start = None
+
+        prev_entry_hash = None
+        prev_sequence = None
+        previous_match_state = None
+        previous_algorithm = None
+
+        for row in rows.iterator():
+            analyzed_entries += 1
+            seq = row["sequence_number"]
+            first_sequence = seq if first_sequence is None else first_sequence
+            last_sequence = seq
+
+            if not scoped_mode and prev_sequence is not None and seq > prev_sequence + 1:
+                sequence_gaps.append(
+                    {
+                        "start_sequence": prev_sequence + 1,
+                        "end_sequence": seq - 1,
+                        "missing_count": seq - prev_sequence - 1,
+                    }
+                )
+
+            if (
+                not scoped_mode
+                and prev_entry_hash is not None
+                and row["previous_hash"] != prev_entry_hash
+            ):
+                link_break_sequences.append(seq)
+
+            matched_algorithm = self._resolve_matching_algorithm(row)
+            is_match = matched_algorithm is not None
+
+            if previous_algorithm is not None and matched_algorithm != previous_algorithm:
+                algorithm_transitions.append(
+                    {
+                        "sequence_number": seq,
+                        "from_algorithm": previous_algorithm,
+                        "to_algorithm": matched_algorithm,
+                    }
+                )
+            previous_algorithm = matched_algorithm
+
+            if previous_match_state is not None and is_match != previous_match_state:
+                match_transitions.append(
+                    {
+                        "sequence_number": seq,
+                        "from_match": previous_match_state,
+                        "to_match": is_match,
+                    }
+                )
+            previous_match_state = is_match
+
+            if not is_match:
+                mismatch_count += 1
+                if mismatch_start is None:
+                    mismatch_start = seq
+            elif mismatch_start is not None:
+                mismatch_ranges.append(
+                    {
+                        "start_sequence": mismatch_start,
+                        "end_sequence": seq - 1,
+                        "count": seq - mismatch_start,
+                    }
+                )
+                mismatch_start = None
+
+            prev_entry_hash = row["entry_hash"]
+            prev_sequence = seq
+
+        if mismatch_start is not None and last_sequence is not None:
+            mismatch_ranges.append(
+                {
+                    "start_sequence": mismatch_start,
+                    "end_sequence": last_sequence,
+                    "count": last_sequence - mismatch_start + 1,
+                }
+            )
+
+        key_source = (
+            "AUDIT_LOG_CHAIN_KEY" if getattr(settings, "AUDIT_LOG_CHAIN_KEY", "") else "SECRET_KEY"
+        )
+
+        return {
+            "analyzed_entries": analyzed_entries,
+            "first_sequence": first_sequence,
+            "last_sequence": last_sequence,
+            "mismatch_count": mismatch_count,
+            "mismatch_ranges": mismatch_ranges,
+            "sequence_gaps": sequence_gaps,
+            "link_break_sequences": link_break_sequences,
+            "match_transitions": match_transitions,
+            "algorithm_transitions": algorithm_transitions,
+            "key_source": key_source,
+            "key_transition_points": [
+                t["sequence_number"] for t in match_transitions if t["from_match"] != t["to_match"]
+            ],
+            "algorithm_transition_points": [t["sequence_number"] for t in algorithm_transitions],
+        }
+
+    def _resolve_matching_algorithm(self, entry: dict) -> str | None:
+        """Return the matching hash algorithm for an entry, if any."""
+        from hmis.apps.core.models import AuditLog
+
+        explicit_algorithm = entry.get("hash_algorithm")
+        if explicit_algorithm:
+            candidates = [explicit_algorithm]
+        else:
+            candidates = [AuditLog.HASH_ALGO_HMAC_SHA256, AuditLog.HASH_ALGO_SHA256]
+
+        for algorithm in candidates:
+            recomputed = AuditLog.compute_hash(
+                sequence_number=entry["sequence_number"],
+                previous_hash=entry["previous_hash"],
+                action=entry["action"],
+                user_id=entry["user_id"] or 0,
+                timestamp=entry["timestamp"],
+                resource_type=entry["resource_type"],
+                resource_id=entry["resource_id"],
+                details=entry["details"],
+                hash_algorithm=algorithm,
+            )
+            if recomputed == entry["entry_hash"]:
+                return algorithm
+        return None
 
     def _check_sequence_gaps(
         self,

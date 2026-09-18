@@ -545,6 +545,253 @@ class TestEncounterStatusAPI:
         response = authenticated_client.post(f"/api/encounters/{encounter.id}/finalize/")
         assert response.status_code == http_status.HTTP_400_BAD_REQUEST
 
+    def test_emergency_create_uses_minimal_capture_serializer(
+        self, authenticated_client, sample_patient, test_user, sample_facility
+    ):
+        """Emergency create should accept minimal payload and set deferred completion state."""
+        from hmis.apps.core.emergency_access.models import (
+            EmergencyAccess,
+            EmergencyAccessAccessMode,
+        )
+
+        emergency_access = EmergencyAccess.objects.create(
+            user=test_user,
+            patient=sample_patient,
+            reason="LIFE_THREATENING",
+            reason_details="Unstable trauma patient requiring immediate intervention.",
+            duration_minutes=60,
+            access_mode=EmergencyAccessAccessMode.LIMITED_WRITE,
+        )
+
+        response = authenticated_client.post(
+            "/api/encounters/",
+            {
+                "patient": sample_patient.id,
+                "encounter_type": "EMERGENCY",
+                "encounter_date": "2026-01-01",
+                "chief_complaint": "Polytrauma after road traffic accident",
+            },
+            format="json",
+            HTTP_X_EMERGENCY_ACCESS_ID=str(emergency_access.id),
+        )
+
+        assert response.status_code == http_status.HTTP_201_CREATED
+        from hmis.apps.encounters.models import Encounter
+
+        encounter = Encounter.objects.order_by("-id").first()
+        assert encounter is not None
+        assert encounter.is_emergency_capture is True
+        assert encounter.deferred_completion_status == "PENDING"
+
+    def test_emergency_create_fails_when_chief_complaint_missing(
+        self, authenticated_client, sample_patient, test_user
+    ):
+        """Emergency capture must reject requests without chief complaint."""
+        from hmis.apps.core.emergency_access.models import (
+            EmergencyAccess,
+            EmergencyAccessAccessMode,
+        )
+
+        emergency_access = EmergencyAccess.objects.create(
+            user=test_user,
+            patient=sample_patient,
+            reason="LIFE_THREATENING",
+            reason_details="Emergency encounter capture validation test.",
+            duration_minutes=60,
+            access_mode=EmergencyAccessAccessMode.LIMITED_WRITE,
+        )
+
+        response = authenticated_client.post(
+            "/api/encounters/",
+            {
+                "patient": sample_patient.id,
+                "encounter_type": "EMERGENCY",
+                "encounter_date": "2026-01-01",
+                "chief_complaint": "",
+            },
+            format="json",
+            HTTP_X_EMERGENCY_ACCESS_ID=str(emergency_access.id),
+        )
+
+        assert response.status_code == http_status.HTTP_400_BAD_REQUEST
+        assert "chief_complaint" in response.data
+
+    def test_emergency_create_fails_when_encounter_type_not_emergency(
+        self, authenticated_client, sample_patient, test_user
+    ):
+        """Emergency capture must reject non-EMERGENCY encounter types."""
+        from hmis.apps.core.emergency_access.models import (
+            EmergencyAccess,
+            EmergencyAccessAccessMode,
+        )
+
+        emergency_access = EmergencyAccess.objects.create(
+            user=test_user,
+            patient=sample_patient,
+            reason="LIFE_THREATENING",
+            reason_details="Emergency encounter capture validation test.",
+            duration_minutes=60,
+            access_mode=EmergencyAccessAccessMode.LIMITED_WRITE,
+        )
+
+        response = authenticated_client.post(
+            "/api/encounters/",
+            {
+                "patient": sample_patient.id,
+                "encounter_type": "OPD",
+                "encounter_date": "2026-01-01",
+                "chief_complaint": "Needs emergency care",
+            },
+            format="json",
+            HTTP_X_EMERGENCY_ACCESS_ID=str(emergency_access.id),
+        )
+
+        assert response.status_code == http_status.HTTP_400_BAD_REQUEST
+        assert "encounter_type" in response.data
+
+    def test_finalize_blocks_when_emergency_deferred_documentation_pending(
+        self, authenticated_client, sample_patient, test_user, sample_facility
+    ):
+        """Finalization should fail while emergency deferred documentation is pending."""
+        from hmis.apps.encounters.models import Encounter
+
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="EMERGENCY",
+            chief_complaint="Severe trauma",
+            status="READY_TO_CLOSE",
+            disposition="ADVICE_ONLY",
+            disposition_notes="Initial stabilization completed.",
+            is_emergency_capture=True,
+            deferred_completion_status="PENDING",
+            deferred_completion_due_at=timezone.now() + timezone.timedelta(hours=1),
+            facility=sample_facility,
+        )
+
+        response = authenticated_client.post(f"/api/encounters/{encounter.id}/finalize/")
+
+        assert response.status_code == http_status.HTTP_400_BAD_REQUEST
+        assert "deferred documentation" in str(response.data).lower()
+
+    def test_finalize_blocks_when_emergency_deferred_documentation_overdue(
+        self, authenticated_client, sample_patient, sample_facility
+    ):
+        """Finalization should fail when emergency deferred documentation is overdue."""
+        from hmis.apps.encounters.models import Encounter
+
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="EMERGENCY",
+            chief_complaint="Severe trauma",
+            status="READY_TO_CLOSE",
+            disposition="ADVICE_ONLY",
+            disposition_notes="Initial stabilization completed.",
+            is_emergency_capture=True,
+            deferred_completion_status="OVERDUE",
+            deferred_completion_due_at=timezone.now() - timezone.timedelta(minutes=15),
+            facility=sample_facility,
+        )
+
+        response = authenticated_client.post(f"/api/encounters/{encounter.id}/finalize/")
+
+        assert response.status_code == http_status.HTTP_400_BAD_REQUEST
+        assert "overdue" in str(response.data).lower()
+
+    def test_complete_emergency_documentation_enables_finalize(
+        self, authenticated_client, sample_patient, test_user, sample_facility
+    ):
+        """Completing deferred documentation should allow encounter finalization."""
+        from hmis.apps.encounters.models import Encounter
+
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="EMERGENCY",
+            chief_complaint="Severe trauma",
+            status="READY_TO_CLOSE",
+            is_emergency_capture=True,
+            deferred_completion_status="PENDING",
+            deferred_completion_due_at=timezone.now() + timezone.timedelta(hours=1),
+            facility=sample_facility,
+        )
+
+        complete_response = authenticated_client.post(
+            f"/api/encounters/{encounter.id}/complete-emergency-documentation/",
+            {
+                "assessment": "Primary survey completed; patient stabilized.",
+                "disposition": "ADVICE_ONLY",
+                "disposition_notes": "Observed and discharged with strict return precautions.",
+            },
+            format="json",
+        )
+
+        assert complete_response.status_code == http_status.HTTP_200_OK
+        encounter.refresh_from_db()
+        assert encounter.deferred_completion_status == "COMPLETED"
+
+        finalize_response = authenticated_client.post(f"/api/encounters/{encounter.id}/finalize/")
+        assert finalize_response.status_code == http_status.HTTP_200_OK
+        assert finalize_response.data["status"] == "CLOSED"
+
+
+class TestEmergencyDeferredDocumentationTask:
+    """Tests for periodic overdue marking on encounter deferred documentation."""
+
+    def test_marks_pending_encounter_deferred_docs_as_overdue(
+        self, sample_patient, sample_facility
+    ):
+        from hmis.apps.core.models import AuditLog
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.encounters.tasks import flag_overdue_emergency_encounter_documentation
+
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="EMERGENCY",
+            chief_complaint="Trauma",
+            status="IN_PROGRESS",
+            is_emergency_capture=True,
+            deferred_completion_status="PENDING",
+            deferred_completion_due_at=timezone.now() - timezone.timedelta(minutes=2),
+            facility=sample_facility,
+        )
+
+        result = flag_overdue_emergency_encounter_documentation()
+
+        assert result["flagged_overdue"] == 1
+        encounter.refresh_from_db()
+        assert encounter.deferred_completion_status == "OVERDUE"
+        assert AuditLog.objects.filter(
+            action="encounter_emergency_deferred_overdue",
+            resource_type="Encounter",
+            resource_id=encounter.id,
+        ).exists()
+
+    def test_encounter_overdue_task_is_idempotent(self, sample_patient, sample_facility):
+        from hmis.apps.core.models import AuditLog
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.encounters.tasks import flag_overdue_emergency_encounter_documentation
+
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="EMERGENCY",
+            chief_complaint="Trauma",
+            status="IN_PROGRESS",
+            is_emergency_capture=True,
+            deferred_completion_status="OVERDUE",
+            deferred_completion_due_at=timezone.now() - timezone.timedelta(hours=1),
+            facility=sample_facility,
+        )
+
+        first = flag_overdue_emergency_encounter_documentation()
+        second = flag_overdue_emergency_encounter_documentation()
+
+        assert first["flagged_overdue"] == 0
+        assert second["flagged_overdue"] == 0
+        assert not AuditLog.objects.filter(
+            action="encounter_emergency_deferred_overdue",
+            resource_type="Encounter",
+            resource_id=encounter.id,
+        ).exists()
+
 
 # ============================================================================
 # API-Level Tests: Filter by Status

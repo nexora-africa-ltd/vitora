@@ -214,3 +214,13 @@ def reset_event_bus() -> None:
         if _event_bus is not None:
             _event_bus.clear()
         _event_bus = None
+
+    # Re-register decorated handlers for the new singleton instance.
+    # This keeps event subscriptions stable across test suites that call
+    # ``reset_event_bus()`` in fixtures.
+    try:
+        from hmis.apps.core.events.decorators import register_all_event_handlers
+
+        register_all_event_handlers()
+    except (ImportError, RuntimeError, AttributeError):
+        logger.debug("Event handler re-registration skipped during event bus reset")

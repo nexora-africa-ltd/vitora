@@ -15,6 +15,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 import pytest  # type: ignore
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.utils import timezone
 from rest_framework import status
@@ -506,6 +507,223 @@ class TestAutoResolveBreaches:
 
         result = auto_resolve_breaches()
         assert result == 0
+
+
+@pytest.mark.django_db
+class TestEmergencyDeferredDocumentationTask:
+    """Tests for overdue emergency triage deferred documentation task."""
+
+    @patch("hmis.apps.triage.tasks.publish_event")
+    def test_marks_pending_as_overdue_once(self, mock_publish_event, triage_setup):
+        """Task should mark only expired PENDING emergency deferred documentation as OVERDUE."""
+        from hmis.apps.core.models import AuditLog
+        from hmis.apps.triage.tasks import flag_overdue_emergency_triage_documentation
+
+        assessment = triage_setup["assessment"]
+        assessment.is_emergency_capture = True
+        assessment.deferred_completion_status = "PENDING"
+        assessment.deferred_completion_due_at = timezone.now() - timedelta(minutes=2)
+        assessment.save(
+            update_fields=[
+                "is_emergency_capture",
+                "deferred_completion_status",
+                "deferred_completion_due_at",
+                "updated_at",
+            ]
+        )
+
+        result = flag_overdue_emergency_triage_documentation()
+        assert result["flagged_overdue"] == 1
+
+        assessment.refresh_from_db()
+        assert assessment.deferred_completion_status == "OVERDUE"
+
+        assert AuditLog.objects.filter(
+            action="triage_emergency_deferred_overdue",
+            resource_type="TriageAssessment",
+            resource_id=assessment.id,
+        ).exists()
+        mock_publish_event.assert_called_once()
+
+    @patch("hmis.apps.triage.tasks.publish_event")
+    def test_is_idempotent_for_already_overdue(self, mock_publish_event, triage_setup):
+        """Task should not re-flag records already marked OVERDUE."""
+        from hmis.apps.core.models import AuditLog
+        from hmis.apps.triage.tasks import flag_overdue_emergency_triage_documentation
+
+        assessment = triage_setup["assessment"]
+        assessment.is_emergency_capture = True
+        assessment.deferred_completion_status = "OVERDUE"
+        assessment.deferred_completion_due_at = timezone.now() - timedelta(hours=1)
+        assessment.save(
+            update_fields=[
+                "is_emergency_capture",
+                "deferred_completion_status",
+                "deferred_completion_due_at",
+                "updated_at",
+            ]
+        )
+
+        first = flag_overdue_emergency_triage_documentation()
+        second = flag_overdue_emergency_triage_documentation()
+
+        assert first["flagged_overdue"] == 0
+        assert second["flagged_overdue"] == 0
+        assert not AuditLog.objects.filter(
+            action="triage_emergency_deferred_overdue",
+            resource_type="TriageAssessment",
+            resource_id=assessment.id,
+        ).exists()
+        mock_publish_event.assert_not_called()
+
+
+@pytest.mark.django_db
+class TestEmergencyDeferredEventNotifications:
+    """Event-driven notification wiring for deferred emergency triage workflow."""
+
+    def test_overdue_event_creates_notifications_for_triage_and_supervisor(
+        self, triage_setup, sample_organization, sample_facility, sample_department
+    ):
+        from datetime import date
+
+        from hmis.apps.core.events import ClinicalEvents, publish_event
+        from hmis.apps.core.models import Notification, Role, StaffProfile
+
+        User = get_user_model()
+
+        triage_user = triage_setup["assessment"].triaged_by
+        supervisor = User.objects.create_user(
+            username="triage_supervisor",
+            email="supervisor@example.com",
+            password="testpass123",
+        )
+        supervisor_role = Role.objects.create(
+            name="Supervisor",
+            code="SUPERVISOR",
+            hierarchy_level=2,
+            is_active=True,
+        )
+        StaffProfile.objects.create(
+            user=supervisor,
+            employee_id="SUP-1001",
+            organization=sample_organization,
+            primary_facility=sample_facility,
+            primary_department=sample_department,
+            primary_role=supervisor_role,
+            date_joined=date.today(),
+        )
+
+        assessment = triage_setup["assessment"]
+        assessment.is_emergency_capture = True
+        assessment.deferred_completion_status = "OVERDUE"
+        assessment.deferred_completion_due_at = timezone.now() - timedelta(minutes=1)
+        assessment.save(
+            update_fields=[
+                "is_emergency_capture",
+                "deferred_completion_status",
+                "deferred_completion_due_at",
+                "updated_at",
+            ]
+        )
+
+        publish_event(
+            event_type=ClinicalEvents.TRIAGE_EMERGENCY_DEFERRED_OVERDUE,
+            aggregate_type="TriageAssessment",
+            aggregate_id=assessment.id,
+            payload={
+                "encounter_id": assessment.encounter_id,
+                "patient_id": assessment.encounter.patient_id,
+            },
+            facility_id=assessment.facility_id,
+        )
+
+        triage_notification = Notification.objects.filter(
+            user=triage_user,
+            notification_type="triage_emergency_deferred_overdue",
+            related_model="TriageAssessment",
+            related_id=assessment.id,
+        )
+        supervisor_notification = Notification.objects.filter(
+            user=supervisor,
+            notification_type="triage_emergency_deferred_overdue",
+            related_model="TriageAssessment",
+            related_id=assessment.id,
+        )
+        assert triage_notification.count() == 1
+        assert supervisor_notification.count() == 1
+
+    def test_overdue_event_notification_is_deduplicated(self, triage_setup):
+        from hmis.apps.core.events import ClinicalEvents, publish_event
+        from hmis.apps.core.models import Notification
+
+        assessment = triage_setup["assessment"]
+        assessment.is_emergency_capture = True
+        assessment.deferred_completion_status = "OVERDUE"
+        assessment.deferred_completion_due_at = timezone.now() - timedelta(minutes=1)
+        assessment.save(
+            update_fields=[
+                "is_emergency_capture",
+                "deferred_completion_status",
+                "deferred_completion_due_at",
+                "updated_at",
+            ]
+        )
+
+        for _ in range(2):
+            publish_event(
+                event_type=ClinicalEvents.TRIAGE_EMERGENCY_DEFERRED_OVERDUE,
+                aggregate_type="TriageAssessment",
+                aggregate_id=assessment.id,
+                payload={
+                    "encounter_id": assessment.encounter_id,
+                    "patient_id": assessment.encounter.patient_id,
+                },
+                facility_id=assessment.facility_id,
+            )
+
+        created = Notification.objects.filter(
+            notification_type="triage_emergency_deferred_overdue",
+            related_model="TriageAssessment",
+            related_id=assessment.id,
+            user=assessment.triaged_by,
+        )
+        assert created.count() == 1
+
+    def test_completed_event_creates_completion_notification(self, triage_setup):
+        from hmis.apps.core.events import ClinicalEvents, publish_event
+        from hmis.apps.core.models import Notification
+
+        assessment = triage_setup["assessment"]
+        assessment.is_emergency_capture = True
+        assessment.deferred_completion_status = "COMPLETED"
+        assessment.deferred_completion_completed_at = timezone.now()
+        assessment.save(
+            update_fields=[
+                "is_emergency_capture",
+                "deferred_completion_status",
+                "deferred_completion_completed_at",
+                "updated_at",
+            ]
+        )
+
+        publish_event(
+            event_type=ClinicalEvents.TRIAGE_EMERGENCY_DEFERRED_COMPLETED,
+            aggregate_type="TriageAssessment",
+            aggregate_id=assessment.id,
+            payload={
+                "encounter_id": assessment.encounter_id,
+                "patient_id": assessment.encounter.patient_id,
+            },
+            facility_id=assessment.facility_id,
+        )
+
+        created = Notification.objects.filter(
+            notification_type="triage_emergency_deferred_completed",
+            related_model="TriageAssessment",
+            related_id=assessment.id,
+            user=assessment.triaged_by,
+        )
+        assert created.count() == 1
 
 
 # =============================================================================

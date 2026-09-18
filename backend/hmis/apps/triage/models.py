@@ -865,6 +865,43 @@ class TriageAssessment(FacilityScopedModel):
     seen_by_clinician_time = models.DateTimeField(
         null=True, blank=True, help_text="When patient was seen by clinician"
     )
+    is_emergency_capture = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="True when triage was created via emergency minimal-capture workflow.",
+    )
+    emergency_access = models.ForeignKey(
+        "core.EmergencyAccess",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="triage_assessments_created",
+        help_text="Break-glass session used for emergency triage capture.",
+    )
+    DEFERRED_COMPLETION_STATUS_CHOICES = [
+        ("NOT_REQUIRED", "Not Required"),
+        ("PENDING", "Pending"),
+        ("COMPLETED", "Completed"),
+        ("OVERDUE", "Overdue"),
+    ]
+    deferred_completion_due_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="Deadline for completing deferred emergency triage documentation.",
+    )
+    deferred_completion_completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when deferred emergency triage documentation was completed.",
+    )
+    deferred_completion_status = models.CharField(
+        max_length=20,
+        choices=DEFERRED_COMPLETION_STATUS_CHOICES,
+        default="NOT_REQUIRED",
+        db_index=True,
+        help_text="Status of deferred triage documentation required after emergency capture.",
+    )
 
     # Alerts
     alerts = models.JSONField(
@@ -911,6 +948,28 @@ class TriageAssessment(FacilityScopedModel):
         if has_area and has_clinic:
             raise ValidationError(
                 "Cannot set both 'assigned_area' and 'assigned_clinic'. Choose one routing option."
+            )
+
+    def validate_for_close(self) -> None:
+        """Validate whether triage can be completed/closed."""
+        from django.core.exceptions import ValidationError
+
+        if self.triage_end_time is None:
+            raise ValidationError("Cannot complete triage without triage_end_time.")
+
+        if self.is_emergency_capture and self.deferred_completion_status in {"PENDING", "OVERDUE"}:
+            now = timezone.now()
+            if self.deferred_completion_due_at and now > self.deferred_completion_due_at:
+                if self.deferred_completion_status != "OVERDUE":
+                    self.deferred_completion_status = "OVERDUE"
+                    self.save(update_fields=["deferred_completion_status", "updated_at"])
+                raise ValidationError(
+                    "Emergency triage deferred documentation is overdue. "
+                    "Complete deferred fields before closing triage."
+                )
+            raise ValidationError(
+                "Emergency triage has pending deferred documentation. "
+                "Complete deferred fields before closing triage."
             )
 
     def __str__(self) -> str:

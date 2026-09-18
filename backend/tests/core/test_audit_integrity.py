@@ -128,6 +128,34 @@ class TestAuditHashChaining:
         )
         assert h1 != h2
 
+    def test_legacy_sha256_hash_still_verifies_when_tagged(self, test_user, audit_service):
+        """Verifier accepts legacy SHA-256 entries when hash_algorithm is set."""
+        entry = AuditLog.log(
+            action="patient_view",
+            user=test_user,
+            resource_type="Patient",
+            resource_id=1,
+        )
+        legacy_hash = AuditLog.compute_hash(
+            sequence_number=entry.sequence_number,
+            previous_hash=entry.previous_hash,
+            action=entry.action,
+            user_id=entry.user_id or 0,
+            timestamp=entry.timestamp,
+            resource_type=entry.resource_type,
+            resource_id=entry.resource_id,
+            details=entry.details,
+            hash_algorithm=AuditLog.HASH_ALGO_SHA256,
+        )
+        AuditLog.objects.filter(pk=entry.pk).update(
+            entry_hash=legacy_hash,
+            hash_algorithm=AuditLog.HASH_ALGO_SHA256,
+        )
+
+        result = audit_service.verify_chain()
+        assert result.valid is True
+        assert result.entries_checked == 1
+
     def test_anonymous_entry_uses_zero_user_id(self, db):
         """Entries without a user use user_id=0 in the hash."""
         entry = AuditLog.log(action="system_error", resource_type="System")
@@ -224,9 +252,170 @@ class TestAuditIntegrityVerification:
         assert status_data["last_entry_hash"] is not None
         assert status_data["tamper_alerts_count"] == 0
 
+    def test_chain_diagnostics_reports_mismatch_ranges(self, test_user, audit_service):
+        """Diagnostics should report a mismatch range when an entry is tampered."""
+        for i in range(4):
+            AuditLog.log(
+                action="patient_view",
+                user=test_user,
+                resource_type="Patient",
+                resource_id=i + 1,
+                details={"original": True},
+            )
+
+        tampered = AuditLog.objects.get(sequence_number=2)
+        AuditLog.objects.filter(pk=tampered.pk).update(details={"tampered": True})
+
+        diagnostics = audit_service.get_chain_diagnostics()
+        assert diagnostics["mismatch_count"] >= 1
+        assert diagnostics["mismatch_ranges"][0]["start_sequence"] == 2
+
+    def test_chain_diagnostics_reports_sequence_gaps(self, test_user, audit_service):
+        """Diagnostics should expose missing sequence ranges."""
+        for i in range(5):
+            AuditLog.log(
+                action="patient_view", user=test_user, resource_type="Patient", resource_id=i + 1
+            )
+
+        AuditLog.objects.filter(sequence_number=3).delete()
+
+        diagnostics = audit_service.get_chain_diagnostics()
+        assert diagnostics["sequence_gaps"]
+        assert diagnostics["sequence_gaps"][0]["start_sequence"] == 3
+        assert diagnostics["sequence_gaps"][0]["end_sequence"] == 3
+
+    def test_chain_diagnostics_reports_algorithm_transition(self, test_user, audit_service):
+        """Diagnostics exposes transition points between hash algorithm eras."""
+        first = AuditLog.log(
+            action="patient_view",
+            user=test_user,
+            resource_type="Patient",
+            resource_id=1,
+        )
+        second = AuditLog.log(
+            action="patient_view",
+            user=test_user,
+            resource_type="Patient",
+            resource_id=2,
+        )
+
+        legacy_hash = AuditLog.compute_hash(
+            sequence_number=first.sequence_number,
+            previous_hash=first.previous_hash,
+            action=first.action,
+            user_id=first.user_id or 0,
+            timestamp=first.timestamp,
+            resource_type=first.resource_type,
+            resource_id=first.resource_id,
+            details=first.details,
+            hash_algorithm=AuditLog.HASH_ALGO_SHA256,
+        )
+        AuditLog.objects.filter(pk=first.pk).update(
+            entry_hash=legacy_hash,
+            hash_algorithm=AuditLog.HASH_ALGO_SHA256,
+        )
+
+        diagnostics = audit_service.get_chain_diagnostics()
+        assert diagnostics["algorithm_transition_points"] == [second.sequence_number]
+
+    def test_verify_latest_scoped_to_facility_ignores_cross_facility_chain_links(
+        self,
+        test_user,
+        audit_service,
+        sample_organization,
+        sample_facility,
+        sample_county,
+        sample_sub_county,
+    ):
+        """Facility-scoped verification should validate entry hashes without global link checks."""
+        from hmis.apps.core.models import Facility
+
+        other_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Other Facility",
+            mfl_code="99997",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+
+        AuditLog.log(
+            action="patient_view",
+            user=test_user,
+            resource_type="Patient",
+            resource_id=1,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        AuditLog.log(
+            action="patient_view",
+            user=test_user,
+            resource_type="Patient",
+            resource_id=2,
+            facility=other_facility,
+            organization=sample_organization,
+        )
+        AuditLog.log(
+            action="patient_view",
+            user=test_user,
+            resource_type="Patient",
+            resource_id=3,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        result = audit_service.verify_latest(count=100, facility=sample_facility)
+        assert result.valid is True
+
 
 class TestAuditIntegrityAPI:
     """Tests for the audit integrity API endpoints."""
+
+    def test_audit_log_list_is_facility_scoped(
+        self,
+        admin_client,
+        admin_user,
+        sample_organization,
+        sample_facility,
+        sample_county,
+        sample_sub_county,
+    ):
+        """Facility admins should only see logs from their active facility."""
+        from hmis.apps.core.models import Facility
+
+        other_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Other Facility",
+            mfl_code="99998",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+
+        own_log = AuditLog.log(
+            action="patient_view",
+            user=admin_user,
+            resource_type="Patient",
+            resource_id=1,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        AuditLog.log(
+            action="patient_view",
+            user=admin_user,
+            resource_type="Patient",
+            resource_id=2,
+            facility=other_facility,
+            organization=sample_organization,
+        )
+
+        response = admin_client.get("/api/auditlogs/")
+        assert response.status_code == status.HTTP_200_OK
+        ids = [row["id"] for row in response.data["results"]]
+        assert own_log.id in ids
+        assert all(row["facility"] == sample_facility.id for row in response.data["results"])
 
     def test_chain_status_admin_access(self, admin_client):
         """Admin users can access the chain_status endpoint."""
@@ -234,6 +423,18 @@ class TestAuditIntegrityAPI:
         assert response.status_code == status.HTTP_200_OK
         assert "total_entries" in response.data
         assert "chained_entries" in response.data
+
+    def test_chain_status_requires_active_facility(self, api_client):
+        """Chain status endpoint requires a resolvable active facility."""
+        user = User.objects.create_superuser(
+            username="facilitylessadmin",
+            email="facilityless@example.com",
+            password="adminpassword123",
+        )
+        api_client.force_authenticate(user=user)
+
+        response = api_client.get("/api/auditlogs/chain_status/")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_chain_status_non_admin_rejected(self, authenticated_client):
         """Non-admin users cannot access chain_status."""
@@ -250,6 +451,18 @@ class TestAuditIntegrityAPI:
     def test_verify_integrity_non_admin_rejected(self, authenticated_client):
         """Non-admin users cannot trigger verification."""
         response = authenticated_client.post("/api/auditlogs/verify_integrity/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_chain_diagnostics_admin_access(self, admin_client):
+        """Admin users can access the chain_diagnostics endpoint."""
+        response = admin_client.get("/api/auditlogs/chain_diagnostics/")
+        assert response.status_code == status.HTTP_200_OK
+        assert "mismatch_ranges" in response.data
+        assert "match_transitions" in response.data
+
+    def test_chain_diagnostics_non_admin_rejected(self, authenticated_client):
+        """Non-admin users cannot access chain_diagnostics."""
+        response = authenticated_client.get("/api/auditlogs/chain_diagnostics/")
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
 

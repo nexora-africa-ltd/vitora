@@ -10,20 +10,23 @@
 
 export interface AuditChainStatus {
   total_entries: number;
-  chain_length: number;
+  chained_entries: number;
+  unchained_entries: number;
+  last_sequence_number: number | null;
+  last_entry_hash: string | null;
+  last_entry_timestamp: string | null;
   last_verified_at: string | null;
   last_verification_valid: boolean | null;
   tamper_alerts_count: number;
-  entries_with_hashes: number;
-  entries_without_hashes: number;
 }
 
 export interface AuditIntegrityResult {
   valid: boolean;
   entries_checked: number;
   first_mismatch_seq: number | null;
-  details: string;
-  checked_at: string;
+  first_mismatch_detail: string;
+  errors: string[];
+  checked_at: string | null;
 }
 
 // =============================================================================

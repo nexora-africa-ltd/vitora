@@ -15,11 +15,14 @@ Provides clean syntax for declaring event publishers and subscribers:
 
 import functools
 import logging
+from collections.abc import Callable
 
 from hmis.apps.core.events.base import DomainEvent
 from hmis.apps.core.events.bus import get_event_bus
 
 logger = logging.getLogger(__name__)
+
+_registered_event_handlers: list[tuple[str, Callable[[DomainEvent], None]]] = []
 
 
 def _sanitize_log_field(value: object) -> str:
@@ -48,6 +51,8 @@ def handles_event(event_type: str):
     def decorator(func):
         bus = get_event_bus()
         bus.subscribe(event_type, func)
+        if (event_type, func) not in _registered_event_handlers:
+            _registered_event_handlers.append((event_type, func))
         logger.debug(
             "Registered handler %s for '%s'",
             _sanitize_log_field(func.__name__),
@@ -56,6 +61,13 @@ def handles_event(event_type: str):
         return func
 
     return decorator
+
+
+def register_all_event_handlers() -> None:
+    """Re-subscribe all decorated handlers to the current event bus singleton."""
+    bus = get_event_bus()
+    for event_type, handler in _registered_event_handlers:
+        bus.subscribe(event_type, handler)
 
 
 def publishes_event(event_type: str, aggregate_type: str = ""):

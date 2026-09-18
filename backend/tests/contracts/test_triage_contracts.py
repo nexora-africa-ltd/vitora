@@ -9,6 +9,9 @@ Re-run the script to update after serializer changes:
 import pytest  # type: ignore
 
 from hmis.apps.triage.serializers import (
+    EmergencyTriageCreateSerializer,
+    EmergencyTriageDeferredBacklogSerializer,
+    EmergencyTriageDeferredCompleteSerializer,
     ERBedAssignPatientSerializer,
     ERBedBoardSummarySerializer,
     ERBedCreateSerializer,
@@ -32,6 +35,88 @@ from hmis.apps.triage.serializers import (
 )
 
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
+    (
+        EmergencyTriageCreateSerializer,
+        frozenset(
+            {
+                "arrival_time",
+                "assigned_area",
+                "assigned_clinic",
+                "auto_calculated_category",
+                "category_override_reason",
+                "chief_complaint",
+                "chief_complaint_category",
+                "diastolic_bp",
+                "emergency_access_id",
+                "encounter",
+                "heart_rate",
+                "mental_status",
+                "mobility",
+                "pain_score",
+                "respiratory_rate",
+                "spo2",
+                "systolic_bp",
+                "temperature",
+                "triage_category",
+            }
+        ),
+    ),
+    (
+        EmergencyTriageDeferredBacklogSerializer,
+        frozenset(
+            {
+                "assigned_area",
+                "deferred_completion_completed_at",
+                "deferred_completion_due_at",
+                "deferred_completion_status",
+                "encounter_id",
+                "id",
+                "is_overdue",
+                "patient_id",
+                "patient_mrn",
+                "patient_name",
+                "remaining_minutes",
+                "triage_category",
+                "triaged_by",
+                "triaged_by_name",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        EmergencyTriageDeferredCompleteSerializer,
+        frozenset(
+            {
+                "allergies_noted",
+                "arrival_mode",
+                "assigned_area",
+                "assigned_clinic",
+                "assigned_clinician",
+                "breastfeeding_ability",
+                "capillary_refill_seconds",
+                "category_override_reason",
+                "chief_complaint",
+                "chief_complaint_category",
+                "dehydration_level",
+                "diastolic_bp",
+                "etat_danger_signs",
+                "fontanelle_status",
+                "heart_rate",
+                "height",
+                "mental_status",
+                "mobility",
+                "muac_cm",
+                "pain_score",
+                "referring_facility_name",
+                "respiratory_rate",
+                "spo2",
+                "systolic_bp",
+                "temperature",
+                "triage_category",
+                "weight",
+            }
+        ),
+    ),
     (
         ERBedAssignPatientSerializer,
         frozenset(
@@ -234,7 +319,11 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "chief_complaint_category",
                 "created_at",
                 "dehydration_level",
+                "deferred_completion_completed_at",
+                "deferred_completion_due_at",
+                "deferred_completion_status",
                 "diastolic_bp",
+                "emergency_access",
                 "encounter",
                 "encounter_mrn",
                 "etat_danger_signs",
@@ -247,6 +336,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "heart_rate",
                 "height",
                 "id",
+                "is_emergency_capture",
                 "is_wait_time_exceeded",
                 "mental_status",
                 "mobility",

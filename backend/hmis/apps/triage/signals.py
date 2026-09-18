@@ -13,7 +13,9 @@ from django.dispatch import receiver
 from django.utils import timezone
 
 from hmis.apps.core.events import ClinicalEvents, publish_event
+from hmis.apps.core.events.decorators import handles_event
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.services.notification_service import notify_user
 from hmis.apps.core.sync_context import is_sync_materialization_active
 
 logger = logging.getLogger(__name__)
@@ -246,4 +248,114 @@ def _notify_urgent_triage(instance, encounter):
 
         logging.getLogger(__name__).exception(
             "Failed to notify urgent triage for assessment %s", instance.id
+        )
+
+
+def _get_emergency_deferred_notification_recipients(assessment):
+    """Resolve triage deferred-notification recipients scoped to the same facility."""
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+
+    recipients = {}
+    triaged_by = getattr(assessment, "triaged_by", None)
+    if triaged_by and triaged_by.is_active:
+        recipients[triaged_by.id] = triaged_by
+
+    facility_id = getattr(assessment, "facility_id", None)
+    if not facility_id:
+        return list(recipients.values())
+
+    supervisor_role_codes = [
+        "ADMIN",
+        "ORG-ADMIN",
+        "OWNER",
+        "CLINICAL_SENIOR",
+        "NURSE_MANAGER",
+        "CHARGE_NURSE",
+        "SUPERVISOR",
+    ]
+    supervisors = User.objects.filter(
+        Q(staff_profile__primary_facility_id=facility_id)
+        | Q(staff_profile__secondary_facilities__id=facility_id),
+        staff_profile__primary_role__code__in=supervisor_role_codes,
+        is_active=True,
+    ).distinct()
+    for user in supervisors:
+        recipients[user.id] = user
+
+    return list(recipients.values())
+
+
+@handles_event(ClinicalEvents.TRIAGE_EMERGENCY_DEFERRED_OVERDUE)
+def notify_triage_emergency_deferred_overdue(event):
+    """Create in-app notifications when emergency triage deferred docs become overdue."""
+    from hmis.apps.triage.models import TriageAssessment
+
+    assessment = (
+        TriageAssessment.objects.select_related("encounter__patient", "triaged_by")
+        .filter(id=event.aggregate_id)
+        .first()
+    )
+    if assessment is None:
+        return
+
+    recipients = _get_emergency_deferred_notification_recipients(assessment)
+    patient = getattr(assessment.encounter, "patient", None)
+    patient_label = patient.full_name if patient else "Unknown Patient"
+    title = "Emergency Triages Overdue"
+    message = (
+        f"Deferred emergency triage documentation is overdue for {patient_label} "
+        f"(triage #{assessment.id})."
+    )
+    action_url = f"/triage/{assessment.id}"
+
+    for user in recipients:
+        notify_user(
+            user=user,
+            notification_type="triage_emergency_deferred_overdue",
+            priority="high",
+            title=title,
+            message=message,
+            related_model="TriageAssessment",
+            related_id=assessment.id,
+            action_url=action_url,
+            deduplicate=True,
+        )
+
+
+@handles_event(ClinicalEvents.TRIAGE_EMERGENCY_DEFERRED_COMPLETED)
+def notify_triage_emergency_deferred_completed(event):
+    """Create in-app notifications when emergency deferred triage docs are completed."""
+    from hmis.apps.triage.models import TriageAssessment
+
+    assessment = (
+        TriageAssessment.objects.select_related("encounter__patient", "triaged_by")
+        .filter(id=event.aggregate_id)
+        .first()
+    )
+    if assessment is None:
+        return
+
+    recipients = _get_emergency_deferred_notification_recipients(assessment)
+    patient = getattr(assessment.encounter, "patient", None)
+    patient_label = patient.full_name if patient else "Unknown Patient"
+    title = "Emergency Triage Documentation Completed"
+    message = (
+        f"Deferred emergency triage documentation has been completed for {patient_label} "
+        f"(triage #{assessment.id})."
+    )
+    action_url = f"/triage/{assessment.id}"
+
+    for user in recipients:
+        notify_user(
+            user=user,
+            notification_type="triage_emergency_deferred_completed",
+            priority="normal",
+            title=title,
+            message=message,
+            related_model="TriageAssessment",
+            related_id=assessment.id,
+            action_url=action_url,
+            deduplicate=True,
         )

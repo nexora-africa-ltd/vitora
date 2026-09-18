@@ -73,6 +73,8 @@ from .serializers import (
     CurrentMedicationCreateSerializer,
     CurrentMedicationSerializer,
     DiagnosisSerializer,
+    EmergencyEncounterCreateSerializer,
+    EmergencyEncounterDeferredCompleteSerializer,
     EncounterListSerializer,
     EncounterSerializer,
     FamilyHistoryCreateSerializer,
@@ -158,9 +160,21 @@ class EncounterViewSet(
         """
         if self.action == "list":
             return EncounterListSerializer
+        if self.action == "create" and self._is_emergency_capture_request():
+            return EmergencyEncounterCreateSerializer
+        if self.action == "complete_emergency_documentation":
+            return EmergencyEncounterDeferredCompleteSerializer
         if self.action in {"my_claimed", "all_claimed"}:
             return ClaimedEncounterSerializer
         return EncounterSerializer
+
+    def _is_emergency_capture_request(self) -> bool:
+        if self.request.method != "POST":
+            return False
+        return bool(
+            self.request.META.get("HTTP_X_EMERGENCY_ACCESS_ID")
+            or self.request.headers.get("X-Emergency-Access-ID")
+        )
 
     def retrieve(self, request, *args, **kwargs):
         """Override retrieve to add audit logging."""
@@ -427,6 +441,40 @@ class EncounterViewSet(
                 {"detail": str(e.message if hasattr(e, "message") else e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+    @action(detail=True, methods=["post"], url_path="complete-emergency-documentation")
+    def complete_emergency_documentation(self, request, pk=None):
+        """Complete deferred emergency encounter documentation within SLA window."""
+        encounter = self.get_object()
+        if not encounter.is_emergency_capture:
+            return Response(
+                {"detail": "Encounter was not created through emergency capture."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = self.get_serializer(encounter, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        encounter = serializer.save()
+
+        AuditLog.log(
+            action="encounter_update",
+            user=request.user,
+            resource_type="Encounter",
+            resource_id=encounter.id,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=encounter.patient_id,
+            details={
+                "deferred_completion_status": encounter.deferred_completion_status,
+                "deferred_completion_completed_at": (
+                    encounter.deferred_completion_completed_at.isoformat()
+                    if encounter.deferred_completion_completed_at
+                    else None
+                ),
+                "workflow": "emergency_deferred_completion",
+            },
+        )
+        return Response(EncounterSerializer(encounter, context={"request": request}).data)
 
     @action(detail=True, methods=["post"])
     def cancel(self, request, pk=None):

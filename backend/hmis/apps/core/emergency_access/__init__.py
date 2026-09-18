@@ -11,5 +11,24 @@ Kenya Data Protection Act 2019: Section 32 (Lawful Bases - Vital Interests)
 """
 
 from .models import EmergencyAccess, EmergencyAccessReason
+from .policy import (
+    EMERGENCY_ACTION_ALLOWLIST,
+    EMERGENCY_ACTION_HARD_DENY,
+    EMERGENCY_SESSION_HEADER,
+    EMERGENCY_WRITE_ALLOWED_ROLE_CODES,
+    EMERGENCY_WRITE_GUARDRAILS,
+    get_emergency_action_policy,
+    is_hard_denied_emergency_action,
+)
 
-__all__ = ["EmergencyAccess", "EmergencyAccessReason"]
+__all__ = [
+    "EmergencyAccess",
+    "EmergencyAccessReason",
+    "EMERGENCY_ACTION_ALLOWLIST",
+    "EMERGENCY_ACTION_HARD_DENY",
+    "EMERGENCY_SESSION_HEADER",
+    "EMERGENCY_WRITE_ALLOWED_ROLE_CODES",
+    "EMERGENCY_WRITE_GUARDRAILS",
+    "get_emergency_action_policy",
+    "is_hard_denied_emergency_action",
+]

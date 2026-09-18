@@ -21,6 +21,8 @@ import {
   ChevronLeft,
   ChevronRight,
   DoorOpen,
+  AlertTriangle,
+  CheckCircle2,
 } from 'lucide-react';
 import { PatientStageBadge } from '@/components/shared/patient-stage-badge';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -52,10 +54,13 @@ import {
   useBreachSummary,
   useAvailableTriageRooms,
   useAssignTriageRoom,
+  useEmergencyDeferredBacklog,
+  useCompleteEmergencyDeferredDocumentation,
   type TriageHistoryFilters,
 } from '@/lib/hooks/use-triage';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { usePermissions } from '@/lib/hooks/use-permissions';
+import { useNotifications } from '@/lib/hooks/use-notifications';
 import { toast } from '@/lib/hooks/use-toast';
 import { LEGACY_TRIAGE_FLOW } from '@/lib/utils/constants';
 import type { TriageCategory, TriageAssessment } from '@/lib/types/triage';
@@ -68,6 +73,7 @@ export default function TriageQueuePage() {
   const canCreateTriage = hasPermission('triage.add_triageassessment');
   const [showQueueBanner, setShowQueueBanner] = useState(true);
   const [activeTab, setActiveTab] = useState<'queue' | 'history'>('queue');
+  const [deferredOverdueOnly, setDeferredOverdueOnly] = useState(false);
 
   // ============================================================================
   // QUEUE STATE & HOOKS
@@ -110,6 +116,14 @@ export default function TriageQueuePage() {
 
   // Available triage rooms
   const { data: availableRooms } = useAvailableTriageRooms();
+  const { data: emergencyDeferredBacklog, refetch: refetchEmergencyDeferredBacklog } =
+    useEmergencyDeferredBacklog({ overdue_only: deferredOverdueOnly });
+  const { mutateAsync: completeEmergencyDeferredDocumentation } =
+    useCompleteEmergencyDeferredDocumentation();
+  const { data: overdueDeferredNotifications } = useNotifications(
+    { notification_type: 'triage_emergency_deferred_overdue', is_read: false, page_size: 5 },
+    { refetchInterval: 60000 }
+  );
 
   // ============================================================================
   // HISTORY STATE & HOOKS
@@ -237,6 +251,29 @@ export default function TriageQueuePage() {
     [router]
   );
 
+  const handleCompleteDeferredDocumentation = useCallback(
+    async (assessmentId: number) => {
+      try {
+        await completeEmergencyDeferredDocumentation({
+          id: assessmentId,
+          data: {},
+        });
+        toast({
+          title: 'Deferred Documentation Completed',
+          description: 'Emergency deferred triage documentation has been marked complete.',
+        });
+        await refetchEmergencyDeferredBacklog();
+      } catch {
+        toast({
+          title: 'Unable to Complete Documentation',
+          description: 'Please open the triage record and complete required deferred fields.',
+          variant: 'destructive',
+        });
+      }
+    },
+    [completeEmergencyDeferredDocumentation, refetchEmergencyDeferredBacklog]
+  );
+
   const waitingCount = waitingData?.results?.length ?? 0;
 
   // Handle pull-to-refresh
@@ -352,6 +389,77 @@ export default function TriageQueuePage() {
           breachSummary={breachSummary}
           isLoading={isStatsLoading || isVolumeLoading}
         />
+
+        <Card>
+          <CardHeader className="px-4 pb-3 sm:px-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-warning sm:h-5 sm:w-5" />
+                <CardTitle className="text-base sm:text-lg">
+                  Emergency Deferred Documentation
+                </CardTitle>
+                <HelpPopover content="Track emergency triage records that were captured with deferred documentation requirements. Complete overdue items to keep emergency workflows compliant." />
+              </div>
+              <Button
+                variant={deferredOverdueOnly ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setDeferredOverdueOnly((current) => !current)}
+              >
+                {deferredOverdueOnly ? 'Showing Overdue Only' : 'Filter Overdue Only'}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 sm:px-6">
+            <div className="mb-3 flex flex-wrap gap-2 text-xs sm:text-sm">
+              <Badge variant="outline">Open: {emergencyDeferredBacklog?.count ?? 0}</Badge>
+              <Badge variant="outline">Pending: {emergencyDeferredBacklog?.pending_count ?? 0}</Badge>
+              <Badge variant="destructive">Overdue: {emergencyDeferredBacklog?.overdue_count ?? 0}</Badge>
+              <Badge variant="secondary">
+                Due in 30m: {emergencyDeferredBacklog?.due_within_30m_count ?? 0}
+              </Badge>
+              <Badge variant="outline">
+                Unread Alerts: {overdueDeferredNotifications?.count ?? 0}
+              </Badge>
+            </div>
+            {(emergencyDeferredBacklog?.results?.length ?? 0) === 0 ? (
+              <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                No emergency deferred documentation backlog for the current filter.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {emergencyDeferredBacklog?.results?.slice(0, 5).map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{item.patient_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.patient_mrn} • {item.triage_category} • Due{' '}
+                        {item.deferred_completion_due_at
+                          ? format(new Date(item.deferred_completion_due_at), 'PPp')
+                          : 'N/A'}
+                      </p>
+                    </div>
+                    <div className="flex gap-2 sm:justify-end">
+                      <Button size="sm" variant="outline" onClick={() => router.push(`/triage/${item.id}`)}>
+                        Open Record
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={item.is_overdue ? 'destructive' : 'default'}
+                        onClick={() => handleCompleteDeferredDocumentation(item.id)}
+                      >
+                        <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+                        Complete
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Tabs: Queue and History */}
         <Tabs

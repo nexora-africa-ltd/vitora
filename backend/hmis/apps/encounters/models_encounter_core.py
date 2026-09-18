@@ -468,6 +468,43 @@ class Encounter(EncounterBehaviorMixin, HistoryMixin, FacilityScopedModel):
         default="",
         help_text="Reason for cancellation (if status is CANCELLED)",
     )
+    is_emergency_capture = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="True when encounter was created via emergency minimal-capture workflow.",
+    )
+    emergency_access = models.ForeignKey(
+        "core.EmergencyAccess",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="encounters_created",
+        help_text="Break-glass session used for emergency encounter capture.",
+    )
+    DEFERRED_COMPLETION_STATUS_CHOICES = [
+        ("NOT_REQUIRED", "Not Required"),
+        ("PENDING", "Pending"),
+        ("COMPLETED", "Completed"),
+        ("OVERDUE", "Overdue"),
+    ]
+    deferred_completion_due_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="Deadline for completing deferred emergency documentation.",
+    )
+    deferred_completion_completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when deferred emergency documentation was completed.",
+    )
+    deferred_completion_status = models.CharField(
+        max_length=20,
+        choices=DEFERRED_COMPLETION_STATUS_CHOICES,
+        default="NOT_REQUIRED",
+        db_index=True,
+        help_text="Status of deferred documentation required after emergency capture.",
+    )
 
     # =========================================================================
     # Disposition Fields (Clinical Documentation Enhancement)
@@ -677,7 +714,14 @@ class Encounter(EncounterBehaviorMixin, HistoryMixin, FacilityScopedModel):
     # Version history tracking (DHA Audit Trail Enhancement)
     history = HistoricalRecords(
         table_name="encounters_encounter_history",
-        excluded_fields=["updated_at"],  # Auto-updated field not useful in history
+        excluded_fields=[
+            "updated_at",
+            "is_emergency_capture",
+            "emergency_access",
+            "deferred_completion_due_at",
+            "deferred_completion_completed_at",
+            "deferred_completion_status",
+        ],
     )
 
     class Meta:
@@ -689,6 +733,7 @@ class Encounter(EncounterBehaviorMixin, HistoryMixin, FacilityScopedModel):
             models.Index(fields=["encounter_type"]),
             models.Index(fields=["encounter_date"]),
             models.Index(fields=["assigned_clinician", "status"]),
+            models.Index(fields=["deferred_completion_status", "deferred_completion_due_at"]),
         ]
         constraints = [
             # Only ONE IN_PROGRESS encounter per patient at a time

@@ -106,12 +106,21 @@ class Command(BaseCommand):
                         resource_type=entry.resource_type,
                         resource_id=entry.resource_id,
                         details=entry.details,
+                        hash_algorithm=AuditLog.HASH_ALGO_HMAC_SHA256,
                     )
 
                     entry.sequence_number = next_seq
                     entry.previous_hash = prev_hash
                     entry.entry_hash = entry_hash
-                    entry.save(update_fields=["sequence_number", "previous_hash", "entry_hash"])
+                    entry.hash_algorithm = AuditLog.HASH_ALGO_HMAC_SHA256
+                    entry.save(
+                        update_fields=[
+                            "sequence_number",
+                            "previous_hash",
+                            "entry_hash",
+                            "hash_algorithm",
+                        ]
+                    )
 
                     prev_hash = entry_hash
                     next_seq += 1

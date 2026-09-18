@@ -72,4 +72,46 @@ describe('Triage API', () => {
       });
     });
   });
+
+  describe('emergency deferred backlog', () => {
+    it('parses emergency deferred backlog responses', async () => {
+      mockApiClient.get.mockResolvedValue({
+        data: {
+          count: 1,
+          pending_count: 1,
+          overdue_count: 0,
+          due_within_30m_count: 1,
+          server_time: '2026-09-18T10:00:00Z',
+          results: [
+            {
+              id: 88,
+              encounter_id: 201,
+              patient_id: 5,
+              patient_name: 'Jane Wanjiku',
+              patient_mrn: 'MRN-20260309-0001',
+              triage_category: 'RED',
+              assigned_area: 'ER_RESUS',
+              triaged_by: 12,
+              triaged_by_name: 'Nurse A',
+              deferred_completion_status: 'PENDING',
+              deferred_completion_due_at: '2026-09-18T10:15:00Z',
+              deferred_completion_completed_at: null,
+              remaining_minutes: 15,
+              is_overdue: false,
+              updated_at: '2026-09-18T10:00:00Z',
+            },
+          ],
+        },
+      });
+
+      const result = await triageApi.getEmergencyDeferredBacklog({ overdue_only: false });
+
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        '/api/triage/assessments/emergency-deferred-backlog/',
+        { params: { overdue_only: false } }
+      );
+      expect(result.count).toBe(1);
+      expect(result.results[0]?.id).toBe(88);
+    });
+  });
 });
