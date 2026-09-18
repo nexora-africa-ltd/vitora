@@ -50,6 +50,7 @@ class AuditIntegrityService:
         self,
         start_seq: int | None = None,
         end_seq: int | None = None,
+        facility=None,
     ) -> IntegrityResult:
         """
         Verify the audit log hash chain over a range of entries.
@@ -66,6 +67,10 @@ class AuditIntegrityService:
         queryset = AuditLog.objects.filter(
             sequence_number__isnull=False,
         ).order_by("sequence_number")
+        scoped_mode = facility is not None
+
+        if facility is not None:
+            queryset = queryset.filter(facility=facility)
 
         if start_seq is not None:
             queryset = queryset.filter(sequence_number__gte=start_seq)
@@ -98,7 +103,7 @@ class AuditIntegrityService:
 
             # Verify previous_hash linkage (skip for the first entry in range
             # unless it's the absolute first entry)
-            if expected_prev_hash is not None:
+            if not scoped_mode and expected_prev_hash is not None:
                 if entry["previous_hash"] != expected_prev_hash:
                     detail = (
                         f"Chain break at seq {seq}: "
@@ -143,20 +148,21 @@ class AuditIntegrityService:
 
             expected_prev_hash = entry["entry_hash"]
 
-        # Check for sequence gaps
-        gap_result = self._check_sequence_gaps(start_seq, end_seq)
-        if gap_result:
-            errors.append(gap_result)
-            return IntegrityResult(
-                valid=False,
-                entries_checked=checked,
-                first_mismatch_detail=gap_result,
-                errors=errors,
-            )
+        # Check for sequence gaps (only in global mode)
+        if not scoped_mode:
+            gap_result = self._check_sequence_gaps(start_seq, end_seq)
+            if gap_result:
+                errors.append(gap_result)
+                return IntegrityResult(
+                    valid=False,
+                    entries_checked=checked,
+                    first_mismatch_detail=gap_result,
+                    errors=errors,
+                )
 
         return IntegrityResult(valid=True, entries_checked=checked)
 
-    def verify_latest(self, count: int = 100) -> IntegrityResult:
+    def verify_latest(self, count: int = 100, facility=None) -> IntegrityResult:
         """
         Verify the most recent N entries in the hash chain.
 
@@ -168,20 +174,22 @@ class AuditIntegrityService:
         """
         from hmis.apps.core.models import AuditLog
 
-        latest = (
-            AuditLog.objects.filter(sequence_number__isnull=False)
-            .order_by("-sequence_number")
-            .values_list("sequence_number", flat=True)[:count]
-        )
+        latest_qs = AuditLog.objects.filter(sequence_number__isnull=False)
+        if facility is not None:
+            latest_qs = latest_qs.filter(facility=facility)
+
+        latest = latest_qs.order_by("-sequence_number").values_list("sequence_number", flat=True)[
+            :count
+        ]
         seq_list = list(latest)
         if not seq_list:
             return IntegrityResult(valid=True, entries_checked=0)
 
         start_seq = min(seq_list)
         end_seq = max(seq_list)
-        return self.verify_chain(start_seq=start_seq, end_seq=end_seq)
+        return self.verify_chain(start_seq=start_seq, end_seq=end_seq, facility=facility)
 
-    def get_chain_status(self) -> dict:
+    def get_chain_status(self, facility=None) -> dict:
         """
         Get a summary of the audit chain health.
 
@@ -190,12 +198,16 @@ class AuditIntegrityService:
         """
         from hmis.apps.core.models import AuditLog
 
-        total_entries = AuditLog.objects.count()
-        chained_entries = AuditLog.objects.filter(sequence_number__isnull=False).count()
+        logs_qs = AuditLog.objects.all()
+        if facility is not None:
+            logs_qs = logs_qs.filter(facility=facility)
+
+        total_entries = logs_qs.count()
+        chained_entries = logs_qs.filter(sequence_number__isnull=False).count()
         unchained_entries = total_entries - chained_entries
 
         last_entry = (
-            AuditLog.objects.filter(sequence_number__isnull=False)
+            logs_qs.filter(sequence_number__isnull=False)
             .order_by("-sequence_number")
             .values("sequence_number", "entry_hash", "timestamp")
             .first()
@@ -232,20 +244,26 @@ class AuditIntegrityService:
             ),
         }
 
-    def get_chain_diagnostics(self, count: int | None = None) -> dict:
+    def get_chain_diagnostics(self, count: int | None = None, facility=None) -> dict:
         """Return mismatch ranges and transition points for chain diagnostics."""
         from hmis.apps.core.models import AuditLog
 
         queryset = AuditLog.objects.filter(sequence_number__isnull=False).order_by(
             "sequence_number"
         )
+        scoped_mode = facility is not None
+
+        if facility is not None:
+            queryset = queryset.filter(facility=facility)
 
         if count is not None and count > 0:
-            latest = (
-                AuditLog.objects.filter(sequence_number__isnull=False)
-                .order_by("-sequence_number")
-                .values_list("sequence_number", flat=True)[:count]
-            )
+            latest_qs = AuditLog.objects.filter(sequence_number__isnull=False)
+            if facility is not None:
+                latest_qs = latest_qs.filter(facility=facility)
+
+            latest = latest_qs.order_by("-sequence_number").values_list(
+                "sequence_number", flat=True
+            )[:count]
             latest_list = list(latest)
             if latest_list:
                 queryset = queryset.filter(sequence_number__gte=min(latest_list))
@@ -286,7 +304,7 @@ class AuditIntegrityService:
             first_sequence = seq if first_sequence is None else first_sequence
             last_sequence = seq
 
-            if prev_sequence is not None and seq > prev_sequence + 1:
+            if not scoped_mode and prev_sequence is not None and seq > prev_sequence + 1:
                 sequence_gaps.append(
                     {
                         "start_sequence": prev_sequence + 1,
@@ -295,7 +313,11 @@ class AuditIntegrityService:
                     }
                 )
 
-            if prev_entry_hash is not None and row["previous_hash"] != prev_entry_hash:
+            if (
+                not scoped_mode
+                and prev_entry_hash is not None
+                and row["previous_hash"] != prev_entry_hash
+            ):
                 link_break_sequences.append(seq)
 
             matched_algorithm = self._resolve_matching_algorithm(row)

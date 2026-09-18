@@ -318,9 +318,104 @@ class TestAuditIntegrityVerification:
         diagnostics = audit_service.get_chain_diagnostics()
         assert diagnostics["algorithm_transition_points"] == [second.sequence_number]
 
+    def test_verify_latest_scoped_to_facility_ignores_cross_facility_chain_links(
+        self,
+        test_user,
+        audit_service,
+        sample_organization,
+        sample_facility,
+        sample_county,
+        sample_sub_county,
+    ):
+        """Facility-scoped verification should validate entry hashes without global link checks."""
+        from hmis.apps.core.models import Facility
+
+        other_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Other Facility",
+            mfl_code="99997",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+
+        AuditLog.log(
+            action="patient_view",
+            user=test_user,
+            resource_type="Patient",
+            resource_id=1,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        AuditLog.log(
+            action="patient_view",
+            user=test_user,
+            resource_type="Patient",
+            resource_id=2,
+            facility=other_facility,
+            organization=sample_organization,
+        )
+        AuditLog.log(
+            action="patient_view",
+            user=test_user,
+            resource_type="Patient",
+            resource_id=3,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        result = audit_service.verify_latest(count=100, facility=sample_facility)
+        assert result.valid is True
+
 
 class TestAuditIntegrityAPI:
     """Tests for the audit integrity API endpoints."""
+
+    def test_audit_log_list_is_facility_scoped(
+        self,
+        admin_client,
+        admin_user,
+        sample_organization,
+        sample_facility,
+        sample_county,
+        sample_sub_county,
+    ):
+        """Facility admins should only see logs from their active facility."""
+        from hmis.apps.core.models import Facility
+
+        other_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Other Facility",
+            mfl_code="99998",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+
+        own_log = AuditLog.log(
+            action="patient_view",
+            user=admin_user,
+            resource_type="Patient",
+            resource_id=1,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        AuditLog.log(
+            action="patient_view",
+            user=admin_user,
+            resource_type="Patient",
+            resource_id=2,
+            facility=other_facility,
+            organization=sample_organization,
+        )
+
+        response = admin_client.get("/api/auditlogs/")
+        assert response.status_code == status.HTTP_200_OK
+        ids = [row["id"] for row in response.data["results"]]
+        assert own_log.id in ids
+        assert all(row["facility"] == sample_facility.id for row in response.data["results"])
 
     def test_chain_status_admin_access(self, admin_client):
         """Admin users can access the chain_status endpoint."""
@@ -328,6 +423,18 @@ class TestAuditIntegrityAPI:
         assert response.status_code == status.HTTP_200_OK
         assert "total_entries" in response.data
         assert "chained_entries" in response.data
+
+    def test_chain_status_requires_active_facility(self, api_client):
+        """Chain status endpoint requires a resolvable active facility."""
+        user = User.objects.create_superuser(
+            username="facilitylessadmin",
+            email="facilityless@example.com",
+            password="adminpassword123",
+        )
+        api_client.force_authenticate(user=user)
+
+        response = api_client.get("/api/auditlogs/chain_status/")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_chain_status_non_admin_rejected(self, authenticated_client):
         """Non-admin users cannot access chain_status."""

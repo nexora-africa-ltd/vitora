@@ -311,11 +311,11 @@ class AuditLogViewSet(
     """
     ViewSet for viewing audit logs (read-only).
 
-    Staff can review all audit logs.
-    Other authenticated users can only see their own audit logs.
+    Audit logs are facility-scoped for tenant isolation.
+    Facility admins can review their facility logs; other users can only see their own.
     """
 
-    tenant_scope = "organization"  # Org admins see all facility logs
+    tenant_scope = "facility"
 
     queryset = AuditLog.objects.all()
     serializer_class = AuditLogSerializer
@@ -328,7 +328,12 @@ class AuditLogViewSet(
     def get_queryset(self):
         """Apply optional date range filters for admin audit review."""
         queryset = super().get_queryset()
-        if not (self.request.user.is_staff or self.request.user.is_superuser):
+
+        profile = getattr(self.request.user, "staff_profile", None)
+        role_code = getattr(getattr(profile, "primary_role", None), "code", "")
+        is_facility_admin = role_code in {"ADMIN", "ORG-ADMIN", "OWNER"}
+
+        if not (self.request.user.is_staff or self.request.user.is_superuser or is_facility_admin):
             queryset = queryset.filter(user=self.request.user)
 
         start_date = self.request.query_params.get("start_date")
@@ -359,8 +364,16 @@ class AuditLogViewSet(
         """Get audit hash chain health summary."""
         from .services.audit_integrity import AuditIntegrityService
 
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        if facility is None:
+            return Response(
+                {"detail": "Active facility is required for audit chain status."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         service = AuditIntegrityService()
-        status_data = service.get_chain_status()
+        status_data = service.get_chain_status(facility=facility)
         return Response(status_data)
 
     @action(detail=False, methods=["post"], permission_classes=[IsAdminUser])
@@ -368,9 +381,17 @@ class AuditLogViewSet(
         """Trigger on-demand audit chain integrity verification."""
         from .services.audit_integrity import AuditIntegrityService
 
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        if facility is None:
+            return Response(
+                {"detail": "Active facility is required for audit verification."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         count = request.data.get("count", 1000)
         service = AuditIntegrityService()
-        result = service.verify_latest(count=int(count))
+        result = service.verify_latest(count=int(count), facility=facility)
 
         AuditLog.log(
             action="audit_integrity_check",
@@ -384,6 +405,8 @@ class AuditLogViewSet(
                 "errors": result.errors,
                 "triggered_by": "manual",
             },
+            facility=facility,
+            organization=getattr(request, "organization", None),
         )
 
         return Response(
@@ -402,10 +425,18 @@ class AuditLogViewSet(
         """Return mismatch ranges and transition points for audit chain diagnostics."""
         from .services.audit_integrity import AuditIntegrityService
 
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        if facility is None:
+            return Response(
+                {"detail": "Active facility is required for chain diagnostics."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         count_raw = request.query_params.get("count")
         count = int(count_raw) if count_raw else None
         service = AuditIntegrityService()
-        diagnostics = service.get_chain_diagnostics(count=count)
+        diagnostics = service.get_chain_diagnostics(count=count, facility=facility)
         return Response(diagnostics)
 
 
