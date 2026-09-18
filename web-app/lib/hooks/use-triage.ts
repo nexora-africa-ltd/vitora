@@ -11,7 +11,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { consultationQueueKeys } from '@/lib/hooks/use-consultation-queue';
-import { triageApi, type TriageAssessmentUpdateData } from '@/lib/api/triage';
+import {
+  triageApi,
+  type EmergencyDeferredBacklogParams,
+  type EmergencyDeferredCompleteData,
+  type TriageAssessmentUpdateData,
+} from '@/lib/api/triage';
 import { useOfflineQuery } from '@/lib/powersync/use-offline-query';
 import { useOfflineMutation } from '@/lib/powersync/use-offline-mutation';
 import { generateId } from '@/lib/powersync/uuid';
@@ -61,6 +66,10 @@ export const triageKeys = {
   // Triage room routing keys
   availableTriageRooms: () => [...triageKeys.all, 'available-rooms'] as const,
   triageSettings: () => [...triageKeys.all, 'settings'] as const,
+  emergencyDeferredBacklog: (filters: EmergencyDeferredBacklogParams = {}) =>
+    [...triageKeys.all, 'emergency-deferred-backlog', filters] as const,
+  emergencyDeferredReport: (filters: EmergencyDeferredBacklogParams = {}) =>
+    [...triageKeys.all, 'emergency-deferred-report', filters] as const,
 };
 
 // =============================================================================
@@ -464,6 +473,57 @@ export function useCompleteTriageAssessment() {
       if (data.encounter) {
         queryClient.invalidateQueries({ queryKey: ['encounters', data.encounter] });
       }
+      queryClient.invalidateQueries({ queryKey: ['encounters'] });
+    },
+  });
+}
+
+/**
+ * Fetch emergency triage deferred documentation backlog.
+ */
+export function useEmergencyDeferredBacklog(filters: EmergencyDeferredBacklogParams = {}) {
+  return useQuery({
+    queryKey: triageKeys.emergencyDeferredBacklog(filters),
+    queryFn: async () => triageApi.getEmergencyDeferredBacklog(filters),
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+}
+
+/**
+ * Fetch emergency triage deferred documentation report metrics.
+ */
+export function useEmergencyDeferredReport(filters: EmergencyDeferredBacklogParams = {}) {
+  return useQuery({
+    queryKey: triageKeys.emergencyDeferredReport(filters),
+    queryFn: async () => triageApi.getEmergencyDeferredReport(filters),
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+}
+
+/**
+ * Complete emergency deferred documentation for a triage assessment.
+ */
+export function useCompleteEmergencyDeferredDocumentation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: EmergencyDeferredCompleteData;
+    }) => {
+      return triageApi.completeEmergencyDocumentation(id, data);
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: triageKeys.assessment(data.id) });
+      queryClient.invalidateQueries({ queryKey: triageKeys.assessments() });
+      queryClient.invalidateQueries({ queryKey: triageKeys.emergencyDeferredBacklog() });
+      queryClient.invalidateQueries({ queryKey: triageKeys.emergencyDeferredReport() });
+      queryClient.invalidateQueries({ queryKey: ['encounters', data.encounter] });
       queryClient.invalidateQueries({ queryKey: ['encounters'] });
     },
   });

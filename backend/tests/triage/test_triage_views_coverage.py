@@ -331,6 +331,129 @@ class TestTriageAssessmentViewSetActions:
         )
         assert complete_triage_response.status_code == status.HTTP_200_OK
 
+    def test_emergency_deferred_backlog_filters_and_counts(
+        self, authenticated_client, sample_patient, sample_facility, sample_organization
+    ):
+        """Backlog endpoint should filter by user and overdue status with summary counters."""
+        user = authenticated_client.handler._force_user
+        user.is_superuser = True
+        user.is_staff = True
+        user.save(update_fields=["is_superuser", "is_staff"])
+        authenticated_client.force_authenticate(user=user)
+
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="EMERGENCY",
+            chief_complaint="Critical trauma",
+            organization=sample_organization,
+            facility=sample_facility,
+            created_by=user,
+        )
+        assessment = TriageAssessment.objects.create(
+            encounter=encounter,
+            chief_complaint="Critical trauma",
+            chief_complaint_category="TRAUMA",
+            mental_status="A",
+            mobility="STRETCHER",
+            triage_category="RED",
+            auto_calculated_category="RED",
+            assigned_area="ER_RESUS",
+            arrival_time=timezone.now() - timedelta(minutes=20),
+            triage_start_time=timezone.now() - timedelta(minutes=18),
+            triaged_by=user,
+            facility=sample_facility,
+            organization=sample_organization,
+            is_emergency_capture=True,
+            deferred_completion_status="PENDING",
+            deferred_completion_due_at=timezone.now() - timedelta(minutes=5),
+        )
+
+        response = authenticated_client.get(
+            "/api/triage/assessments/emergency-deferred-backlog/",
+            {"triaged_by": user.id},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["count"] >= 1
+        assert response.data["pending_count"] >= 1
+
+        overdue_only = authenticated_client.get(
+            "/api/triage/assessments/emergency-deferred-backlog/",
+            {"overdue_only": "true"},
+        )
+        assert overdue_only.status_code == status.HTTP_200_OK
+        assert overdue_only.data["overdue_count"] >= 0
+
+        sla_refresh = authenticated_client.get(
+            f"/api/triage/assessments/{assessment.id}/emergency-documentation-sla/"
+        )
+        assert sla_refresh.status_code == status.HTTP_200_OK
+
+        overdue_only_after = authenticated_client.get(
+            "/api/triage/assessments/emergency-deferred-backlog/",
+            {"overdue_only": "true"},
+        )
+        assert overdue_only_after.status_code == status.HTTP_200_OK
+        assert overdue_only_after.data["overdue_count"] >= 1
+
+    def test_emergency_deferred_report_and_export(
+        self, authenticated_client, sample_patient, sample_facility, sample_organization
+    ):
+        """Report and export endpoints should return emergency deferred documentation metrics/data."""
+        user = authenticated_client.handler._force_user
+        user.is_superuser = True
+        user.is_staff = True
+        user.save(update_fields=["is_superuser", "is_staff"])
+        authenticated_client.force_authenticate(user=user)
+
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="EMERGENCY",
+            chief_complaint="Severe asthma",
+            organization=sample_organization,
+            facility=sample_facility,
+            created_by=user,
+        )
+        TriageAssessment.objects.create(
+            encounter=encounter,
+            chief_complaint="Severe asthma",
+            chief_complaint_category="DIFFICULTY_BREATHING",
+            mental_status="A",
+            mobility="WHEELCHAIR",
+            triage_category="ORANGE",
+            auto_calculated_category="ORANGE",
+            assigned_area="ER_ACUTE",
+            arrival_time=timezone.now() - timedelta(minutes=10),
+            triage_start_time=timezone.now() - timedelta(minutes=8),
+            triaged_by=user,
+            facility=sample_facility,
+            organization=sample_organization,
+            is_emergency_capture=True,
+            deferred_completion_status="PENDING",
+            deferred_completion_due_at=timezone.now() + timedelta(minutes=30),
+        )
+
+        report_response = authenticated_client.get(
+            "/api/triage/assessments/emergency-deferred-report/"
+        )
+        assert report_response.status_code == status.HTTP_200_OK
+        assert "total_open" in report_response.data
+        assert "pending" in report_response.data
+        assert "overdue" in report_response.data
+
+        json_export = authenticated_client.get(
+            "/api/triage/assessments/emergency-deferred-export/",
+            {"export_format": "json"},
+        )
+        assert json_export.status_code == status.HTTP_200_OK
+        assert "results" in json_export.data
+
+        csv_export = authenticated_client.get(
+            "/api/triage/assessments/emergency-deferred-export/",
+            {"export_format": "csv"},
+        )
+        assert csv_export.status_code == status.HTTP_200_OK
+        assert csv_export["Content-Type"].startswith("text/csv")
+
 
 @pytest.mark.django_db
 class TestWaitingQueueViewSetActions:

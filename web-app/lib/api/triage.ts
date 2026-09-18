@@ -34,8 +34,12 @@ import {
   PaginatedEscalationSchema,
   TriageSettingsSchema,
   AvailableTriageRoomSchema,
+  EmergencyDeferredBacklogResponseSchema,
+  EmergencyDeferredReportSchema,
 } from '@/lib/schemas/triage.schema';
 import type {
+  EmergencyDeferredBacklogResponse,
+  EmergencyDeferredReport,
   TriageAssessment,
   TriageAssessmentCreateData,
   TriageQueueEntry,
@@ -93,6 +97,13 @@ export interface TriageAssessmentListParams {
   encounter?: number; // Filter by encounter FK
 }
 
+export interface EmergencyDeferredBacklogParams {
+  triaged_by?: number;
+  due_from?: string;
+  due_to?: string;
+  overdue_only?: boolean;
+}
+
 export interface TriageQueueListParams {
   assigned_area?: AssignedArea;
   triage_category?: TriageCategory;
@@ -147,6 +158,16 @@ export interface RouteToClinicResponse {
   patient_mrn: string;
   clinic_name: string;
   queue_number: number;
+}
+
+export interface EmergencyDeferredCompleteData {
+  chief_complaint?: string;
+  chief_complaint_category?: string;
+  pain_score?: number | null;
+  notes?: string;
+  allergies_noted?: string;
+  triage_category?: TriageCategory;
+  category_override_reason?: string;
 }
 
 // =============================================================================
@@ -370,6 +391,50 @@ export const triageApi = {
     );
     return parseResponse(TriageAssessmentSchema, response.data, {
       context: 'triageApi.completeAssessment',
+    });
+  },
+
+  /**
+   * Complete deferred emergency triage documentation.
+   */
+  async completeEmergencyDocumentation(
+    id: number,
+    data: EmergencyDeferredCompleteData
+  ): Promise<TriageAssessment> {
+    const response = await apiClient.post<TriageAssessment>(
+      `/api/triage/assessments/${id}/complete-emergency-documentation/`,
+      data
+    );
+    return parseResponse(TriageAssessmentSchema, response.data, {
+      context: 'triageApi.completeEmergencyDocumentation',
+    });
+  },
+
+  /**
+   * List emergency deferred documentation backlog.
+   */
+  async getEmergencyDeferredBacklog(
+    params?: EmergencyDeferredBacklogParams
+  ): Promise<EmergencyDeferredBacklogResponse> {
+    const response = await apiClient.get('/api/triage/assessments/emergency-deferred-backlog/', {
+      params,
+    });
+    return parseResponse(EmergencyDeferredBacklogResponseSchema, response.data, {
+      context: 'triageApi.getEmergencyDeferredBacklog',
+    });
+  },
+
+  /**
+   * Get summary metrics for emergency deferred documentation.
+   */
+  async getEmergencyDeferredReport(
+    params?: EmergencyDeferredBacklogParams
+  ): Promise<EmergencyDeferredReport> {
+    const response = await apiClient.get('/api/triage/assessments/emergency-deferred-report/', {
+      params,
+    });
+    return parseResponse(EmergencyDeferredReportSchema, response.data, {
+      context: 'triageApi.getEmergencyDeferredReport',
     });
   },
 
@@ -626,6 +691,35 @@ export const triageApi = {
       responseType: 'blob',
     });
     return response.data as Blob;
+  },
+
+  /**
+   * Export emergency deferred triage backlog.
+   */
+  async exportEmergencyDeferredBacklog(
+    exportFormat: 'json' | 'csv',
+    params?: EmergencyDeferredBacklogParams
+  ) {
+    if (exportFormat === 'csv') {
+      const response = await apiClient.get('/api/triage/assessments/emergency-deferred-export/', {
+        params: { ...params, export_format: 'csv' },
+        responseType: 'blob',
+      });
+      return response.data as Blob;
+    }
+
+    const response = await apiClient.get('/api/triage/assessments/emergency-deferred-export/', {
+      params: { ...params, export_format: 'json' },
+    });
+    return parseResponse(
+      z.object({
+        generated_at: z.string(),
+        count: z.number(),
+        results: EmergencyDeferredBacklogResponseSchema.shape.results,
+      }),
+      response.data,
+      { context: 'triageApi.exportEmergencyDeferredBacklog' }
+    );
   },
 
   // ============ Waiting Queue ============

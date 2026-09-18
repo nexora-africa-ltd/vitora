@@ -1119,6 +1119,48 @@ class EmergencyTriageDeferredCompleteSerializer(serializers.ModelSerializer):
         return instance
 
 
+class EmergencyTriageDeferredBacklogSerializer(serializers.ModelSerializer):
+    """Serializer for emergency triage deferred documentation backlog rows."""
+
+    patient_id = serializers.IntegerField(source="encounter.patient_id", read_only=True)
+    patient_name = serializers.CharField(source="encounter.patient.full_name", read_only=True)
+    patient_mrn = serializers.CharField(source="encounter.patient.mrn", read_only=True)
+    encounter_id = serializers.IntegerField(source="encounter.id", read_only=True)
+    triaged_by_name = serializers.CharField(source="triaged_by.get_full_name", read_only=True)
+    remaining_minutes = serializers.SerializerMethodField()
+    is_overdue = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TriageAssessment
+        fields = [
+            "id",
+            "encounter_id",
+            "patient_id",
+            "patient_name",
+            "patient_mrn",
+            "triage_category",
+            "assigned_area",
+            "triaged_by",
+            "triaged_by_name",
+            "deferred_completion_status",
+            "deferred_completion_due_at",
+            "deferred_completion_completed_at",
+            "remaining_minutes",
+            "is_overdue",
+            "updated_at",
+        ]
+
+    def get_remaining_minutes(self, obj: TriageAssessment) -> int | None:
+        if obj.deferred_completion_due_at is None:
+            return None
+        return int((obj.deferred_completion_due_at - timezone.now()).total_seconds() / 60)
+
+    def get_is_overdue(self, obj: TriageAssessment) -> bool:
+        if obj.deferred_completion_due_at is None:
+            return obj.deferred_completion_status == "OVERDUE"
+        return timezone.now() > obj.deferred_completion_due_at
+
+
 class TriageQueueSerializer(serializers.ModelSerializer):
     """Serializer for triage queue entries with flattened data for frontend display."""
 

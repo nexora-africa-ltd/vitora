@@ -508,6 +508,74 @@ class TestAutoResolveBreaches:
         assert result == 0
 
 
+@pytest.mark.django_db
+class TestEmergencyDeferredDocumentationTask:
+    """Tests for overdue emergency triage deferred documentation task."""
+
+    @patch("hmis.apps.triage.tasks.publish_event")
+    def test_marks_pending_as_overdue_once(self, mock_publish_event, triage_setup):
+        """Task should mark only expired PENDING emergency deferred documentation as OVERDUE."""
+        from hmis.apps.core.models import AuditLog
+        from hmis.apps.triage.tasks import flag_overdue_emergency_triage_documentation
+
+        assessment = triage_setup["assessment"]
+        assessment.is_emergency_capture = True
+        assessment.deferred_completion_status = "PENDING"
+        assessment.deferred_completion_due_at = timezone.now() - timedelta(minutes=2)
+        assessment.save(
+            update_fields=[
+                "is_emergency_capture",
+                "deferred_completion_status",
+                "deferred_completion_due_at",
+                "updated_at",
+            ]
+        )
+
+        result = flag_overdue_emergency_triage_documentation()
+        assert result["flagged_overdue"] == 1
+
+        assessment.refresh_from_db()
+        assert assessment.deferred_completion_status == "OVERDUE"
+
+        assert AuditLog.objects.filter(
+            action="triage_emergency_deferred_overdue",
+            resource_type="TriageAssessment",
+            resource_id=assessment.id,
+        ).exists()
+        mock_publish_event.assert_called_once()
+
+    @patch("hmis.apps.triage.tasks.publish_event")
+    def test_is_idempotent_for_already_overdue(self, mock_publish_event, triage_setup):
+        """Task should not re-flag records already marked OVERDUE."""
+        from hmis.apps.core.models import AuditLog
+        from hmis.apps.triage.tasks import flag_overdue_emergency_triage_documentation
+
+        assessment = triage_setup["assessment"]
+        assessment.is_emergency_capture = True
+        assessment.deferred_completion_status = "OVERDUE"
+        assessment.deferred_completion_due_at = timezone.now() - timedelta(hours=1)
+        assessment.save(
+            update_fields=[
+                "is_emergency_capture",
+                "deferred_completion_status",
+                "deferred_completion_due_at",
+                "updated_at",
+            ]
+        )
+
+        first = flag_overdue_emergency_triage_documentation()
+        second = flag_overdue_emergency_triage_documentation()
+
+        assert first["flagged_overdue"] == 0
+        assert second["flagged_overdue"] == 0
+        assert not AuditLog.objects.filter(
+            action="triage_emergency_deferred_overdue",
+            resource_type="TriageAssessment",
+            resource_id=assessment.id,
+        ).exists()
+        mock_publish_event.assert_not_called()
+
+
 # =============================================================================
 # WaitTimeBreach API Tests
 # =============================================================================

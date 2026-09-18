@@ -13,6 +13,9 @@ import logging
 from celery import shared_task
 from django.utils import timezone
 
+from hmis.apps.core.events import ClinicalEvents, publish_event
+from hmis.apps.core.models import AuditLog
+
 logger = logging.getLogger(__name__)
 
 
@@ -123,6 +126,72 @@ def auto_resolve_breaches(self):
         logger.info("Auto-resolved %d wait time breaches", resolved_count)
 
     return resolved_count
+
+
+@shared_task(
+    bind=True,
+    ignore_result=True,
+    max_retries=0,
+    name="hmis.apps.triage.tasks.flag_overdue_emergency_triage_documentation",
+)
+def flag_overdue_emergency_triage_documentation(self):  # noqa: ARG001
+    """Mark emergency triage deferred documentation as overdue once SLA expires."""
+    from hmis.apps.triage.models import TriageAssessment
+
+    now = timezone.now()
+    overdue_qs = TriageAssessment.objects.filter(
+        is_emergency_capture=True,
+        deferred_completion_status="PENDING",
+        deferred_completion_due_at__isnull=False,
+        deferred_completion_due_at__lt=now,
+    ).select_related("encounter")
+
+    flagged = 0
+    for assessment in overdue_qs:
+        assessment.deferred_completion_status = "OVERDUE"
+        assessment.save(update_fields=["deferred_completion_status", "updated_at"])
+        flagged += 1
+
+        AuditLog.log(
+            action="triage_emergency_deferred_overdue",
+            user=None,
+            resource_type="TriageAssessment",
+            resource_id=assessment.id,
+            patient_id=assessment.encounter.patient_id,
+            details={
+                "workflow": "emergency_deferred_completion",
+                "reason": "SLA deadline exceeded",
+                "deferred_completion_due_at": (
+                    assessment.deferred_completion_due_at.isoformat()
+                    if assessment.deferred_completion_due_at
+                    else None
+                ),
+                "deferred_completion_status": assessment.deferred_completion_status,
+            },
+        )
+        publish_event(
+            event_type=ClinicalEvents.TRIAGE_EMERGENCY_DEFERRED_OVERDUE,
+            aggregate_type="TriageAssessment",
+            aggregate_id=assessment.id,
+            payload={
+                "encounter_id": assessment.encounter_id,
+                "patient_id": assessment.encounter.patient_id,
+                "deferred_completion_due_at": (
+                    assessment.deferred_completion_due_at.isoformat()
+                    if assessment.deferred_completion_due_at
+                    else None
+                ),
+                "reason": "SLA deadline exceeded",
+            },
+            facility_id=assessment.facility_id,
+        )
+
+    if flagged:
+        logger.info(
+            "Flagged %d emergency triage deferred documentation records as overdue", flagged
+        )
+
+    return {"flagged_overdue": flagged}
 
 
 def _broadcast_breach_alerts(breaches):

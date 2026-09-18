@@ -67,6 +67,8 @@ class AuditLog(models.Model):
         ("emergency_access_closed", "Emergency Access Closed"),
         ("emergency_access_resource_accessed", "Emergency Access Resource Accessed"),
         ("emergency_access_review_overdue", "Emergency Access Review Overdue"),
+        ("triage_emergency_deferred_overdue", "Triage Emergency Deferred Overdue"),
+        ("triage_emergency_deferred_completed", "Triage Emergency Deferred Completed"),
         # System actions
         ("system_error", "System Error"),
         ("data_export", "Data Export"),
@@ -142,6 +144,13 @@ class AuditLog(models.Model):
     )
 
     # Hash chaining fields for tamper-resistant audit log (DHA Sprint 3.C)
+    HASH_ALGO_SHA256 = "SHA256"
+    HASH_ALGO_HMAC_SHA256 = "HMAC_SHA256"
+    HASH_ALGORITHM_CHOICES = [
+        (HASH_ALGO_SHA256, "SHA-256"),
+        (HASH_ALGO_HMAC_SHA256, "HMAC-SHA256"),
+    ]
+
     sequence_number = models.BigIntegerField(
         unique=True,
         null=True,
@@ -161,6 +170,14 @@ class AuditLog(models.Model):
         blank=True,
         default="",
         help_text="SHA-256 hash of the previous entry in the chain",
+    )
+    hash_algorithm = models.CharField(
+        max_length=20,
+        choices=HASH_ALGORITHM_CHOICES,
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="Hash algorithm used for this entry",
     )
 
     GENESIS_HASH = "0" * 64
@@ -275,6 +292,7 @@ class AuditLog(models.Model):
                 resource_type=resource_type,
                 resource_id=resource_id,
                 details=resolved_details,
+                hash_algorithm=cls.HASH_ALGO_HMAC_SHA256,
             )
 
             return cls.objects.create(
@@ -292,6 +310,7 @@ class AuditLog(models.Model):
                 sequence_number=next_seq,
                 previous_hash=prev_hash,
                 entry_hash=entry_hash,
+                hash_algorithm=cls.HASH_ALGO_HMAC_SHA256,
             )
 
     @staticmethod
@@ -305,13 +324,19 @@ class AuditLog(models.Model):
         resource_type: str,
         resource_id: int | None,
         details: dict,
+        hash_algorithm: str | None = None,
     ) -> str:
-        """Compute HMAC-SHA256 hash for an audit log entry."""
+        """Compute hash for an audit log entry using the configured algorithm."""
         payload = (
             f"{sequence_number}|{previous_hash}|{action}|{user_id}"
             f"|{timestamp.isoformat()}|{resource_type}|{resource_id}"
             f"|{json.dumps(details, sort_keys=True, default=str)}"
         )
+
+        algorithm = hash_algorithm or AuditLog.HASH_ALGO_HMAC_SHA256
+        if algorithm == AuditLog.HASH_ALGO_SHA256:
+            return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
         chain_key = getattr(settings, "AUDIT_LOG_CHAIN_KEY", "") or getattr(
             settings, "SECRET_KEY", ""
         )

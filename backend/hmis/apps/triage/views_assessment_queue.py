@@ -13,10 +13,14 @@ Supported inputs/args:
 """
 
 import logging
+from datetime import datetime, time
+from io import StringIO
 
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
+from django.http import HttpResponse
 from django.utils import timezone
+from django.utils.dateparse import parse_date, parse_datetime
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
@@ -26,6 +30,7 @@ from rest_framework.permissions import AllowAny, BasePermission, IsAdminUser, Is
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from hmis.apps.core.events import ClinicalEvents, publish_event
 from hmis.apps.core.mixins import (
     NestedTenantScopeMixin,
     ReadOnCreateMixin,
@@ -53,6 +58,7 @@ from .models import (
 )
 from .serializers import (
     EmergencyTriageCreateSerializer,
+    EmergencyTriageDeferredBacklogSerializer,
     EmergencyTriageDeferredCompleteSerializer,
     ERBedAssignPatientSerializer,
     ERBedBoardSummarySerializer,
@@ -222,6 +228,85 @@ class TriageAssessmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     ]
     ordering_fields = ["arrival_time", "triage_start_time", "triage_category"]
     ordering = ["-arrival_time"]
+
+    def _mark_deferred_overdue(
+        self, assessment: TriageAssessment, user=None, reason: str = ""
+    ) -> None:
+        if assessment.deferred_completion_status != "PENDING":
+            return
+        assessment.deferred_completion_status = "OVERDUE"
+        assessment.save(update_fields=["deferred_completion_status", "updated_at"])
+
+        details = {
+            "workflow": "emergency_deferred_completion",
+            "reason": reason or "SLA deadline exceeded",
+            "deferred_completion_due_at": (
+                assessment.deferred_completion_due_at.isoformat()
+                if assessment.deferred_completion_due_at
+                else None
+            ),
+            "deferred_completion_status": assessment.deferred_completion_status,
+        }
+        AuditLog.log(
+            action="triage_emergency_deferred_overdue",
+            user=user,
+            resource_type="TriageAssessment",
+            resource_id=assessment.id,
+            details=details,
+            patient_id=assessment.encounter.patient_id,
+        )
+        publish_event(
+            event_type=ClinicalEvents.TRIAGE_EMERGENCY_DEFERRED_OVERDUE,
+            aggregate_type="TriageAssessment",
+            aggregate_id=assessment.id,
+            payload={
+                "encounter_id": assessment.encounter_id,
+                "patient_id": assessment.encounter.patient_id,
+                "deferred_completion_due_at": (
+                    assessment.deferred_completion_due_at.isoformat()
+                    if assessment.deferred_completion_due_at
+                    else None
+                ),
+                "reason": reason or "SLA deadline exceeded",
+            },
+            facility_id=assessment.facility_id,
+        )
+
+    def _get_emergency_deferred_queryset(self):
+        queryset = self.get_queryset().filter(
+            is_emergency_capture=True,
+            deferred_completion_status__in=["PENDING", "OVERDUE"],
+        )
+
+        triaged_by = self.request.query_params.get("triaged_by")
+        if triaged_by:
+            queryset = queryset.filter(triaged_by_id=triaged_by)
+
+        due_from = self.request.query_params.get("due_from")
+        if due_from:
+            parsed = parse_datetime(due_from)
+            if parsed is None:
+                parsed_date = parse_date(due_from)
+                if parsed_date is not None:
+                    parsed = timezone.make_aware(datetime.combine(parsed_date, time.min))
+            if parsed is not None:
+                queryset = queryset.filter(deferred_completion_due_at__gte=parsed)
+
+        due_to = self.request.query_params.get("due_to")
+        if due_to:
+            parsed = parse_datetime(due_to)
+            if parsed is None:
+                parsed_date = parse_date(due_to)
+                if parsed_date is not None:
+                    parsed = timezone.make_aware(datetime.combine(parsed_date, time.max))
+            if parsed is not None:
+                queryset = queryset.filter(deferred_completion_due_at__lte=parsed)
+
+        overdue_only = self.request.query_params.get("overdue_only", "false").lower() == "true"
+        if overdue_only:
+            queryset = queryset.filter(deferred_completion_status="OVERDUE")
+
+        return queryset.order_by("deferred_completion_due_at", "arrival_time")
 
     def get_serializer_class(self):
         """Use different serializers for create vs read."""
@@ -429,7 +514,7 @@ class TriageAssessmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         assessment = serializer.save()
 
         AuditLog.log(
-            action="triage_update",
+            action="triage_emergency_deferred_completed",
             user=request.user,
             resource_type="TriageAssessment",
             resource_id=assessment.id,
@@ -445,6 +530,22 @@ class TriageAssessmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 ),
                 "workflow": "emergency_deferred_completion",
             },
+        )
+        publish_event(
+            event_type=ClinicalEvents.TRIAGE_EMERGENCY_DEFERRED_COMPLETED,
+            aggregate_type="TriageAssessment",
+            aggregate_id=assessment.id,
+            payload={
+                "encounter_id": assessment.encounter_id,
+                "patient_id": assessment.encounter.patient_id,
+                "deferred_completion_status": assessment.deferred_completion_status,
+                "deferred_completion_completed_at": (
+                    assessment.deferred_completion_completed_at.isoformat()
+                    if assessment.deferred_completion_completed_at
+                    else None
+                ),
+            },
+            facility_id=assessment.facility_id,
         )
         return Response(TriageAssessmentSerializer(assessment, context={"request": request}).data)
 
@@ -466,8 +567,11 @@ class TriageAssessmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             and assessment.deferred_completion_status in {"PENDING", "OVERDUE"}
         )
         if is_overdue and assessment.deferred_completion_status != "OVERDUE":
-            assessment.deferred_completion_status = "OVERDUE"
-            assessment.save(update_fields=["deferred_completion_status", "updated_at"])
+            self._mark_deferred_overdue(
+                assessment,
+                user=request.user,
+                reason="SLA checked via emergency-documentation-sla endpoint",
+            )
 
         remaining_minutes = None
         if due_at is not None:
@@ -487,6 +591,112 @@ class TriageAssessmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "is_overdue": assessment.deferred_completion_status == "OVERDUE",
                 "remaining_minutes": remaining_minutes,
                 "server_time": now.isoformat(),
+            }
+        )
+
+    @action(detail=False, methods=["get"], url_path="emergency-deferred-backlog")
+    def emergency_deferred_backlog(self, request):
+        """List pending/overdue emergency triage deferred documentation backlog."""
+        queryset = self._get_emergency_deferred_queryset()
+        now = timezone.now()
+
+        pending_count = queryset.filter(deferred_completion_status="PENDING").count()
+        overdue_count = queryset.filter(deferred_completion_status="OVERDUE").count()
+        soon_due_count = queryset.filter(
+            deferred_completion_status="PENDING",
+            deferred_completion_due_at__isnull=False,
+            deferred_completion_due_at__gte=now,
+            deferred_completion_due_at__lte=now + timezone.timedelta(minutes=30),
+        ).count()
+
+        serializer = EmergencyTriageDeferredBacklogSerializer(queryset, many=True)
+        return Response(
+            {
+                "count": len(serializer.data),
+                "pending_count": pending_count,
+                "overdue_count": overdue_count,
+                "due_within_30m_count": soon_due_count,
+                "server_time": now.isoformat(),
+                "results": serializer.data,
+            }
+        )
+
+    @action(detail=False, methods=["get"], url_path="emergency-deferred-report")
+    def emergency_deferred_report(self, request):
+        """Return summary metrics for emergency triage deferred documentation."""
+        queryset = self._get_emergency_deferred_queryset()
+        now = timezone.now()
+
+        pending_qs = queryset.filter(deferred_completion_status="PENDING")
+        overdue_qs = queryset.filter(deferred_completion_status="OVERDUE")
+        pending_due_soon_qs = pending_qs.filter(
+            deferred_completion_due_at__isnull=False,
+            deferred_completion_due_at__gte=now,
+            deferred_completion_due_at__lte=now + timezone.timedelta(minutes=30),
+        )
+
+        return Response(
+            {
+                "as_of": now.isoformat(),
+                "total_open": queryset.count(),
+                "pending": pending_qs.count(),
+                "overdue": overdue_qs.count(),
+                "due_within_30m": pending_due_soon_qs.count(),
+            }
+        )
+
+    @action(detail=False, methods=["get"], url_path="emergency-deferred-export")
+    def emergency_deferred_export(self, request):
+        """Export emergency triage deferred backlog as JSON or CSV."""
+        queryset = self._get_emergency_deferred_queryset()
+        export_format = request.query_params.get("export_format", "json").lower()
+        serializer = EmergencyTriageDeferredBacklogSerializer(queryset, many=True)
+
+        if export_format == "csv":
+            buffer = StringIO()
+            field_names = [
+                "id",
+                "encounter_id",
+                "patient_id",
+                "patient_name",
+                "patient_mrn",
+                "triage_category",
+                "assigned_area",
+                "triaged_by",
+                "triaged_by_name",
+                "deferred_completion_status",
+                "deferred_completion_due_at",
+                "deferred_completion_completed_at",
+                "remaining_minutes",
+                "is_overdue",
+                "updated_at",
+            ]
+            import csv
+
+            writer = csv.DictWriter(buffer, fieldnames=field_names)
+            writer.writeheader()
+            for row in serializer.data:
+                writer.writerow({field: row.get(field) for field in field_names})
+
+            response = HttpResponse(buffer.getvalue(), content_type="text/csv")
+            response["Content-Disposition"] = (
+                'attachment; filename="triage-emergency-deferred-backlog.csv"'
+            )
+            return response
+
+        if export_format != "json":
+            return Response(
+                {
+                    "detail": "Unsupported export format. Use export_format=json or export_format=csv."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            {
+                "generated_at": timezone.now().isoformat(),
+                "count": len(serializer.data),
+                "results": serializer.data,
             }
         )
 

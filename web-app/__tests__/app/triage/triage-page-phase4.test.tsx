@@ -32,6 +32,8 @@ jest.mock('@/lib/hooks/use-triage', () => ({
   useBreachSummary: jest.fn(),
   useAvailableTriageRooms: jest.fn(),
   useAssignTriageRoom: jest.fn(),
+  useEmergencyDeferredBacklog: jest.fn(),
+  useCompleteEmergencyDeferredDocumentation: jest.fn(),
   // These should no longer be used after removal
   useTriageQueue: jest.fn(),
   useTriageQueueActions: jest.fn(),
@@ -55,6 +57,8 @@ import {
   useBreachSummary,
   useAvailableTriageRooms,
   useAssignTriageRoom,
+  useEmergencyDeferredBacklog,
+  useCompleteEmergencyDeferredDocumentation,
   useTriageQueue,
   useTriageQueueActions,
 } from '@/lib/hooks/use-triage';
@@ -68,6 +72,9 @@ const mockedUseTriageVolumeReport = useTriageVolumeReport as jest.Mock;
 const mockedUseBreachSummary = useBreachSummary as jest.Mock;
 const mockedUseAvailableTriageRooms = useAvailableTriageRooms as jest.Mock;
 const mockedUseAssignTriageRoom = useAssignTriageRoom as jest.Mock;
+const mockedUseEmergencyDeferredBacklog = useEmergencyDeferredBacklog as jest.Mock;
+const mockedUseCompleteEmergencyDeferredDocumentation =
+  useCompleteEmergencyDeferredDocumentation as jest.Mock;
 const mockedUseTriageQueue = useTriageQueue as jest.Mock;
 const mockedUseTriageQueueActions = useTriageQueueActions as jest.Mock;
 
@@ -146,6 +153,36 @@ describe('Triage Page - Phase 4.1 Updates', () => {
     });
     mockedUseAvailableTriageRooms.mockReturnValue({ data: [] });
     mockedUseAssignTriageRoom.mockReturnValue({ mutateAsync: jest.fn() });
+    mockedUseEmergencyDeferredBacklog.mockReturnValue({
+      data: {
+        count: 1,
+        pending_count: 1,
+        overdue_count: 0,
+        due_within_30m_count: 1,
+        server_time: new Date().toISOString(),
+        results: [
+          {
+            id: 88,
+            encounter_id: 201,
+            patient_id: 101,
+            patient_name: 'John Kamau',
+            patient_mrn: 'MRN-20260104-0001',
+            triage_category: 'RED',
+            assigned_area: 'ER_RESUS',
+            triaged_by: 1,
+            triaged_by_name: 'Test User',
+            deferred_completion_status: 'PENDING',
+            deferred_completion_due_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+            deferred_completion_completed_at: null,
+            remaining_minutes: 15,
+            is_overdue: false,
+            updated_at: new Date().toISOString(),
+          },
+        ],
+      },
+      refetch: jest.fn(),
+    });
+    mockedUseCompleteEmergencyDeferredDocumentation.mockReturnValue({ mutateAsync: jest.fn() });
     mockedUseTriageQueue.mockReturnValue({
       data: { results: [], count: 0 },
       isLoading: false,
@@ -357,6 +394,20 @@ describe('Triage Page - Phase 4.1 Updates', () => {
       await waitFor(() => {
         expect(screen.getByText('Target Met')).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('Emergency Deferred Documentation Widget', () => {
+    it('should render emergency deferred backlog widget with actions', async () => {
+      render(<TriageQueuePage />, { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        expect(screen.getByText('Emergency Deferred Documentation')).toBeInTheDocument();
+      });
+
+      expect(screen.getByRole('button', { name: /Open Record/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Complete/i })).toBeInTheDocument();
+      expect(screen.getByText(/Open: 1/i)).toBeInTheDocument();
     });
   });
 

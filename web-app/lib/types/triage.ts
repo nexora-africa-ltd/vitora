@@ -808,6 +808,10 @@ export interface TriageQueueListParams {
 // =============================================================================
 
 export type {
+  DeferredCompletionStatus,
+  EmergencyDeferredBacklogItem,
+  EmergencyDeferredBacklogResponse,
+  EmergencyDeferredReport,
   WaitTimeStats,
   VolumeByCategory,
   VolumeByArea,
