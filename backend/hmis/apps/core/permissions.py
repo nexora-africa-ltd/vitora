@@ -12,6 +12,7 @@ import logging
 
 from rest_framework import permissions
 
+from .emergency_access.service import has_sensitive_access_override
 from .models import AuditLog
 
 logger = logging.getLogger(__name__)
@@ -92,8 +93,10 @@ class SensitiveAccessPermission(permissions.BasePermission):
             self._log_sensitive_access(request, obj, granted=True)
             return True
 
-        # Check for specific permission
-        has_permission = request.user.has_perm("patients.view_sensitive_patient")
+        # Check for specific permission or active emergency override
+        has_permission = request.user.has_perm("patients.view_sensitive_patient") or (
+            has_sensitive_access_override(request.user, obj)
+        )
 
         # Log the access attempt
         self._log_sensitive_access(request, obj, granted=has_permission)
@@ -123,6 +126,11 @@ class SensitiveAccessPermission(permissions.BasePermission):
                 "patient_mrn": getattr(obj, "mrn", ""),
                 "is_sensitive": True,
                 "access_granted": granted,
+                "break_glass_override": (
+                    has_sensitive_access_override(request.user, obj)
+                    if request.user and request.user.is_authenticated
+                    else False
+                ),
             },
         )
 
@@ -232,7 +240,9 @@ class PatientPermission(permissions.BasePermission):
         if request.user.is_superuser:
             return True
 
-        return request.user.has_perm("patients.view_sensitive_patient")
+        return request.user.has_perm(
+            "patients.view_sensitive_patient"
+        ) or has_sensitive_access_override(request.user, obj)
 
 
 class RoleBasedPermission(permissions.BasePermission):

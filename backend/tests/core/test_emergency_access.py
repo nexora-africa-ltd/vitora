@@ -20,10 +20,13 @@ from rest_framework.test import APIClient
 
 from hmis.apps.core.emergency_access.models import (
     EmergencyAccess,
+    EmergencyAccessAccessMode,
     EmergencyAccessReason,
+    EmergencyAccessScope,
     EmergencyAccessStatus,
 )
 from hmis.apps.core.models import AuditLog
+from hmis.apps.patients.models import Patient
 from tests.conftest import ensure_staff_profile
 
 User = get_user_model()
@@ -287,6 +290,41 @@ class TestEmergencyAccessModel:
         assert EmergencyAccess.has_active_access(regular_user) is True
         assert EmergencyAccess.has_active_access(regular_user, sample_patient) is True
 
+    def test_has_active_access_is_scoped_to_patient(
+        self,
+        regular_user,
+        sample_patient,
+        sample_county,
+        sample_sub_county,
+        sample_organization,
+        sample_facility,
+        db,
+    ):
+        """Patient-scoped access should not apply to unrelated sensitive patients."""
+        other_patient = Patient.objects.create(
+            first_name="Other",
+            last_name="Sensitive",
+            date_of_birth="1980-01-01",
+            gender="F",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            organization=sample_organization,
+            registered_at_facility=sample_facility,
+            is_sensitive=True,
+        )
+
+        EmergencyAccess.objects.create(
+            user=regular_user,
+            patient=sample_patient,
+            reason=EmergencyAccessReason.LIFE_THREATENING,
+            reason_details="Emergency access for known patient.",
+            duration_minutes=60,
+            scope_type=EmergencyAccessScope.PATIENT,
+        )
+
+        assert EmergencyAccess.has_active_access(regular_user, sample_patient) is True
+        assert EmergencyAccess.has_active_access(regular_user, other_patient) is False
+
     def test_string_representation(self, regular_user, sample_patient, db):
         """Should return meaningful string representation."""
         ea = EmergencyAccess.objects.create(
@@ -366,6 +404,38 @@ class TestEmergencyAccessSerializers:
         assert serializer.is_valid() is False
         assert "patient_mrn" in serializer.errors
 
+    def test_create_serializer_requires_patient_for_patient_scope(self, db):
+        """Patient scope must include patient_mrn."""
+        from hmis.apps.core.emergency_access.serializers import EmergencyAccessCreateSerializer
+
+        serializer = EmergencyAccessCreateSerializer(
+            data={
+                "reason": EmergencyAccessReason.LIFE_THREATENING,
+                "reason_details": "Valid justification for emergency access.",
+                "duration_minutes": 60,
+                "scope_type": EmergencyAccessScope.PATIENT,
+            }
+        )
+
+        assert serializer.is_valid() is False
+        assert "patient_mrn" in serializer.errors
+
+    def test_create_serializer_restricts_system_scope_reasons(self, db):
+        """System-wide scope should be limited to disaster/mass-casualty reasons."""
+        from hmis.apps.core.emergency_access.serializers import EmergencyAccessCreateSerializer
+
+        serializer = EmergencyAccessCreateSerializer(
+            data={
+                "reason": EmergencyAccessReason.LIFE_THREATENING,
+                "reason_details": "Valid justification for emergency access.",
+                "duration_minutes": 60,
+                "scope_type": EmergencyAccessScope.SYSTEM,
+            }
+        )
+
+        assert serializer.is_valid() is False
+        assert "scope_type" in serializer.errors
+
 
 # ============================================================================
 # API Tests
@@ -377,7 +447,7 @@ class TestEmergencyAccessAPI:
 
     @patch("hmis.apps.core.emergency_access.views.send_emergency_access_escalation.delay")
     def test_create_emergency_access_success(
-        self, mock_escalation, authenticated_regular_client, db
+        self, mock_escalation, authenticated_regular_client, sample_patient, db
     ):
         """Should create emergency access and trigger escalation."""
         url = reverse("emergency-access-list")
@@ -385,6 +455,7 @@ class TestEmergencyAccessAPI:
             "reason": EmergencyAccessReason.LIFE_THREATENING,
             "reason_details": "Patient arrived in critical condition, need immediate access.",
             "duration_minutes": 120,
+            "patient_mrn": sample_patient.mrn,
         }
 
         response = authenticated_regular_client.post(url, data, format="json")
@@ -392,6 +463,8 @@ class TestEmergencyAccessAPI:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["reason"] == EmergencyAccessReason.LIFE_THREATENING
         assert response.data["is_active"] is True
+        assert response.data["scope_type"] == EmergencyAccessScope.PATIENT
+        assert response.data["access_mode"] == EmergencyAccessAccessMode.READ_ONLY
         mock_escalation.assert_called_once()
 
     def test_create_emergency_access_unauthenticated_fails(self, db):
@@ -402,6 +475,7 @@ class TestEmergencyAccessAPI:
             "reason": EmergencyAccessReason.LIFE_THREATENING,
             "reason_details": "Emergency access needed.",
             "duration_minutes": 60,
+            "patient_mrn": "MRN-20260101-0001",
         }
 
         response = client.post(url, data, format="json")
@@ -409,7 +483,7 @@ class TestEmergencyAccessAPI:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_create_emergency_access_logs_audit(
-        self, authenticated_regular_client, regular_user, db
+        self, authenticated_regular_client, regular_user, sample_patient, db
     ):
         """Should create audit log entry when emergency access is invoked."""
         url = reverse("emergency-access-list")
@@ -422,6 +496,7 @@ class TestEmergencyAccessAPI:
                     "reason": EmergencyAccessReason.LIFE_THREATENING,
                     "reason_details": "Critical emergency situation.",
                     "duration_minutes": 60,
+                    "patient_mrn": sample_patient.mrn,
                 },
                 format="json",
             )
@@ -433,6 +508,99 @@ class TestEmergencyAccessAPI:
         audit_log = AuditLog.objects.filter(action="emergency_access_invoke").latest("timestamp")
         assert audit_log.user == regular_user
         assert audit_log.resource_type == "EmergencyAccess"
+
+    def test_invoke_system_scope_for_disaster_reason(self, authenticated_regular_client, db):
+        """System scope should be allowed for disaster response."""
+        url = reverse("emergency-access-list")
+        response = authenticated_regular_client.post(
+            url,
+            {
+                "reason": EmergencyAccessReason.DISASTER_RESPONSE,
+                "reason_details": "Facility-wide response during a major disaster event.",
+                "duration_minutes": 120,
+                "scope_type": EmergencyAccessScope.SYSTEM,
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["scope_type"] == EmergencyAccessScope.SYSTEM
+
+    def test_close_active_emergency_access(self, authenticated_regular_client, regular_user, db):
+        """Requester should be able to close their own active emergency access."""
+        ea = EmergencyAccess.objects.create(
+            user=regular_user,
+            reason=EmergencyAccessReason.DISASTER_RESPONSE,
+            reason_details="Disaster response underway.",
+            duration_minutes=60,
+            scope_type=EmergencyAccessScope.SYSTEM,
+        )
+        url = reverse("emergency-access-close", args=[ea.id])
+
+        response = authenticated_regular_client.post(url, {}, format="json")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["status"] == EmergencyAccessStatus.EXPIRED
+        assert response.data["closed_at"] is not None
+
+    def test_non_owner_cannot_close_emergency_access(
+        self, authenticated_regular_client, admin_user, db
+    ):
+        """Users should not be able to close someone else's active session."""
+        other = EmergencyAccess.objects.create(
+            user=admin_user,
+            reason=EmergencyAccessReason.DISASTER_RESPONSE,
+            reason_details="Disaster response underway.",
+            duration_minutes=60,
+            scope_type=EmergencyAccessScope.SYSTEM,
+        )
+        url = reverse("emergency-access-close", args=[other.id])
+
+        response = authenticated_regular_client.post(url, {}, format="json")
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_patient_scoped_break_glass_allows_only_targeted_sensitive_patient(
+        self,
+        authenticated_regular_client,
+        regular_user,
+        sample_patient,
+        sample_county,
+        sample_sub_county,
+        sample_organization,
+        sample_facility,
+        db,
+    ):
+        """Sensitive patient list should include only patient-scoped break-glass targets."""
+        sample_patient.is_sensitive = True
+        sample_patient.save(update_fields=["is_sensitive"])
+        other_sensitive = Patient.objects.create(
+            first_name="Another",
+            last_name="Sensitive",
+            date_of_birth="1978-06-10",
+            gender="F",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            organization=sample_organization,
+            registered_at_facility=sample_facility,
+            is_sensitive=True,
+        )
+
+        EmergencyAccess.objects.create(
+            user=regular_user,
+            patient=sample_patient,
+            reason=EmergencyAccessReason.LIFE_THREATENING,
+            reason_details="Need urgent chart for this specific patient.",
+            duration_minutes=60,
+            scope_type=EmergencyAccessScope.PATIENT,
+        )
+
+        response = authenticated_regular_client.get(reverse("patient-list"))
+
+        assert response.status_code == status.HTTP_200_OK
+        returned_ids = {row["id"] for row in response.data["results"]}
+        assert sample_patient.id in returned_ids
+        assert other_sensitive.id not in returned_ids
 
     def test_list_own_emergency_access(
         self, authenticated_regular_client, regular_user, admin_user, db

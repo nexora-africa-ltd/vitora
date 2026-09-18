@@ -259,7 +259,7 @@ class EmergencyAccessViewSet(viewsets.ModelViewSet):
         # Update expired statuses first
         EmergencyAccess.objects.filter(
             status=EmergencyAccessStatus.ACTIVE, expires_at__lt=now
-        ).update(status=EmergencyAccessStatus.EXPIRED)
+        ).update(status=EmergencyAccessStatus.EXPIRED, closed_at=now)
 
         # Aggregate statistics
         total_active = EmergencyAccess.objects.filter(
@@ -309,3 +309,36 @@ class EmergencyAccessViewSet(viewsets.ModelViewSet):
         active = EmergencyAccess.get_active_for_user(request.user)
         serializer = self.get_serializer(active, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def close(self, request, pk=None):
+        """Close current user's active emergency access session."""
+        instance = self.get_object()
+        if instance.user_id != request.user.id and not request.user.has_perm(
+            "core.approve_emergency_access"
+        ):
+            return Response(
+                {"detail": "You can only close your own emergency access sessions."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not instance.is_active:
+            return Response(
+                {"detail": "Emergency access session is no longer active."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        instance.close()
+        AuditLog.log(
+            action="emergency_access_revoked",
+            user=request.user,
+            resource_type="EmergencyAccess",
+            resource_id=instance.id,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=instance.patient_id,
+            details={
+                "closed_by_requester": instance.user_id == request.user.id,
+            },
+        )
+        return Response(EmergencyAccessSerializer(instance).data)

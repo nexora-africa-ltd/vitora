@@ -32,6 +32,20 @@ class EmergencyAccessStatus(models.TextChoices):
     REVIEWED = "REVIEWED", "Reviewed and Closed"
 
 
+class EmergencyAccessScope(models.TextChoices):
+    """Scope of records covered by emergency access."""
+
+    PATIENT = "PATIENT", "Patient specific"
+    SYSTEM = "SYSTEM", "System wide"
+
+
+class EmergencyAccessAccessMode(models.TextChoices):
+    """Access mode allowed during emergency access."""
+
+    READ_ONLY = "READ_ONLY", "Read only"
+    LIMITED_WRITE = "LIMITED_WRITE", "Limited write"
+
+
 class EmergencyAccess(models.Model):
     """
     Emergency Access (Break-Glass) record.
@@ -88,6 +102,35 @@ class EmergencyAccess(models.Model):
     duration_minutes = models.PositiveIntegerField(
         default=240,  # 4 hours default
         help_text="Duration of emergency access in minutes (max 1440 = 24 hours)",
+    )
+    scope_type = models.CharField(
+        max_length=20,
+        choices=EmergencyAccessScope.choices,
+        default=EmergencyAccessScope.PATIENT,
+        db_index=True,
+        help_text="Scope of access granted by this emergency request",
+    )
+    access_mode = models.CharField(
+        max_length=20,
+        choices=EmergencyAccessAccessMode.choices,
+        default=EmergencyAccessAccessMode.READ_ONLY,
+        help_text="Access mode granted during the emergency window",
+    )
+    granted_permissions = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Effective capabilities granted during this emergency access",
+    )
+    review_due_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="Deadline for post-hoc compliance review",
+    )
+    closed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When requester explicitly closed the emergency session",
     )
 
     # Status
@@ -189,6 +232,8 @@ class EmergencyAccess(models.Model):
         """Set expires_at based on duration_minutes if not set."""
         if not self.expires_at:
             self.expires_at = self.requested_at + timezone.timedelta(minutes=self.duration_minutes)
+        if not self.review_due_at:
+            self.review_due_at = self.requested_at + timezone.timedelta(hours=24)
         super().save(*args, **kwargs)
 
     @property
@@ -223,7 +268,16 @@ class EmergencyAccess(models.Model):
         self.revoked_by = user
         self.revoked_at = timezone.now()
         self.revocation_reason = reason
-        self.save(update_fields=["status", "revoked_by", "revoked_at", "revocation_reason"])
+        self.closed_at = timezone.now()
+        self.save(
+            update_fields=[
+                "status",
+                "revoked_by",
+                "revoked_at",
+                "revocation_reason",
+                "closed_at",
+            ]
+        )
 
     def mark_reviewed(self, approver, notes: str = "") -> None:
         """
@@ -237,7 +291,16 @@ class EmergencyAccess(models.Model):
         self.approver = approver
         self.approved_at = timezone.now()
         self.approval_notes = notes
-        self.save(update_fields=["status", "approver", "approved_at", "approval_notes"])
+        self.closed_at = self.approved_at
+        self.save(
+            update_fields=["status", "approver", "approved_at", "approval_notes", "closed_at"]
+        )
+
+    def close(self) -> None:
+        """Close an active emergency session early."""
+        self.status = EmergencyAccessStatus.EXPIRED
+        self.closed_at = timezone.now()
+        self.save(update_fields=["status", "closed_at"])
 
     def check_expired(self) -> bool:
         """
@@ -248,7 +311,11 @@ class EmergencyAccess(models.Model):
         """
         if self.status == EmergencyAccessStatus.ACTIVE and self.is_expired:
             self.status = EmergencyAccessStatus.EXPIRED
-            self.save(update_fields=["status"])
+            if not self.closed_at:
+                self.closed_at = timezone.now()
+                self.save(update_fields=["status", "closed_at"])
+            else:
+                self.save(update_fields=["status"])
             return True
         return False
 
@@ -282,5 +349,8 @@ class EmergencyAccess(models.Model):
         """
         qs = cls.get_active_for_user(user)
         if patient:
-            qs = qs.filter(models.Q(patient=patient) | models.Q(patient__isnull=True))
+            qs = qs.filter(
+                models.Q(scope_type=EmergencyAccessScope.SYSTEM)
+                | models.Q(scope_type=EmergencyAccessScope.PATIENT, patient=patient)
+            )
         return qs.exists()

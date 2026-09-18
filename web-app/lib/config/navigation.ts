@@ -1587,12 +1587,6 @@ const _allNavItems: NavItemType[] = [
         actionKey: 'admin.manage_staff',
       },
       {
-        label: 'Emergency Access',
-        href: '/admin/emergency-access',
-        icon: ShieldAlert,
-        actionKey: 'admin.view_audit_logs',
-      },
-      {
         label: 'Audit Logs',
         href: '/admin/audit-logs',
         icon: ScrollText,
@@ -1637,6 +1631,17 @@ const _allNavItems: NavItemType[] = [
         icon: Globe,
         actionKey: 'admin.view_audit_logs',
         requiresInternet: true,
+      },
+    ],
+  },
+  {
+    label: 'Safety',
+    icon: ShieldAlert,
+    children: [
+      {
+        label: 'Emergency Access',
+        href: '/safety/emergency-access',
+        icon: ShieldAlert,
       },
     ],
   },
