@@ -19,6 +19,7 @@ from django.conf import settings as django_settings
 from django.contrib.auth.models import Permission
 from django.contrib.auth.signals import user_logged_in, user_login_failed
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 from django_filters.rest_framework import DjangoFilterBackend
@@ -328,6 +329,13 @@ class AuditLogViewSet(
     def get_queryset(self):
         """Apply optional date range filters for admin audit review."""
         queryset = super().get_queryset()
+
+        facility = getattr(self.request, "facility", None)
+        organization = getattr(self.request, "organization", None)
+        if facility is not None and organization is not None:
+            queryset = AuditLog.objects.filter(
+                Q(facility=facility) | Q(facility__isnull=True, organization=organization)
+            )
 
         profile = getattr(self.request.user, "staff_profile", None)
         role_code = getattr(getattr(profile, "primary_role", None), "code", "")

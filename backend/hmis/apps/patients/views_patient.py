@@ -151,8 +151,6 @@ class PatientViewSet(
 
         # Check if user can view sensitive records
         if not user.has_perm("patients.view_sensitive_patient"):
-            if self.action != "list":
-                return queryset
             allow_all_sensitive, patient_ids = get_sensitive_patient_scope_for_user(user)
             if allow_all_sensitive:
                 return queryset
