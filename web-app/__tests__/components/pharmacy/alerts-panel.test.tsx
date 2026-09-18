@@ -8,8 +8,21 @@
 import React from 'react';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AlertsPanel } from '@/components/pharmacy/alerts-panel';
 import { mockStockAlerts } from '@/__tests__/mocks/pharmacy-data';
+
+jest.mock('@/lib/hooks/use-permissions', () => ({
+  usePermissions: () => ({
+    isAdmin: false,
+  }),
+}));
+
+jest.mock('@/lib/context/facility-context', () => ({
+  useFacility: () => ({
+    facility: null,
+  }),
+}));
 
 // Mock the hooks
 jest.mock('@/lib/hooks/use-pharmacy', () => ({
@@ -50,6 +63,16 @@ jest.mock('@/components/ui/tabs', () => ({
 }));
 
 describe('AlertsPanel', () => {
+  const renderWithQueryClient = (ui: React.ReactElement) => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+    return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+  };
+
   const defaultProps = {
     alerts: mockStockAlerts,
     isLoading: false,
@@ -66,7 +89,7 @@ describe('AlertsPanel', () => {
 
   describe('Rendering', () => {
     it('should render alerts list', () => {
-      render(<AlertsPanel {...defaultProps} />);
+      renderWithQueryClient(<AlertsPanel {...defaultProps} />);
 
       // Check for alert messages in the component
       expect(
@@ -76,7 +99,7 @@ describe('AlertsPanel', () => {
     });
 
     it('should show drug names in alerts', () => {
-      render(<AlertsPanel {...defaultProps} />);
+      renderWithQueryClient(<AlertsPanel {...defaultProps} />);
 
       // Drug names can appear multiple times (in list and links), use getAllByText
       expect(screen.getAllByText(/Amoxicillin 500mg/i).length).toBeGreaterThan(0);
@@ -86,7 +109,7 @@ describe('AlertsPanel', () => {
 
   describe('Severity badges', () => {
     it('should show severity badge for each alert', () => {
-      render(<AlertsPanel {...defaultProps} />);
+      renderWithQueryClient(<AlertsPanel {...defaultProps} />);
 
       expect(screen.getByText('HIGH')).toBeInTheDocument();
       expect(screen.getAllByText('CRITICAL').length).toBeGreaterThan(0);
@@ -95,7 +118,7 @@ describe('AlertsPanel', () => {
 
   describe('Alert status', () => {
     it('should show acknowledged info for acknowledged alerts', () => {
-      render(<AlertsPanel {...defaultProps} />);
+      renderWithQueryClient(<AlertsPanel {...defaultProps} />);
 
       // Alert id 2 is acknowledged - look for acknowledgement info with getAllByText
       // since "Acknowledged by" text might appear multiple times
@@ -103,7 +126,7 @@ describe('AlertsPanel', () => {
     });
 
     it('should show acknowledge button for unacknowledged alerts', () => {
-      render(<AlertsPanel {...defaultProps} />);
+      renderWithQueryClient(<AlertsPanel {...defaultProps} />);
 
       // Look for acknowledge button using data-testid
       expect(screen.getByTestId('acknowledge-button')).toBeInTheDocument();
@@ -112,7 +135,7 @@ describe('AlertsPanel', () => {
 
   describe('Filtering', () => {
     it('should have filter controls for alert types', () => {
-      render(<AlertsPanel {...defaultProps} />);
+      renderWithQueryClient(<AlertsPanel {...defaultProps} />);
 
       // The component has tabs/filters for different alert types
       expect(screen.getByTestId('tab-all')).toBeInTheDocument();
@@ -123,7 +146,7 @@ describe('AlertsPanel', () => {
 
   describe('Loading state', () => {
     it('should show loading spinner when isLoading is true', () => {
-      render(<AlertsPanel {...defaultProps} isLoading={true} alerts={[]} />);
+      renderWithQueryClient(<AlertsPanel {...defaultProps} isLoading={true} alerts={[]} />);
 
       expect(screen.getByTestId('alerts-loading')).toBeInTheDocument();
     });
@@ -131,7 +154,7 @@ describe('AlertsPanel', () => {
 
   describe('Empty state', () => {
     it('should show message when no alerts', () => {
-      render(<AlertsPanel {...defaultProps} alerts={[]} totalCount={0} />);
+      renderWithQueryClient(<AlertsPanel {...defaultProps} alerts={[]} totalCount={0} />);
 
       expect(screen.getByText('No active alerts')).toBeInTheDocument();
       expect(screen.getByText('All stock levels are within normal range')).toBeInTheDocument();
@@ -140,7 +163,9 @@ describe('AlertsPanel', () => {
 
   describe('Error state', () => {
     it('should show error message when error is present', () => {
-      render(<AlertsPanel {...defaultProps} error={new Error('Failed to load')} alerts={[]} />);
+      renderWithQueryClient(
+        <AlertsPanel {...defaultProps} error={new Error('Failed to load')} alerts={[]} />
+      );
 
       expect(screen.getByText(/failed to load|error/i)).toBeInTheDocument();
     });

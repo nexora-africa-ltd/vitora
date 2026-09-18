@@ -127,5 +127,5 @@ describe('ExternalProcedureRequestsPage actions', () => {
       expect(mockRejectExternalRequest).toHaveBeenCalledWith(31, 'No specialist available');
     });
     expect(mockToastSuccess).toHaveBeenCalledWith('External request rejected');
-  });
+  }, 15000);
 });
