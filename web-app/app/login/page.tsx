@@ -15,6 +15,7 @@ import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
 import { DhaLogo } from '@/components/ui/dha-logo';
 import { setupApi } from '@/lib/api/onboarding';
 import { standaloneLisApi } from '@/lib/api/standalone-lis';
+import { setActiveFacilityId } from '@/lib/api/client';
 import { VitoraLogo } from '@/components/ui/vitora-logo';
 import {
   isDesktop,
@@ -235,13 +236,25 @@ export default function LoginPage() {
         }
       }
 
-      // Check if org onboarding is incomplete for admin users
+      let postLoginDefaultPath = '/';
+
+      // Standalone labs use facility LIS onboarding instead of the HMIS org checklist.
       try {
         const storedUser = JSON.parse(localStorage.getItem('vitora_user') || '{}');
         const deploymentProfile = storedUser?.facility?.deployment_profile;
+        const isLisStandalone =
+          deploymentProfile === 'lis_standalone' ||
+          storedUser?.facility?.operating_mode === 'STANDALONE_LAB';
+        const lisOnboardingComplete = storedUser?.lis_onboarding_complete === true;
 
-        if (deploymentProfile === 'lis_standalone') {
+        if (isLisStandalone) {
+          postLoginDefaultPath = '/laboratory';
+        }
+
+        if (isLisStandalone && !lisOnboardingComplete) {
           try {
+            // Prevent an override from the prior session checking a different facility.
+            setActiveFacilityId(storedUser?.facility?.id ?? null);
             const lisStatus = await standaloneLisApi.getOnboardingStatus();
             if (!lisStatus.complete) {
               router.push('/onboarding/lis-standalone');
@@ -252,7 +265,7 @@ export default function LoginPage() {
           }
         }
 
-        if (storedUser.onboarding_complete === false) {
+        if (!isLisStandalone && storedUser.onboarding_complete === false) {
           const adminRoles = ['ADMIN', 'ORG-ADMIN', 'OWNER'];
           if (adminRoles.includes(storedUser.role || '')) {
             router.push('/onboarding');
@@ -268,7 +281,7 @@ export default function LoginPage() {
       if (callbackUrl && callbackUrl.startsWith('/') && !callbackUrl.startsWith('//')) {
         router.push(callbackUrl);
       } else {
-        router.push('/');
+        router.push(postLoginDefaultPath);
       }
     } catch (err) {
       if (!navigator.onLine || (err instanceof TypeError && err.message === 'Failed to fetch')) {

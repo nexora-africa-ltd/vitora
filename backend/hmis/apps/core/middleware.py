@@ -419,6 +419,20 @@ class OnboardingEnforcementMiddleware:
         if org.onboarding_complete:
             return self.get_response(request)
 
+        # Standalone labs complete a facility-specific checklist instead of the
+        # HMIS organization checklist (which requires a clinic). Respect the active
+        # facility so completion at another branch cannot bypass this gate.
+        from hmis.apps.core.mixins import resolve_request_tenant
+
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        if (
+            facility
+            and facility.operating_mode == "STANDALONE_LAB"
+            and facility.lis_onboarding_complete
+        ):
+            return self.get_response(request)
+
         # Check grace period
         grace_days = getattr(django_settings, "ONBOARDING_GRACE_PERIOD_DAYS", 7)
         grace_deadline = org.created_at + timedelta(days=grace_days)

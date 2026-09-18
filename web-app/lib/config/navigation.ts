@@ -101,6 +101,7 @@ import type { FacilityModules } from '@/lib/auth/context';
 export interface NavItemVisibilityContext {
   facilityLevel?: string;
   facilityOwnership?: string;
+  facilityCountryCode?: string;
   /** Set of active clinic types in this facility (e.g. 'GENERAL_OPD', 'DENTAL') */
   activeClinicTypes?: Set<string>;
   /** Whether the current user is a Nexora superuser */
@@ -153,6 +154,11 @@ export interface NavItemWithChildren {
 }
 
 export type NavItemType = NavItem | NavItemWithChildren;
+
+function isKenyaCountryCode(value?: string): boolean {
+  const normalized = value?.trim().toUpperCase();
+  return normalized === 'KE' || normalized === 'KEN' || normalized === 'KENYA';
+}
 
 export function hasChildren(item: NavItemType): item is NavItemWithChildren {
   return 'children' in item;
@@ -843,8 +849,8 @@ const _allNavItems: NavItemType[] = [
         actionKey: 'laboratory.view_orders',
       },
       {
-        label: 'Validations',
-        href: '/laboratory/validations',
+        label: 'Verifications',
+        href: '/laboratory/verifications',
         icon: CheckSquare,
         actionKey: 'laboratory.verify_results',
       },
@@ -1388,6 +1394,7 @@ const _allNavItems: NavItemType[] = [
         icon: Receipt,
         actionKey: 'inventory.view_etims',
         requiresInternet: true,
+        visibleWhen: ({ facilityCountryCode }) => isKenyaCountryCode(facilityCountryCode),
       },
       {
         label: 'Forecasting',
@@ -1556,6 +1563,7 @@ const _allNavItems: NavItemType[] = [
         icon: KenyaCoatOfArmsIcon,
         actionKey: 'admin.manage_staff',
         requiresInternet: true,
+        visibleWhen: ({ facilityCountryCode }) => isKenyaCountryCode(facilityCountryCode),
       },
       {
         label: 'Facility Lookup',
@@ -1563,6 +1571,7 @@ const _allNavItems: NavItemType[] = [
         icon: KenyaCoatOfArmsIcon,
         actionKey: 'admin.manage_departments',
         requiresInternet: true,
+        visibleWhen: ({ facilityCountryCode }) => isKenyaCountryCode(facilityCountryCode),
       },
       {
         label: 'SHA Intervention Lookup',

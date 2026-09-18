@@ -263,7 +263,7 @@ class LabQueueViewSet(AuditedMutationMixin, NestedTenantScopeMixin, viewsets.Mod
     def get_queryset(self):
         from .models import LabQueue
 
-        return LabQueue.objects.select_related(
+        queryset = LabQueue.objects.select_related(
             "lab_order__patient",
             "lab_order__ordered_by",
             "assigned_technician",
@@ -273,6 +273,15 @@ class LabQueueViewSet(AuditedMutationMixin, NestedTenantScopeMixin, viewsets.Mod
             "specimen__collected_by",
             "specimen__received_by",
         ).prefetch_related("lab_order__items__test", "specimen__order_items")
+
+        # Queue must always be facility-scoped to match LabOrder visibility.
+        # Do not fall back to organization-wide or superuser-unscoped reads here.
+        self._resolve_tenant_context()
+        facility = getattr(self.request, "facility", None)
+        if not facility:
+            return queryset.none()
+
+        return queryset.filter(lab_order__facility=facility)
 
     def get_serializer_class(self):
         from .serializers import (

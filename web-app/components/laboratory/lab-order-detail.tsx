@@ -39,6 +39,8 @@ import {
   useCollectSpecimen,
   useCancelLabOrder,
   useSubmitLabOrder,
+  useLabQueueEntryByOrderNumber,
+  useRejectSample,
 } from '@/lib/hooks/use-laboratory';
 import { useToast, useLabOrderSocket } from '@/lib/hooks';
 import { useCommentCount } from '@/lib/hooks/use-comment-count';
@@ -54,6 +56,8 @@ import { HelpPopover } from '@/components/shared/help-popover';
 import { useAuth } from '@/lib/auth/context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { CommentThread } from '@/components/comments';
+import { ActionButton } from '@/components/shared/action-button';
+import { RejectSampleDialog } from './lab-queue-dialogs';
 
 interface LabOrderDetailProps {
   orderNumber: string;
@@ -96,11 +100,14 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
   const { toast } = useToast();
   const [cancelReason, setCancelReason] = useState('');
   const [sampleId, setSampleId] = useState('');
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
 
   const { data: order, isLoading, error } = useLabOrder(orderNumber);
+  const { data: queueEntry } = useLabQueueEntryByOrderNumber(orderNumber);
   const submitOrder = useSubmitLabOrder();
   const collectSpecimen = useCollectSpecimen();
   const cancelOrder = useCancelLabOrder();
+  const rejectSample = useRejectSample();
 
   // Real-time WebSocket updates for this specific order
   // Pass orderNumber and encounterId for proper cache invalidation
@@ -160,6 +167,10 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
   const hasCriticalResults = orderItems.some((item) => item.result?.is_critical_result);
   const canGenerateReport = order.status === 'COMPLETED' && linkedReports.length === 0;
   const isDonorUnitScreening = order.patient === null && !!order.blood_bank_unit;
+  const canRejectSpecimen =
+    !!queueEntry &&
+    ['PENDING', 'COLLECTED', 'PROCESSING'].includes(queueEntry.queue_status) &&
+    !queueEntry.rejection_reason;
 
   // Check if all tests have results entered
   const allResultsEntered = orderItems.length > 0 && orderItems.every((item) => item.has_result);
@@ -222,6 +233,31 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
         description: error instanceof Error ? error.message : 'Failed to cancel order',
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleRejectSpecimen = async (reason: string) => {
+    if (!queueEntry) {
+      throw new Error('Queue entry not found for this order.');
+    }
+
+    try {
+      await rejectSample.mutateAsync({
+        queueNumber: queueEntry.queue_number,
+        reason,
+      });
+      toast({
+        title: 'Specimen rejected',
+        description: 'Sample has been marked as rejected.',
+        variant: 'destructive',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to reject specimen',
+        variant: 'destructive',
+      });
+      throw error;
     }
   };
 
@@ -354,6 +390,17 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
                 </AlertDialogContent>
               </AlertDialog>
             ) : null}
+
+            {canRejectSpecimen ? (
+              <ActionButton
+                action="laboratory.reject_sample"
+                variant="destructive"
+                onClick={() => setRejectDialogOpen(true)}
+              >
+                <XCircle className="mr-2 h-4 w-4" />
+                Reject Specimen
+              </ActionButton>
+            ) : null}
           </>
         }
       />
@@ -478,6 +525,16 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
                 <p className="text-sm text-red-600 dark:text-red-300">
                   {order.cancellation_reason}
                 </p>
+              </div>
+            </>
+          )}
+
+          {queueEntry?.rejection_reason && (
+            <>
+              <Separator />
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3">
+                <p className="mb-1 text-sm font-medium text-destructive">Specimen Rejection Reason</p>
+                <p className="text-sm text-destructive/90">{queueEntry.rejection_reason}</p>
               </div>
             </>
           )}
@@ -624,6 +681,15 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
           </CardContent>
         </Card>
       )}
+
+      <RejectSampleDialog
+        open={rejectDialogOpen}
+        onOpenChange={setRejectDialogOpen}
+        queueEntry={queueEntry ?? null}
+        onSubmit={handleRejectSpecimen}
+        isLoading={rejectSample.isPending}
+      />
+
       {/* Clinical Comments */}
       <LabOrderCommentsCard orderId={order.id} />
     </div>

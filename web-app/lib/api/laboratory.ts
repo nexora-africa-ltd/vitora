@@ -578,10 +578,29 @@ export const laboratoryApi = {
     page_size?: number;
     validation_type?: string;
   }): Promise<PaginatedResponse<LabResult>> {
-    const response = await apiClient.get<PaginatedResponse<LabResult>>(
+    const response = await apiClient.get<PaginatedResponse<LabResult> | LabResult[]>(
       '/api/lab/results/pending-verification/',
       { params }
     );
+
+    if (Array.isArray(response.data)) {
+      const parsedArray = parseResponse(z.array(LabResultSchema), response.data, {
+        context: 'laboratoryApi.getPendingVerificationPaginated.array',
+      });
+
+      const pageSize = params?.page_size ?? parsedArray.length;
+      const page = params?.page ?? 1;
+      const start = (page - 1) * pageSize;
+      const paged = parsedArray.slice(start, start + pageSize);
+
+      return {
+        count: parsedArray.length,
+        next: start + pageSize < parsedArray.length ? 'local-next' : null,
+        previous: page > 1 ? 'local-previous' : null,
+        results: paged,
+      };
+    }
+
     return parseResponse(
       z.object({
         count: z.number(),
@@ -980,7 +999,9 @@ export const laboratoryApi = {
    * Get lab queue entries.
    */
   async getQueue(status?: string): Promise<LabQueue[]> {
-    const params: Record<string, string> = {};
+    const params: Record<string, string | number> = {
+      page_size: 100,
+    };
     if (status) {
       params.queue_status = status;
     }
@@ -993,9 +1014,87 @@ export const laboratoryApi = {
         context: 'laboratoryApi.getQueue',
       });
     }
-    return parseResponse(z.array(LabQueueSchema), response.data.results || [], {
-      context: 'laboratoryApi.getQueue',
+
+    const QueuePageSchema = z.object({
+      count: z.number(),
+      next: z.string().nullable(),
+      previous: z.string().nullable(),
+      results: z.array(LabQueueSchema),
     });
+
+    const firstPage = parseResponse(QueuePageSchema, response.data, {
+      context: 'laboratoryApi.getQueue.page1',
+    });
+
+    const allResults = [...firstPage.results];
+    let page = 2;
+    const maxPages = 20;
+    let hasNext = Boolean(firstPage.next);
+
+    while (hasNext && page <= maxPages) {
+      const nextResponse = await apiClient.get('/api/lab/queue/', {
+        params: {
+          ...params,
+          page,
+        },
+      });
+
+      const nextPage = parseResponse(QueuePageSchema, nextResponse.data, {
+        context: 'laboratoryApi.getQueue.nextPage',
+      });
+
+      allResults.push(...nextPage.results);
+      hasNext = Boolean(nextPage.next);
+      page += 1;
+    }
+
+    return allResults;
+  },
+
+  /**
+   * Find a queue entry by lab order number.
+   * Paginates through queue pages because queue list endpoints are paginated.
+   */
+  async getQueueEntryByOrderNumber(orderNumber: string): Promise<LabQueue | null> {
+    if (!orderNumber.trim()) {
+      return null;
+    }
+
+    const QueuePageSchema = z.object({
+      count: z.number(),
+      next: z.string().nullable(),
+      previous: z.string().nullable(),
+      results: z.array(LabQueueSchema),
+    });
+
+    let page = 1;
+    const maxPages = 20;
+
+    while (page <= maxPages) {
+      const response = await apiClient.get('/api/lab/queue/', {
+        params: {
+          page,
+          page_size: 100,
+        },
+      });
+
+      const parsed = parseResponse(QueuePageSchema, response.data, {
+        context: 'laboratoryApi.getQueueEntryByOrderNumber',
+      });
+
+      const found = parsed.results.find((entry) => entry.order_number === orderNumber) ?? null;
+      if (found) {
+        return found;
+      }
+
+      if (!parsed.next) {
+        break;
+      }
+
+      page += 1;
+    }
+
+    return null;
   },
 
   /**

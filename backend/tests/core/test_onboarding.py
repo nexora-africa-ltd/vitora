@@ -14,6 +14,78 @@ import pytest  # type: ignore
 from django.utils import timezone
 from rest_framework import status
 
+
+@pytest.mark.parametrize(
+    ("mode", "complete", "expected_status"),
+    [
+        ("STANDALONE_LAB", True, 200),
+        ("STANDALONE_LAB", False, 403),
+        ("FULL_HMIS", True, 403),
+    ],
+)
+def test_org_onboarding_respects_completed_lis_facility(settings, mode, complete, expected_status):
+    """Completed LIS setup must not be blocked by the separate organization checklist."""
+    from datetime import timedelta
+    from types import SimpleNamespace
+
+    from django.http import HttpResponse
+    from django.test import RequestFactory
+
+    from hmis.apps.core.middleware import OnboardingEnforcementMiddleware
+
+    settings.ONBOARDING_ENFORCEMENT = True
+    settings.ONBOARDING_GRACE_PERIOD_DAYS = 7
+    org = SimpleNamespace(onboarding_complete=False, created_at=timezone.now() - timedelta(days=30))
+    facility = SimpleNamespace(operating_mode=mode, lis_onboarding_complete=complete)
+    request = RequestFactory().get("/api/lab/orders/")
+    request.organization = org
+    request.facility = facility
+    request.user = SimpleNamespace(
+        is_authenticated=True,
+        is_superuser=False,
+        staff_profile=SimpleNamespace(
+            organization=org,
+            primary_facility=facility,
+            primary_role=SimpleNamespace(code="ADMIN"),
+        ),
+    )
+    response = OnboardingEnforcementMiddleware(lambda request: HttpResponse("OK"))(request)
+    assert response.status_code == expected_status
+
+
+def test_org_onboarding_uses_active_facility_not_completed_primary(settings):
+    """A completed primary LIS facility must not exempt an incomplete active facility."""
+    from datetime import timedelta
+    from types import SimpleNamespace
+
+    from django.http import HttpResponse
+    from django.test import RequestFactory
+
+    from hmis.apps.core.middleware import OnboardingEnforcementMiddleware
+
+    settings.ONBOARDING_ENFORCEMENT = True
+    settings.ONBOARDING_GRACE_PERIOD_DAYS = 7
+    org = SimpleNamespace(onboarding_complete=False, created_at=timezone.now() - timedelta(days=30))
+    request = RequestFactory().get("/api/lab/orders/")
+    request.organization = org
+    request.facility = SimpleNamespace(
+        operating_mode="STANDALONE_LAB", lis_onboarding_complete=False
+    )
+    request.user = SimpleNamespace(
+        is_authenticated=True,
+        is_superuser=False,
+        staff_profile=SimpleNamespace(
+            organization=org,
+            primary_facility=SimpleNamespace(
+                operating_mode="STANDALONE_LAB", lis_onboarding_complete=True
+            ),
+            primary_role=SimpleNamespace(code="ADMIN"),
+        ),
+    )
+    response = OnboardingEnforcementMiddleware(lambda request: HttpResponse("OK"))(request)
+    assert response.status_code == 403
+
+
 # ============================================================================
 # Model Tests
 # ============================================================================

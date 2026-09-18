@@ -84,7 +84,7 @@ type LabOrderJoinedRow = LabOrderRow & {
  * Hook for fetching paginated lab orders.
  * Reads from local PowerSync SQLite when available, falls back to API.
  */
-export function useLabOrders(params?: LabOrderListParams) {
+export function useLabOrders(params?: LabOrderListParams, options?: { enabled?: boolean }) {
   const limit = params?.page_size || 20;
   const offset = ((params?.page || 1) - 1) * limit;
 
@@ -132,6 +132,7 @@ export function useLabOrders(params?: LabOrderListParams) {
     queryKey: ['lab-orders', params],
     queryFn: () => laboratoryApi.listOrders(params),
     forceApi: true,
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -540,12 +541,26 @@ export function usePendingVerificationPaginated(params?: {
 /**
  * Hook for fetching lab queue.
  */
-export function useLabQueue(status?: string) {
+export function useLabQueue(status?: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['lab-queue', status],
     queryFn: () => laboratoryApi.getQueue(status),
+    enabled: options?.enabled ?? true,
     refetchInterval: 20000, // Refresh every 20 seconds
     refetchIntervalInBackground: false, // Don't poll when tab is in background
+  });
+}
+
+/**
+ * Hook for fetching a single queue entry by order number.
+ */
+export function useLabQueueEntryByOrderNumber(orderNumber: string) {
+  return useQuery({
+    queryKey: ['lab-queue', 'by-order', orderNumber],
+    queryFn: () => laboratoryApi.getQueueEntryByOrderNumber(orderNumber),
+    enabled: !!orderNumber,
+    refetchInterval: 20000,
+    refetchIntervalInBackground: false,
   });
 }
 
