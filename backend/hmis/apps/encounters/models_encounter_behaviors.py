@@ -361,7 +361,7 @@ class EncounterBehaviorMixin:
             )
 
         # Validate documentation requirements
-        self._validate_close_requirements()
+        self.validate_for_close()
 
         old_status = self.status
         self.status = "CLOSED"
@@ -576,6 +576,24 @@ class EncounterBehaviorMixin:
         if self.disposition == "REFERRED" and not self.disposition_notes:
             raise ValidationError(
                 "Referred encounters require disposition notes specifying the referral details."
+            )
+
+    def validate_for_close(self) -> None:
+        """Validate all requirements for encounter close/finalize."""
+        self._validate_close_requirements()
+
+        if self.is_emergency_capture and self.deferred_completion_status in {"PENDING", "OVERDUE"}:
+            if self.deferred_completion_due_at and timezone.now() > self.deferred_completion_due_at:
+                if self.deferred_completion_status != "OVERDUE":
+                    self.deferred_completion_status = "OVERDUE"
+                    self.save(update_fields=["deferred_completion_status", "updated_at"])
+                raise ValidationError(
+                    "Emergency encounter deferred documentation is overdue. "
+                    "Complete deferred fields before finalizing."
+                )
+            raise ValidationError(
+                "Emergency encounter has pending deferred documentation. "
+                "Complete deferred fields before finalizing."
             )
 
     def get_spo2_interpretation(self) -> dict | None:

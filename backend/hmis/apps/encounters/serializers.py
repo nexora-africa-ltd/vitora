@@ -3,9 +3,11 @@
 Serializers for the encounters app.
 """
 
+from django.utils import timezone
 from rest_framework import serializers
 
 from hmis.apps.cds.models import CDSAlert, CDSAlertStatus
+from hmis.apps.core.emergency_access.models import EmergencyAccess
 
 from .models import (
     ChronicCondition,
@@ -833,6 +835,117 @@ class EncounterListSerializer(serializers.ModelSerializer):
         if not obj.clinic_visit.session:
             return None
         return obj.clinic_visit.session.clinic.clinic_type
+
+
+class EmergencyEncounterCreateSerializer(serializers.ModelSerializer):
+    """Serializer for minimal emergency encounter capture."""
+
+    emergency_access_id = serializers.IntegerField(write_only=True, required=False)
+
+    class Meta:
+        model = Encounter
+        fields = [
+            "patient",
+            "encounter_type",
+            "encounter_date",
+            "chief_complaint",
+            "temperature",
+            "pulse",
+            "blood_pressure",
+            "respiratory_rate",
+            "spo2",
+            "emergency_access_id",
+        ]
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        if attrs.get("encounter_type") != "EMERGENCY":
+            raise serializers.ValidationError(
+                {"encounter_type": "Emergency encounter capture requires encounter_type=EMERGENCY."}
+            )
+
+        chief_complaint = (attrs.get("chief_complaint") or "").strip()
+        if not chief_complaint:
+            raise serializers.ValidationError({"chief_complaint": "Chief complaint is required."})
+
+        access_id = attrs.pop("emergency_access_id", None)
+        if access_id is None and request is not None:
+            header_value = request.META.get("HTTP_X_EMERGENCY_ACCESS_ID") or request.headers.get(
+                "X-Emergency-Access-ID"
+            )
+            if header_value:
+                try:
+                    access_id = int(str(header_value))
+                except ValueError as err:
+                    raise serializers.ValidationError(
+                        {"emergency_access_id": "Invalid emergency access identifier."}
+                    ) from err
+
+        if access_id is None:
+            raise serializers.ValidationError(
+                {
+                    "emergency_access_id": "Emergency access session is required for emergency capture."
+                }
+            )
+
+        emergency_access = EmergencyAccess.objects.filter(
+            id=access_id,
+            user=getattr(request, "user", None),
+            status="ACTIVE",
+            patient=attrs.get("patient"),
+        ).first()
+        if emergency_access is None:
+            raise serializers.ValidationError(
+                {
+                    "emergency_access_id": (
+                        "No active emergency session found for this user and patient."
+                    )
+                }
+            )
+
+        attrs["_emergency_access"] = emergency_access
+        return attrs
+
+    def create(self, validated_data):
+        emergency_access = validated_data.pop("_emergency_access")
+        validated_data["is_emergency_capture"] = True
+        validated_data["emergency_access"] = emergency_access
+        validated_data["deferred_completion_status"] = "PENDING"
+        validated_data["deferred_completion_due_at"] = timezone.now() + timezone.timedelta(hours=2)
+        return super().create(validated_data)
+
+
+class EmergencyEncounterDeferredCompleteSerializer(serializers.ModelSerializer):
+    """Serializer to complete deferred emergency encounter documentation."""
+
+    class Meta:
+        model = Encounter
+        fields = [
+            "allergies",
+            "chronic_conditions",
+            "current_medications",
+            "history_of_present_illness",
+            "physical_examination",
+            "assessment",
+            "notes",
+            "disposition",
+            "disposition_notes",
+        ]
+
+    def update(self, instance, validated_data):
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+        instance.deferred_completion_status = "COMPLETED"
+        instance.deferred_completion_completed_at = timezone.now()
+        instance.save(
+            update_fields=[
+                *list(validated_data.keys()),
+                "deferred_completion_status",
+                "deferred_completion_completed_at",
+                "updated_at",
+            ]
+        )
+        return instance
 
 
 class ClaimedEncounterSerializer(EncounterListSerializer):
