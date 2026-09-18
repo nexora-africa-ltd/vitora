@@ -10,6 +10,7 @@ from decimal import Decimal
 from django.utils import timezone
 from rest_framework import serializers
 
+from hmis.apps.core.emergency_access.models import EmergencyAccess
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.patients.models import Patient
 
@@ -296,6 +297,11 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
             "triage_start_time",
             "triage_end_time",
             "seen_by_clinician_time",
+            "is_emergency_capture",
+            "emergency_access",
+            "deferred_completion_due_at",
+            "deferred_completion_completed_at",
+            "deferred_completion_status",
             "alerts",
             "vitals",
             "wait_time_minutes",
@@ -314,6 +320,11 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
             "gcs_total",
             "gcs_severity",
             "age_group",
+            "is_emergency_capture",
+            "emergency_access",
+            "deferred_completion_due_at",
+            "deferred_completion_completed_at",
+            "deferred_completion_status",
         ]
 
     def get_age_group(self, obj) -> str:
@@ -959,6 +970,153 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
             )
 
         return assessment
+
+
+class EmergencyTriageCreateSerializer(TriageAssessmentCreateSerializer):
+    """Serializer for minimal emergency triage capture under break-glass access."""
+
+    emergency_access_id = serializers.IntegerField(write_only=True, required=False)
+    arrival_time = serializers.DateTimeField(required=False)
+
+    class Meta(TriageAssessmentCreateSerializer.Meta):
+        fields = [
+            "encounter",
+            "chief_complaint",
+            "chief_complaint_category",
+            "mental_status",
+            "mobility",
+            "triage_category",
+            "auto_calculated_category",
+            "category_override_reason",
+            "assigned_area",
+            "assigned_clinic",
+            "arrival_time",
+            "spo2",
+            "heart_rate",
+            "systolic_bp",
+            "diastolic_bp",
+            "temperature",
+            "respiratory_rate",
+            "pain_score",
+            "emergency_access_id",
+        ]
+        extra_kwargs = {
+            "assigned_clinic": {"required": False, "allow_null": True},
+            "assigned_area": {"required": False, "allow_blank": True, "allow_null": True},
+        }
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        request = self.context.get("request")
+
+        encounter = attrs.get("encounter")
+        if encounter is None:
+            raise serializers.ValidationError({"encounter": "Encounter is required."})
+
+        if encounter.encounter_type != "EMERGENCY":
+            raise serializers.ValidationError(
+                {
+                    "encounter": "Emergency triage capture requires an EMERGENCY encounter.",
+                }
+            )
+
+        access_id = attrs.pop("emergency_access_id", None)
+        if access_id is None and request is not None:
+            header_value = request.META.get("HTTP_X_EMERGENCY_ACCESS_ID") or request.headers.get(
+                "X-Emergency-Access-ID"
+            )
+            if header_value:
+                try:
+                    access_id = int(str(header_value))
+                except ValueError as err:
+                    raise serializers.ValidationError(
+                        {"emergency_access_id": "Invalid emergency access identifier."}
+                    ) from err
+
+        if access_id is None:
+            raise serializers.ValidationError(
+                {
+                    "emergency_access_id": "Emergency access session is required for emergency triage capture."
+                }
+            )
+
+        emergency_access = EmergencyAccess.objects.filter(
+            id=access_id,
+            user=getattr(request, "user", None),
+            status="ACTIVE",
+            patient=encounter.patient,
+        ).first()
+        if emergency_access is None:
+            raise serializers.ValidationError(
+                {
+                    "emergency_access_id": (
+                        "No active emergency session found for this user and patient."
+                    )
+                }
+            )
+
+        attrs.setdefault("arrival_time", timezone.now())
+        attrs["_emergency_access"] = emergency_access
+        return attrs
+
+    def create(self, validated_data):
+        emergency_access = validated_data.pop("_emergency_access")
+        validated_data["is_emergency_capture"] = True
+        validated_data["emergency_access"] = emergency_access
+        validated_data["deferred_completion_status"] = "PENDING"
+        validated_data["deferred_completion_due_at"] = timezone.now() + timezone.timedelta(hours=2)
+        return super().create(validated_data)
+
+
+class EmergencyTriageDeferredCompleteSerializer(serializers.ModelSerializer):
+    """Serializer to complete deferred emergency triage documentation."""
+
+    class Meta:
+        model = TriageAssessment
+        fields = [
+            "chief_complaint",
+            "chief_complaint_category",
+            "pain_score",
+            "mental_status",
+            "mobility",
+            "arrival_mode",
+            "referring_facility_name",
+            "allergies_noted",
+            "spo2",
+            "heart_rate",
+            "systolic_bp",
+            "diastolic_bp",
+            "temperature",
+            "respiratory_rate",
+            "weight",
+            "height",
+            "etat_danger_signs",
+            "dehydration_level",
+            "fontanelle_status",
+            "breastfeeding_ability",
+            "capillary_refill_seconds",
+            "muac_cm",
+            "triage_category",
+            "category_override_reason",
+            "assigned_area",
+            "assigned_clinic",
+            "assigned_clinician",
+        ]
+
+    def update(self, instance, validated_data):
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+        instance.deferred_completion_status = "COMPLETED"
+        instance.deferred_completion_completed_at = timezone.now()
+        instance.save(
+            update_fields=[
+                *list(validated_data.keys()),
+                "deferred_completion_status",
+                "deferred_completion_completed_at",
+                "updated_at",
+            ]
+        )
+        return instance
 
 
 class TriageQueueSerializer(serializers.ModelSerializer):

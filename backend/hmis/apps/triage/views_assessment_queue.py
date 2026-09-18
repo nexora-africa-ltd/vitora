@@ -14,6 +14,7 @@ Supported inputs/args:
 
 import logging
 
+from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
@@ -38,6 +39,7 @@ from hmis.apps.core.permissions import (
     WriteRequiresRolePermission,
     get_client_ip,
 )
+from hmis.apps.encounters.models import Encounter
 
 from .models import (
     ERBed,
@@ -50,6 +52,8 @@ from .models import (
     WaitTimeBreach,
 )
 from .serializers import (
+    EmergencyTriageCreateSerializer,
+    EmergencyTriageDeferredCompleteSerializer,
     ERBedAssignPatientSerializer,
     ERBedBoardSummarySerializer,
     ERBedCreateSerializer,
@@ -221,9 +225,32 @@ class TriageAssessmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         """Use different serializers for create vs read."""
+        if self.action == "create" and self._is_emergency_capture_request():
+            return EmergencyTriageCreateSerializer
+        if self.action == "complete_emergency_documentation":
+            return EmergencyTriageDeferredCompleteSerializer
         if self.action == "create":
             return TriageAssessmentCreateSerializer
         return TriageAssessmentSerializer
+
+    def _is_emergency_capture_request(self) -> bool:
+        if self.request.method != "POST":
+            return False
+        has_header = bool(
+            self.request.META.get("HTTP_X_EMERGENCY_ACCESS_ID")
+            or self.request.headers.get("X-Emergency-Access-ID")
+        )
+        if not has_header:
+            return False
+
+        encounter_id = self.request.data.get("encounter")
+        if encounter_id is None:
+            return False
+
+        return Encounter.objects.filter(
+            id=encounter_id,
+            encounter_type="EMERGENCY",
+        ).exists()
 
     def get_permissions(self):
         """Add perform_triage permission for create/update/delete."""
@@ -356,7 +383,14 @@ class TriageAssessmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
         # Set end time
         instance.triage_end_time = timezone.now()
-        instance.save(update_fields=["triage_end_time"])
+        try:
+            instance.validate_for_close()
+        except ValidationError as exc:
+            instance.triage_end_time = None
+            message = str(exc.message if hasattr(exc, "message") else exc)
+            return Response({"detail": message}, status=status.HTTP_400_BAD_REQUEST)
+
+        instance.save(update_fields=["triage_end_time", "updated_at"])
 
         # Log the completion
         AuditLog.log(
@@ -379,6 +413,82 @@ class TriageAssessmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         # Return updated assessment
         serializer = TriageAssessmentSerializer(instance, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], url_path="complete-emergency-documentation")
+    def complete_emergency_documentation(self, request, pk=None):
+        """Complete deferred emergency triage documentation within SLA window."""
+        assessment = self.get_object()
+        if not assessment.is_emergency_capture:
+            return Response(
+                {"detail": "Triage assessment was not created through emergency capture."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = self.get_serializer(assessment, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        assessment = serializer.save()
+
+        AuditLog.log(
+            action="triage_update",
+            user=request.user,
+            resource_type="TriageAssessment",
+            resource_id=assessment.id,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=assessment.encounter.patient_id,
+            details={
+                "deferred_completion_status": assessment.deferred_completion_status,
+                "deferred_completion_completed_at": (
+                    assessment.deferred_completion_completed_at.isoformat()
+                    if assessment.deferred_completion_completed_at
+                    else None
+                ),
+                "workflow": "emergency_deferred_completion",
+            },
+        )
+        return Response(TriageAssessmentSerializer(assessment, context={"request": request}).data)
+
+    @action(detail=True, methods=["get"], url_path="emergency-documentation-sla")
+    def emergency_documentation_sla(self, request, pk=None):
+        """Return SLA status for deferred emergency triage documentation."""
+        assessment = self.get_object()
+        if not assessment.is_emergency_capture:
+            return Response(
+                {"detail": "Triage assessment was not created through emergency capture."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        now = timezone.now()
+        due_at = assessment.deferred_completion_due_at
+        is_overdue = bool(
+            due_at
+            and now > due_at
+            and assessment.deferred_completion_status in {"PENDING", "OVERDUE"}
+        )
+        if is_overdue and assessment.deferred_completion_status != "OVERDUE":
+            assessment.deferred_completion_status = "OVERDUE"
+            assessment.save(update_fields=["deferred_completion_status", "updated_at"])
+
+        remaining_minutes = None
+        if due_at is not None:
+            remaining_minutes = int((due_at - now).total_seconds() / 60)
+
+        return Response(
+            {
+                "id": assessment.id,
+                "is_emergency_capture": assessment.is_emergency_capture,
+                "deferred_completion_status": assessment.deferred_completion_status,
+                "deferred_completion_due_at": due_at.isoformat() if due_at else None,
+                "deferred_completion_completed_at": (
+                    assessment.deferred_completion_completed_at.isoformat()
+                    if assessment.deferred_completion_completed_at
+                    else None
+                ),
+                "is_overdue": assessment.deferred_completion_status == "OVERDUE",
+                "remaining_minutes": remaining_minutes,
+                "server_time": now.isoformat(),
+            }
+        )
 
     @action(detail=True, methods=["post"], url_path="route-to-clinic")
     def route_to_clinic(self, request, pk=None):
