@@ -397,6 +397,17 @@ class AuditLogViewSet(
             }
         )
 
+    @action(detail=False, methods=["get"], permission_classes=[IsAdminUser])
+    def chain_diagnostics(self, request):
+        """Return mismatch ranges and transition points for audit chain diagnostics."""
+        from .services.audit_integrity import AuditIntegrityService
+
+        count_raw = request.query_params.get("count")
+        count = int(count_raw) if count_raw else None
+        service = AuditIntegrityService()
+        diagnostics = service.get_chain_diagnostics(count=count)
+        return Response(diagnostics)
+
 
 class FrontendEventViewSet(viewsets.GenericViewSet):
     """
