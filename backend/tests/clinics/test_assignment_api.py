@@ -12,6 +12,8 @@ Tests the REST API endpoints for:
 from datetime import date, timedelta
 
 import pytest  # type: ignore
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from rest_framework import status
 
@@ -213,6 +215,30 @@ class TestAssignmentDecisionAPI:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) >= 1
 
+    def test_list_decisions_uses_constant_queries_per_related_record(
+        self, authenticated_client, sample_decision, test_user
+    ):
+        """Decision list should select its rule, resource, and triggering user."""
+        from hmis.apps.scheduling.models import AssignmentDecision
+
+        for index in range(2):
+            AssignmentDecision.objects.create(
+                assignment_type="APPOINTMENT",
+                target_id=index + 2,
+                target_type="Appointment",
+                rule_applied=sample_decision.rule_applied,
+                assigned_resource=sample_decision.assigned_resource,
+                decision_outcome="ASSIGNED",
+                decision_reason="Query budget regression coverage",
+                triggered_by=test_user,
+            )
+
+        with CaptureQueriesContext(connection) as context:
+            response = authenticated_client.get("/api/scheduling/assignment-decisions/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(context.captured_queries) <= 5
+
     def test_filter_decisions_by_target(self, authenticated_client, sample_decision):
         """Should filter decisions by target type and ID."""
         response = authenticated_client.get(
@@ -327,6 +353,29 @@ class TestAssignmentOverrideAPI:
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) >= 1
+
+    def test_list_overrides_uses_constant_queries_per_related_record(
+        self, authenticated_client, sample_resources, test_user
+    ):
+        """Override list should select resources and workflow users in one query."""
+        from hmis.apps.scheduling.models import AssignmentOverride
+
+        for index in range(3):
+            AssignmentOverride.objects.create(
+                target_type="Appointment",
+                target_id=index + 1,
+                original_resource=sample_resources["original"],
+                new_resource=sample_resources["new"],
+                override_reason="EMERGENCY",
+                justification="Query budget regression coverage",
+                overridden_by=test_user,
+            )
+
+        with CaptureQueriesContext(connection) as context:
+            response = authenticated_client.get("/api/scheduling/assignment-overrides/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(context.captured_queries) <= 5
 
     def test_approve_override(
         self, authenticated_client, sample_resources, test_user, another_user, sample_facility

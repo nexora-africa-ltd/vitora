@@ -1,0 +1,22 @@
+{# County surveillance notification plain-text fallback. Context: case, location, facility, reporting, optional MRN, notes, acknowledgement link. #}
+Disease Surveillance County Notification
+
+Case ID: {{ case_id }}
+Disease: {{ disease_name }}
+ICD-10 Codes: {{ icd_codes }}
+Category: {{ category }}
+Severity: {{ severity }}
+Detected: {{ detected }}
+Reported At: {{ reported }}
+Notification Deadline: {{ deadline }}
+County: {{ county_name }}
+Sub-County: {{ sub_county_name }}
+Facility: {{ facility_name }} ({{ facility_code }})
+Reported By: {{ reporter_name }}
+Notification Triggered By: {{ notifier_name }}
+Lab Confirmed: {% if laboratory_confirmed %}Yes{% else %}No{% endif %}
+Current Outcome: {{ outcome }}
+{% if patient_mrn %}Patient MRN: {{ patient_mrn }}
+{% endif %}{% if notes %}Notes: {{ notes }}
+{% endif %}
+{% if ack_url %}Acknowledge receipt: {{ ack_url }}{% else %}Please acknowledge receipt through the designated county process.{% endif %}

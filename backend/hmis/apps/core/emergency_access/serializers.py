@@ -7,7 +7,17 @@ from rest_framework import serializers
 
 from hmis.apps.patients.models import Patient
 
-from .models import EmergencyAccess
+from .models import (
+    EmergencyAccess,
+    EmergencyAccessAccessMode,
+    EmergencyAccessReason,
+    EmergencyAccessScope,
+)
+
+SYSTEM_SCOPE_REASONS = {
+    EmergencyAccessReason.DISASTER_RESPONSE,
+    EmergencyAccessReason.MASS_CASUALTY,
+}
 
 
 class EmergencyAccessCreateSerializer(serializers.ModelSerializer):
@@ -25,6 +35,16 @@ class EmergencyAccessCreateSerializer(serializers.ModelSerializer):
         default=240,  # Default 4 hours
         help_text="Duration in minutes (15-1440)",
     )
+    scope_type = serializers.ChoiceField(
+        choices=EmergencyAccessScope.choices,
+        default=EmergencyAccessScope.PATIENT,
+        help_text="Scope of access requested",
+    )
+    access_mode = serializers.ChoiceField(
+        choices=EmergencyAccessAccessMode.choices,
+        default=EmergencyAccessAccessMode.READ_ONLY,
+        help_text="Access mode for emergency session",
+    )
 
     class Meta:
         """Meta options for EmergencyAccessCreateSerializer."""
@@ -35,6 +55,8 @@ class EmergencyAccessCreateSerializer(serializers.ModelSerializer):
             "reason_details",
             "duration_minutes",
             "patient_mrn",
+            "scope_type",
+            "access_mode",
         ]
 
     def validate_reason_details(self, value: str) -> str:
@@ -55,12 +77,41 @@ class EmergencyAccessCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(f"Patient with MRN '{value}' not found.") from err
         return value
 
+    def validate(self, attrs):
+        """Validate scope and reason compatibility for break-glass requests."""
+        scope_type = attrs.get("scope_type", EmergencyAccessScope.PATIENT)
+        reason = attrs.get("reason")
+        patient_mrn = attrs.get("patient_mrn")
+
+        if scope_type == EmergencyAccessScope.PATIENT and not patient_mrn:
+            raise serializers.ValidationError(
+                {"patient_mrn": "Patient MRN is required for patient scope."}
+            )
+
+        if scope_type == EmergencyAccessScope.SYSTEM and reason not in SYSTEM_SCOPE_REASONS:
+            raise serializers.ValidationError(
+                {
+                    "scope_type": (
+                        "System-wide emergency access is only allowed for mass casualty or "
+                        "disaster response events."
+                    )
+                }
+            )
+
+        return attrs
+
     def create(self, validated_data: dict) -> EmergencyAccess:
         """Create emergency access with patient lookup."""
         patient_mrn = validated_data.pop("patient_mrn", None)
+        access_mode = validated_data.get("access_mode", EmergencyAccessAccessMode.READ_ONLY)
         patient = None
         if patient_mrn:
             patient = Patient.objects.get(mrn=patient_mrn)
+
+        granted_permissions = ["patient.read_sensitive"]
+        if access_mode == EmergencyAccessAccessMode.LIMITED_WRITE:
+            granted_permissions.append("patient.write_limited")
+        validated_data["granted_permissions"] = granted_permissions
 
         # User is set in the view
         return EmergencyAccess.objects.create(patient=patient, **validated_data)
@@ -84,6 +135,8 @@ class EmergencyAccessSerializer(serializers.ModelSerializer):
     remaining_minutes = serializers.IntegerField(read_only=True)
     reason_display = serializers.CharField(source="get_reason_display", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
+    scope_type_display = serializers.CharField(source="get_scope_type_display", read_only=True)
+    access_mode_display = serializers.CharField(source="get_access_mode_display", read_only=True)
 
     class Meta:
         """Meta options for EmergencyAccessSerializer."""
@@ -103,6 +156,13 @@ class EmergencyAccessSerializer(serializers.ModelSerializer):
             "requested_at",
             "expires_at",
             "duration_minutes",
+            "scope_type",
+            "scope_type_display",
+            "access_mode",
+            "access_mode_display",
+            "granted_permissions",
+            "review_due_at",
+            "closed_at",
             "status",
             "status_display",
             "is_active",
@@ -127,6 +187,11 @@ class EmergencyAccessSerializer(serializers.ModelSerializer):
             "user_full_name",
             "requested_at",
             "expires_at",
+            "scope_type",
+            "access_mode",
+            "granted_permissions",
+            "review_due_at",
+            "closed_at",
             "status",
             "approver",
             "approver_username",
@@ -172,5 +237,13 @@ class EmergencyAccessDashboardStatsSerializer(serializers.Serializer):
     total_pending_review = serializers.IntegerField()
     total_today = serializers.IntegerField()
     total_this_week = serializers.IntegerField()
+    overdue_reviews = serializers.IntegerField()
+    median_review_minutes = serializers.FloatField()
     by_reason = serializers.DictField(child=serializers.IntegerField())
     by_status = serializers.DictField(child=serializers.IntegerField())
+    by_reason_role = serializers.DictField(
+        child=serializers.DictField(child=serializers.IntegerField())
+    )
+    by_reason_facility = serializers.DictField(
+        child=serializers.DictField(child=serializers.IntegerField())
+    )

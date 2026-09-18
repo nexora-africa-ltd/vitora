@@ -315,10 +315,12 @@ tbody { display: table-row-group; }
 
 .qr {
   width: 70px;
-  height: 70px;
+  min-height: 70px;
+  height: auto;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  overflow: visible;
 }
 
 .qr img { width: 70px; height: 70px; }

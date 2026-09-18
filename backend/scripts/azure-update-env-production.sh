@@ -78,6 +78,7 @@ declare -A SECRETS=(
   ["metabase-api-key"]="${METABASE_API_KEY:-}"
   ["superset-admin-password"]="${SUPERSET_ADMIN_PASSWORD:-}"
   ["resend-api-key"]="${RESEND_API_KEY:-}"
+  ["resend-webhook-secret"]="${RESEND_WEBHOOK_SECRET:-}"
   ["slack-signup-webhook-url"]="${SLACK_SIGNUP_WEBHOOK_URL:-}"
   ["vapid-private-key"]="${VAPID_PRIVATE_KEY:-}"
   ["dhis2-username"]="${DHIS2_USERNAME:-}"
@@ -255,6 +256,7 @@ az containerapp update \
     "SUPERSET_ADMIN_USERNAME=${SUPERSET_ADMIN_USERNAME:-admin}" \
     "SUPERSET_ADMIN_PASSWORD=secretref:superset-admin-password" \
     "RESEND_API_KEY=secretref:resend-api-key" \
+    "RESEND_WEBHOOK_SECRET=secretref:resend-webhook-secret" \
     "SLACK_SIGNUP_WEBHOOK_URL=secretref:slack-signup-webhook-url" \
     "POWERSYNC_URL=${POWERSYNC_URL:-}" \
     "POWERSYNC_JWT_KID=${POWERSYNC_JWT_KID:-vitora-hmis-1}" \

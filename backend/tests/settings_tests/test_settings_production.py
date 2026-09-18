@@ -221,10 +221,22 @@ class TestProductionSettings:
                 os.environ.pop("LOG_FILE", None)
 
     def test_db_connection_max_age(self):
-        """Database should use connection pooling."""
+        """Database should default to a 10-minute connection max age."""
+        import importlib
+
         from hmis.settings import production
 
-        assert production.DATABASES["default"]["CONN_MAX_AGE"] == 600
+        original = os.environ.get("DB_CONN_MAX_AGE")
+
+        try:
+            os.environ.pop("DB_CONN_MAX_AGE", None)
+            importlib.reload(production)
+            assert production.DATABASES["default"]["CONN_MAX_AGE"] == 600
+        finally:
+            if original is not None:
+                os.environ["DB_CONN_MAX_AGE"] = original
+            else:
+                os.environ.pop("DB_CONN_MAX_AGE", None)
 
     def test_production_azure_blob_media_storage_backend(self):
         """Production should switch default storage backend when MEDIA_BACKEND=azure_blob."""

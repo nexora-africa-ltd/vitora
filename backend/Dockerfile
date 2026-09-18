@@ -52,6 +52,6 @@ USER app
 EXPOSE ${PORT}
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:${PORT}/api/health/ || exit 1
+    CMD curl -f http://localhost:${PORT}/api/health/?lite=1 || exit 1
 
 ENTRYPOINT ["bash", "scripts/aca-start.sh"]

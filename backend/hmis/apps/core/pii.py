@@ -64,6 +64,8 @@ REDACTED_PII_FIELDS: set[str] = {
     "api_username",
     "api_password",
     "api_token",
+    "smtp_username",
+    "smtp_password",
 }
 
 

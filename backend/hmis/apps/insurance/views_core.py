@@ -112,9 +112,44 @@ def _insurance_error_response(
         else:
             status_code = status.HTTP_502_BAD_GATEWAY
     elif isinstance(exc, (ValidationError, DRFValidationError)):
-        message = "Invalid insurance request."
+        message = _extract_validation_message(exc)
 
     return Response({"error": message}, status=status_code)
+
+
+def _sanitize_error_text(value: object, fallback: str = "Invalid insurance request.") -> str:
+    """Return a bounded, plain-text validation message safe for API responses."""
+    text = re.sub(r"\s+", " ", str(value or "").strip())
+    text = re.sub(r"<[^>]+>", "", text).strip()
+    if not text:
+        return fallback
+    return text[:300]
+
+
+def _extract_validation_message(exc: ValidationError | DRFValidationError) -> str:
+    """Extract first-party validation details while preserving sanitized output."""
+    if isinstance(exc, DRFValidationError):
+        detail = exc.detail
+        if isinstance(detail, dict):
+            for value in detail.values():
+                if isinstance(value, list) and value:
+                    return _sanitize_error_text(value[0])
+                if value:
+                    return _sanitize_error_text(value)
+        if isinstance(detail, list) and detail:
+            return _sanitize_error_text(detail[0])
+        return _sanitize_error_text(detail)
+
+    if isinstance(exc, ValidationError):
+        if getattr(exc, "messages", None):
+            return _sanitize_error_text(exc.messages[0])
+        if getattr(exc, "message_dict", None):
+            first_value = next(iter(exc.message_dict.values()), None)
+            if isinstance(first_value, list) and first_value:
+                return _sanitize_error_text(first_value[0])
+            if first_value:
+                return _sanitize_error_text(first_value)
+    return _sanitize_error_text(exc)
 
 
 # ---------------------------------------------------------------------------

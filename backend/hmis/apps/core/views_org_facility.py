@@ -23,6 +23,7 @@ from django.conf import settings as django_settings
 from django.contrib.auth.models import Permission
 from django.contrib.auth.signals import user_logged_in, user_login_failed
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.mail import get_connection
 from django.db import models, transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
@@ -53,6 +54,7 @@ from .models import (
     DocumentShare,
     DocumentSignature,
     Facility,
+    FacilityEmailConfig,
     FeatureFlag,
     FrontendEvent,
     Notification,
@@ -93,6 +95,7 @@ from .serializers import (
     DocumentSignatureSerializer,
     FacilityCreateSerializer,
     FacilityDetailSerializer,
+    FacilityEmailConfigSerializer,
     FacilityListSerializer,
     FeatureFlagSerializer,
     FrontendEventBatchSerializer,
@@ -403,7 +406,10 @@ def generate_case_number_view(request):
         OpenApiParameter(
             "type",
             OpenApiTypes.STR,
-            description="Document type ('RECEIPT' or 'INVOICE')",
+            description=(
+                "Document type (RECEIPT, INVOICE, PRESCRIPTION, LAB_RESULT, "
+                "RADIOLOGY_REPORT, SICK_NOTE, REFERRAL, DISCHARGE_SUMMARY)"
+            ),
             required=False,
         ),
         OpenApiParameter("number", OpenApiTypes.STR, description="Document number", required=False),
@@ -433,6 +439,8 @@ def generate_case_number_view(request):
             name="VerifyDocumentResponse",
             fields={
                 "valid": serializers.BooleanField(),
+                "is_signed": serializers.BooleanField(required=False),
+                "signature_status": serializers.CharField(required=False),
                 "document_type": serializers.CharField(required=False),
                 "document_number": serializers.CharField(required=False),
                 "amount": serializers.CharField(required=False),
@@ -458,9 +466,10 @@ def verify_document(request):
     GET Parameters or POST Body:
         qr_data: Full QR code string (if provided, other params are ignored)
         -- OR --
-        type: Document type ('RECEIPT' or 'INVOICE')
+        type: Document type (RECEIPT, INVOICE, PRESCRIPTION, LAB_RESULT,
+              RADIOLOGY_REPORT, SICK_NOTE, REFERRAL, DISCHARGE_SUMMARY)
         number: Document number
-        amount: Amount as string
+        amount: Amount as string (required for RECEIPT/INVOICE)
         date: Date (YYYY-MM-DD)
         signature: 8-character hex signature
 
@@ -475,6 +484,18 @@ def verify_document(request):
         }
     """
     from .qr_utils import verify_document_signature
+
+    supported_types = {
+        "RECEIPT",
+        "INVOICE",
+        "PRESCRIPTION",
+        "LAB_RESULT",
+        "RADIOLOGY_REPORT",
+        "SICK_NOTE",
+        "REFERRAL",
+        "DISCHARGE_SUMMARY",
+    }
+    amount_required_types = {"RECEIPT", "INVOICE"}
 
     # Get data from query params (GET) or body (POST)
     data = request.query_params if request.method == "GET" else request.data
@@ -504,51 +525,77 @@ def verify_document(request):
         signature = data.get("signature", "")
 
     # Validate required fields
-    if not all([doc_type, doc_number, amount, date, signature]):
+    if not all([doc_type, doc_number, date, signature]):
         return Response(
             {
                 "valid": False,
                 "error": "Missing required fields",
-                "message": "Please provide: type, number, amount, date, and signature (or qr_data)",
+                "message": "Please provide: type, number, date, and signature (or qr_data)",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if doc_type in amount_required_types and not amount:
+        return Response(
+            {
+                "valid": False,
+                "error": "Missing required fields",
+                "message": "Please provide amount for RECEIPT and INVOICE verification",
             },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     # Validate document type
-    if doc_type not in ("RECEIPT", "INVOICE"):
+    if doc_type not in supported_types:
         return Response(
             {
                 "valid": False,
                 "error": "Invalid document type",
-                "message": "Document type must be 'RECEIPT' or 'INVOICE'",
+                "message": (
+                    "Document type must be one of: RECEIPT, INVOICE, PRESCRIPTION, "
+                    "LAB_RESULT, RADIOLOGY_REPORT, SICK_NOTE, REFERRAL, DISCHARGE_SUMMARY"
+                ),
             },
             status=status.HTTP_400_BAD_REQUEST,
         )
+
+    normalized_amount = amount if doc_type in amount_required_types else (amount or "0")
 
     # Verify the signature
     is_valid = verify_document_signature(
         document_type=doc_type,
         document_number=doc_number,
-        amount=amount,
+        amount=normalized_amount,
         date=date,
         signature=signature,
     )
 
+    is_signed = _is_document_electronically_signed(doc_type, doc_number)
+    signature_status = "SIGNED" if is_signed else "UNSIGNED"
+
     if is_valid:
+        if is_signed:
+            message = "✓ Document is valid and authentic, and electronically signed."
+        else:
+            message = "✓ Document is valid and authentic, but not electronically signed."
         return Response(
             {
                 "valid": True,
+                "is_signed": is_signed,
+                "signature_status": signature_status,
                 "document_type": doc_type,
                 "document_number": doc_number,
                 "amount": amount,
                 "date": date,
-                "message": "✓ Document is valid and authentic",
+                "message": message,
             }
         )
     else:
         return Response(
             {
                 "valid": False,
+                "is_signed": is_signed,
+                "signature_status": signature_status,
                 "document_type": doc_type,
                 "document_number": doc_number,
                 "amount": amount,
@@ -556,6 +603,79 @@ def verify_document(request):
                 "message": "✗ Document signature is invalid. This document may have been tampered with.",
             }
         )
+
+
+def _is_document_electronically_signed(document_type: str, document_number: str) -> bool:
+    """Best-effort lookup for whether this verified document has a digital signature."""
+    mapping = {
+        "PRESCRIPTION": {
+            "app": "pharmacy",
+            "model": "Prescription",
+            "lookup": "prescription_number",
+            "signature_type": "Prescription",
+        },
+        "LAB_RESULT": {
+            "app": "laboratory",
+            "model": "DiagnosticReport",
+            "lookup": "report_number",
+            "signature_type": "DiagnosticReport",
+        },
+        "RADIOLOGY_REPORT": {
+            "app": "imaging",
+            "model": "RadiologyReport",
+            "lookup": "report_number",
+            "signature_type": "RadiologyReport",
+        },
+        "SICK_NOTE": {
+            "app": "sick_notes",
+            "model": "SickNote",
+            "lookup": "note_number",
+            "signature_type": "SickNote",
+        },
+        "REFERRAL": {
+            "app": "referrals",
+            "model": "ClinicalReferral",
+            "lookup": "referral_number",
+            "signature_type": "ClinicalReferral",
+        },
+        "DISCHARGE_SUMMARY": {
+            "app": "inpatient",
+            "model": "Discharge",
+            "lookup": "admission__admission_number",
+            "signature_type": "Discharge",
+        },
+        "INVOICE": {
+            "app": "billing",
+            "model": "Invoice",
+            "lookup": "invoice_number",
+            "signature_type": "Invoice",
+        },
+        "RECEIPT": {
+            "app": "billing",
+            "model": "Receipt",
+            "lookup": "receipt_number",
+            "signature_type": "Receipt",
+        },
+    }
+
+    config = mapping.get(document_type)
+    if not config:
+        return False
+
+    try:
+        model = apps.get_model(config["app"], config["model"])
+    except LookupError:
+        return False
+
+    queryset = model.objects.filter(**{config["lookup"]: document_number})
+    document = queryset.order_by("-id").first()
+    if document is None:
+        return False
+
+    return DocumentSignature.objects.filter(
+        document_type=config["signature_type"],
+        document_id=document.pk,
+    ).exists()
 
 
 def _parse_qr_data(qr_data: str) -> tuple | None:
@@ -570,6 +690,19 @@ def _parse_qr_data(qr_data: str) -> tuple | None:
         Tuple of (doc_type, doc_number, amount, date, signature) or None if invalid
     """
     try:
+        from urllib.parse import parse_qs, urlparse
+
+        parsed_url = urlparse(qr_data)
+        if parsed_url.scheme and parsed_url.netloc and parsed_url.query:
+            params = parse_qs(parsed_url.query)
+            doc_type = str((params.get("type") or [""])[0]).strip().upper()
+            doc_number = str((params.get("number") or [""])[0]).strip()
+            amount = str((params.get("amount") or [""])[0]).strip()
+            date = str((params.get("date") or [""])[0]).strip()
+            signature = str((params.get("signature") or [""])[0]).strip()
+            if doc_type and doc_number and date and signature:
+                return (doc_type, doc_number, amount, date, signature)
+
         parts = qr_data.split("|")
         if len(parts) < 5:
             return None
@@ -580,6 +713,8 @@ def _parse_qr_data(qr_data: str) -> tuple | None:
             doc_type = "RECEIPT"
         elif type_id == "VITORA-INV":
             doc_type = "INVOICE"
+        elif type_id == "VITORA-RX":
+            doc_type = "PRESCRIPTION"
         else:
             return None
 
@@ -592,11 +727,14 @@ def _parse_qr_data(qr_data: str) -> tuple | None:
 
         # Extract required fields
         doc_number = data.get("N")
-        amount = data.get("A")
+        amount = data.get("A", "")
         date = data.get("D")
         signature = data.get("S")
 
-        if not all([doc_number, amount, date, signature]):
+        if not all([doc_number, date, signature]):
+            return None
+
+        if doc_type in {"RECEIPT", "INVOICE"} and not amount:
             return None
 
         return (doc_type, doc_number, amount, date, signature)
@@ -1131,7 +1269,7 @@ class FacilityViewSet(viewsets.ModelViewSet):
         Write operations require facility-admin privileges (Nexora staff
         or tenant ADMIN/ORG-ADMIN/OWNER roles).
         """
-        if self.action in ["create", "update", "partial_update", "destroy"]:
+        if self.action in ["create", "update", "partial_update", "destroy", "test_connection"]:
             permission_classes = [
                 IsAuthenticated,
                 FacilityAdminPermission,
@@ -1937,3 +2075,99 @@ class DHIS2ConfigViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 # =============================================================================
 # PKI & Digital Signature ViewSets (DHA Gap #32 — Sprint 3.C)
 # =============================================================================
+
+
+class FacilityEmailConfigViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
+    """Manage the current facility's encrypted SMTP configuration."""
+
+    queryset = FacilityEmailConfig.objects.select_related("facility", "organization")
+    serializer_class = FacilityEmailConfigSerializer
+    tenant_scope = "facility"
+
+    def get_permissions(self):
+        return [FacilityAdminPermission()]
+
+    @action(detail=False, methods=["get"], url_path="current")
+    def current(self, request):
+        """Return the SMTP configuration for the active facility, if configured."""
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        config = FacilityEmailConfig.objects.filter(facility=facility).first()
+        if config is None:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(FacilityEmailConfigSerializer(config).data)
+
+    def create(self, request, *args, **kwargs):
+        """Upsert the one allowed configuration for the request facility."""
+        resolve_request_tenant(request)
+        tenant_kwargs = self.get_tenant_save_kwargs()
+        facility = tenant_kwargs.get(self.tenant_facility_field) or getattr(
+            request, "facility", None
+        )
+        if facility is None:
+            return Response(
+                {"detail": "A facility context is required."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        existing = FacilityEmailConfig.objects.filter(facility=facility).first()
+        if existing:
+            serializer = self.get_serializer(existing, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(**tenant_kwargs)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=["get"], url_path="providers")
+    def providers(self, request):
+        """Return safe SMTP presets for the facility configuration form."""
+        from .services.email_service import SMTP_PROVIDER_PRESETS
+
+        return Response({"providers": SMTP_PROVIDER_PRESETS})
+
+    @action(detail=True, methods=["post"], url_path="test-connection")
+    def test_connection(self, request, pk=None):
+        """Verify SMTP authentication before the facility can enable Custom Email."""
+        config = self.get_object()
+        if not config.is_configured:
+            return Response(
+                {"detail": "Complete SMTP configuration is required before testing."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            connection = get_connection(
+                backend="django.core.mail.backends.smtp.EmailBackend",
+                host=config.smtp_host,
+                port=config.smtp_port,
+                username=config.smtp_username,
+                password=config.smtp_password,
+                use_tls=config.security_mode == config.SecurityMode.STARTTLS,
+                use_ssl=config.security_mode == config.SecurityMode.SSL_TLS,
+                fail_silently=False,
+            )
+            connection.open()
+            connection.close()
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
+            config.status = FacilityEmailConfig.Status.UNHEALTHY
+            config.last_test_error = "SMTP connection or authentication failed."
+            config.last_tested_at = timezone.now()
+            config.save(update_fields=["status", "last_test_error", "last_tested_at", "updated_at"])
+            return Response({"detail": config.last_test_error}, status=status.HTTP_400_BAD_REQUEST)
+
+        config.status = FacilityEmailConfig.Status.HEALTHY
+        config.last_test_error = ""
+        config.last_tested_at = timezone.now()
+        config.save(update_fields=["status", "last_test_error", "last_tested_at", "updated_at"])
+        return Response(FacilityEmailConfigSerializer(config).data)

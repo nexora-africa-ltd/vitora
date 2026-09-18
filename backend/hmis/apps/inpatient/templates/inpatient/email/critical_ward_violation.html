@@ -1,0 +1,5 @@
+<!-- Critical ward compatibility alert HTML email. Context: existing admission workflow data and critical violation messages. -->
+<div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;border:1px solid #fecaca">
+  <div style="background:#991b1b;color:#fff;padding:18px"><h2 style="margin:0">Critical Ward Compatibility Violation</h2></div>
+  <div style="padding:18px"><p>This admission requires immediate review.</p><table><tr><td>Patient</td><td>{{ patient_name }}</td></tr><tr><td>MRN</td><td>{{ patient_mrn }}</td></tr><tr><td>Ward</td><td>{{ ward_name }} ({{ ward_code }})</td></tr><tr><td>Bed</td><td>{{ bed_number }}</td></tr><tr><td>Admitted By</td><td>{{ admitted_by }}</td></tr><tr><td>Admission Date</td><td>{{ admission_date }}</td></tr></table><h3>Critical Violations</h3><ul>{% for violation in violations %}<li>{{ violation }}</li>{% endfor %}</ul><h3>Override Reason Given</h3><p>{{ override_reason }}</p><p>Please verify the placement is clinically appropriate or coordinate a transfer to an appropriate ward.</p><p style="color:#6b7280;font-size:12px">This is an automated notification. Do not reply to this email.</p></div>
+</div>

@@ -9,6 +9,8 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest  # type: ignore
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -42,6 +44,32 @@ class TestInvoiceAPIEndpoints:
 
         assert response.status_code == status.HTTP_200_OK
         assert "results" in response.data or isinstance(response.data, list)
+
+    def test_list_invoices_avoids_per_invoice_serializer_queries(
+        self, authenticated_client, sample_invoice, sample_facility, test_user
+    ):
+        """Invoice list query count stays bounded as nested rows are serialized."""
+        for index in range(3):
+            invoice = Invoice.objects.create(
+                patient=sample_invoice.patient,
+                facility=sample_facility,
+                organization=sample_facility.organization,
+                due_date=date.today() + timedelta(days=30),
+                created_by=test_user,
+            )
+            InvoiceItem.objects.create(
+                invoice=invoice,
+                description=f"Consultation {index}",
+                quantity=Decimal("1.00"),
+                unit_price=Decimal("100.00"),
+                line_total=Decimal("100.00"),
+            )
+
+        with CaptureQueriesContext(connection) as context:
+            response = authenticated_client.get("/api/billing/invoices/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(context.captured_queries) <= 16
 
     def test_list_invoices_unauthenticated_fails(self, api_client):
         """Test unauthenticated access is rejected."""
@@ -178,10 +206,10 @@ class TestInvoiceAPIEndpoints:
         assert response.data["payer_credit_total"] == "0.00"
         assert response.data["patient_net_due"] == "15000.00"
 
-    def test_get_invoice_detail_falls_back_to_item_allocation_when_claim_copay_missing(
+    def test_get_invoice_detail_keeps_copay_zero_without_linked_claim(
         self, authenticated_client, sample_invoice, sample_service
     ):
-        """Line allocations remain estimates until an insurer approves or reserves them."""
+        """No-claim invoices should expose patient net due without claim copay."""
         sample_invoice.total_amount = Decimal("1000.00")
         sample_invoice.amount_paid = Decimal("0.00")
         sample_invoice.save(update_fields=["total_amount", "amount_paid", "updated_at"])
@@ -204,7 +232,7 @@ class TestInvoiceAPIEndpoints:
         assert response.data["insurance_credit_amount"] == "0.00"
         assert response.data["insurance_estimated_allocation"] == "200.00"
         assert response.data["payer_credit_total"] == "0.00"
-        assert response.data["patient_copay_amount"] == "800.00"
+        assert response.data["patient_copay_amount"] == "0.00"
         assert response.data["patient_net_due"] == "1000.00"
 
     def test_get_invoice_detail_by_public_id(self, authenticated_client, sample_invoice):

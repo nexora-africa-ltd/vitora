@@ -239,6 +239,9 @@ class SurveillanceEvents:
 
     NOTIFIABLE_DISEASE_DETECTED = "surveillance.disease.detected"
     ALERT_CREATED = "surveillance.alert.created"
+    CONTACT_IDENTIFIED = "surveillance.contact.identified"
+    CONTACT_STATUS_CHANGED = "surveillance.contact.status_changed"
+    CONTACT_FOLLOWUP_RECORDED = "surveillance.contact.followup_recorded"
 
 
 class CoreEvents:

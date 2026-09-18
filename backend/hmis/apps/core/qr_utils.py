@@ -9,7 +9,9 @@ Used for receipt/invoice validation and verification.
 import base64
 import hashlib
 import hmac
+from decimal import Decimal, InvalidOperation
 from io import BytesIO
+from urllib.parse import urlencode
 
 import qrcode
 from django.conf import settings
@@ -75,7 +77,7 @@ def generate_qr_data_uri(
 def generate_document_signature(
     document_type: str,
     document_number: str,
-    amount: str,
+    amount: str | None,
     date: str,
     secret_key: str | None = None,
 ) -> str:
@@ -96,9 +98,26 @@ def generate_document_signature(
         8-character hex signature
     """
     key = (secret_key or settings.SECRET_KEY).encode("utf-8")
-    message = f"{document_type}:{document_number}:{amount}:{date}".encode()
+    normalized_amount = _normalize_amount_for_signature(amount)
+    message = f"{document_type}:{document_number}:{normalized_amount}:{date}".encode()
     signature = hmac.new(key, message, hashlib.sha256).hexdigest()
     return signature[:8].upper()
+
+
+def _normalize_amount_for_signature(amount: str | None) -> str:
+    """Normalize amount strings so 5100 and 5100.00 produce the same signature."""
+    if amount is None:
+        return "0"
+
+    raw = str(amount).strip()
+    if not raw:
+        return "0"
+
+    try:
+        normalized = Decimal(raw).quantize(Decimal("0.01"))
+        return format(normalized, "f")
+    except (InvalidOperation, ValueError):
+        return raw
 
 
 def get_verification_base_url() -> str:
@@ -108,6 +127,36 @@ def get_verification_base_url() -> str:
     Reads from DOCUMENT_VERIFICATION_URL setting, falls back to default.
     """
     return getattr(settings, "DOCUMENT_VERIFICATION_URL", "https://vitora.health/verify")
+
+
+def generate_document_verification_url(
+    document_type: str,
+    document_number: str,
+    date: str,
+    amount: str | None = None,
+    base_url: str | None = None,
+) -> str:
+    """Generate a signed public verification URL for any supported document type."""
+    date_str = date[:10] if date else ""
+    normalized_amount = str(amount).strip() if amount is not None and str(amount).strip() else "0"
+    signature = generate_document_signature(
+        document_type=document_type,
+        document_number=document_number,
+        amount=normalized_amount,
+        date=date_str,
+    )
+
+    query = {
+        "type": document_type,
+        "number": document_number,
+        "date": date_str,
+        "signature": signature,
+    }
+    if normalized_amount != "0" or document_type in {"RECEIPT", "INVOICE"}:
+        query["amount"] = normalized_amount
+
+    url = base_url or get_verification_base_url()
+    return f"{url}?{urlencode(query)}"
 
 
 def generate_receipt_qr_url(
@@ -130,16 +179,13 @@ def generate_receipt_qr_url(
     Returns:
         Full verification URL
     """
-    date_str = receipt_date[:10] if receipt_date else ""
-    # Use date_str for signature so it matches what's in the URL
-    sig = generate_document_signature("RECEIPT", receipt_number, amount, date_str)
-
-    url = base_url or get_verification_base_url()
-    params = (
-        f"?type=RECEIPT&number={receipt_number}&amount={amount}&date={date_str}&signature={sig}"
+    return generate_document_verification_url(
+        document_type="RECEIPT",
+        document_number=receipt_number,
+        amount=amount,
+        date=receipt_date,
+        base_url=base_url,
     )
-
-    return f"{url}{params}"
 
 
 def generate_invoice_qr_url(
@@ -160,14 +206,13 @@ def generate_invoice_qr_url(
     Returns:
         Full verification URL
     """
-    date_str = invoice_date[:10] if invoice_date else ""
-    # Use date_str for signature so it matches what's in the URL
-    sig = generate_document_signature("INVOICE", invoice_number, total_amount, date_str)
-
-    url = base_url or get_verification_base_url()
-    params = f"?type=INVOICE&number={invoice_number}&amount={total_amount}&date={date_str}&signature={sig}"
-
-    return f"{url}{params}"
+    return generate_document_verification_url(
+        document_type="INVOICE",
+        document_number=invoice_number,
+        amount=total_amount,
+        date=invoice_date,
+        base_url=base_url,
+    )
 
 
 def generate_receipt_qr_data(
@@ -257,7 +302,7 @@ def generate_invoice_qr_data(
 def verify_document_signature(
     document_type: str,
     document_number: str,
-    amount: str,
+    amount: str | None,
     date: str,
     signature: str,
     secret_key: str | None = None,

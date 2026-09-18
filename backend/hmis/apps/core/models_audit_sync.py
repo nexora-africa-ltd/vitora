@@ -64,6 +64,9 @@ class AuditLog(models.Model):
         ("emergency_access_invoke", "Emergency Access Invoked"),
         ("emergency_access_approved", "Emergency Access Approved"),
         ("emergency_access_revoked", "Emergency Access Revoked"),
+        ("emergency_access_closed", "Emergency Access Closed"),
+        ("emergency_access_resource_accessed", "Emergency Access Resource Accessed"),
+        ("emergency_access_review_overdue", "Emergency Access Review Overdue"),
         # System actions
         ("system_error", "System Error"),
         ("data_export", "Data Export"),

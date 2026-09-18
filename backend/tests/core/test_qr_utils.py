@@ -10,6 +10,7 @@ from PIL import Image
 
 from hmis.apps.core.qr_utils import (
     generate_document_signature,
+    generate_document_verification_url,
     generate_invoice_qr_data,
     generate_invoice_qr_url,
     generate_qr_base64,
@@ -132,6 +133,13 @@ class TestGenerateDocumentSignature:
 
         assert sig1 != sig2
         assert sig1 != sig3
+
+    def test_amount_normalization_keeps_signature_stable(self):
+        """Numerically equivalent amounts should produce identical signatures."""
+        sig1 = generate_document_signature("INVOICE", "INV-001", "5100", "2026-08-13")
+        sig2 = generate_document_signature("INVOICE", "INV-001", "5100.00", "2026-08-13")
+
+        assert sig1 == sig2
 
     def test_custom_secret_key(self):
         """Should use custom secret key when provided."""
@@ -340,6 +348,24 @@ class TestGenerateReceiptQRUrl:
         )
 
 
+class TestGenerateDocumentVerificationURL:
+    """Tests for generate_document_verification_url helper."""
+
+    def test_generates_non_financial_document_url_without_amount(self):
+        """Non-financial docs should verify without requiring amount in URL."""
+        result = generate_document_verification_url(
+            document_type="SICK_NOTE",
+            document_number="SN-2026-0001",
+            date="2026-01-22T09:00:00Z",
+        )
+
+        assert "type=SICK_NOTE" in result
+        assert "number=SN-2026-0001" in result
+        assert "date=2026-01-22" in result
+        assert "signature=" in result
+        assert "amount=" not in result
+
+
 class TestGenerateInvoiceQRUrl:
     """Tests for generate_invoice_qr_url function."""
 
@@ -450,6 +476,7 @@ class TestVerifyDocumentAPI:
 
         assert response.status_code == 200
         assert response.data["valid"] is True
+        assert response.data["signature_status"] == "UNSIGNED"
         assert response.data["document_type"] == "RECEIPT"
         assert response.data["document_number"] == "RCP-001"
         assert "valid and authentic" in response.data["message"]
@@ -497,6 +524,7 @@ class TestVerifyDocumentAPI:
 
         assert response.status_code == 200
         assert response.data["valid"] is False
+        assert response.data["signature_status"] == "UNSIGNED"
         assert "invalid" in response.data["message"].lower()
 
     def test_verify_tampered_amount(self, api_client):
@@ -520,18 +548,69 @@ class TestVerifyDocumentAPI:
         assert response.data["valid"] is False
 
     def test_verify_missing_fields(self, api_client):
-        """Should return error when required fields are missing."""
+        """Should return error when core required fields are missing."""
         response = api_client.get(
             "/api/core/verify/",
             {
                 "type": "RECEIPT",
                 "number": "RCP-005",
-                # Missing amount, date, signature
+                # Missing date and signature
             },
         )
 
         assert response.status_code == 400
         assert "Missing required fields" in response.data["error"]
+
+    def test_verify_receipt_requires_amount(self, api_client):
+        """Should enforce amount for financial document verification."""
+        sig = generate_document_signature("RECEIPT", "RCP-008", "1500.00", "2026-01-22")
+
+        response = api_client.get(
+            "/api/core/verify/",
+            {
+                "type": "RECEIPT",
+                "number": "RCP-008",
+                "date": "2026-01-22",
+                "signature": sig,
+            },
+        )
+
+        assert response.status_code == 400
+        assert "Please provide amount" in response.data["message"]
+
+    def test_verify_prescription_without_amount(self, api_client):
+        """Should verify non-financial documents without an amount field."""
+        sig = generate_document_signature("PRESCRIPTION", "RX-2026-0001", "0", "2026-01-22")
+
+        response = api_client.get(
+            "/api/core/verify/",
+            {
+                "type": "PRESCRIPTION",
+                "number": "RX-2026-0001",
+                "date": "2026-01-22",
+                "signature": sig,
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.data["valid"] is True
+        assert response.data["document_type"] == "PRESCRIPTION"
+
+    def test_verify_prescription_url_in_qr_data(self, api_client):
+        """Should parse and verify full verification URLs scanned from QR codes."""
+        sig = generate_document_signature("PRESCRIPTION", "RX-2026-0002", "0", "2026-01-22")
+        qr_data = (
+            "https://vitora.health/verify?type=PRESCRIPTION"
+            "&number=RX-2026-0002"
+            "&date=2026-01-22"
+            f"&signature={sig}"
+        )
+
+        response = api_client.get("/api/core/verify/", {"qr_data": qr_data})
+
+        assert response.status_code == 200
+        assert response.data["valid"] is True
+        assert response.data["document_type"] == "PRESCRIPTION"
 
     def test_verify_invalid_qr_format(self, api_client):
         """Should return error for invalid QR code format."""

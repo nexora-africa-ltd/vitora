@@ -8,8 +8,12 @@ import logging
 from celery import shared_task
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.mail import send_mail
+from django.db.models import Q
+from django.template import TemplateDoesNotExist, TemplateSyntaxError
+from django.template.loader import render_to_string
 from django.utils import timezone
+
+from hmis.apps.core.services.email_service import send_transactional_email
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +23,20 @@ User = get_user_model()
 def _sanitize_log_field(value: object) -> str:
     text = str(value)
     return text.replace("\r", " ").replace("\n", " ")
+
+
+def _get_tenant_approvers(organization):
+    if organization is None:
+        return User.objects.none()
+    return (
+        User.objects.filter(is_active=True, staff_profile__organization=organization)
+        .filter(
+            Q(is_superuser=True)
+            | Q(user_permissions__codename="approve_emergency_access")
+            | Q(groups__permissions__codename="approve_emergency_access")
+        )
+        .distinct()
+    )
 
 
 @shared_task(
@@ -58,17 +76,27 @@ def send_emergency_access_escalation(self, emergency_access_id: int) -> dict:  #
         logger.info("Escalation already sent for EmergencyAccess %s", emergency_access_id)
         return {"status": "skipped", "message": "Already sent"}
 
-    # Get administrators to notify (superusers and those with approve permission)
-    admins = User.objects.filter(
-        is_active=True,
-    ).filter(
-        # Superusers OR users with approve permission
-        is_superuser=True,
-    ) | User.objects.filter(
-        is_active=True,
-        user_permissions__codename="approve_emergency_access",
+    organization = getattr(emergency_access.patient, "organization", None)
+    if organization is None:
+        organization = getattr(
+            getattr(emergency_access.user, "staff_profile", None), "organization", None
+        )
+    if organization is None:
+        logger.error(
+            "Emergency access %s has no resolvable tenant; escalation suppressed",
+            emergency_access_id,
+        )
+        return {"status": "error", "message": "No tenant resolved", "emails_sent": 0, "sms_sent": 0}
+
+    facility = getattr(
+        getattr(emergency_access.user, "staff_profile", None), "primary_facility", None
     )
-    admins = admins.distinct()
+    if facility is not None and facility.organization_id != organization.id:
+        facility = None
+
+    # Limit recipients to the emergency tenant; group permissions are equivalent
+    # to direct permissions and avoid excluding role-managed administrators.
+    admins = _get_tenant_approvers(organization)
 
     # Prepare notification content
     patient_info = (
@@ -79,32 +107,28 @@ def send_emergency_access_escalation(self, emergency_access_id: int) -> dict:  #
 
     subject = f"🚨 ALERT: Emergency Access Invoked by {emergency_access.user.username}"
 
-    message = f"""
-EMERGENCY ACCESS ALERT
-======================
-
-A user has invoked emergency (break-glass) access.
-
-User: {emergency_access.user.username} ({emergency_access.user.first_name} {emergency_access.user.last_name})
-Patient: {patient_info}
-Reason: {emergency_access.get_reason_display()}
-Details: {emergency_access.reason_details}
-Requested At: {emergency_access.requested_at.strftime("%Y-%m-%d %H:%M:%S")}
-Expires At: {emergency_access.expires_at.strftime("%Y-%m-%d %H:%M:%S")}
-Duration: {emergency_access.duration_minutes} minutes
-IP Address: {emergency_access.ip_address or "Unknown"}
-
-ACTION REQUIRED:
-- Review this emergency access request
-- Verify the justification is appropriate
-- Approve or revoke as needed
-
-Review at: {getattr(settings, "SITE_URL", "http://localhost")}/admin/emergency-access/{emergency_access.id}/
-
----
-Vitora HMIS - Emergency Access Monitoring
-This is an automated alert. Do not reply to this email.
-"""
+    context = {
+        "username": emergency_access.user.username,
+        "user_name": emergency_access.user.get_full_name(),
+        "patient_info": patient_info,
+        "reason": emergency_access.get_reason_display(),
+        "reason_details": emergency_access.reason_details,
+        "requested_at": emergency_access.requested_at.strftime("%Y-%m-%d %H:%M:%S"),
+        "expires_at": emergency_access.expires_at.strftime("%Y-%m-%d %H:%M:%S"),
+        "duration_minutes": emergency_access.duration_minutes,
+        "ip_address": emergency_access.ip_address or "Unknown",
+        "review_url": (
+            f"{getattr(settings, 'SITE_URL', 'http://localhost')}/admin/emergency-access/"
+            f"{emergency_access.id}/"
+        ),
+    }
+    text_body = render_to_string("core/emergency_access/email/escalation.txt", context)
+    try:
+        html_body = render_to_string("core/emergency_access/email/escalation.html", context)
+    except (TemplateDoesNotExist, TemplateSyntaxError) as exc:
+        # The plain-text template is a safe delivery fallback; provider failures still retry.
+        logger.warning("Emergency escalation HTML template unavailable: %s", type(exc).__name__)
+        html_body = text_body.replace("\n", "<br>")
 
     sms_message = f"🚨 VITORA ALERT: Emergency access by {emergency_access.user.username}. Reason: {emergency_access.reason}. Review required."
 
@@ -112,18 +136,20 @@ This is an automated alert. Do not reply to this email.
     sms_sent = 0
     errors = []
 
-    # Send emails
-    admin_emails = list(admins.exclude(email="").values_list("email", flat=True))
-    if admin_emails:
+    if admins.exclude(email="").exists():
         try:
-            send_mail(
-                subject=subject,
-                message=message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=admin_emails,
-                fail_silently=False,
-            )
-            emails_sent = len(admin_emails)
+            for admin in admins.exclude(email=""):
+                result = send_transactional_email(
+                    subject=subject,
+                    html_body=html_body,
+                    to_email=admin.email,
+                    facility=facility,
+                )
+                if not result.get("accepted", False):
+                    raise RuntimeError(
+                        "Emergency escalation email was not accepted by the provider."
+                    )
+                emails_sent += 1
             logger.info("Sent emergency access escalation email to %d admins", emails_sent)
         except (
             AttributeError,
@@ -135,7 +161,7 @@ This is an automated alert. Do not reply to this email.
             ImportError,
         ) as exc:
             logger.exception("Failed to send escalation email (%s)", type(exc).__name__)
-            errors.append("Email: notification send failed")
+            raise
     else:
         logger.warning("No admin emails configured for emergency access escalation")
 
@@ -225,3 +251,126 @@ def expire_emergency_access() -> dict:
         logger.info("Expired %d emergency access records", expired_count)
 
     return {"expired_count": expired_count}
+
+
+@shared_task(name="hmis.apps.core.emergency_access.tasks.flag_overdue_emergency_access_reviews")
+def flag_overdue_emergency_access_reviews() -> dict:
+    """Detect and log emergency access records overdue for compliance review."""
+    from hmis.apps.core.emergency_access.models import EmergencyAccess, EmergencyAccessStatus
+    from hmis.apps.core.models import AuditLog
+
+    now = timezone.now()
+    overdue_records = EmergencyAccess.objects.select_related("user").filter(
+        status__in=[EmergencyAccessStatus.ACTIVE, EmergencyAccessStatus.EXPIRED],
+        review_due_at__lt=now,
+    )
+
+    overdue_count = overdue_records.count()
+    logged_count = 0
+
+    for record in overdue_records:
+        recently_logged = AuditLog.objects.filter(
+            action="emergency_access_review_overdue",
+            resource_type="EmergencyAccess",
+            resource_id=record.id,
+            timestamp__gte=now - timezone.timedelta(hours=24),
+        ).exists()
+        if recently_logged:
+            continue
+
+        AuditLog.log(
+            action="emergency_access_review_overdue",
+            user=record.user,
+            resource_type="EmergencyAccess",
+            resource_id=record.id,
+            patient_id=record.patient_id,
+            details={
+                "status": record.status,
+                "requested_at": record.requested_at.isoformat() if record.requested_at else "",
+                "review_due_at": record.review_due_at.isoformat() if record.review_due_at else "",
+                "hours_overdue": round(
+                    max(0.0, (now - record.review_due_at).total_seconds() / 3600.0),
+                    2,
+                )
+                if record.review_due_at
+                else 0.0,
+            },
+        )
+        logged_count += 1
+
+    if overdue_count:
+        logger.warning(
+            "Detected %d overdue emergency-access review(s); logged %d alerts",
+            overdue_count,
+            logged_count,
+        )
+
+    return {"overdue_count": overdue_count, "logged_count": logged_count}
+
+
+@shared_task(name="hmis.apps.core.emergency_access.tasks.send_emergency_access_daily_digest")
+def send_emergency_access_daily_digest() -> dict:
+    """Send a daily compliance digest to emergency-access approvers."""
+    from hmis.apps.core.emergency_access.models import EmergencyAccess, EmergencyAccessStatus
+    from hmis.apps.core.models import Organization
+
+    now = timezone.now()
+    today = timezone.localdate()
+    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    day_end = day_start + timezone.timedelta(days=1)
+
+    orgs = Organization.objects.all()
+    total_sent = 0
+
+    for org in orgs:
+        approvers = _get_tenant_approvers(org).exclude(email="")
+        if not approvers.exists():
+            continue
+
+        org_records = EmergencyAccess.objects.filter(
+            Q(user__staff_profile__organization=org)
+            | Q(patient__organization=org)
+            | Q(approver__staff_profile__organization=org)
+        ).distinct()
+
+        invoked_today = org_records.filter(
+            requested_at__gte=day_start, requested_at__lt=day_end
+        ).count()
+        reviewed_today = org_records.filter(
+            approved_at__gte=day_start, approved_at__lt=day_end
+        ).count()
+        pending_review = org_records.filter(
+            status__in=[EmergencyAccessStatus.ACTIVE, EmergencyAccessStatus.EXPIRED]
+        ).count()
+        overdue_reviews = org_records.filter(
+            status__in=[EmergencyAccessStatus.ACTIVE, EmergencyAccessStatus.EXPIRED],
+            review_due_at__lt=now,
+        ).count()
+
+        subject = f"Emergency Access Daily Digest ({today.isoformat()})"
+        html_body = (
+            "<h3>Emergency Access Compliance Digest</h3>"
+            f"<p>Organization: {org.name}</p>"
+            f"<p>Date: {today.isoformat()}</p>"
+            f"<ul><li>Invoked today: {invoked_today}</li>"
+            f"<li>Reviewed today: {reviewed_today}</li>"
+            f"<li>Pending review: {pending_review}</li>"
+            f"<li>Overdue reviews: {overdue_reviews}</li></ul>"
+        )
+
+        for approver in approvers:
+            result = send_transactional_email(
+                subject=subject,
+                html_body=html_body,
+                to_email=approver.email,
+                facility=getattr(
+                    getattr(approver, "staff_profile", None), "primary_facility", None
+                ),
+            )
+            if result.get("accepted", False):
+                total_sent += 1
+
+    if total_sent == 0:
+        return {"status": "skipped", "emails_sent": 0}
+
+    return {"status": "success", "emails_sent": total_sent}

@@ -21,9 +21,11 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "duration_minutes",
+                "access_mode",
                 "patient_mrn",
                 "reason",
                 "reason_details",
+                "scope_type",
             }
         ),
     ),
@@ -32,7 +34,11 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "by_reason",
+                "by_reason_facility",
+                "by_reason_role",
                 "by_status",
+                "median_review_minutes",
+                "overdue_reviews",
                 "total_active",
                 "total_pending_review",
                 "total_this_week",
@@ -54,13 +60,17 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "approval_notes",
+                "access_mode",
+                "access_mode_display",
                 "approved_at",
                 "approver",
                 "approver_username",
+                "closed_at",
                 "duration_minutes",
                 "escalation_sent",
                 "escalation_sent_at",
                 "expires_at",
+                "granted_permissions",
                 "id",
                 "ip_address",
                 "is_active",
@@ -72,11 +82,14 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "reason_details",
                 "reason_display",
                 "remaining_minutes",
+                "review_due_at",
                 "requested_at",
                 "revocation_reason",
                 "revoked_at",
                 "revoked_by",
                 "revoked_by_username",
+                "scope_type",
+                "scope_type_display",
                 "status",
                 "status_display",
                 "user",

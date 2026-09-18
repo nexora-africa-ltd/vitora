@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SHASettingsTab } from '@/components/settings/sha-settings';
 import { MFASettingsTab } from '@/components/settings/mfa-settings';
 import { FacilitySettingsTab } from '@/components/settings/facility-settings';
+import { FacilityEmailSettings } from '@/components/settings/facility-email-settings';
 import { DischargeTemplateSettings } from '@/components/settings/discharge-template-settings';
 import { DHIS2SettingsTab } from '@/components/settings/dhis2-settings';
 import { AppearanceSettings } from '@/components/settings/appearance-settings';
@@ -104,6 +105,7 @@ export default function SettingsPage() {
         {/* Facility Settings */}
         <TabsContent value="facility" className="mt-4 space-y-4">
           <FacilitySettingsTab />
+          <FacilityEmailSettings />
           <DischargeTemplateSettings />
         </TabsContent>
 

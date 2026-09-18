@@ -746,7 +746,8 @@ export function useLabClinicianSocket(options: UseLabWebSocketOptions = {}): Use
 export function useLabQueueSocket(options: UseLabWebSocketOptions = {}): UseWebSocketReturn {
   const queryClient = useQueryClient();
 
-  const url = getWebSocketUrl('/ws/lab/queue/');
+  // Queue-specific endpoint is not exposed by backend routing; use clinician feed.
+  const url = getWebSocketUrl('/ws/lab/clinician/');
 
   const handleMessage = useCallback(
     (message: WebSocketMessage) => {

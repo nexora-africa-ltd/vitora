@@ -72,6 +72,7 @@ import {
 
 interface LabQueueViewProps {
   defaultStatus?: QueueStatus | '';
+  enabled?: boolean;
 }
 
 const STATUS_CONFIG: Record<
@@ -93,6 +94,12 @@ const PRIORITY_CONFIG: Record<LabPriority, { label: string; className: string }>
   ROUTINE: { label: 'Routine', className: 'text-muted-foreground' },
   URGENT: { label: 'Urgent', className: 'text-warning font-medium' },
   STAT: { label: 'STAT', className: 'text-destructive font-bold' },
+};
+
+const PRIORITY_SORT_ORDER: Record<LabPriority, number> = {
+  STAT: 0,
+  URGENT: 1,
+  ROUTINE: 2,
 };
 
 const SPECIMEN_STATUS_CONFIG: Record<
@@ -120,7 +127,7 @@ const STATUS_FILTERS: { value: QueueStatus | ''; label: string }[] = [
   { value: 'RELEASED', label: 'Released' },
 ];
 
-export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
+export function LabQueueView({ defaultStatus = '', enabled = true }: LabQueueViewProps) {
   const router = useRouter();
   const { toast } = useToast();
 
@@ -140,7 +147,9 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
   const [barcodeSearchOpen, setBarcodeSearchOpen] = useState(false);
 
   // Hooks
-  const { data: queue, isLoading, error, refetch } = useLabQueue(statusFilter || undefined);
+  const { data: queue, isLoading, error, refetch } = useLabQueue(statusFilter || undefined, {
+    enabled,
+  });
   const { data: technicians = [], isLoading: isTechniciansLoading } = useLabTechnicians();
 
   // Real-time WebSocket updates for lab queue
@@ -338,17 +347,29 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
   };
 
   // Filter queue by quick search
-  const filteredQueue = (queue || []).filter((item) => {
-    if (!quickSearch) return true;
-    const search = quickSearch.toLowerCase();
-    return (
-      item.queue_number.toLowerCase().includes(search) ||
-      item.patient_name?.toLowerCase().includes(search) ||
-      item.patient_mrn?.toLowerCase().includes(search) ||
-      item.sample_id?.toLowerCase().includes(search) ||
-      item.specimen?.barcode?.toLowerCase().includes(search)
-    );
-  });
+  const filteredQueue = (queue || [])
+    .filter((item) => {
+      if (!quickSearch) return true;
+      const search = quickSearch.toLowerCase();
+      return (
+        item.queue_number.toLowerCase().includes(search) ||
+        item.order_number.toLowerCase().includes(search) ||
+        item.patient_name?.toLowerCase().includes(search) ||
+        item.patient_mrn?.toLowerCase().includes(search) ||
+        item.sample_id?.toLowerCase().includes(search) ||
+        item.specimen?.barcode?.toLowerCase().includes(search)
+      );
+    })
+    .sort((a, b) => {
+      const aCreatedAt = new Date(a.created_at).getTime();
+      const bCreatedAt = new Date(b.created_at).getTime();
+
+      if (aCreatedAt !== bCreatedAt) {
+        return bCreatedAt - aCreatedAt;
+      }
+
+      return PRIORITY_SORT_ORDER[a.priority] - PRIORITY_SORT_ORDER[b.priority];
+    });
 
   const queuePageSize = 20;
   const queueTotalPages = Math.max(1, Math.ceil(filteredQueue.length / queuePageSize));
@@ -371,6 +392,15 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
 
   // Count overdue items
   const overdueCount = (queue || []).filter((item) => item.is_overdue).length;
+
+  if (!enabled) {
+    return (
+      <EmptyState
+        title="Facility Required"
+        description="Select a facility to load the lab queue."
+      />
+    );
+  }
 
   if (error) {
     return (
@@ -414,8 +444,8 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                     <StatusIcon
                       className={cn(
                         'h-8 w-8 opacity-50',
-                        config.variant === 'default' && 'text-green-500',
-                        config.variant === 'secondary' && 'text-blue-500'
+                        config.variant === 'default' && 'text-emerald-600 dark:text-emerald-400',
+                        config.variant === 'secondary' && 'text-cyan-600 dark:text-cyan-400'
                       )}
                     />
                   </div>
@@ -516,9 +546,13 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                 }}
                 rowClassName={(item) =>
                   cn(
-                    item.priority === 'STAT' && 'bg-destructive/10 hover:bg-destructive/20',
-                    item.priority === 'URGENT' && 'bg-warning/10 hover:bg-warning/20',
-                    item.is_overdue && 'bg-warning/20 hover:bg-warning/30'
+                    item.priority === 'ROUTINE' &&
+                      'border-l-4 border-l-emerald-500/80 dark:border-l-emerald-400/80',
+                    item.priority === 'URGENT' &&
+                      'border-l-4 border-l-amber-500/90 dark:border-l-amber-400/90',
+                    item.priority === 'STAT' &&
+                      'border-l-4 border-l-destructive/90 dark:border-l-red-400/90',
+                    item.is_overdue && 'border-r-4 border-r-amber-500/90 dark:border-r-amber-400/90'
                   )
                 }
                 columns={[
@@ -1125,7 +1159,14 @@ function TATDisplay({ item }: TATDisplayProps) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className={cn('text-sm', isWithinExpected ? 'text-green-600' : 'text-orange-600')}>
+          <div
+            className={cn(
+              'text-sm',
+              isWithinExpected
+                ? 'text-emerald-700 dark:text-emerald-300'
+                : 'text-amber-700 dark:text-amber-300'
+            )}
+          >
             <div className="flex items-center gap-1">
               <Timer className="h-3 w-3" />
               {actual_tat_hours.toFixed(1)}h
@@ -1148,7 +1189,7 @@ function TATDisplay({ item }: TATDisplayProps) {
           <div
             className={cn(
               'text-sm',
-              is_overdue ? 'font-medium text-red-600' : 'text-muted-foreground'
+              is_overdue ? 'font-medium text-destructive dark:text-red-300' : 'text-muted-foreground'
             )}
           >
             <div className="flex items-center gap-1">
@@ -1161,7 +1202,7 @@ function TATDisplay({ item }: TATDisplayProps) {
         <TooltipContent>
           <p>Elapsed: {elapsed_hours.toFixed(1)} hours</p>
           <p className="text-xs text-muted-foreground">Expected: {expected_tat_hours || 24}h</p>
-          {is_overdue && <p className="text-xs font-medium text-red-500">OVERDUE</p>}
+          {is_overdue && <p className="text-xs font-medium text-destructive dark:text-red-300">OVERDUE</p>}
         </TooltipContent>
       </Tooltip>
     );

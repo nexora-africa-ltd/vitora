@@ -26,6 +26,7 @@ import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from hmis.apps.core.models import County, SubCounty
@@ -609,6 +610,34 @@ class TestDischargeQueries:
 
         normal_discharges = Discharge.objects.filter(discharge_type="NORMAL")
         assert normal_discharges.count() == 1
+
+    def test_discharge_list_loads_related_records_without_query_fan_out(
+        self, authenticated_client, active_admission, test_user
+    ):
+        """Discharge list serialization should join its admission, patient, and clinician."""
+        from django.db import connection
+
+        Discharge.objects.create(
+            admission=active_admission,
+            discharge_type="NORMAL",
+            discharge_date=timezone.now(),
+            discharged_by=test_user,
+            admission_diagnosis="K35.8",
+            final_diagnosis="K35.8",
+            final_diagnosis_text="Resolved",
+            treatment_summary="Treatment completed",
+            patient_instructions="Rest",
+            pharmacy_cleared=True,
+            billing_cleared=True,
+            lab_results_acknowledged=True,
+        )
+
+        with CaptureQueriesContext(connection) as context:
+            response = authenticated_client.get("/api/inpatient/discharges/")
+
+        assert response.status_code == 200
+        assert len(response.data["results"]) == 1
+        assert len(context.captured_queries) <= 9
 
 
 @pytest.mark.django_db

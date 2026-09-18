@@ -12,7 +12,7 @@ This module provides DRF views for:
 """
 
 from django.db import models
-from django.db.models import Avg, Q
+from django.db.models import Avg, Exists, OuterRef, Q
 from django.utils import timezone
 from django_filters import rest_framework as filters
 from drf_spectacular.utils import extend_schema
@@ -263,7 +263,26 @@ class ClinicViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Filter out sensitive clinics for users without permission."""
-        queryset = super().get_queryset()
+        queryset = (
+            super()
+            .get_queryset()
+            .annotate(
+                is_open_today_annotated=Exists(
+                    ClinicSession.objects.filter(
+                        clinic_id=OuterRef("pk"),
+                        session_date=timezone.localdate(),
+                        status="OPEN",
+                    )
+                ),
+                is_scheduled_today_annotated=Exists(
+                    ClinicSchedule.objects.filter(
+                        clinic_id=OuterRef("pk"),
+                        day_of_week=timezone.localdate().weekday(),
+                        is_active=True,
+                    )
+                ),
+            )
+        )
         user = self.request.user
 
         # Filter sensitive clinics
@@ -302,10 +321,23 @@ class ClinicViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             session, _ = clinic.get_or_create_session(timezone.localdate())
 
             # Get today's visits (all active statuses for dashboard display)
-            visits = ClinicVisit.objects.filter(
-                session=session,
-                status__in=["REGISTERED", "WAITING", "CALLED", "IN_CONSULTATION", "COMPLETED"],
-            ).order_by("priority", "queue_number")
+            visits = (
+                ClinicVisit.objects.filter(
+                    session=session,
+                    status__in=["REGISTERED", "WAITING", "CALLED", "IN_CONSULTATION", "COMPLETED"],
+                )
+                .select_related(
+                    "session__clinic",
+                    "patient",
+                    "assigned_clinician",
+                    "registered_by",
+                    "room",
+                    "encounter",
+                    "anc_visit__registration",
+                    "pnc_visit__registration",
+                )
+                .order_by("priority", "queue_number")
+            )
 
             serializer = ClinicVisitSerializer(visits, many=True)
             return Response({"results": serializer.data})
@@ -724,6 +756,8 @@ class ClinicVisitViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         "session__clinic",
         "patient",
         "assigned_clinician",
+        "registered_by",
+        "room",
         "encounter",
         "anc_visit__registration",
         "pnc_visit__registration",

@@ -245,3 +245,52 @@ class LabWorkflowSettings(FacilityScopedModel):
 
     def __str__(self):
         return f"Workflow Settings (Facility #{self.facility_id})"
+
+
+class LaboratoryAlertSettings(FacilityScopedModel):
+    """Facility-level recipient routing for critical laboratory result escalations."""
+
+    lab_critical_alert_roles = models.ManyToManyField(
+        "core.Role", blank=True, related_name="laboratory_critical_alert_settings"
+    )
+    lab_critical_alert_users = models.ManyToManyField(
+        User, blank=True, related_name="laboratory_critical_alert_settings"
+    )
+
+    class Meta:
+        verbose_name = "Laboratory Alert Settings"
+        verbose_name_plural = "Laboratory Alert Settings"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility"], name="one_lab_alert_settings_per_facility"
+            ),
+        ]
+
+    def __str__(self):
+        return f"Laboratory Alert Settings (Facility #{self.facility_id})"
+
+    @classmethod
+    def get_settings(cls, facility):
+        """Return the recipient configuration for a facility, creating defaults when absent."""
+        if facility is None:
+            raise ValueError("A facility is required for laboratory alert settings.")
+        settings, _ = cls.objects.get_or_create(
+            facility=facility, defaults={"organization": facility.organization}
+        )
+        return settings
+
+    def resolve_critical_alert_recipients(self):
+        """Resolve active configured users assigned to this facility."""
+        from django.db.models import Q
+
+        facility_staff = Q(staff_profile__primary_facility=self.facility) | Q(
+            staff_profile__secondary_facilities=self.facility
+        )
+        selected_roles = self.lab_critical_alert_roles.all()
+        return User.objects.filter(
+            facility_staff,
+            Q(staff_profile__primary_role__in=selected_roles)
+            | Q(staff_profile__secondary_roles__in=selected_roles)
+            | Q(pk__in=self.lab_critical_alert_users.values("pk")),
+            is_active=True,
+        ).distinct()

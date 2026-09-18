@@ -437,6 +437,7 @@ function NoFacilityState() {
         imaging_standalone: false,
         triage: true,
         scheduling: true,
+        custom_email: false,
         surveillance: false,
         immunizations: false,
         allied_health: false,

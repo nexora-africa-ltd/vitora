@@ -451,6 +451,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
     # QR code for validation
     qr_code = serializers.SerializerMethodField()
+    verification_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Invoice
@@ -507,6 +508,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "items",
             "payers",
             "qr_code",
+            "verification_url",
             "created_at",
             "updated_at",
         ]
@@ -541,6 +543,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "items",
             "payers",
             "qr_code",
+            "verification_url",
             "created_at",
             "updated_at",
         ]
@@ -700,10 +703,14 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
     def _patient_copay_total(self, obj) -> Decimal:
         total_copay = Decimal("0.00")
+        has_linked_claim = False
 
         sha_claims = getattr(obj, "sha_claims", None)
         if sha_claims is not None:
-            for claim in sha_claims.all():
+            claims = list(sha_claims.all())
+            if claims:
+                has_linked_claim = True
+            for claim in claims:
                 total_copay += self._money(getattr(claim, "patient_copay", None))
 
         # Private insurance claims may carry patient copay on the claim itself.
@@ -713,7 +720,10 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
         insurance_claims = getattr(obj, "insurance_claims", None)
         if insurance_claims is not None:
-            for claim in insurance_claims.all():
+            claims = list(insurance_claims.all())
+            if claims:
+                has_linked_claim = True
+            for claim in claims:
                 claim_id = getattr(claim, "id", None)
                 if claim_id in insurance_claim_ids:
                     continue
@@ -727,6 +737,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
                 claim = getattr(payer, "insurance_claim", None)
                 if claim is None:
                     continue
+                has_linked_claim = True
                 claim_id = getattr(claim, "id", None)
                 if claim_id in insurance_claim_ids:
                     continue
@@ -735,7 +746,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
                 total_copay += self._money(getattr(claim, "copay_amount", None))
 
         total_copay = total_copay.quantize(Decimal("0.01"))
-        if total_copay == Decimal("0.00"):
+        if total_copay == Decimal("0.00") and has_linked_claim:
             _, item_patient_total = self._item_allocation_breakdown(obj)
             if item_patient_total > Decimal("0.00"):
                 return item_patient_total
@@ -764,6 +775,14 @@ class InvoiceSerializer(serializers.ModelSerializer):
             invoice_date=obj.invoice_date.isoformat() if obj.invoice_date else "",
         )
         return generate_qr_data_uri(verification_url)
+
+    def get_verification_url(self, obj) -> str:
+        """Generate verification URL used by QR code and manual verification."""
+        return generate_invoice_qr_url(
+            invoice_number=obj.invoice_number,
+            total_amount=str(obj.total_amount),
+            invoice_date=obj.invoice_date.isoformat() if obj.invoice_date else "",
+        )
 
     def create(self, validated_data):
         # Set created_by from request user

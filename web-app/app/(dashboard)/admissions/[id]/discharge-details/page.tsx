@@ -170,6 +170,7 @@ export default function DischargeDetailPage() {
       layout: defaultTemplate?.layout,
       showSignatureLines: defaultTemplate?.show_signature_lines,
       showQrCode: defaultTemplate?.show_qr_code,
+      verificationUrl: discharge.verification_url || undefined,
     });
   };
 

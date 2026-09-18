@@ -17,7 +17,7 @@ from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import ValidationError
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
@@ -112,7 +112,22 @@ class InvoiceViewSet(
 
     queryset = (
         Invoice.objects.select_related("patient", "encounter", "created_by", "cancelled_by")
-        .prefetch_related("items__service", "items__drug", "items__lab_order", "payers")
+        .prefetch_related(
+            Prefetch(
+                "items",
+                queryset=InvoiceItem.objects.select_related(
+                    "service", "drug", "lab_order", "surgery_case"
+                ),
+            ),
+            Prefetch(
+                "payers",
+                queryset=InvoicePayer.objects.select_related("insurance_claim").prefetch_related(
+                    "insurance_claim__balance_reservations"
+                ),
+            ),
+            "sha_claims",
+            "insurance_claims",
+        )
         .all()
     )
     audit_resource_type = "Invoice"

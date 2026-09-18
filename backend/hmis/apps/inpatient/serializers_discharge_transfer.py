@@ -16,6 +16,7 @@ from rest_framework import serializers
 
 from hmis.apps.blood_bank.models import UnitStatus
 from hmis.apps.core.models import Facility
+from hmis.apps.core.qr_utils import generate_document_verification_url
 from hmis.apps.core.utils import resolve_model_pk_or_public_id
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.mch.services.postpartum_continuity import (
@@ -114,6 +115,7 @@ class DischargeSerializer(serializers.ModelSerializer):
     length_of_stay = serializers.ReadOnlyField()
     death_record_id = serializers.SerializerMethodField()
     transfer_workflow = serializers.DictField(write_only=True, required=False)
+    verification_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Discharge
@@ -154,6 +156,7 @@ class DischargeSerializer(serializers.ModelSerializer):
             "length_of_stay",
             "death_record_id",
             "transfer_workflow",
+            "verification_url",
             "created_at",
             "updated_at",
         ]
@@ -315,6 +318,19 @@ class DischargeSerializer(serializers.ModelSerializer):
                     )
 
         return attrs
+
+    def get_verification_url(self, obj) -> str:
+        document_number = f"DIS-{obj.id}"
+        if obj.admission and obj.admission.admission_number:
+            document_number = obj.admission.admission_number
+        discharge_date = (
+            obj.discharge_date.isoformat() if obj.discharge_date else obj.created_at.isoformat()
+        )
+        return generate_document_verification_url(
+            document_type="DISCHARGE_SUMMARY",
+            document_number=document_number,
+            date=discharge_date,
+        )
 
     @staticmethod
     def _get_open_transfer_for_admission(admission: Admission) -> InterFacilityTransfer | None:

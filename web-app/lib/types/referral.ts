@@ -263,6 +263,7 @@ export interface ClinicalReferral {
   status_display: string;
   referred_by: number;
   referred_by_name: string;
+  verification_url?: string | null;
   accepted_by: number | null;
   accepted_by_name: string;
   declined_by: number | null;
@@ -310,6 +311,7 @@ export interface ClinicalReferralListItem {
   status_display: string;
   referred_by: number;
   referred_by_name: string;
+  verification_url?: string | null;
   is_sensitive: boolean;
   created_at: string;
   updated_at: string;

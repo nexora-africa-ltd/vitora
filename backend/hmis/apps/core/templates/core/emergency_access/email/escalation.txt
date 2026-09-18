@@ -1,0 +1,22 @@
+{# Emergency break-glass escalation plain-text fallback. Context: existing access audit and review workflow data, including review link. #}
+EMERGENCY ACCESS ALERT
+
+A user has invoked emergency (break-glass) access.
+
+User: {{ username }}{% if user_name %} ({{ user_name }}){% endif %}
+Patient: {{ patient_info }}
+Reason: {{ reason }}
+Details: {{ reason_details }}
+Requested At: {{ requested_at }}
+Expires At: {{ expires_at }}
+Duration: {{ duration_minutes }} minutes
+IP Address: {{ ip_address }}
+
+ACTION REQUIRED:
+- Review this emergency access request.
+- Verify the justification is appropriate.
+- Approve or revoke as needed.
+
+Review at: {{ review_url }}
+
+This is an automated alert. Do not reply to this email.

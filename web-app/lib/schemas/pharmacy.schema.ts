@@ -618,11 +618,15 @@ export const StockMovementReportItemSchema = z.object({
 // Alert settings
 export const AlertSettingsSchema = z.object({
   id: z.number().optional(),
+  facility: z.number().nullable().optional(),
   low_stock_threshold: z.number(),
   expiry_warning_days: z.number(),
   expiry_critical_days: z.number(),
   enable_email_notifications: z.boolean(),
+  stock_alert_digest_minutes: z.number().int().min(1).default(15),
   notification_email_recipients: z.string().optional().nullable(),
+  stock_alert_roles: z.array(z.number()).default([]),
+  stock_alert_users: z.array(z.number()).default([]),
 });
 
 export type AlertSettingsSchemaType = z.infer<typeof AlertSettingsSchema>;

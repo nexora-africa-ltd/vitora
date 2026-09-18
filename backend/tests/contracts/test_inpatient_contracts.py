@@ -407,6 +407,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "transfer_workflow",
                 "treatment_summary",
                 "updated_at",
+                "verification_url",
             }
         ),
     ),

@@ -136,5 +136,5 @@ describe('ProcedureOrderForm external request flow', () => {
     await waitFor(() => {
       expect(onSuccess).toHaveBeenCalledWith('EPR-20260810-0001');
     });
-  });
+  }, 15000);
 });

@@ -12,13 +12,21 @@ from decimal import Decimal
 
 import pytest  # type: ignore
 from django.contrib.auth import get_user_model
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from rest_framework import status
 from rest_framework.test import APIClient
 
 from hmis.apps.blood_bank.models import BloodDonor, BloodGroup, BloodUnit, UnitStatus
 from hmis.apps.core.models import AuditLog
 from hmis.apps.encounters.models import Encounter
-from hmis.apps.laboratory.models import LabOrder, LabOrderItem, LabResult, TestCatalog
+from hmis.apps.laboratory.models import (
+    LabOrder,
+    LabOrderItem,
+    LabResult,
+    ResultValidation,
+    TestCatalog,
+)
 from hmis.apps.patients.models import Patient
 
 User = get_user_model()
@@ -349,6 +357,39 @@ class TestLabOrderAPI:
         }
         response = api_client.post("/api/lab/orders/", order_data, format="json")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_list_orders_avoids_per_order_nested_result_queries(
+        self,
+        auth_client,
+        sample_encounter,
+        sample_test_catalog,
+        authenticated_user,
+        sample_facility,
+        sample_organization,
+    ):
+        """Lab order list loads nested tests and results with bounded queries."""
+        for index in range(3):
+            order = LabOrder.objects.create(
+                patient=sample_encounter.patient,
+                encounter=sample_encounter,
+                ordered_by=authenticated_user,
+                facility=sample_facility,
+                organization=sample_organization,
+            )
+            item = LabOrderItem.objects.create(
+                lab_order=order,
+                test=sample_test_catalog[1],
+                unit_cost=sample_test_catalog[1].cost,
+            )
+            LabResult.objects.create(
+                order_item=item, entered_by=authenticated_user, numeric_value="5.5"
+            )
+
+        with CaptureQueriesContext(connection) as context:
+            response = auth_client.get("/api/lab/orders/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(context.captured_queries) <= 17
 
     def test_create_lab_order_with_items(
         self,
@@ -816,6 +857,39 @@ class TestLabResultAPI:
         assert response.status_code == status.HTTP_201_CREATED
         # Decimal may be returned with trailing zeros
         assert Decimal(response.data["numeric_value"]) == Decimal("5.5")
+
+    def test_list_results_avoids_per_result_validation_queries(
+        self, auth_client, sample_order_item, authenticated_user
+    ):
+        """Lab result list loads order context and validations in fixed queries."""
+        first_result = LabResult.objects.create(
+            order_item=sample_order_item,
+            entered_by=authenticated_user,
+            numeric_value="5.5",
+        )
+        additional_item = LabOrderItem.objects.create(
+            lab_order=sample_order_item.lab_order,
+            test=sample_order_item.test,
+            unit_cost=sample_order_item.unit_cost,
+        )
+        second_result = LabResult.objects.create(
+            order_item=additional_item,
+            entered_by=authenticated_user,
+            numeric_value="6.5",
+        )
+        for result in (first_result, second_result):
+            ResultValidation.objects.create(
+                result=result,
+                validation_type="TECHNICAL",
+                status="APPROVED",
+                validated_by=authenticated_user,
+            )
+
+        with CaptureQueriesContext(connection) as context:
+            response = auth_client.get("/api/lab/results/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(context.captured_queries) <= 12
 
     def test_auto_flag_on_entry(self, auth_client, sample_order_item):
         """Should auto-flag abnormal results."""

@@ -101,6 +101,7 @@ import type { FacilityModules } from '@/lib/auth/context';
 export interface NavItemVisibilityContext {
   facilityLevel?: string;
   facilityOwnership?: string;
+  facilityCountryCode?: string;
   /** Set of active clinic types in this facility (e.g. 'GENERAL_OPD', 'DENTAL') */
   activeClinicTypes?: Set<string>;
   /** Whether the current user is a Nexora superuser */
@@ -153,6 +154,11 @@ export interface NavItemWithChildren {
 }
 
 export type NavItemType = NavItem | NavItemWithChildren;
+
+function isKenyaCountryCode(value?: string): boolean {
+  const normalized = value?.trim().toUpperCase();
+  return normalized === 'KE' || normalized === 'KEN' || normalized === 'KENYA';
+}
 
 export function hasChildren(item: NavItemType): item is NavItemWithChildren {
   return 'children' in item;
@@ -341,6 +347,12 @@ const _allNavItems: NavItemType[] = [
         actionKey: 'surveillance.report_case',
       },
       {
+        label: 'Contact Tracing',
+        href: '/surveillance/contact-tracing',
+        icon: Users,
+        actionKey: 'surveillance.report_case',
+      },
+      {
         label: 'Alerts',
         href: '/surveillance/alerts',
         icon: CircleAlert,
@@ -364,6 +376,12 @@ const _allNavItems: NavItemType[] = [
         label: 'Thresholds',
         href: '/surveillance/thresholds',
         icon: SquareActivity,
+        actionKey: 'surveillance.manage_thresholds',
+      },
+      {
+        label: 'Settings',
+        href: '/surveillance/settings',
+        icon: Settings,
         actionKey: 'surveillance.manage_thresholds',
       },
     ],
@@ -831,8 +849,8 @@ const _allNavItems: NavItemType[] = [
         actionKey: 'laboratory.view_orders',
       },
       {
-        label: 'Validations',
-        href: '/laboratory/validations',
+        label: 'Verifications',
+        href: '/laboratory/verifications',
         icon: CheckSquare,
         actionKey: 'laboratory.verify_results',
       },
@@ -1376,6 +1394,7 @@ const _allNavItems: NavItemType[] = [
         icon: Receipt,
         actionKey: 'inventory.view_etims',
         requiresInternet: true,
+        visibleWhen: ({ facilityCountryCode }) => isKenyaCountryCode(facilityCountryCode),
       },
       {
         label: 'Forecasting',
@@ -1544,6 +1563,7 @@ const _allNavItems: NavItemType[] = [
         icon: KenyaCoatOfArmsIcon,
         actionKey: 'admin.manage_staff',
         requiresInternet: true,
+        visibleWhen: ({ facilityCountryCode }) => isKenyaCountryCode(facilityCountryCode),
       },
       {
         label: 'Facility Lookup',
@@ -1551,6 +1571,7 @@ const _allNavItems: NavItemType[] = [
         icon: KenyaCoatOfArmsIcon,
         actionKey: 'admin.manage_departments',
         requiresInternet: true,
+        visibleWhen: ({ facilityCountryCode }) => isKenyaCountryCode(facilityCountryCode),
       },
       {
         label: 'SHA Intervention Lookup',
@@ -1564,12 +1585,6 @@ const _allNavItems: NavItemType[] = [
         href: '/admin/join-requests',
         icon: UserPlus,
         actionKey: 'admin.manage_staff',
-      },
-      {
-        label: 'Emergency Access',
-        href: '/admin/emergency-access',
-        icon: ShieldAlert,
-        actionKey: 'admin.view_audit_logs',
       },
       {
         label: 'Audit Logs',
@@ -1616,6 +1631,17 @@ const _allNavItems: NavItemType[] = [
         icon: Globe,
         actionKey: 'admin.view_audit_logs',
         requiresInternet: true,
+      },
+    ],
+  },
+  {
+    label: 'Safety',
+    icon: ShieldAlert,
+    children: [
+      {
+        label: 'Emergency Access',
+        href: '/safety/emergency-access',
+        icon: ShieldAlert,
       },
     ],
   },

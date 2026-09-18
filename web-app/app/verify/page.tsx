@@ -30,6 +30,8 @@ import { QRScannerDialog } from '@/components/patients/qr-scanner-dialog';
 
 interface VerificationResult {
   valid: boolean;
+  is_signed?: boolean;
+  signature_status?: 'SIGNED' | 'UNSIGNED';
   document_type?: string;
   document_number?: string;
   amount?: string;
@@ -37,6 +39,21 @@ interface VerificationResult {
   message: string;
   error?: string;
 }
+
+const DOCUMENT_TYPE_OPTIONS = [
+  { value: 'RECEIPT', label: 'Receipt', requiresAmount: true },
+  { value: 'INVOICE', label: 'Invoice', requiresAmount: true },
+  { value: 'PRESCRIPTION', label: 'Prescription', requiresAmount: false },
+  { value: 'LAB_RESULT', label: 'Lab Result', requiresAmount: false },
+  { value: 'RADIOLOGY_REPORT', label: 'Radiology Report', requiresAmount: false },
+  { value: 'SICK_NOTE', label: 'Sick Note', requiresAmount: false },
+  { value: 'REFERRAL', label: 'Referral', requiresAmount: false },
+  { value: 'DISCHARGE_SUMMARY', label: 'Discharge Summary', requiresAmount: false },
+] as const;
+
+const AMOUNT_REQUIRED_TYPES = new Set<string>(
+  DOCUMENT_TYPE_OPTIONS.filter((option) => option.requiresAmount).map((option) => option.value)
+);
 
 export default function VerifyPage() {
   const searchParams = useSearchParams();
@@ -51,6 +68,7 @@ export default function VerifyPage() {
   const [result, setResult] = useState<VerificationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [autoVerified, setAutoVerified] = useState(false);
+  const amountRequired = AMOUNT_REQUIRED_TYPES.has(manualData.type);
 
   // Auto-verify if URL contains verification params (from QR scan)
   useEffect(() => {
@@ -60,15 +78,21 @@ export default function VerifyPage() {
     const date = searchParams.get('date');
     const signature = searchParams.get('signature');
 
-    if (type && number && amount && date && signature && !autoVerified) {
+    if (type && number && date && signature && !autoVerified) {
       setAutoVerified(true);
-      setManualData({ type, number, amount, date, signature });
+      setManualData({ type, number, amount: amount || '', date, signature });
 
       // Auto-verify
       const verify = async () => {
         setIsLoading(true);
         try {
-          const params = new URLSearchParams({ type, number, amount, date, signature });
+          const params = new URLSearchParams({
+            type,
+            number,
+            date,
+            signature,
+            ...(amount ? { amount } : {}),
+          });
           const response = await fetch(
             `${process.env.NEXT_PUBLIC_API_URL || ''}/api/core/verify/?${params}`
           );
@@ -113,7 +137,7 @@ export default function VerifyPage() {
 
   const verifyManual = async () => {
     const { type, number, amount, date, signature } = manualData;
-    if (!type || !number || !amount || !date || !signature) return;
+    if (!type || !number || !date || !signature || (amountRequired && !amount)) return;
 
     setIsLoading(true);
     setResult(null);
@@ -122,9 +146,9 @@ export default function VerifyPage() {
       const params = new URLSearchParams({
         type,
         number,
-        amount,
         date,
         signature,
+        ...(amount ? { amount } : {}),
       });
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || ''}/api/core/verify/?${params}`
@@ -142,6 +166,17 @@ export default function VerifyPage() {
     }
   };
 
+  const handleDocumentTypeChange = (type: string) => {
+    setManualData({
+      type,
+      number: '',
+      amount: '',
+      date: '',
+      signature: '',
+    });
+    setResult(null);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto max-w-2xl px-4 py-12">
@@ -156,7 +191,7 @@ export default function VerifyPage() {
             Document Verification
           </h1>
           <p className="text-gray-600 dark:text-gray-300">
-            Verify the authenticity of Vitora HMIS receipts and invoices
+            Verify the authenticity of Vitora HMIS generated documents
           </p>
         </div>
 
@@ -164,9 +199,9 @@ export default function VerifyPage() {
         <Card>
           <CardHeader>
             <CardTitle>Verify Your Document</CardTitle>
-            <CardDescription>
-              Scan the QR code on your receipt/invoice or enter the details manually
-            </CardDescription>
+              <CardDescription>
+              Scan the QR code on your document or enter the details manually
+              </CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="qr" className="w-full">
@@ -255,14 +290,17 @@ export default function VerifyPage() {
                     <Label htmlFor="doc-type">Document Type</Label>
                     <Select
                       value={manualData.type}
-                      onValueChange={(v) => setManualData({ ...manualData, type: v })}
+                      onValueChange={handleDocumentTypeChange}
                     >
                       <SelectTrigger id="doc-type">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="RECEIPT">Receipt</SelectItem>
-                        <SelectItem value="INVOICE">Invoice</SelectItem>
+                        {DOCUMENT_TYPE_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -278,16 +316,18 @@ export default function VerifyPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="amount">Amount</Label>
-                    <Input
-                      id="amount"
-                      placeholder="1500.00"
-                      value={manualData.amount}
-                      onChange={(e) => setManualData({ ...manualData, amount: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
+                  {amountRequired && (
+                    <div className="space-y-2">
+                      <Label htmlFor="amount">Amount</Label>
+                      <Input
+                        id="amount"
+                        placeholder="1500.00"
+                        value={manualData.amount}
+                        onChange={(e) => setManualData({ ...manualData, amount: e.target.value })}
+                      />
+                    </div>
+                  )}
+                  <div className={`space-y-2 ${amountRequired ? '' : 'col-span-2'}`}>
                     <Label htmlFor="date">Date (YYYY-MM-DD)</Label>
                     <Input
                       id="date"
@@ -319,9 +359,9 @@ export default function VerifyPage() {
                   onClick={verifyManual}
                   disabled={
                     !manualData.number ||
-                    !manualData.amount ||
                     !manualData.date ||
                     !manualData.signature ||
+                    (amountRequired && !manualData.amount) ||
                     isLoading
                   }
                   className="w-full"
@@ -348,7 +388,11 @@ export default function VerifyPage() {
                     <XCircle className="h-5 w-5" />
                   )}
                   <AlertTitle className={result.valid ? 'text-green-600' : ''}>
-                    {result.valid ? 'Document Verified' : 'Verification Failed'}
+                    {result.valid
+                      ? result.is_signed
+                        ? 'Authentic and Signed'
+                        : 'Authentic but Unsigned'
+                      : 'Verification Failed'}
                   </AlertTitle>
                   <AlertDescription>
                     <p className="mb-2">{result.message}</p>
@@ -362,14 +406,24 @@ export default function VerifyPage() {
                           <span className="text-muted-foreground">Number:</span>
                           <span className="font-mono">{result.document_number}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Amount:</span>
-                          <span className="font-medium">KES {result.amount}</span>
-                        </div>
+                        {result.amount && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Amount:</span>
+                            <span className="font-medium">KES {result.amount}</span>
+                          </div>
+                        )}
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Date:</span>
                           <span>{result.date}</span>
                         </div>
+                        {result.valid && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Signature:</span>
+                            <span className="font-medium">
+                              {result.is_signed ? 'Electronically signed' : 'Not electronically signed'}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </AlertDescription>

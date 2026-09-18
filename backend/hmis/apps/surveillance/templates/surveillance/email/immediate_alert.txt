@@ -1,0 +1,14 @@
+{# Immediate surveillance alert plain-text fallback. Context: alert message/type and current case workflow data. #}
+Disease Surveillance Alert: {{ alert_type }}
+
+{{ alert_message }}
+
+Case ID: {{ case_id }}
+Disease: {{ disease_name }}
+Category: {{ category }}
+Patient MRN: {{ patient_mrn }}
+County: {{ county_name }}
+Detected: {{ detected }}
+Notification Deadline: {{ deadline }}
+
+Please follow the designated county public-health response process.

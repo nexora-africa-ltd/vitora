@@ -11,6 +11,7 @@ export const NotifiableDiseaseListItemSchema = z.object({
   category: NotifiableDiseaseCategorySchema,
   reporting_hours: z.number(),
   is_immediate: z.boolean(),
+  requires_county_notification: z.boolean(),
   is_active: z.boolean(),
 });
 
@@ -73,6 +74,7 @@ export const NotifiableCaseDetailSchema = z.object({
   is_overdue: z.boolean(),
   hours_until_deadline: z.number(),
   is_immediate: z.boolean(),
+  requires_county_notification: z.boolean(),
   county: z.number().nullable(),
   county_name: z.string().nullable(),
   sub_county: z.number().nullable(),
@@ -86,6 +88,127 @@ export const NotifiableCaseDetailSchema = z.object({
   notified_by_name: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
+  delivery_status: z.array(
+    z.object({
+      id: z.number(),
+      case: z.number(),
+      channel: z.enum(['SMS', 'EMAIL']),
+      status: z.enum(['PENDING', 'SENT', 'DELIVERED', 'BOUNCED', 'RETRY_SCHEDULED', 'FAILED']),
+      recipient_masked: z.string(),
+      attempt_count: z.number(),
+      max_retry_attempts: z.number(),
+      retry_backoff_minutes: z.number(),
+      last_error: z.string(),
+      provider: z.string(),
+      provider_message_id: z.string(),
+      provider_event: z.string(),
+      sent_at: z.string().nullable(),
+      delivered_at: z.string().nullable(),
+      terminal_status_at: z.string().nullable(),
+      last_attempt_at: z.string().nullable(),
+      next_retry_at: z.string().nullable(),
+      triggered_by: z.number().nullable(),
+      triggered_by_name: z.string().nullable(),
+      created_at: z.string(),
+      updated_at: z.string(),
+    })
+  ).optional(),
+});
+
+export const CountyNotificationDeliverySchema = z.object({
+  id: z.number(),
+  case: z.number(),
+  channel: z.enum(['SMS', 'EMAIL']),
+  status: z.enum(['PENDING', 'SENT', 'DELIVERED', 'BOUNCED', 'RETRY_SCHEDULED', 'FAILED']),
+  recipient_masked: z.string(),
+  attempt_count: z.number(),
+  max_retry_attempts: z.number(),
+  retry_backoff_minutes: z.number(),
+  last_error: z.string(),
+  provider: z.string(),
+  provider_message_id: z.string(),
+  provider_event: z.string(),
+  sent_at: z.string().nullable(),
+  delivered_at: z.string().nullable(),
+  terminal_status_at: z.string().nullable(),
+  last_attempt_at: z.string().nullable(),
+  next_retry_at: z.string().nullable(),
+  triggered_by: z.number().nullable(),
+  triggered_by_name: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const CountyNotificationDeliveryListSchema = z.array(CountyNotificationDeliverySchema);
+
+export const SurveillanceFacilitySettingsSchema = z.object({
+  id: z.number(),
+  facility: z.number(),
+  notify_via_sms: z.boolean(),
+  notify_via_email: z.boolean(),
+  sms_recipient_masked: z.string(),
+  email_recipient_masked: z.string(),
+  include_patient_identifiers: z.boolean(),
+  max_retry_attempts: z.number(),
+  retry_backoff_minutes: z.number(),
+  is_active: z.boolean(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const ContactTracingFollowUpSchema = z.object({
+  id: z.number(),
+  contact: z.number(),
+  followup_date: z.string(),
+  method: z.enum(['PHONE', 'HOME_VISIT', 'SMS', 'CLINIC']),
+  symptoms_present: z.boolean(),
+  temperature_c: z.union([z.string(), z.number()]).nullable().transform((v) => (v == null ? null : String(v))),
+  notes: z.string(),
+  outcome: z.enum(['CONTINUE_MONITORING', 'ESCALATE_TESTING', 'ESCALATE_ISOLATION', 'CLEARED']),
+  recorded_by: z.number().nullable(),
+  recorded_by_name: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const ContactTracingContactSchema = z.object({
+  id: z.number(),
+  case: z.number(),
+  case_id: z.number(),
+  case_disease_name: z.string(),
+  full_name: z.string(),
+  phone_number_masked: z.string(),
+  relationship_to_case: z.string(),
+  risk_level: z.enum(['HIGH', 'MEDIUM', 'LOW']),
+  status: z.enum([
+    'IDENTIFIED',
+    'CONTACTED',
+    'UNDER_MONITORING',
+    'CLEARED',
+    'SYMPTOMATIC',
+    'LOST_TO_FOLLOWUP',
+  ]),
+  exposure_date: z.string().nullable(),
+  monitoring_start_date: z.string().nullable(),
+  monitoring_end_date: z.string().nullable(),
+  next_followup_date: z.string().nullable(),
+  last_followup_at: z.string().nullable(),
+  last_contact_attempt_at: z.string().nullable(),
+  notes: z.string(),
+  created_by: z.number().nullable(),
+  created_by_name: z.string().nullable(),
+  updated_by: z.number().nullable(),
+  updated_by_name: z.string().nullable(),
+  followups: z.array(ContactTracingFollowUpSchema),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const PaginatedContactTracingContactSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(ContactTracingContactSchema),
 });
 
 export const PaginatedNotifiableCaseSchema = z.object({

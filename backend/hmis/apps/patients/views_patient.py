@@ -15,7 +15,7 @@ Supported inputs/args:
 from datetime import datetime, timedelta
 
 from django.db import transaction
-from django.db.models import Count, Max, Min
+from django.db.models import Count, Max, Min, Q
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import filters, serializers, status, viewsets
@@ -23,6 +23,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from hmis.apps.core.emergency_access.service import get_sensitive_patient_scope_for_user
 from hmis.apps.core.history_views import ModelHistoryMixin
 from hmis.apps.core.mixins import IdempotentCreateMixin, PublicIdLookupMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog, IdempotencyKey
@@ -37,6 +38,7 @@ from .filters import PatientFilter
 from .models import EmergencyContact, Patient
 from .serializers import (
     PatientHouseholdMemberSerializer,
+    PatientListSerializer,
     PatientSerializer,
     VitalsDataPointSerializer,
 )
@@ -127,6 +129,12 @@ class PatientViewSet(
     ordering_fields = ["created_at", "last_name", "first_name"]
     ordering = ["-created_at"]
 
+    def get_serializer_class(self):
+        """Use the compact serializer for paginated lists to avoid N+1 queries."""
+        if self.action == "list":
+            return PatientListSerializer
+        return PatientSerializer
+
     def get_queryset(self):
         """
         Filter queryset based on user permissions.
@@ -143,7 +151,15 @@ class PatientViewSet(
 
         # Check if user can view sensitive records
         if not user.has_perm("patients.view_sensitive_patient"):
-            queryset = queryset.filter(is_sensitive=False)
+            if self.action != "list":
+                return queryset
+            allow_all_sensitive, patient_ids = get_sensitive_patient_scope_for_user(user)
+            if allow_all_sensitive:
+                return queryset
+            if patient_ids:
+                queryset = queryset.filter(Q(is_sensitive=False) | Q(id__in=patient_ids))
+            else:
+                queryset = queryset.filter(is_sensitive=False)
 
         return queryset
 

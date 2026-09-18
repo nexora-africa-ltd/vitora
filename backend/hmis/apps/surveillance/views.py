@@ -6,12 +6,18 @@ Provides API endpoints for notifiable diseases, cases, alerts,
 reporting to county health offices, and dashboard statistics.
 """
 
+import base64
+import hashlib
+import hmac
 import json
 from datetime import timedelta
 from pathlib import Path
 
 from django.conf import settings
+from django.db import IntegrityError
 from django.db.models import Count, Q
+from django.http import HttpResponse
+from django.template.loader import render_to_string
 from django.utils import timezone
 from django_filters import rest_framework as filters
 from drf_spectacular.utils import extend_schema
@@ -20,11 +26,14 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import ReadRequiresModelPermission
 
 from .models import (
+    ContactTracingContact,
+    ContactTracingFollowUp,
+    CountyNotificationDelivery,
     IHRNotification,
     IHRNotificationStatus,
     NotifiableCase,
@@ -32,8 +41,13 @@ from .models import (
     NotificationStatus,
     OutbreakThreshold,
     SurveillanceAlert,
+    SurveillanceFacilitySettings,
 )
 from .serializers import (
+    ContactTracingContactSerializer,
+    ContactTracingFollowUpSerializer,
+    ContactTracingStatusActionSerializer,
+    CountyNotificationDeliverySerializer,
     CountyReportSerializer,
     IHRCloseSerializer,
     IHREscalateToNationalSerializer,
@@ -48,11 +62,13 @@ from .serializers import (
     NotifiableCaseSerializer,
     NotifiableDiseaseListSerializer,
     NotifiableDiseaseSerializer,
+    NotificationStatusActionSerializer,
     NotifyCountySerializer,
     OutbreakThresholdSerializer,
     SurveillanceAlertListSerializer,
     SurveillanceAlertSerializer,
     SurveillanceDashboardSerializer,
+    SurveillanceFacilitySettingsSerializer,
 )
 
 
@@ -293,6 +309,14 @@ class NotifiableCaseViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
         """
         case = self.get_object()
 
+        if not case.requires_county_notification:
+            return Response(
+                {
+                    "error": "Routine IDSR cases are reported through aggregate surveillance reporting."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         if case.notification_status != NotificationStatus.PENDING:
             return Response(
                 {"error": f"Case already has status: {case.get_notification_status_display()}"},
@@ -302,11 +326,57 @@ class NotifiableCaseViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
         serializer = NotifyCountySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        notes = serializer.validated_data.get("notification_notes", "")
+
+        from .services import SurveillanceService
+
+        # Dispatch outbound county notifications and persist delivery attempts.
+        deliveries = SurveillanceService.notify_county(
+            case=case,
+            triggered_by=request.user,
+            notes=notes,
+            ack_base_url=request.build_absolute_uri("/").rstrip("/"),
+        )
+
+        if not deliveries:
+            return Response(
+                {
+                    "error": "No county notification channel is enabled/configured for this facility.",
+                    "delivery_status": [],
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        has_success = SurveillanceService.has_case_delivery_success(case)
+        if not has_success:
+            has_pending_email = any(
+                delivery.channel == "EMAIL" and delivery.status == "SENT" for delivery in deliveries
+            )
+            if has_pending_email:
+                payload = NotifiableCaseSerializer(case).data
+                payload["delivery_status"] = CountyNotificationDeliverySerializer(
+                    deliveries, many=True
+                ).data
+                payload["warning"] = (
+                    "County notification accepted and waiting for provider delivery confirmation. "
+                    "Case remains pending until delivery is confirmed."
+                )
+                return Response(payload, status=status.HTTP_202_ACCEPTED)
+
+            return Response(
+                {
+                    "error": "County notification delivery failed. Case remains pending notification.",
+                    "delivery_status": CountyNotificationDeliverySerializer(
+                        deliveries, many=True
+                    ).data,
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
         # Update case status
         case.mark_notified(user=request.user)
 
         # Add notes if provided
-        notes = serializer.validated_data.get("notification_notes", "")
         if notes:
             case.investigation_notes = f"{case.investigation_notes}\n[Notification] {notes}".strip()
             case.save(update_fields=["investigation_notes"])
@@ -323,6 +393,137 @@ class NotifiableCaseViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
             },
         )
 
+        payload = NotifiableCaseSerializer(case).data
+        payload["delivery_status"] = CountyNotificationDeliverySerializer(
+            deliveries, many=True
+        ).data
+        return Response(payload)
+
+    @action(detail=True, methods=["post"], serializer_class=NotificationStatusActionSerializer)
+    def mark_county_notified(self, request, pk=None):
+        """Record a county notification completed through an external channel."""
+        case = self.get_object()
+        if not case.requires_county_notification:
+            return Response(
+                {
+                    "error": "Routine IDSR cases are reported through aggregate surveillance reporting."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if case.notification_status != NotificationStatus.PENDING:
+            return Response(
+                {"error": f"Case already has status: {case.get_notification_status_display()}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = NotificationStatusActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        notes = serializer.validated_data.get("notes", "")
+        case.mark_notified(user=request.user)
+        if notes:
+            case.investigation_notes = (
+                f"{case.investigation_notes}\n[Manual county notification] {notes}".strip()
+            )
+            case.save(update_fields=["investigation_notes"])
+
+        AuditLog.log(
+            action="notifiable_case_manual_county_notify",
+            user=request.user,
+            resource_type="NotifiableCase",
+            resource_id=case.id,
+            details={"channel": "manual", "county": case.county.name if case.county else None},
+        )
+        return Response(NotifiableCaseSerializer(case).data)
+
+    @action(detail=True, methods=["get"])
+    def notification_deliveries(self, request, pk=None):
+        """List outbound county notification delivery attempts for a case."""
+        case = self.get_object()
+        deliveries = CountyNotificationDelivery.objects.filter(case=case).order_by("-created_at")
+        serializer = CountyNotificationDeliverySerializer(deliveries, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def retry_county_notifications(self, request, pk=None):
+        """Retry failed/scheduled county notifications for a case."""
+        case = self.get_object()
+        from .services import SurveillanceService
+
+        deliveries = SurveillanceService.retry_case_county_notifications(
+            case,
+            ack_base_url=request.build_absolute_uri("/").rstrip("/"),
+        )
+
+        if (
+            case.notification_status == NotificationStatus.PENDING
+            and SurveillanceService.has_case_delivery_success(case)
+        ):
+            case.mark_notified(user=request.user)
+
+        serializer = CountyNotificationDeliverySerializer(deliveries, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], serializer_class=NotificationStatusActionSerializer)
+    def mark_investigated(self, request, pk=None):
+        """Transition case to INVESTIGATED state."""
+        case = self.get_object()
+        if case.notification_status not in [
+            NotificationStatus.NOTIFIED,
+            NotificationStatus.ACKNOWLEDGED,
+        ]:
+            return Response(
+                {
+                    "error": (
+                        "Case must be notified or acknowledged before investigation can start."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = NotificationStatusActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        notes = serializer.validated_data.get("notes", "")
+        case.mark_investigated(user=request.user, notes=notes)
+
+        AuditLog.log(
+            action="notifiable_case_mark_investigated",
+            user=request.user,
+            resource_type="NotifiableCase",
+            resource_id=case.id,
+            details={"notes": notes},
+        )
+        return Response(NotifiableCaseSerializer(case).data)
+
+    @action(detail=True, methods=["post"], serializer_class=NotificationStatusActionSerializer)
+    def close_case(self, request, pk=None):
+        """Transition case to CLOSED state."""
+        case = self.get_object()
+        if case.notification_status not in [
+            NotificationStatus.NOTIFIED,
+            NotificationStatus.ACKNOWLEDGED,
+            NotificationStatus.INVESTIGATED,
+        ]:
+            return Response(
+                {
+                    "error": (
+                        "Case must be notified, acknowledged, or under investigation before closure."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = NotificationStatusActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        notes = serializer.validated_data.get("notes", "")
+        case.mark_closed(user=request.user, notes=notes)
+
+        AuditLog.log(
+            action="notifiable_case_close",
+            user=request.user,
+            resource_type="NotifiableCase",
+            resource_id=case.id,
+            details={"notes": notes},
+        )
         return Response(NotifiableCaseSerializer(case).data)
 
     @action(detail=False, methods=["get"])
@@ -352,6 +553,158 @@ class NotifiableCaseViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
         )
         serializer = NotifiableCaseListSerializer(immediate_cases, many=True)
         return Response(serializer.data)
+
+
+class ContactTracingContactViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
+    """Contact tracing entity/workflow endpoints for notifiable cases."""
+
+    tenant_scope = "facility"
+    queryset = ContactTracingContact.objects.select_related(
+        "case",
+        "case__disease",
+        "created_by",
+        "updated_by",
+    ).prefetch_related("followups")
+    serializer_class = ContactTracingContactSerializer
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
+    filterset_fields = ["case", "status", "risk_level"]
+    search_fields = ["full_name", "relationship_to_case", "case__patient__mrn"]
+    ordering_fields = ["created_at", "next_followup_date", "status"]
+    ordering = ["-created_at"]
+
+    def perform_create(self, serializer):
+        """Create contact and keep case contact-tracing counters in sync."""
+        contact = serializer.save(
+            **self.get_tenant_save_kwargs(),
+            created_by=self.request.user,
+            updated_by=self.request.user,
+        )
+        self._sync_case_contact_stats(contact.case)
+
+    def perform_update(self, serializer):
+        """Track actor on updates."""
+        serializer.save(updated_by=self.request.user)
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete contact with explicit permission gate."""
+        if not request.user.has_perm("surveillance.delete_contacttracingcontact"):
+            return Response(
+                {"detail": "You do not have permission to delete this resource."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        instance = self.get_object()
+        case = instance.case
+        response = super().destroy(request, *args, **kwargs)
+        self._sync_case_contact_stats(case)
+        return response
+
+    @staticmethod
+    def _sync_case_contact_stats(case: NotifiableCase) -> None:
+        """Refresh case-level contact-tracing counters from contact rows."""
+        total_contacts = case.traced_contacts.count()
+        case.contacts_identified = total_contacts
+        case.contact_tracing_initiated = total_contacts > 0
+        case.save(update_fields=["contacts_identified", "contact_tracing_initiated", "updated_at"])
+
+    @action(detail=True, methods=["post"], serializer_class=ContactTracingStatusActionSerializer)
+    def mark_contacted(self, request, pk=None):
+        """Transition contact to CONTACTED state."""
+        contact = self.get_object()
+        serializer = ContactTracingStatusActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        contact.mark_contacted(user=request.user, notes=serializer.validated_data.get("notes", ""))
+        return Response(ContactTracingContactSerializer(contact).data)
+
+    @action(detail=True, methods=["post"], serializer_class=ContactTracingStatusActionSerializer)
+    def start_monitoring(self, request, pk=None):
+        """Transition contact to UNDER_MONITORING state."""
+        contact = self.get_object()
+        serializer = ContactTracingStatusActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        contact.start_monitoring(
+            user=request.user,
+            days=serializer.validated_data.get("monitoring_days", 14),
+            notes=serializer.validated_data.get("notes", ""),
+        )
+        return Response(ContactTracingContactSerializer(contact).data)
+
+    @action(detail=True, methods=["post"], serializer_class=ContactTracingStatusActionSerializer)
+    def mark_symptomatic(self, request, pk=None):
+        """Transition contact to SYMPTOMATIC state."""
+        contact = self.get_object()
+        serializer = ContactTracingStatusActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        contact.mark_symptomatic(
+            user=request.user, notes=serializer.validated_data.get("notes", "")
+        )
+        return Response(ContactTracingContactSerializer(contact).data)
+
+    @action(detail=True, methods=["post"], serializer_class=ContactTracingStatusActionSerializer)
+    def mark_cleared(self, request, pk=None):
+        """Transition contact to CLEARED state."""
+        contact = self.get_object()
+        serializer = ContactTracingStatusActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        contact.mark_cleared(user=request.user, notes=serializer.validated_data.get("notes", ""))
+        return Response(ContactTracingContactSerializer(contact).data)
+
+    @action(detail=True, methods=["post"], serializer_class=ContactTracingFollowUpSerializer)
+    def record_followup(self, request, pk=None):
+        """Create a follow-up record and advance contact workflow."""
+        contact = self.get_object()
+        serializer = ContactTracingFollowUpSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        next_followup_date = serializer.validated_data.pop("next_followup_date", None)
+        followup = serializer.save(
+            contact=contact,
+            recorded_by=request.user,
+            facility_id=contact.facility_id,
+            organization_id=contact.organization_id,
+        )
+
+        contact.last_followup_at = timezone.now()
+        if followup.symptoms_present or followup.outcome in [
+            "ESCALATE_TESTING",
+            "ESCALATE_ISOLATION",
+        ]:
+            contact.mark_symptomatic(user=request.user, notes=followup.notes)
+        elif followup.outcome == "CLEARED":
+            contact.mark_cleared(user=request.user, notes=followup.notes)
+        else:
+            if contact.status not in ["UNDER_MONITORING", "SYMPTOMATIC"]:
+                contact.status = "UNDER_MONITORING"
+            contact.next_followup_date = next_followup_date or (
+                followup.followup_date + timedelta(days=1)
+            )
+            contact.updated_by = request.user
+            contact.save(
+                update_fields=[
+                    "status",
+                    "next_followup_date",
+                    "last_followup_at",
+                    "updated_by",
+                    "updated_at",
+                ]
+            )
+
+        return Response(
+            ContactTracingFollowUpSerializer(followup).data, status=status.HTTP_201_CREATED
+        )
+
+
+class ContactTracingFollowUpViewSet(
+    ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet
+):
+    """Read-only access to contact tracing follow-up entries."""
+
+    tenant_scope = "facility"
+    queryset = ContactTracingFollowUp.objects.select_related(
+        "contact", "recorded_by", "contact__case"
+    ).all()
+    serializer_class = ContactTracingFollowUpSerializer
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
+    filterset_fields = ["contact", "outcome", "symptoms_present"]
+    ordering = ["-followup_date", "-created_at"]
 
 
 class SurveillanceAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
@@ -408,6 +761,42 @@ class SurveillanceAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         alerts = self.get_queryset().filter(is_acknowledged=False)
         serializer = SurveillanceAlertListSerializer(alerts, many=True)
         return Response(serializer.data)
+
+
+class SurveillanceFacilitySettingsViewSet(
+    ReadOnCreateMixin,
+    TenantScopedViewMixin,
+    viewsets.ModelViewSet,
+):
+    """Facility-scoped surveillance county-notification settings."""
+
+    tenant_scope = "facility"
+    queryset = SurveillanceFacilitySettings.objects.select_related("facility").all()
+    serializer_class = SurveillanceFacilitySettingsSerializer
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
+    ordering = ["-updated_at"]
+
+    def perform_create(self, serializer):
+        """Persist row under current tenant scope."""
+        serializer.save(**self.get_tenant_save_kwargs())
+
+    @action(detail=False, methods=["get"], url_path="current")
+    def current(self, request):
+        """Get or create settings for the current facility."""
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        organization = getattr(request, "organization", None)
+        if facility is None:
+            return Response(
+                {"error": "Facility context is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        settings_obj, _ = SurveillanceFacilitySettings.objects.get_or_create(
+            facility=facility,
+            defaults={"organization": organization},
+        )
+        return Response(self.get_serializer(settings_obj).data)
 
 
 class OutbreakThresholdViewSet(viewsets.ModelViewSet):
@@ -525,6 +914,189 @@ class OutbreakThresholdViewSet(viewsets.ModelViewSet):
             created += 1
 
         return Response({"created": created, "total": OutbreakThreshold.objects.count()})
+
+
+class SurveillanceEmailWebhookView(APIView):
+    """Accept provider email delivery webhooks for surveillance notifications."""
+
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+
+    @extend_schema(request=None, responses={200: dict})
+    def post(self, request):
+        """Apply provider terminal delivery status for county email notifications."""
+        webhook_secret = str(getattr(settings, "RESEND_WEBHOOK_SECRET", "") or "")
+        signature = request.headers.get("X-Resend-Signature") or request.headers.get(
+            "X-Webhook-Signature"
+        )
+
+        if not webhook_secret and not (
+            getattr(settings, "TESTING", False) or getattr(settings, "DEBUG", False)
+        ):
+            return Response(
+                {"error": "Webhook is not configured"}, status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
+        if webhook_secret and not self._verify_signature(
+            request.body,
+            signature or "",
+            webhook_secret,
+            headers=request.headers,
+        ):
+            return Response({"error": "Invalid signature"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        svix_event_id = str(
+            request.headers.get("svix-id") or request.headers.get("webhook-id") or ""
+        )
+        if webhook_secret and not svix_event_id:
+            return Response(
+                {"error": "Missing webhook event ID"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+        if svix_event_id:
+            from .models import ResendWebhookEvent
+
+            try:
+                _, created = ResendWebhookEvent.objects.get_or_create(event_id=svix_event_id)
+            except IntegrityError:
+                created = False
+            if not created:
+                return Response({"ok": True, "replayed": True})
+
+        payload = request.data if isinstance(request.data, dict) else {}
+        event_type = str(payload.get("type") or payload.get("event") or "")
+        data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+        provider_message_id = str(
+            data.get("email_id")
+            or data.get("id")
+            or payload.get("email_id")
+            or payload.get("id")
+            or ""
+        )
+
+        from .services import SurveillanceService
+
+        delivery = SurveillanceService.apply_email_webhook_status(
+            provider_message_id=provider_message_id,
+            event_type=event_type,
+            payload=payload,
+        )
+
+        if (
+            delivery
+            and delivery.case.notification_status == NotificationStatus.PENDING
+            and SurveillanceService.has_case_delivery_success(delivery.case)
+        ):
+            delivery.case.mark_notified()
+
+        return Response({"ok": True, "matched": bool(delivery)})
+
+    def _verify_signature(
+        self,
+        body: bytes,
+        signature: str,
+        secret: str,
+        headers=None,
+    ) -> bool:
+        """Verify Resend/Svix signatures with HMAC fallback support."""
+        svix_id = ""
+        svix_ts = ""
+        svix_sig = ""
+        if headers is not None:
+            svix_id = str(headers.get("svix-id") or headers.get("webhook-id") or "")
+            svix_ts = str(headers.get("svix-timestamp") or headers.get("webhook-timestamp") or "")
+            svix_sig = str(headers.get("svix-signature") or headers.get("webhook-signature") or "")
+
+        if svix_id and svix_ts and svix_sig:
+            try:
+                timestamp = int(svix_ts)
+                max_age_seconds = int(getattr(settings, "RESEND_WEBHOOK_MAX_AGE_SECONDS", 300))
+                if abs(timezone.now().timestamp() - timestamp) > max_age_seconds:
+                    return False
+                secret_key = secret
+                if secret.startswith("whsec_"):
+                    secret_key = secret.split("_", 1)[1]
+                padding = "=" * (-len(secret_key) % 4)
+                decoded_secret = base64.urlsafe_b64decode(f"{secret_key}{padding}".encode())
+                signed_content = f"{svix_id}.{svix_ts}.{body.decode('utf-8')}".encode()
+                expected = base64.b64encode(
+                    hmac.new(decoded_secret, signed_content, hashlib.sha256).digest()
+                ).decode("utf-8")
+
+                provided_signatures: list[str] = []
+                for token in svix_sig.split(" "):
+                    token = token.strip()
+                    if not token:
+                        continue
+                    if token.startswith("v1,"):
+                        provided_signatures.append(token.split(",", 1)[1])
+                return any(
+                    hmac.compare_digest(expected, candidate) for candidate in provided_signatures
+                )
+            except (ValueError, TypeError, UnicodeDecodeError):
+                return False
+
+        if not signature:
+            return False
+
+        expected = hmac.new(secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
+        normalized = signature.strip()
+        if normalized.startswith("sha256="):
+            normalized = normalized.split("=", 1)[1].strip()
+        return hmac.compare_digest(expected, normalized)
+
+
+class CountyNotificationAcknowledgeView(APIView):
+    """Public endpoint for county recipients to acknowledge notification receipt."""
+
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+
+    @extend_schema(request=None, responses={200: dict})
+    def get(self, request, token: str):
+        """Acknowledge county notification and mark case acknowledged."""
+        from .services import SurveillanceService
+
+        case, status_code = SurveillanceService.acknowledge_county_from_token(token)
+        if status_code != "ok" or not case:
+            error_map = {
+                "expired": "This acknowledgement link has expired.",
+                "not_found": "Notification record not found.",
+                "invalid": "Invalid acknowledgement link.",
+            }
+            message = error_map.get(status_code, "Unable to process acknowledgement.")
+            html = render_to_string(
+                "surveillance/county_ack_confirmation.html",
+                {
+                    "title": "Unable to acknowledge",
+                    "message": message,
+                    "success": False,
+                },
+            )
+            return HttpResponse(
+                html,
+                status=400,
+            )
+
+        AuditLog.log(
+            action="notifiable_case_county_acknowledged",
+            user=None,
+            resource_type="NotifiableCase",
+            resource_id=case.id,
+            details={
+                "source": "public_ack_link",
+                "county": case.county.name if case.county else None,
+                "disease": case.disease.name if case.disease else None,
+            },
+        )
+        html = render_to_string(
+            "surveillance/county_ack_confirmation.html",
+            {
+                "title": "Acknowledgement received",
+                "message": "Thank you. This case has been marked as acknowledged by county.",
+                "success": True,
+            },
+        )
+        return HttpResponse(html)
 
 
 class SurveillanceDashboardView(APIView):
@@ -959,7 +1531,7 @@ class IDSRWeeklyReportViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             }
         )
 
-    @action(detail=True, methods=["get"], url_path="export-sdmx")
+    @action(detail=True, methods=["get", "post"], url_path=r"export[-_]sdmx")
     def export_sdmx(self, request, pk=None):
         """
         Export IDSR weekly report as SDMX-ML.
@@ -979,7 +1551,7 @@ class IDSRWeeklyReportViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         )
         return response
 
-    @action(detail=True, methods=["get"], url_path="export-adx")
+    @action(detail=True, methods=["get", "post"], url_path=r"export[-_]adx")
     def export_adx(self, request, pk=None):
         """
         Export IDSR weekly report as ADX XML for DHIS2.

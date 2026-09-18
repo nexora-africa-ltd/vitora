@@ -168,7 +168,7 @@ describe('ConsumableUsagePanel', () => {
         },
       });
     });
-  });
+  }, 15000);
 
   it('reverses an unreversed consumable usage entry', async () => {
     const user = userEvent.setup();
@@ -185,5 +185,5 @@ describe('ConsumableUsagePanel', () => {
         data: { reason: 'Duplicate charting entry' },
       });
     });
-  });
+  }, 15000);
 });

@@ -250,6 +250,7 @@ export const InvoiceSchema = z.object({
 
   // QR code
   qr_code: z.string().optional().nullable(),
+  verification_url: z.string().optional().nullable(),
 
   // Nested items
   items: z.array(InvoiceItemSchema).optional(),
@@ -405,6 +406,7 @@ export const ReceiptSchema = z.object({
 
   // QR code
   qr_code: z.string().optional().nullable(),
+  verification_url: z.string().optional().nullable(),
 
   // M-Pesa details (phone obscured for privacy)
   mpesa_phone_display: z.string().optional().nullable(),

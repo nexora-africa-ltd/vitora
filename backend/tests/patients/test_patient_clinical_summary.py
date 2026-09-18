@@ -121,13 +121,13 @@ class TestPatientAllergySummary:
         assert "Penicillin" in summary
         assert "Aspirin" not in summary
 
-    def test_allergy_summary_appears_in_list_view(
+    def test_allergy_summary_is_reserved_for_patient_detail(
         self,
         auth_client,
         sample_patient,
         sample_organization,
     ):
-        """Should include allergy_summary in list endpoint too."""
+        """List responses must avoid per-patient clinical-summary queries."""
         from hmis.apps.patients.models import Allergy
 
         Allergy.objects.create(
@@ -145,7 +145,7 @@ class TestPatientAllergySummary:
         results = response.data.get("results", response.data)
         patient_data = next((p for p in results if p["id"] == sample_patient.id), None)
         assert patient_data is not None
-        assert "Latex" in patient_data["allergy_summary"]
+        assert "allergy_summary" not in patient_data
 
 
 class TestPatientChronicConditionsSummary:

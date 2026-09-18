@@ -304,6 +304,7 @@ class TestSickNoteContracts:
                     "leave_days",
                     "issued_by",
                     "issued_by_name",
+                    "verification_url",
                     "issued_at",
                     "created_at",
                 }
@@ -333,6 +334,7 @@ class TestSickNoteContracts:
                     "status",
                     "status_display",
                     "is_active",
+                    "verification_url",
                     "issued_at",
                     "revoked_at",
                     "revoked_by",

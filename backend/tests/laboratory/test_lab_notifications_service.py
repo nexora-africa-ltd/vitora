@@ -4,6 +4,8 @@ Tests for LabNotificationService (Phase 2.3).
 Sprint 1.5-1.6 Track B: Lab Workflow
 """
 
+from unittest.mock import patch
+
 import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from django.core import mail
@@ -85,6 +87,21 @@ class TestLabNotificationService:
 
         assert len(mail.outbox) == 1
         assert mail.outbox[0].to == ["clinician@example.com"]
+
+    @patch("hmis.apps.laboratory.services.notifications.send_transactional_email")
+    def test_critical_email_uses_facility_transactional_sender(
+        self, mock_send, sample_lab_order, sample_lab_result
+    ):
+        """Critical results use the facility-aware transactional email service."""
+        sample_lab_result.is_critical_result = True
+        sample_lab_result.save()
+        sample_lab_order.ordered_by.email = "clinician@example.com"
+        sample_lab_order.ordered_by.save()
+        mock_send.return_value = {"accepted": True}
+
+        LabNotificationService().send_result_notification(sample_lab_order)
+
+        assert mock_send.call_args.kwargs["facility"] == sample_lab_order.facility
 
     def test_no_email_for_normal_results(self, sample_lab_order, sample_lab_result):
         """Should not send email for normal results."""

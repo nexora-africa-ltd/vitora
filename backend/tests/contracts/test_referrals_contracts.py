@@ -65,6 +65,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "target_service",
                 "target_service_display",
                 "updated_at",
+                "verification_url",
             }
         ),
     ),
@@ -126,6 +127,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "target_service",
                 "target_service_display",
                 "updated_at",
+                "verification_url",
             }
         ),
     ),

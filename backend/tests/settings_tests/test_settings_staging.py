@@ -115,8 +115,8 @@ class TestStagingSettings:
         assert hasattr(staging, "DEMO_FACILITY_NAME")
         assert staging.DEMO_FACILITY_NAME == "Demo Health Facility"
 
-    def test_staging_db_conn_max_age_from_env(self):
-        """Staging should read DB connection max age from environment."""
+    def test_staging_pooling_disables_per_thread_persistent_connections(self):
+        """The client pool must replace CONN_MAX_AGE for ASGI request handling."""
         with mock.patch.dict(
             os.environ,
             {"DATABASE_URL": "postgres://test:test@localhost/test", "DB_CONN_MAX_AGE": "45"},
@@ -126,7 +126,25 @@ class TestStagingSettings:
             from hmis.settings import staging
 
             importlib.reload(staging)
-            assert staging.DATABASES["default"]["CONN_MAX_AGE"] == 45
+            assert staging.DATABASES["default"]["CONN_MAX_AGE"] == 0
+
+    def test_staging_postgres_uses_a_bounded_client_connection_pool(self):
+        """ASGI requests should borrow pooled Psycopg connections, not reconnect."""
+        with mock.patch.dict(
+            os.environ,
+            {"DATABASE_URL": "postgres://test:test@localhost/test"},
+            clear=False,
+        ):
+            import importlib
+
+            from hmis.settings import staging
+
+            importlib.reload(staging)
+            assert staging.DATABASES["default"]["CONN_MAX_AGE"] == 0
+            assert staging.DATABASES["default"]["OPTIONS"]["pool"] == {
+                "min_size": 1,
+                "max_size": 4,
+            }
 
     def test_staging_azure_blob_media_storage_backend(self):
         """Staging should switch default storage backend when MEDIA_BACKEND=azure_blob."""

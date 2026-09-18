@@ -50,6 +50,7 @@ from .models import (
     DICOMStudy,
     ImagingIntegrationSettings,
     ImagingOrder,
+    ImagingOrderItem,
     ImagingProcedure,
     RadiologyReport,
     ReportAmendment,
@@ -517,7 +518,12 @@ class ImagingOrderViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         resolve_request_tenant(self.request)
-        queryset = ImagingOrder.objects.all().select_related("patient", "encounter", "ordered_by")
+        queryset = ImagingOrder.objects.select_related(
+            "patient", "encounter", "ordered_by"
+        ).prefetch_related(
+            models.Prefetch("items", queryset=ImagingOrderItem.objects.select_related("procedure")),
+            models.Prefetch("reports", queryset=RadiologyReport.objects.order_by("-created_at")),
+        )
 
         user = self.request.user
         if not user.is_superuser:

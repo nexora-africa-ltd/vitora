@@ -6,7 +6,7 @@ Supported inputs/args: DRF request payloads/query params handled by WardViewSet 
 
 # ruff: noqa: ARG002
 
-from django.db.models import Q
+from django.db.models import Count, Q
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from rest_framework import filters, serializers, status, viewsets
@@ -54,7 +54,12 @@ class WardViewSet(AuditedMutationMixin, TenantScopedViewMixin, viewsets.ModelVie
     - GET /api/inpatient/wards/{id}/beds/ - List beds in ward
     """
 
-    queryset = Ward.objects.filter(is_active=True)
+    queryset = Ward.objects.filter(is_active=True).annotate(
+        _occupied_bed_count=Count("beds", filter=Q(beds__status="OCCUPIED")),
+        _cleaning_bed_count=Count("beds", filter=Q(beds__status="CLEANING")),
+        _maintenance_bed_count=Count("beds", filter=Q(beds__status="MAINTENANCE")),
+        _reserved_bed_count=Count("beds", filter=Q(beds__status="RESERVED")),
+    )
     audit_resource_type = "InpatientWard"
     audit_action_prefix = "inpatient.ward"
     audit_source = "inpatient_api"

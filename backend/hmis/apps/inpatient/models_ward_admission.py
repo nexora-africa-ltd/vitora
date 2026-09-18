@@ -346,10 +346,15 @@ class Ward(FacilityScopedModel, TimeStampedModel):
         Returns:
             Number of available beds
         """
-        occupied = self.beds.filter(status="OCCUPIED").count()
-        cleaning = self.beds.filter(status="CLEANING").count()
-        maintenance = self.beds.filter(status="MAINTENANCE").count()
-        reserved = self.beds.filter(status="RESERVED").count()
+        occupied = getattr(self, "_occupied_bed_count", None)
+        cleaning = getattr(self, "_cleaning_bed_count", None)
+        maintenance = getattr(self, "_maintenance_bed_count", None)
+        reserved = getattr(self, "_reserved_bed_count", None)
+        if None in (occupied, cleaning, maintenance, reserved):
+            occupied = self.beds.filter(status="OCCUPIED").count()
+            cleaning = self.beds.filter(status="CLEANING").count()
+            maintenance = self.beds.filter(status="MAINTENANCE").count()
+            reserved = self.beds.filter(status="RESERVED").count()
         return max(0, self.capacity - occupied - cleaning - maintenance - reserved)
 
     @property
@@ -370,6 +375,9 @@ class Ward(FacilityScopedModel, TimeStampedModel):
         Returns:
             Number of beds in OCCUPIED status
         """
+        annotated_count = getattr(self, "_occupied_bed_count", None)
+        if annotated_count is not None:
+            return annotated_count
         return self.beds.filter(status="OCCUPIED").count()
 
     @property
@@ -383,7 +391,7 @@ class Ward(FacilityScopedModel, TimeStampedModel):
         if self.capacity == 0:
             return 0.0
 
-        occupied_beds = self.beds.filter(status="OCCUPIED").count()
+        occupied_beds = self.occupied_beds
         return round((occupied_beds / self.capacity) * 100, 2)
 
 

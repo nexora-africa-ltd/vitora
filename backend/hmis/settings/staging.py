@@ -43,6 +43,14 @@ if DATABASE_URL:
         )
     }
     DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
+    # ASGI requests are served across worker threads. Persistent per-thread
+    # connections do not eliminate repeated Neon TLS handshakes, so use
+    # Django's bounded Psycopg client pool instead.
+    DATABASES["default"]["CONN_MAX_AGE"] = 0
+    DATABASES["default"].setdefault("OPTIONS", {})["pool"] = {
+        "min_size": 1,
+        "max_size": 4,
+    }
     # Wrap DB engine for Prometheus query metrics
     DATABASES["default"]["ENGINE"] = "django_prometheus.db.backends.postgresql"
 else:
@@ -58,6 +66,7 @@ else:
 # Static Files (Whitenoise)
 # =============================================================================
 MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")  # noqa: F405
+MIDDLEWARE.insert(1, "hmis.apps.core.middleware.RequestTimingMiddleware")  # noqa: F405
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 STORAGES = dict(globals().get("STORAGES", {}))
 STORAGES["staticfiles"] = {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"}

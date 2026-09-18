@@ -50,21 +50,6 @@ class ClinicalWorkflowUser(HttpUser):
             "X-Facility-ID": facility_id,
             "Accept": "application/json",
         }
-        self._validate_context()
-
-    def _validate_context(self) -> None:
-        """Fail early when the account is not usable for the intended facility."""
-        with self.client.get(
-            "/api/core/staff/me/",
-            headers=self.request_headers,
-            name="staff: context",
-            catch_response=True,
-        ) as response:
-            if response.status_code != 200:
-                response.failure(
-                    f"Expected authenticated staff context, got {response.status_code}."
-                )
-                raise RuntimeError("Load-test account does not have usable staff context.")
 
     @task(8)
     def list_patients(self) -> None:

@@ -20,10 +20,13 @@ from rest_framework.test import APIClient
 
 from hmis.apps.core.emergency_access.models import (
     EmergencyAccess,
+    EmergencyAccessAccessMode,
     EmergencyAccessReason,
+    EmergencyAccessScope,
     EmergencyAccessStatus,
 )
 from hmis.apps.core.models import AuditLog
+from hmis.apps.patients.models import Patient
 from tests.conftest import ensure_staff_profile
 
 User = get_user_model()
@@ -287,6 +290,41 @@ class TestEmergencyAccessModel:
         assert EmergencyAccess.has_active_access(regular_user) is True
         assert EmergencyAccess.has_active_access(regular_user, sample_patient) is True
 
+    def test_has_active_access_is_scoped_to_patient(
+        self,
+        regular_user,
+        sample_patient,
+        sample_county,
+        sample_sub_county,
+        sample_organization,
+        sample_facility,
+        db,
+    ):
+        """Patient-scoped access should not apply to unrelated sensitive patients."""
+        other_patient = Patient.objects.create(
+            first_name="Other",
+            last_name="Sensitive",
+            date_of_birth="1980-01-01",
+            gender="F",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            organization=sample_organization,
+            registered_at_facility=sample_facility,
+            is_sensitive=True,
+        )
+
+        EmergencyAccess.objects.create(
+            user=regular_user,
+            patient=sample_patient,
+            reason=EmergencyAccessReason.LIFE_THREATENING,
+            reason_details="Emergency access for known patient.",
+            duration_minutes=60,
+            scope_type=EmergencyAccessScope.PATIENT,
+        )
+
+        assert EmergencyAccess.has_active_access(regular_user, sample_patient) is True
+        assert EmergencyAccess.has_active_access(regular_user, other_patient) is False
+
     def test_string_representation(self, regular_user, sample_patient, db):
         """Should return meaningful string representation."""
         ea = EmergencyAccess.objects.create(
@@ -366,6 +404,38 @@ class TestEmergencyAccessSerializers:
         assert serializer.is_valid() is False
         assert "patient_mrn" in serializer.errors
 
+    def test_create_serializer_requires_patient_for_patient_scope(self, db):
+        """Patient scope must include patient_mrn."""
+        from hmis.apps.core.emergency_access.serializers import EmergencyAccessCreateSerializer
+
+        serializer = EmergencyAccessCreateSerializer(
+            data={
+                "reason": EmergencyAccessReason.LIFE_THREATENING,
+                "reason_details": "Valid justification for emergency access.",
+                "duration_minutes": 60,
+                "scope_type": EmergencyAccessScope.PATIENT,
+            }
+        )
+
+        assert serializer.is_valid() is False
+        assert "patient_mrn" in serializer.errors
+
+    def test_create_serializer_restricts_system_scope_reasons(self, db):
+        """System-wide scope should be limited to disaster/mass-casualty reasons."""
+        from hmis.apps.core.emergency_access.serializers import EmergencyAccessCreateSerializer
+
+        serializer = EmergencyAccessCreateSerializer(
+            data={
+                "reason": EmergencyAccessReason.LIFE_THREATENING,
+                "reason_details": "Valid justification for emergency access.",
+                "duration_minutes": 60,
+                "scope_type": EmergencyAccessScope.SYSTEM,
+            }
+        )
+
+        assert serializer.is_valid() is False
+        assert "scope_type" in serializer.errors
+
 
 # ============================================================================
 # API Tests
@@ -377,7 +447,7 @@ class TestEmergencyAccessAPI:
 
     @patch("hmis.apps.core.emergency_access.views.send_emergency_access_escalation.delay")
     def test_create_emergency_access_success(
-        self, mock_escalation, authenticated_regular_client, db
+        self, mock_escalation, authenticated_regular_client, sample_patient, db
     ):
         """Should create emergency access and trigger escalation."""
         url = reverse("emergency-access-list")
@@ -385,6 +455,7 @@ class TestEmergencyAccessAPI:
             "reason": EmergencyAccessReason.LIFE_THREATENING,
             "reason_details": "Patient arrived in critical condition, need immediate access.",
             "duration_minutes": 120,
+            "patient_mrn": sample_patient.mrn,
         }
 
         response = authenticated_regular_client.post(url, data, format="json")
@@ -392,6 +463,8 @@ class TestEmergencyAccessAPI:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["reason"] == EmergencyAccessReason.LIFE_THREATENING
         assert response.data["is_active"] is True
+        assert response.data["scope_type"] == EmergencyAccessScope.PATIENT
+        assert response.data["access_mode"] == EmergencyAccessAccessMode.READ_ONLY
         mock_escalation.assert_called_once()
 
     def test_create_emergency_access_unauthenticated_fails(self, db):
@@ -402,6 +475,7 @@ class TestEmergencyAccessAPI:
             "reason": EmergencyAccessReason.LIFE_THREATENING,
             "reason_details": "Emergency access needed.",
             "duration_minutes": 60,
+            "patient_mrn": "MRN-20260101-0001",
         }
 
         response = client.post(url, data, format="json")
@@ -409,7 +483,7 @@ class TestEmergencyAccessAPI:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_create_emergency_access_logs_audit(
-        self, authenticated_regular_client, regular_user, db
+        self, authenticated_regular_client, regular_user, sample_patient, db
     ):
         """Should create audit log entry when emergency access is invoked."""
         url = reverse("emergency-access-list")
@@ -422,6 +496,7 @@ class TestEmergencyAccessAPI:
                     "reason": EmergencyAccessReason.LIFE_THREATENING,
                     "reason_details": "Critical emergency situation.",
                     "duration_minutes": 60,
+                    "patient_mrn": sample_patient.mrn,
                 },
                 format="json",
             )
@@ -433,6 +508,101 @@ class TestEmergencyAccessAPI:
         audit_log = AuditLog.objects.filter(action="emergency_access_invoke").latest("timestamp")
         assert audit_log.user == regular_user
         assert audit_log.resource_type == "EmergencyAccess"
+
+    def test_invoke_system_scope_for_disaster_reason(self, authenticated_regular_client, db):
+        """System scope should be allowed for disaster response."""
+        url = reverse("emergency-access-list")
+        response = authenticated_regular_client.post(
+            url,
+            {
+                "reason": EmergencyAccessReason.DISASTER_RESPONSE,
+                "reason_details": "Facility-wide response during a major disaster event.",
+                "duration_minutes": 120,
+                "scope_type": EmergencyAccessScope.SYSTEM,
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["scope_type"] == EmergencyAccessScope.SYSTEM
+
+    def test_close_active_emergency_access(self, authenticated_regular_client, regular_user, db):
+        """Requester should be able to close their own active emergency access."""
+        ea = EmergencyAccess.objects.create(
+            user=regular_user,
+            reason=EmergencyAccessReason.DISASTER_RESPONSE,
+            reason_details="Disaster response underway.",
+            duration_minutes=60,
+            scope_type=EmergencyAccessScope.SYSTEM,
+        )
+        url = reverse("emergency-access-close", args=[ea.id])
+
+        response = authenticated_regular_client.post(url, {}, format="json")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["status"] == EmergencyAccessStatus.EXPIRED
+        assert response.data["closed_at"] is not None
+        audit = AuditLog.objects.filter(action="emergency_access_closed").latest("timestamp")
+        assert audit.resource_id == ea.id
+
+    def test_non_owner_cannot_close_emergency_access(
+        self, authenticated_regular_client, admin_user, db
+    ):
+        """Users should not be able to close someone else's active session."""
+        other = EmergencyAccess.objects.create(
+            user=admin_user,
+            reason=EmergencyAccessReason.DISASTER_RESPONSE,
+            reason_details="Disaster response underway.",
+            duration_minutes=60,
+            scope_type=EmergencyAccessScope.SYSTEM,
+        )
+        url = reverse("emergency-access-close", args=[other.id])
+
+        response = authenticated_regular_client.post(url, {}, format="json")
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_patient_scoped_break_glass_allows_only_targeted_sensitive_patient(
+        self,
+        authenticated_regular_client,
+        regular_user,
+        sample_patient,
+        sample_county,
+        sample_sub_county,
+        sample_organization,
+        sample_facility,
+        db,
+    ):
+        """Sensitive patient list should include only patient-scoped break-glass targets."""
+        sample_patient.is_sensitive = True
+        sample_patient.save(update_fields=["is_sensitive"])
+        other_sensitive = Patient.objects.create(
+            first_name="Another",
+            last_name="Sensitive",
+            date_of_birth="1978-06-10",
+            gender="F",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            organization=sample_organization,
+            registered_at_facility=sample_facility,
+            is_sensitive=True,
+        )
+
+        EmergencyAccess.objects.create(
+            user=regular_user,
+            patient=sample_patient,
+            reason=EmergencyAccessReason.LIFE_THREATENING,
+            reason_details="Need urgent chart for this specific patient.",
+            duration_minutes=60,
+            scope_type=EmergencyAccessScope.PATIENT,
+        )
+
+        response = authenticated_regular_client.get(reverse("patient-list"))
+
+        assert response.status_code == status.HTTP_200_OK
+        returned_ids = {row["id"] for row in response.data["results"]}
+        assert sample_patient.id in returned_ids
+        assert other_sensitive.id not in returned_ids
 
     def test_list_own_emergency_access(
         self, authenticated_regular_client, regular_user, admin_user, db
@@ -556,6 +726,115 @@ class TestEmergencyAccessAPI:
         assert "total_today" in response.data
         assert "by_reason" in response.data
         assert "by_status" in response.data
+        assert "overdue_reviews" in response.data
+        assert "median_review_minutes" in response.data
+        assert "by_reason_role" in response.data
+        assert "by_reason_facility" in response.data
+
+    def test_dashboard_stats_includes_overdue_and_median_metrics(
+        self, authenticated_admin_client, regular_user, admin_user, sample_patient, db
+    ):
+        """Dashboard should calculate overdue review count and median review duration."""
+        reviewed_fast = EmergencyAccess.objects.create(
+            user=regular_user,
+            patient=sample_patient,
+            reason=EmergencyAccessReason.LIFE_THREATENING,
+            reason_details="Emergency access case A.",
+            duration_minutes=60,
+        )
+        reviewed_fast.requested_at = timezone.now() - timedelta(hours=3)
+        reviewed_fast.approved_at = reviewed_fast.requested_at + timedelta(minutes=30)
+        reviewed_fast.status = EmergencyAccessStatus.REVIEWED
+        reviewed_fast.save(update_fields=["requested_at", "approved_at", "status"])
+
+        reviewed_slow = EmergencyAccess.objects.create(
+            user=regular_user,
+            patient=sample_patient,
+            reason=EmergencyAccessReason.MEDICATION_EMERGENCY,
+            reason_details="Emergency access case B.",
+            duration_minutes=60,
+        )
+        reviewed_slow.requested_at = timezone.now() - timedelta(hours=5)
+        reviewed_slow.approved_at = reviewed_slow.requested_at + timedelta(minutes=90)
+        reviewed_slow.status = EmergencyAccessStatus.REVIEWED
+        reviewed_slow.save(update_fields=["requested_at", "approved_at", "status"])
+
+        overdue = EmergencyAccess.objects.create(
+            user=regular_user,
+            patient=sample_patient,
+            reason=EmergencyAccessReason.CRITICAL_LAB_RESULT,
+            reason_details="Pending overdue review.",
+            duration_minutes=30,
+            status=EmergencyAccessStatus.EXPIRED,
+        )
+        overdue.review_due_at = timezone.now() - timedelta(hours=2)
+        overdue.save(update_fields=["review_due_at"])
+
+        response = authenticated_admin_client.get(reverse("emergency-access-dashboard-stats"))
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["overdue_reviews"] >= 1
+        # Median of [30, 90] -> 60.0
+        assert response.data["median_review_minutes"] == 60.0
+
+    def test_export_json_for_admin(self, authenticated_admin_client, sample_emergency_access, db):
+        """Admin export should support JSON output."""
+        response = authenticated_admin_client.get(
+            reverse("emergency-access-export"), {"export_format": "json"}
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "records" in response.data
+        assert "generated_at" in response.data
+        assert "count" in response.data
+        assert response.data["count"] >= 1
+
+    def test_export_csv_for_admin(self, authenticated_admin_client, sample_emergency_access, db):
+        """Admin export should support CSV output."""
+        response = authenticated_admin_client.get(
+            reverse("emergency-access-export"), {"export_format": "csv"}
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response["Content-Type"].startswith("text/csv")
+        body = response.content.decode("utf-8")
+        assert "id,user_username,patient_mrn,reason,status" in body
+        assert str(sample_emergency_access.id) in body
+
+    def test_export_forbidden_for_regular_user(
+        self, authenticated_regular_client, sample_emergency_access
+    ):
+        """Regular user should not access compliance exports."""
+        response = authenticated_regular_client.get(reverse("emergency-access-export"))
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_sensitive_record_access_logs_resource_touch_event(
+        self, authenticated_regular_client, regular_user, sample_patient, db
+    ):
+        """Active break-glass access should log resource touch audit events."""
+        sample_patient.is_sensitive = True
+        sample_patient.save(update_fields=["is_sensitive"])
+        EmergencyAccess.objects.create(
+            user=regular_user,
+            patient=sample_patient,
+            reason=EmergencyAccessReason.LIFE_THREATENING,
+            reason_details="Need urgent access to sensitive chart.",
+            duration_minutes=60,
+            scope_type=EmergencyAccessScope.PATIENT,
+        )
+
+        response = authenticated_regular_client.get(
+            reverse("patient-detail", args=[sample_patient.id])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        touch = AuditLog.objects.filter(action="emergency_access_resource_accessed").latest(
+            "timestamp"
+        )
+        assert touch.resource_type == "Patient"
+        assert touch.resource_id == sample_patient.id
+        assert touch.details.get("endpoint") == reverse("patient-detail", args=[sample_patient.id])
 
     def test_dashboard_stats_forbidden_for_regular_user(self, authenticated_regular_client, db):
         """Regular user should not be able to access dashboard stats."""
@@ -600,29 +879,48 @@ class TestEmergencyAccessTasks:
     """Tests for Emergency Access Celery tasks."""
 
     @patch("hmis.apps.core.sms_gateway.SMSGateway")
-    @patch("hmis.apps.core.emergency_access.tasks.send_mail")
+    @patch("hmis.apps.core.emergency_access.tasks.send_transactional_email")
     def test_send_escalation_sends_email(
-        self, mock_send_mail, mock_sms_class, sample_emergency_access, admin_user, db
+        self,
+        mock_send_transactional_email,
+        mock_sms_class,
+        sample_emergency_access,
+        admin_user,
+        sample_organization,
+        sample_facility,
+        db,
     ):
         """Should send escalation email to admins."""
         from hmis.apps.core.emergency_access.tasks import send_emergency_access_escalation
 
-        # Run the task synchronously
+        ensure_staff_profile(admin_user, sample_organization, sample_facility)
+        mock_send_transactional_email.return_value = {"accepted": True}
         result = send_emergency_access_escalation(sample_emergency_access.id)
 
         assert result["status"] == "success"
-        mock_send_mail.assert_called_once()
-        call_kwargs = mock_send_mail.call_args[1]
-        assert "EMERGENCY ACCESS ALERT" in call_kwargs["message"]
-        assert sample_emergency_access.user.username in call_kwargs["message"]
+        mock_send_transactional_email.assert_called_once()
+        call_kwargs = mock_send_transactional_email.call_args.kwargs
+        assert "EMERGENCY ACCESS ALERT" in call_kwargs["html_body"]
+        assert sample_emergency_access.user.username in call_kwargs["html_body"]
+        assert sample_emergency_access.reason_details in call_kwargs["html_body"]
+        assert f"/admin/emergency-access/{sample_emergency_access.id}/" in call_kwargs["html_body"]
+        assert call_kwargs["facility"] is None
 
-    @patch("hmis.apps.core.emergency_access.tasks.send_mail")
+    @patch("hmis.apps.core.emergency_access.tasks.send_transactional_email")
     def test_send_escalation_marks_sent(
-        self, mock_send_mail, sample_emergency_access, admin_user, db
+        self,
+        mock_send_transactional_email,
+        sample_emergency_access,
+        admin_user,
+        sample_organization,
+        sample_facility,
+        db,
     ):
         """Should mark escalation_sent after sending."""
         from hmis.apps.core.emergency_access.tasks import send_emergency_access_escalation
 
+        ensure_staff_profile(admin_user, sample_organization, sample_facility)
+        mock_send_transactional_email.return_value = {"accepted": True}
         assert sample_emergency_access.escalation_sent is False
 
         send_emergency_access_escalation(sample_emergency_access.id)
@@ -631,9 +929,9 @@ class TestEmergencyAccessTasks:
         assert sample_emergency_access.escalation_sent is True
         assert sample_emergency_access.escalation_sent_at is not None
 
-    @patch("hmis.apps.core.emergency_access.tasks.send_mail")
+    @patch("hmis.apps.core.emergency_access.tasks.send_transactional_email")
     def test_send_escalation_skips_if_already_sent(
-        self, mock_send_mail, sample_emergency_access, admin_user, db
+        self, mock_send_transactional_email, sample_emergency_access, admin_user, db
     ):
         """Should skip if escalation already sent."""
         from hmis.apps.core.emergency_access.tasks import send_emergency_access_escalation
@@ -644,7 +942,7 @@ class TestEmergencyAccessTasks:
         result = send_emergency_access_escalation(sample_emergency_access.id)
 
         assert result["status"] == "skipped"
-        mock_send_mail.assert_not_called()
+        mock_send_transactional_email.assert_not_called()
 
     def test_expire_emergency_access_task(self, regular_user, db):
         """Should expire active records past their expiration time."""
@@ -665,3 +963,49 @@ class TestEmergencyAccessTasks:
         assert result["expired_count"] >= 1
         ea.refresh_from_db()
         assert ea.status == EmergencyAccessStatus.EXPIRED
+
+    def test_flag_overdue_reviews(self, regular_user, sample_patient, db):
+        """Overdue review detector should log audit events for overdue records."""
+        from hmis.apps.core.emergency_access.tasks import flag_overdue_emergency_access_reviews
+
+        overdue = EmergencyAccess.objects.create(
+            user=regular_user,
+            patient=sample_patient,
+            reason=EmergencyAccessReason.LIFE_THREATENING,
+            reason_details="Needs retrospective review.",
+            duration_minutes=60,
+            status=EmergencyAccessStatus.EXPIRED,
+        )
+        overdue.review_due_at = timezone.now() - timedelta(hours=1)
+        overdue.save(update_fields=["review_due_at"])
+
+        result = flag_overdue_emergency_access_reviews()
+
+        assert result["overdue_count"] >= 1
+        audit = AuditLog.objects.filter(action="emergency_access_review_overdue").latest(
+            "timestamp"
+        )
+        assert audit.resource_id == overdue.id
+
+    @patch("hmis.apps.core.emergency_access.tasks.send_transactional_email")
+    def test_send_daily_compliance_digest(
+        self,
+        mock_send_transactional_email,
+        admin_user,
+        sample_organization,
+        sample_facility,
+        db,
+    ):
+        """Daily digest should send compliance summary email to approvers."""
+        from hmis.apps.core.emergency_access.tasks import send_emergency_access_daily_digest
+
+        admin_user.email = "admin_digest@vitora.local"
+        admin_user.save(update_fields=["email"])
+        ensure_staff_profile(admin_user, sample_organization, sample_facility)
+        mock_send_transactional_email.return_value = {"accepted": True}
+
+        result = send_emergency_access_daily_digest()
+
+        assert result["status"] in {"success", "skipped"}
+        if result["status"] == "success":
+            mock_send_transactional_email.assert_called()

@@ -20,6 +20,7 @@ import {
   resolveClinicalSidebarItems,
   resolveClinicalUtilityItems,
 } from '@/lib/config/clinical-navigation';
+import { isLISStandaloneRouteAllowed, isStandardRouteAllowed } from '@/lib/auth/route-access';
 
 export interface NavigationResult {
   items: NavItemType[];
@@ -28,7 +29,7 @@ export interface NavigationResult {
 
 export function useNavigationItems(): NavigationResult {
   const { user } = useAuth();
-  const { canAccessModule, canPerformAction, isSuperuser } = usePermissions();
+  const { canAccessModule, canPerformAction, hasPermission, isSuperuser } = usePermissions();
   const { hasModule, facilityDetail, facility } = useFacility();
   const { navigationMode, isClinicalNavigationEligible } = useNavigationMode();
   const { hasFeature } = useSubscription();
@@ -56,36 +57,13 @@ export function useNavigationItems(): NavigationResult {
   return useMemo(() => {
     const isLISStandaloneProfile =
       facilityDetail?.operating_mode === 'STANDALONE_LAB' ||
+      facility?.operating_mode === 'STANDALONE_LAB' ||
       facility?.deployment_profile === 'lis_standalone';
-
-    const lisStandaloneAllowedModuleKeys = new Set<string>([
-      'patients',
-      'laboratory',
-      'billing',
-      'inventory',
-    ]);
-    const lisStandaloneRouteRules: Array<{
-      prefix: string;
-      moduleKey?: string;
-      facilityModule?: string;
-      actionKey?: string;
-    }> = [
-      { prefix: '/patients/new', actionKey: 'patients.create' },
-      { prefix: '/laboratory/orders/new', actionKey: 'lis.create_standalone_order' },
-      { prefix: '/transactions/invoices/new', actionKey: 'billing.create_invoice' },
-      { prefix: '/inventory/purchase-orders/new', actionKey: 'inventory.manage_procurement' },
-      { prefix: '/inventory/goods-receipt/new', actionKey: 'inventory.manage_procurement' },
-      { prefix: '/patients', moduleKey: 'patients' },
-      { prefix: '/laboratory', moduleKey: 'laboratory', facilityModule: 'laboratory' },
-      { prefix: '/transactions', moduleKey: 'billing' },
-      { prefix: '/inventory', moduleKey: 'inventory', facilityModule: 'inventory' },
-      { prefix: '/notifications' },
-      { prefix: '/settings' },
-    ];
 
     const visibilityCtx: NavItemVisibilityContext = {
       facilityLevel: facilityDetail?.level,
       facilityOwnership: facilityDetail?.ownership,
+      facilityCountryCode: facilityDetail?.country_code,
       activeClinicTypes,
       isSuperuser,
       shrEnabled: user?.facility?.shr_enabled,
@@ -108,35 +86,20 @@ export function useNavigationItems(): NavigationResult {
         if (href === '/patients/lookup' || href.startsWith('/patients/lookup/')) {
           return false;
         }
-        if (item.moduleKey && !lisStandaloneAllowedModuleKeys.has(item.moduleKey)) {
-          return false;
-        }
         if (href) {
-          if (href === '/dashboard' || href.startsWith('/dashboard/')) {
-            return false;
-          }
-          const matchedStandaloneRule = lisStandaloneRouteRules.find(
-            (rule) => href === rule.prefix || href.startsWith(`${rule.prefix}/`)
-          );
-          if (!matchedStandaloneRule) {
-            return false;
-          }
-          if (
-            matchedStandaloneRule.moduleKey &&
-            !canAccessModule(matchedStandaloneRule.moduleKey as never)
-          ) {
-            return false;
-          }
-          if (
-            matchedStandaloneRule.facilityModule &&
-            !hasModule(matchedStandaloneRule.facilityModule as never)
-          ) {
-            return false;
-          }
-          if (
-            matchedStandaloneRule.actionKey &&
-            !canPerformAction(matchedStandaloneRule.actionKey as never)
-          ) {
+          const allowed = isLISStandaloneProfile
+            ? isLISStandaloneRouteAllowed(href, {
+                canAccessModule,
+                hasModule,
+                canPerformAction,
+              })
+            : isStandardRouteAllowed(href, {
+                canAccessModule,
+                hasModule,
+                canPerformAction,
+                hasPermission,
+              });
+          if (!allowed) {
             return false;
           }
         }
@@ -155,9 +118,7 @@ export function useNavigationItems(): NavigationResult {
       if (!isAllowed(item)) return null;
 
       if (hasChildren(item)) {
-        const filteredChildren = item.children.filter((child): child is NavItem =>
-          isAllowed(child)
-        );
+        const filteredChildren = item.children.filter((child): child is NavItem => isAllowed(child));
         if (filteredChildren.length === 0) return null;
         return { ...item, children: filteredChildren };
       }
@@ -185,6 +146,7 @@ export function useNavigationItems(): NavigationResult {
   }, [
     canAccessModule,
     canPerformAction,
+    hasPermission,
     isSuperuser,
     hasModule,
     hasFeature,

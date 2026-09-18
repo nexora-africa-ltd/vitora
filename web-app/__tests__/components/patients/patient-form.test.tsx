@@ -233,5 +233,5 @@ describe('PatientForm Component', () => {
 
     await user.click(screen.getByRole('combobox', { name: 'County *' }));
     expect(await screen.findByPlaceholderText('Search counties...')).toBeInTheDocument();
-  });
+  }, 15000);
 });

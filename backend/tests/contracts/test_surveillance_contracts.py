@@ -9,6 +9,10 @@ Re-run the script to update after serializer changes:
 import pytest  # type: ignore
 
 from hmis.apps.surveillance.serializers import (
+    ContactTracingContactSerializer,
+    ContactTracingFollowUpSerializer,
+    ContactTracingStatusActionSerializer,
+    CountyNotificationDeliverySerializer,
     CountyReportSerializer,
     IDSRDashboardSerializer,
     IDSRDiseaseSummarySerializer,
@@ -29,14 +33,104 @@ from hmis.apps.surveillance.serializers import (
     NotifiableCaseSerializer,
     NotifiableDiseaseListSerializer,
     NotifiableDiseaseSerializer,
+    NotificationStatusActionSerializer,
     NotifyCountySerializer,
     OutbreakThresholdSerializer,
     SurveillanceAlertListSerializer,
     SurveillanceAlertSerializer,
     SurveillanceDashboardSerializer,
+    SurveillanceFacilitySettingsSerializer,
 )
 
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
+    (
+        ContactTracingContactSerializer,
+        frozenset(
+            {
+                "case",
+                "case_disease_name",
+                "case_id",
+                "created_at",
+                "created_by",
+                "created_by_name",
+                "exposure_date",
+                "followups",
+                "full_name",
+                "id",
+                "last_contact_attempt_at",
+                "last_followup_at",
+                "monitoring_end_date",
+                "monitoring_start_date",
+                "next_followup_date",
+                "notes",
+                "phone_number",
+                "phone_number_masked",
+                "relationship_to_case",
+                "risk_level",
+                "status",
+                "updated_at",
+                "updated_by",
+                "updated_by_name",
+            }
+        ),
+    ),
+    (
+        ContactTracingFollowUpSerializer,
+        frozenset(
+            {
+                "contact",
+                "created_at",
+                "followup_date",
+                "id",
+                "method",
+                "next_followup_date",
+                "notes",
+                "outcome",
+                "recorded_by",
+                "recorded_by_name",
+                "symptoms_present",
+                "temperature_c",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        ContactTracingStatusActionSerializer,
+        frozenset(
+            {
+                "monitoring_days",
+                "notes",
+            }
+        ),
+    ),
+    (
+        CountyNotificationDeliverySerializer,
+        frozenset(
+            {
+                "attempt_count",
+                "case",
+                "channel",
+                "created_at",
+                "delivered_at",
+                "id",
+                "last_attempt_at",
+                "last_error",
+                "max_retry_attempts",
+                "next_retry_at",
+                "provider",
+                "provider_event",
+                "provider_message_id",
+                "recipient_masked",
+                "retry_backoff_minutes",
+                "sent_at",
+                "status",
+                "terminal_status_at",
+                "triggered_by",
+                "triggered_by_name",
+                "updated_at",
+            }
+        ),
+    ),
     (
         CountyReportSerializer,
         frozenset(
@@ -421,7 +515,16 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "laboratory_criteria",
                 "name",
                 "reporting_hours",
+                "requires_county_notification",
                 "updated_at",
+            }
+        ),
+    ),
+    (
+        NotificationStatusActionSerializer,
+        frozenset(
+            {
+                "notes",
             }
         ),
     ),
@@ -429,6 +532,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         NotifyCountySerializer,
         frozenset(
             {
+                "notes",
                 "notification_notes",
             }
         ),
@@ -500,6 +604,27 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "overdue_notifications",
                 "top_diseases",
                 "total_active_cases",
+            }
+        ),
+    ),
+    (
+        SurveillanceFacilitySettingsSerializer,
+        frozenset(
+            {
+                "created_at",
+                "email_recipient",
+                "email_recipient_masked",
+                "facility",
+                "id",
+                "include_patient_identifiers",
+                "is_active",
+                "max_retry_attempts",
+                "notify_via_email",
+                "notify_via_sms",
+                "retry_backoff_minutes",
+                "sms_recipient",
+                "sms_recipient_masked",
+                "updated_at",
             }
         ),
     ),

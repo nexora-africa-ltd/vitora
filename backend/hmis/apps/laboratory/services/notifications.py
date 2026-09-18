@@ -8,12 +8,12 @@ with special handling for critical values.
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.mail import send_mail
 from django.template.loader import render_to_string
 
 from hmis.apps.core.models import Notification
-from hmis.apps.core.services.notification_service import notify_user
-from hmis.apps.laboratory.models import LabOrder
+from hmis.apps.core.services.email_service import send_transactional_email
+from hmis.apps.core.services.notification_service import notify_user, notify_users
+from hmis.apps.laboratory.models import LaboratoryAlertSettings, LabOrder
 
 User = get_user_model()
 
@@ -43,7 +43,7 @@ class LabNotificationService:
         # Determine priority
         priority = "critical" if has_critical else "normal"
 
-        # Create in-app notification
+        # Preserve the ordering clinician's in-app notification.
         notification = notify_user(
             user=clinician,
             notification_type="lab_result",
@@ -58,9 +58,26 @@ class LabNotificationService:
         if notification is None:
             raise ValueError("Failed to create lab result notification")
 
-        # Send email for critical results
-        if has_critical and clinician.email:
-            self._send_critical_email(clinician, lab_order)
+        if has_critical:
+            escalation_users = LaboratoryAlertSettings.get_settings(
+                lab_order.facility
+            ).resolve_critical_alert_recipients()
+            # Configured escalations also receive an in-app critical notification.
+            notify_users(
+                users=escalation_users.exclude(pk=clinician.pk),
+                notification_type="lab_result",
+                priority="critical",
+                title=self._get_notification_title(lab_order, True),
+                message=self._get_notification_message(lab_order, True),
+                related_model="LabOrder",
+                related_id=lab_order.id,
+                action_url=f"/encounters/{lab_order.encounter.id}/lab/{lab_order.id}/",
+            )
+            recipients = {clinician.pk: clinician}
+            recipients.update({user.pk: user for user in escalation_users})
+            for recipient in recipients.values():
+                if recipient.email:
+                    self._send_critical_email(recipient, lab_order)
 
         return notification
 
@@ -173,7 +190,7 @@ class LabNotificationService:
         try:
             html_message = render_to_string("laboratory/email/critical_result.html", context)
             plain_message = render_to_string("laboratory/email/critical_result.txt", context)
-        except:
+        except (OSError, ValueError):
             # Fallback to plain text
             plain_message = f"""
 CRITICAL LAB RESULTS ALERT
@@ -197,12 +214,11 @@ View results: {context["action_url"]}
 """
             html_message = None
 
-        # Send email
-        send_mail(
+        result = send_transactional_email(
             subject=subject,
-            message=plain_message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[clinician.email],
-            html_message=html_message,
-            fail_silently=True,
+            html_body=html_message or plain_message.replace("\n", "<br>"),
+            to_email=clinician.email,
+            facility=lab_order.facility,
         )
+        if not result.get("accepted", False):
+            raise RuntimeError("Critical laboratory result email was not accepted by the provider.")

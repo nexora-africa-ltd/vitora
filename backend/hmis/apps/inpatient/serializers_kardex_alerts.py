@@ -313,7 +313,9 @@ class NursingKardexSerializer(serializers.ModelSerializer):
     schedule_items = serializers.SerializerMethodField()
 
     def get_schedule_items(self, obj):
-        items = obj.schedule_items.all().order_by("scheduled_for")
+        items = getattr(obj, "prefetched_schedule_items", None)
+        if items is None:
+            items = obj.schedule_items.select_related("created_by").order_by("scheduled_for")
         return KardexScheduleItemSerializer(items, many=True).data
 
     class Meta:

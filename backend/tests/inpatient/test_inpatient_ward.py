@@ -20,6 +20,7 @@ from decimal import Decimal
 
 import pytest  # type: ignore
 from django.db import IntegrityError
+from django.test.utils import CaptureQueriesContext
 
 from hmis.apps.inpatient.models import Bed, Ward
 
@@ -523,3 +524,28 @@ class TestWardAPISerializer:
         assert test_ward["available_beds"] == 3
         # occupancy_rate = 2/5 = 40%
         assert test_ward["occupancy_rate"] == pytest.approx(40.0, rel=0.01)
+
+    def test_ward_list_aggregates_bed_counts_without_query_fan_out(
+        self, authenticated_client, sample_facility, sample_organization
+    ):
+        """Ward aggregate counts should remain bounded as the ward list grows."""
+        from django.db import connection
+
+        for index in range(3):
+            ward = Ward.objects.create(
+                name=f"Aggregate Ward {index}",
+                code=f"AGG-{index}",
+                ward_type="MEDICAL",
+                capacity=4,
+                daily_rate=Decimal("500.00"),
+                facility=sample_facility,
+                organization=sample_organization,
+            )
+            Bed.objects.create(ward=ward, bed_number="A-01", status="OCCUPIED")
+            Bed.objects.create(ward=ward, bed_number="A-02", status="CLEANING")
+
+        with CaptureQueriesContext(connection) as context:
+            response = authenticated_client.get("/api/inpatient/wards/")
+
+        assert response.status_code == 200
+        assert len(context.captured_queries) <= 8

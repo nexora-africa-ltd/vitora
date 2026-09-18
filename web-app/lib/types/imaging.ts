@@ -813,6 +813,7 @@ export interface RadiologyReport {
   can_edit: boolean;
   can_sign: boolean;
   can_amend: boolean;
+  verification_url?: string | null;
 
   // Timestamps
   created_at: string;

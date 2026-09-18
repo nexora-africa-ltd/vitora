@@ -208,7 +208,9 @@ class AssignmentDecisionViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelVi
 
     from hmis.apps.scheduling.serializers import AssignmentDecisionSerializer
 
-    queryset = AssignmentDecision.objects.all()
+    queryset = AssignmentDecision.objects.select_related(
+        "rule_applied", "assigned_resource", "triggered_by"
+    )
     serializer_class = AssignmentDecisionSerializer
     permission_classes = [permissions.IsAuthenticated, AssignmentEngineSuperuserPermission]
     filterset_class = AssignmentDecisionFilter
@@ -240,7 +242,12 @@ class AssignmentOverrideViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     from hmis.apps.scheduling.serializers import AssignmentOverrideSerializer
 
-    queryset = AssignmentOverride.objects.all()
+    queryset = AssignmentOverride.objects.select_related(
+        "original_resource",
+        "new_resource",
+        "overridden_by",
+        "approved_by",
+    )
     serializer_class = AssignmentOverrideSerializer
     permission_classes = [permissions.IsAuthenticated, AssignmentEngineSuperuserPermission]
     filterset_class = AssignmentOverrideFilter

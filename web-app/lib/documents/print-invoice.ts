@@ -260,13 +260,15 @@ const INVOICE_CSS = `
 
   .qr {
     width: 100px;
-    height: 100px;
+    min-height: 100px;
+    height: auto;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     border: 1px dashed #aaa;
     font-size: 11px;
     color: #666;
+    overflow: visible;
   }
 
   .qr img {

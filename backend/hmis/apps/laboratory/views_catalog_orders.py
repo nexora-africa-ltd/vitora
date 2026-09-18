@@ -509,7 +509,13 @@ class LabOrderViewSet(AuditedMutationMixin, TenantScopedViewMixin, viewsets.Mode
 
     queryset = (
         LabOrder.objects.all()
-        .select_related("patient", "billing_patient", "encounter", "ordered_by", "blood_bank_unit")
+        .select_related(
+            "patient",
+            "billing_patient",
+            "encounter",
+            "ordered_by",
+            "blood_bank_unit__donor",
+        )
         .prefetch_related(
             "items__test",
             "items__result__entered_by",
@@ -1032,8 +1038,15 @@ class LabResultViewSet(AuditedMutationMixin, NestedTenantScopeMixin, viewsets.Mo
     Provides CRUD operations, verification, and search.
     """
 
-    queryset = LabResult.objects.all().select_related(
-        "order_item__test", "order_item__lab_order__patient", "entered_by"
+    queryset = (
+        LabResult.objects.all()
+        .select_related(
+            "order_item__test",
+            "order_item__lab_order__patient",
+            "entered_by",
+            "verified_by",
+        )
+        .prefetch_related("validations__validated_by")
     )
     audit_resource_type = "LabResult"
     audit_action_prefix = "laboratory.result"

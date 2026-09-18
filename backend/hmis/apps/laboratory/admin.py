@@ -7,7 +7,15 @@ from django.contrib import admin
 
 from hmis.apps.core.mixins import TenantScopedAdminMixin
 
-from .models import LabOrder, LabOrderItem, LabResult, LOINCCode, Specimen, TestCatalog
+from .models import (
+    LaboratoryAlertSettings,
+    LabOrder,
+    LabOrderItem,
+    LabResult,
+    LOINCCode,
+    Specimen,
+    TestCatalog,
+)
 
 
 @admin.register(TestCatalog)
@@ -27,6 +35,16 @@ class LOINCCodeAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
 
     list_display = ("code", "short_name", "component", "system")
     search_fields = ("code", "short_name", "long_common_name", "component")
+
+
+@admin.register(LaboratoryAlertSettings)
+class LaboratoryAlertSettingsAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
+    """Admin configuration for facility-specific critical result escalation routing."""
+
+    list_display = ("id", "facility", "organization")
+    list_filter = ("facility", "organization")
+    raw_id_fields = ("facility", "organization")
+    filter_horizontal = ("lab_critical_alert_roles", "lab_critical_alert_users")
 
 
 @admin.register(LabOrder)

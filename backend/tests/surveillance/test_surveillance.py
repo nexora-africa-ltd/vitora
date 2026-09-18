@@ -5,6 +5,10 @@ Tests for NotifiableDisease, NotifiableCase, SurveillanceAlert,
 OutbreakThreshold models, views, and services.
 """
 
+import base64
+import hashlib
+import hmac
+import json
 from datetime import date, timedelta
 from unittest.mock import MagicMock, patch
 
@@ -568,6 +572,58 @@ class TestSurveillanceService:
         # Verify group_send was called
         mock_layer.group_send.assert_called_once()
 
+    @patch("hmis.apps.surveillance.services.send_transactional_email")
+    def test_immediate_alert_email_renders_template_with_case_context(
+        self,
+        mock_send_transactional_email,
+        db,
+        sample_patient,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+        settings,
+    ):
+        """Immediate alerts should send the template with critical case context."""
+        from hmis.apps.surveillance.models import (
+            NotifiableCase,
+            NotifiableDisease,
+            SurveillanceAlert,
+        )
+        from hmis.apps.surveillance.services import SurveillanceService
+
+        settings.SURVEILLANCE_EMAIL_RECIPIENT = "county.alerts@example.org"
+        mock_send_transactional_email.return_value = {"accepted": True}
+        disease = NotifiableDisease.objects.create(
+            name="Template Test Cholera",
+            icd10_codes="A00",
+            category="IMMEDIATE",
+            reporting_hours=24,
+        )
+        case = NotifiableCase.objects.create(
+            disease=disease,
+            patient=sample_patient,
+            encounter=sample_encounter,
+            facility=sample_facility,
+            organization=sample_organization,
+            county=sample_patient.county,
+            sub_county=sample_patient.sub_county,
+        )
+        alert = SurveillanceAlert.objects.create(
+            case=case,
+            alert_type="NEW_CASE",
+            message="Immediate cholera response required",
+        )
+
+        assert SurveillanceService.send_email_alert(alert) is True
+
+        call_kwargs = mock_send_transactional_email.call_args.kwargs
+        assert call_kwargs["to_email"] == "county.alerts@example.org"
+        assert call_kwargs["facility"] == sample_facility
+        assert "Immediate Disease Surveillance Alert" in call_kwargs["html_body"]
+        assert disease.name in call_kwargs["html_body"]
+        assert sample_patient.mrn in call_kwargs["html_body"]
+        assert "Notification Deadline" in call_kwargs["html_body"]
+
 
 # ============================================================================
 # API ViewSet Tests
@@ -659,6 +715,38 @@ class TestNotifiableCaseAPI:
         case = NotifiableCase.objects.get(id=response.data["id"])
         assert case.notification_status == "PENDING"
         assert case.disease == cholera_disease
+        assert case.onset_date == sample_encounter.encounter_date
+
+    def test_onset_date_can_be_manually_overridden(
+        self,
+        authenticated_client,
+        cholera_disease,
+        sample_patient,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+    ):
+        """Should allow manual override of onset_date after defaulting from encounter."""
+        from hmis.apps.surveillance.models import NotifiableCase
+
+        case = NotifiableCase.objects.create(
+            disease=cholera_disease,
+            patient=sample_patient,
+            encounter=sample_encounter,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        assert case.onset_date == sample_encounter.encounter_date
+
+        response = authenticated_client.patch(
+            f"/api/surveillance/cases/{case.id}/",
+            {"onset_date": "2026-01-15"},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        case.refresh_from_db()
+        assert str(case.onset_date) == "2026-01-15"
 
     def test_list_pending_cases(
         self, authenticated_client, cholera_disease, sample_patient, sample_encounter
@@ -677,16 +765,34 @@ class TestNotifiableCaseAPI:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 1
 
+    @patch("hmis.apps.surveillance.services.send_sms")
     def test_notify_county(
-        self, authenticated_client, cholera_disease, sample_patient, sample_encounter
+        self,
+        mock_send_sms,
+        authenticated_client,
+        cholera_disease,
+        sample_patient,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
     ):
         """Should mark case as notified."""
-        from hmis.apps.surveillance.models import NotifiableCase
+        from hmis.apps.surveillance.models import NotifiableCase, SurveillanceFacilitySettings
+
+        mock_send_sms.return_value = True
 
         case = NotifiableCase.objects.create(
             disease=cholera_disease,
             patient=sample_patient,
             encounter=sample_encounter,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        SurveillanceFacilitySettings.objects.create(
+            facility=sample_facility,
+            organization=sample_organization,
+            notify_via_sms=True,
+            sms_recipient="+254700123456",
         )
 
         response = authenticated_client.post(
@@ -696,6 +802,550 @@ class TestNotifiableCaseAPI:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["notification_status"] == "NOTIFIED"
+
+    @patch("hmis.apps.surveillance.services.send_transactional_email")
+    @patch("hmis.apps.surveillance.services.send_sms")
+    def test_notify_county_dispatches_delivery_records(
+        self,
+        mock_send_sms,
+        mock_send_transactional_email,
+        authenticated_client,
+        cholera_disease,
+        sample_patient,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+    ):
+        """Should create outbound county delivery records and dispatch channels."""
+        from hmis.apps.surveillance.models import (
+            CountyNotificationDelivery,
+            NotifiableCase,
+            SurveillanceFacilitySettings,
+        )
+
+        mock_send_sms.return_value = True
+        mock_send_transactional_email.return_value = {
+            "accepted": True,
+            "provider": "resend",
+            "provider_message_id": "email-123",
+            "terminal_state": None,
+        }
+
+        case = NotifiableCase.objects.create(
+            disease=cholera_disease,
+            patient=sample_patient,
+            encounter=sample_encounter,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        SurveillanceFacilitySettings.objects.create(
+            facility=sample_facility,
+            organization=sample_organization,
+            notify_via_sms=True,
+            notify_via_email=True,
+            sms_recipient="+254700123456",
+            email_recipient="county.alerts@example.org",
+        )
+
+        response = authenticated_client.post(
+            f"/api/surveillance/cases/{case.id}/notify_county/",
+            {"notification_notes": "Notified county desk"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        case.refresh_from_db()
+        assert case.notification_status == "NOTIFIED"
+        deliveries = CountyNotificationDelivery.objects.filter(case=case).order_by("channel")
+        assert deliveries.count() == 2
+        assert {d.channel for d in deliveries} == {"SMS", "EMAIL"}
+        assert set(deliveries.values_list("status", flat=True)) == {"SENT"}
+        assert all(d.attempt_count == 1 for d in deliveries)
+        email_call = mock_send_transactional_email.call_args
+        assert email_call is not None
+        assert email_call.kwargs["facility"] == sample_facility
+        html_body = str(email_call.kwargs.get("html_body") or "")
+        assert "Facility" in html_body
+        assert sample_facility.name in html_body
+        assert "Reported By" in html_body
+        assert "ICD-10 Codes" in html_body
+        assert "Acknowledge Receipt" in html_body
+        assert case.disease.name in html_body
+        assert "Notification Deadline" in html_body
+        assert "View Case" not in html_body
+        assert "/surveillance/cases/" not in html_body
+        assert "review this case in Vitora HMIS" not in html_body
+
+    @patch("hmis.apps.surveillance.services.send_transactional_email")
+    def test_notify_county_email_only_returns_accepted_until_delivery_confirmation(
+        self,
+        mock_send_transactional_email,
+        authenticated_client,
+        cholera_disease,
+        sample_patient,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+    ):
+        """Email acceptance should keep case pending until provider confirms delivery."""
+        from hmis.apps.surveillance.models import (
+            CountyNotificationDelivery,
+            NotifiableCase,
+            SurveillanceFacilitySettings,
+        )
+
+        mock_send_transactional_email.return_value = {
+            "accepted": True,
+            "provider": "resend",
+            "provider_message_id": "email-only-abc",
+            "terminal_state": None,
+        }
+
+        case = NotifiableCase.objects.create(
+            disease=cholera_disease,
+            patient=sample_patient,
+            encounter=sample_encounter,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        SurveillanceFacilitySettings.objects.create(
+            facility=sample_facility,
+            organization=sample_organization,
+            notify_via_sms=False,
+            notify_via_email=True,
+            email_recipient="county.alerts@example.org",
+        )
+
+        notify_response = authenticated_client.post(
+            f"/api/surveillance/cases/{case.id}/notify_county/",
+            {"notification_notes": "Email only"},
+        )
+
+        assert notify_response.status_code == status.HTTP_202_ACCEPTED
+        case.refresh_from_db()
+        assert case.notification_status == "PENDING"
+
+        delivery = CountyNotificationDelivery.objects.get(case=case, channel="EMAIL")
+        assert delivery.status == "SENT"
+        assert delivery.provider_message_id == "email-only-abc"
+
+        payload = {
+            "type": "email.delivered",
+            "data": {"id": "email-only-abc"},
+        }
+
+        webhook_response = authenticated_client.post(
+            "/api/surveillance/webhooks/email-delivery/",
+            data=payload,
+            format="json",
+        )
+        assert webhook_response.status_code == status.HTTP_200_OK
+
+        case.refresh_from_db()
+        delivery.refresh_from_db()
+        assert delivery.status == "DELIVERED"
+        assert case.notification_status == "NOTIFIED"
+
+    @patch("hmis.apps.surveillance.services.send_transactional_email")
+    def test_notify_county_webhook_accepts_svix_signature(
+        self,
+        mock_send_transactional_email,
+        authenticated_client,
+        cholera_disease,
+        sample_patient,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+        settings,
+    ):
+        """Webhook should validate production-style Svix signatures."""
+        from hmis.apps.surveillance.models import (
+            CountyNotificationDelivery,
+            NotifiableCase,
+            SurveillanceFacilitySettings,
+        )
+
+        signing_key = b"svix-test-secret"
+        secret = "whsec_" + base64.urlsafe_b64encode(signing_key).decode("utf-8").rstrip("=")
+        settings.RESEND_WEBHOOK_SECRET = secret
+
+        mock_send_transactional_email.return_value = {
+            "accepted": True,
+            "provider": "resend",
+            "provider_message_id": "svix-email-abc",
+            "terminal_state": None,
+        }
+
+        case = NotifiableCase.objects.create(
+            disease=cholera_disease,
+            patient=sample_patient,
+            encounter=sample_encounter,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        SurveillanceFacilitySettings.objects.create(
+            facility=sample_facility,
+            organization=sample_organization,
+            notify_via_sms=False,
+            notify_via_email=True,
+            email_recipient="county.alerts@example.org",
+        )
+
+        authenticated_client.post(
+            f"/api/surveillance/cases/{case.id}/notify_county/",
+            {"notification_notes": "Email only"},
+        )
+        delivery = CountyNotificationDelivery.objects.get(case=case, channel="EMAIL")
+
+        payload = {"type": "email.delivered", "data": {"id": "svix-email-abc"}}
+        body_text = json.dumps(payload)
+        msg_id = "msg_123"
+        timestamp = str(int(timezone.now().timestamp()))
+        signed_content = f"{msg_id}.{timestamp}.{body_text}".encode()
+        signature = base64.b64encode(
+            hmac.new(signing_key, signed_content, hashlib.sha256).digest()
+        ).decode("utf-8")
+
+        webhook_response = authenticated_client.post(
+            "/api/surveillance/webhooks/email-delivery/",
+            data=body_text,
+            content_type="application/json",
+            HTTP_SVIX_ID=msg_id,
+            HTTP_SVIX_TIMESTAMP=timestamp,
+            HTTP_SVIX_SIGNATURE=f"v1,{signature}",
+        )
+        assert webhook_response.status_code == status.HTTP_200_OK
+
+        delivery.refresh_from_db()
+        case.refresh_from_db()
+        assert delivery.status == "DELIVERED"
+        assert case.notification_status == "NOTIFIED"
+
+    def test_webhook_rejects_missing_secret_outside_development(self, api_client, settings):
+        """A public webhook cannot be left unsigned in a deployed environment."""
+        settings.TESTING = False
+        settings.DEBUG = False
+        settings.RESEND_WEBHOOK_SECRET = ""
+
+        response = api_client.post(
+            "/api/surveillance/webhooks/email-delivery/",
+            {"type": "email.delivered", "data": {"id": "ignored"}},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+
+    def test_webhook_rejects_stale_svix_timestamp(self, api_client, settings):
+        """Svix signatures are only accepted inside the configured freshness window."""
+        signing_key = b"svix-test-secret"
+        settings.RESEND_WEBHOOK_SECRET = "whsec_" + base64.urlsafe_b64encode(
+            signing_key
+        ).decode().rstrip("=")
+        body = json.dumps({"type": "email.delivered", "data": {"id": "ignored"}})
+        msg_id = "msg_stale"
+        timestamp = "1"
+        signature = base64.b64encode(
+            hmac.new(signing_key, f"{msg_id}.{timestamp}.{body}".encode(), hashlib.sha256).digest()
+        ).decode()
+
+        response = api_client.post(
+            "/api/surveillance/webhooks/email-delivery/",
+            data=body,
+            content_type="application/json",
+            HTTP_SVIX_ID=msg_id,
+            HTTP_SVIX_TIMESTAMP=timestamp,
+            HTTP_SVIX_SIGNATURE=f"v1,{signature}",
+        )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @patch("hmis.apps.surveillance.services.send_transactional_email")
+    def test_county_ack_link_marks_case_acknowledged(
+        self,
+        mock_send_transactional_email,
+        authenticated_client,
+        api_client,
+        cholera_disease,
+        sample_patient,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+    ):
+        """Public county ack link should set case status to ACKNOWLEDGED."""
+        from hmis.apps.surveillance.models import (
+            CountyNotificationDelivery,
+            NotifiableCase,
+            SurveillanceFacilitySettings,
+        )
+        from hmis.apps.surveillance.services import SurveillanceService
+
+        mock_send_transactional_email.return_value = {
+            "accepted": True,
+            "provider": "resend",
+            "provider_message_id": "ack-link-email-1",
+            "terminal_state": None,
+        }
+
+        case = NotifiableCase.objects.create(
+            disease=cholera_disease,
+            patient=sample_patient,
+            encounter=sample_encounter,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        SurveillanceFacilitySettings.objects.create(
+            facility=sample_facility,
+            organization=sample_organization,
+            notify_via_sms=False,
+            notify_via_email=True,
+            email_recipient="county.alerts@example.org",
+        )
+
+        notify_response = authenticated_client.post(
+            f"/api/surveillance/cases/{case.id}/notify_county/",
+            {"notification_notes": "Email only for ack"},
+        )
+        assert notify_response.status_code == status.HTTP_202_ACCEPTED
+
+        delivery = CountyNotificationDelivery.objects.get(case=case, channel="EMAIL")
+        ack_token = SurveillanceService.build_county_ack_token(delivery)
+        ack_response = api_client.get(f"/api/surveillance/county-ack/{ack_token}/")
+
+        assert ack_response.status_code == status.HTTP_200_OK
+        case.refresh_from_db()
+        delivery.refresh_from_db()
+        assert case.notification_status == "ACKNOWLEDGED"
+        assert delivery.status == "DELIVERED"
+        assert delivery.provider_event == "county_acknowledged"
+
+    @patch("hmis.apps.surveillance.services.send_sms")
+    def test_retry_county_notifications_updates_failed_delivery(
+        self,
+        mock_send_sms,
+        authenticated_client,
+        cholera_disease,
+        sample_patient,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+    ):
+        """Should retry failed county deliveries and persist attempt history."""
+        from hmis.apps.surveillance.models import (
+            CountyNotificationDelivery,
+            NotifiableCase,
+            SurveillanceFacilitySettings,
+        )
+
+        # First attempt fails, retry succeeds
+        mock_send_sms.side_effect = [False, True]
+
+        case = NotifiableCase.objects.create(
+            disease=cholera_disease,
+            patient=sample_patient,
+            encounter=sample_encounter,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        SurveillanceFacilitySettings.objects.create(
+            facility=sample_facility,
+            organization=sample_organization,
+            notify_via_sms=True,
+            notify_via_email=False,
+            sms_recipient="+254700123456",
+            max_retry_attempts=3,
+            retry_backoff_minutes=5,
+        )
+
+        notify_response = authenticated_client.post(
+            f"/api/surveillance/cases/{case.id}/notify_county/",
+            {"notification_notes": "Initial county notify"},
+        )
+        assert notify_response.status_code == status.HTTP_502_BAD_GATEWAY
+
+        case.refresh_from_db()
+        assert case.notification_status == "PENDING"
+
+        delivery = CountyNotificationDelivery.objects.get(case=case, channel="SMS")
+        assert delivery.status == "RETRY_SCHEDULED"
+        assert delivery.attempt_count == 1
+
+        retry_response = authenticated_client.post(
+            f"/api/surveillance/cases/{case.id}/retry_county_notifications/"
+        )
+        assert retry_response.status_code == status.HTTP_200_OK
+
+        delivery.refresh_from_db()
+        assert delivery.status == "SENT"
+        assert delivery.attempt_count == 2
+        case.refresh_from_db()
+        assert case.notification_status == "NOTIFIED"
+
+    def test_case_notification_deliveries_endpoint(
+        self,
+        authenticated_client,
+        cholera_disease,
+        sample_patient,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+    ):
+        """Should list delivery records for a notifiable case."""
+        from hmis.apps.surveillance.models import CountyNotificationDelivery, NotifiableCase
+
+        case = NotifiableCase.objects.create(
+            disease=cholera_disease,
+            patient=sample_patient,
+            encounter=sample_encounter,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        CountyNotificationDelivery.objects.create(
+            case=case,
+            facility=sample_facility,
+            organization=sample_organization,
+            channel="EMAIL",
+            status="FAILED",
+            recipient="county.alerts@example.org",
+            attempt_count=1,
+            max_retry_attempts=3,
+            last_error="SMTP timeout",
+        )
+
+        response = authenticated_client.get(
+            f"/api/surveillance/cases/{case.id}/notification_deliveries/"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) == 1
+        assert response.data[0]["channel"] == "EMAIL"
+        assert response.data[0]["status"] == "FAILED"
+
+    def test_mark_investigated_and_close_case_workflow(
+        self,
+        authenticated_client,
+        cholera_disease,
+        sample_patient,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+    ):
+        """Should support explicit investigation and closure transitions."""
+        from hmis.apps.surveillance.models import NotifiableCase, NotificationStatus
+
+        case = NotifiableCase.objects.create(
+            disease=cholera_disease,
+            patient=sample_patient,
+            encounter=sample_encounter,
+            facility=sample_facility,
+            organization=sample_organization,
+            notification_status=NotificationStatus.NOTIFIED,
+        )
+
+        investigated = authenticated_client.post(
+            f"/api/surveillance/cases/{case.id}/mark_investigated/",
+            {"notes": "County has started field review"},
+            format="json",
+        )
+        assert investigated.status_code == status.HTTP_200_OK
+        assert investigated.data["notification_status"] == "INVESTIGATED"
+
+        closed = authenticated_client.post(
+            f"/api/surveillance/cases/{case.id}/close_case/",
+            {"notes": "Investigation complete"},
+            format="json",
+        )
+        assert closed.status_code == status.HTTP_200_OK
+        assert closed.data["notification_status"] == "CLOSED"
+
+    def test_mark_investigated_requires_notified_or_acknowledged(
+        self,
+        authenticated_client,
+        cholera_disease,
+        sample_patient,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+    ):
+        """Should block investigation transition from PENDING state."""
+        from hmis.apps.surveillance.models import NotifiableCase
+
+        case = NotifiableCase.objects.create(
+            disease=cholera_disease,
+            patient=sample_patient,
+            encounter=sample_encounter,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        response = authenticated_client.post(
+            f"/api/surveillance/cases/{case.id}/mark_investigated/",
+            {"notes": "Start now"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    @patch("hmis.apps.surveillance.services.send_sms")
+    def test_notify_county_accepts_notes_alias(
+        self,
+        mock_send_sms,
+        authenticated_client,
+        cholera_disease,
+        sample_patient,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+    ):
+        """Should accept notes alias for backward-compatible clients."""
+        from hmis.apps.surveillance.models import NotifiableCase, SurveillanceFacilitySettings
+
+        mock_send_sms.return_value = True
+
+        case = NotifiableCase.objects.create(
+            disease=cholera_disease,
+            patient=sample_patient,
+            encounter=sample_encounter,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        SurveillanceFacilitySettings.objects.create(
+            facility=sample_facility,
+            organization=sample_organization,
+            notify_via_sms=True,
+            sms_recipient="+254700123456",
+        )
+
+        response = authenticated_client.post(
+            f"/api/surveillance/cases/{case.id}/notify_county/",
+            {"notes": "Notified via facility hotline"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        case.refresh_from_db()
+        assert "Notified via facility hotline" in case.investigation_notes
+
+    def test_case_detail_uses_full_names_for_reported_and_notified_by(
+        self, authenticated_client, cholera_disease, sample_patient, sample_encounter
+    ):
+        """Should expose full names instead of raw usernames when available."""
+        from hmis.apps.surveillance.models import NotifiableCase
+
+        user = authenticated_client.handler._force_user
+        user.first_name = "Amina"
+        user.last_name = "Hassan"
+        user.save(update_fields=["first_name", "last_name"])
+
+        case = NotifiableCase.objects.create(
+            disease=cholera_disease,
+            patient=sample_patient,
+            encounter=sample_encounter,
+            reported_by=user,
+        )
+        case.mark_notified(user=user)
+
+        response = authenticated_client.get(f"/api/surveillance/cases/{case.id}/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["reported_by_name"] == "Amina Hassan"
+        assert response.data["notified_by_name"] == "Amina Hassan"
 
     def test_list_overdue_cases(
         self, authenticated_client, cholera_disease, sample_patient, sample_encounter
@@ -775,6 +1425,45 @@ class TestSurveillanceAlertAPI:
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 1
+
+
+class TestSurveillanceSettingsAPI:
+    """Tests for facility surveillance notification settings endpoints."""
+
+    def test_get_current_settings(self, authenticated_client):
+        """Should return (and create) current facility settings."""
+        response = authenticated_client.get("/api/surveillance/settings/current/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "notify_via_sms" in response.data
+        assert "notify_via_email" in response.data
+        assert "sms_recipient_masked" in response.data
+        assert "email_recipient_masked" in response.data
+
+    def test_patch_settings_with_recipients(self, authenticated_client):
+        """Should store recipients while returning masked values only."""
+        current = authenticated_client.get("/api/surveillance/settings/current/")
+        settings_id = current.data["id"]
+
+        response = authenticated_client.patch(
+            f"/api/surveillance/settings/{settings_id}/",
+            {
+                "notify_via_sms": True,
+                "notify_via_email": True,
+                "sms_recipient": "+254700123456",
+                "email_recipient": "county.alerts@example.org",
+                "max_retry_attempts": 4,
+                "retry_backoff_minutes": 10,
+                "include_patient_identifiers": False,
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["notify_via_sms"] is True
+        assert response.data["notify_via_email"] is True
+        assert response.data["sms_recipient_masked"]
+        assert response.data["email_recipient_masked"]
 
 
 class TestSurveillanceDashboardAPI:

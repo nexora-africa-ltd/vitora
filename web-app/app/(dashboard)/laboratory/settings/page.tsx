@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { laboratoryApi } from '@/lib/api/laboratory';
+import { rolesApi, staffApi } from '@/lib/api/rbac';
+import { usePermissions } from '@/lib/hooks/use-permissions';
+import { useFacility } from '@/lib/context/facility-context';
 import { worksheetsApi } from '@/lib/api/worksheets';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -43,6 +46,7 @@ import {
   Tag,
   Barcode,
   Settings2,
+  BellRing,
   Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -56,7 +60,9 @@ import type {
   ReferralLab,
   LabBarcodeConfig,
   LabWorkflowSettings,
+  LaboratoryAlertSettings,
 } from '@/lib/types/laboratory';
+import type { Role, StaffProfile } from '@/lib/types/rbac';
 import type { LabelTemplate, LabelTemplateCreateData } from '@/lib/types/worksheets';
 
 // =============================================================================
@@ -103,10 +109,14 @@ export default function LaboratorySettingsPage() {
                 <Barcode className="h-4 w-4" />
                 <span className="hidden sm:inline">Barcodes</span>
               </TabsTrigger>
-              <TabsTrigger value="workflow" className="gap-1.5">
+               <TabsTrigger value="workflow" className="gap-1.5">
                 <Settings2 className="h-4 w-4" />
                 <span className="hidden sm:inline">Workflow</span>
-              </TabsTrigger>
+               </TabsTrigger>
+               <TabsTrigger value="alerts" className="gap-1.5">
+                 <BellRing className="h-4 w-4" />
+                 <span className="hidden sm:inline">Alerts</span>
+               </TabsTrigger>
             </TabsList>
           </div>
 
@@ -128,12 +138,110 @@ export default function LaboratorySettingsPage() {
           <TabsContent value="barcodes" className="mt-4">
             <BarcodeConfigTab queryClient={queryClient} />
           </TabsContent>
-          <TabsContent value="workflow" className="mt-4">
-            <WorkflowSettingsTab queryClient={queryClient} />
-          </TabsContent>
+           <TabsContent value="workflow" className="mt-4">
+             <WorkflowSettingsTab queryClient={queryClient} />
+           </TabsContent>
+           <TabsContent value="alerts" className="mt-4">
+             <LaboratoryAlertsTab queryClient={queryClient} />
+           </TabsContent>
         </Tabs>
       </div>
     </PullToRefresh>
+  );
+}
+
+function LaboratoryAlertsTab({ queryClient }: { queryClient: ReturnType<typeof useQueryClient> }) {
+  const { isAdmin } = usePermissions();
+  const { facility } = useFacility();
+  const [roles, setRoles] = useState<number[]>([]);
+  const [users, setUsers] = useState<number[]>([]);
+  const { data: settings, isLoading } = useQuery<LaboratoryAlertSettings>({
+    queryKey: ['laboratory-alert-settings'],
+    queryFn: () => laboratoryApi.getAlertSettings(),
+    enabled: isAdmin,
+  });
+  const { data: availableRoles } = useQuery({
+    queryKey: ['laboratory-alert-recipient-roles'],
+    queryFn: () => rolesApi.list({ page_size: 100 }),
+    enabled: isAdmin,
+  });
+  const { data: staff } = useQuery({
+    queryKey: ['laboratory-alert-recipient-staff'],
+    queryFn: () => staffApi.list({ page_size: 100 }),
+    enabled: isAdmin,
+  });
+  const update = useMutation({
+    mutationFn: (data: Pick<LaboratoryAlertSettings, 'lab_critical_alert_roles' | 'lab_critical_alert_users'>) => {
+      if (!settings) throw new Error('Laboratory alert settings are not available.');
+      return laboratoryApi.updateAlertSettings(settings.id, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['laboratory-alert-settings'] });
+      toast.success('Laboratory critical alert recipients updated');
+    },
+    onError: () => toast.error('Failed to update laboratory alert recipients'),
+  });
+
+  useEffect(() => {
+    if (settings) {
+      setRoles(settings.lab_critical_alert_roles);
+      setUsers(settings.lab_critical_alert_users);
+    }
+  }, [settings]);
+
+  const facilityStaff = (staff?.results ?? []).filter(
+    (member) =>
+      member.primary_facility === facility?.id || member.secondary_facilities?.includes(facility?.id ?? -1)
+  );
+  const toggle = (ids: number[], id: number, setter: (ids: number[]) => void) => {
+    setter(ids.includes(id) ? ids.filter((selected) => selected !== id) : [...ids, id]);
+  };
+
+  if (!isAdmin) {
+    return <Card><CardContent className="py-6 text-sm text-muted-foreground">Only facility administrators can configure critical result escalation recipients.</CardContent></Card>;
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <CardTitle className="text-base sm:text-lg">Critical Result Escalation</CardTitle>
+          <HelpPopover content="Critical results always notify the ordering clinician. Select additional active facility roles or staff to receive in-app and email escalations." />
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">Recipients must be assigned to the active facility through a primary or secondary assignment.</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <RecipientCheckboxList title="Roles" items={availableRoles?.results ?? []} selected={roles} getId={(role) => role.id} getLabel={(role) => role.name} onToggle={(id) => toggle(roles, id, setRoles)} />
+          <RecipientCheckboxList title="Individual staff" items={facilityStaff} selected={users} getId={(member) => member.user} getLabel={(member) => member.full_name || member.user_username} onToggle={(id) => toggle(users, id, setUsers)} />
+        </div>
+        <Button onClick={() => update.mutate({ lab_critical_alert_roles: roles, lab_critical_alert_users: users })} disabled={isLoading || update.isPending}>
+          {update.isPending ? 'Saving...' : 'Save Recipients'}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RecipientCheckboxList<T extends Role | StaffProfile>({
+  title, items, selected, getId, getLabel, onToggle,
+}: {
+  title: string;
+  items: T[];
+  selected: number[];
+  getId: (item: T) => number;
+  getLabel: (item: T) => string;
+  onToggle: (id: number) => void;
+}) {
+  return (
+    <fieldset className="space-y-2 rounded-lg border p-3">
+      <legend className="px-1 text-sm font-medium">{title}</legend>
+      {items.length === 0 && <p className="text-sm text-muted-foreground">No eligible {title.toLowerCase()} found.</p>}
+      {items.map((item) => {
+        const id = getId(item);
+        return <label key={id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={selected.includes(id)} onChange={() => onToggle(id)} />{getLabel(item)}</label>;
+      })}
+    </fieldset>
   );
 }
 

@@ -5,11 +5,14 @@ Serializers for laboratory models.
 
 from rest_framework import serializers
 
+from hmis.apps.core.qr_utils import generate_document_verification_url
+
 from .models import (
     AnalyzerRun,
     DiagnosticReport,
     Instrument,
     LabBarcodeConfig,
+    LaboratoryAlertSettings,
     LabOrder,
     LabOrderItem,
     LabQueue,
@@ -810,7 +813,7 @@ class LabQueueSpecimenSerializer(serializers.ModelSerializer):
         return None
 
     def get_order_items(self, obj) -> list[int]:
-        return list(obj.order_items.values_list("id", flat=True))
+        return [item.id for item in obj.order_items.all()]
 
 
 class LabQueueSerializer(serializers.ModelSerializer):
@@ -931,7 +934,7 @@ class LabQueueSerializer(serializers.ModelSerializer):
 
     def get_expected_tat_hours(self, obj) -> int | None:
         """Get expected TAT from first test in order."""
-        first_item = obj.lab_order.items.first()
+        first_item = next(iter(obj.lab_order.items.all()), None)
         if first_item and first_item.test:
             return first_item.test.turnaround_hours
         return 24  # Default 24 hours
@@ -1198,6 +1201,7 @@ class DiagnosticReportSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     is_finalized = serializers.BooleanField(read_only=True)
     pdf_url = serializers.SerializerMethodField()
+    verification_url = serializers.SerializerMethodField()
     supersedes_report_number = serializers.CharField(
         source="supersedes.report_number", read_only=True
     )
@@ -1228,6 +1232,7 @@ class DiagnosticReportSerializer(serializers.ModelSerializer):
             "cancellation_reason",
             "pdf_file",
             "pdf_url",
+            "verification_url",
             "fhir_resource_id",
             "supersedes",
             "supersedes_report_number",
@@ -1248,9 +1253,18 @@ class DiagnosticReportSerializer(serializers.ModelSerializer):
             "issued_by_name",
             "amended_by_name",
             "pdf_url",
+            "verification_url",
             "created_at",
             "updated_at",
         ]
+
+    def get_verification_url(self, obj) -> str:
+        report_date = obj.issued_at.isoformat() if obj.issued_at else obj.created_at.isoformat()
+        return generate_document_verification_url(
+            document_type="LAB_RESULT",
+            document_number=obj.report_number,
+            date=report_date,
+        )
 
     def get_superseded_by_report_number(self, obj) -> str | None:
         newer = obj.superseding_reports.order_by("-created_at").first()
@@ -1573,3 +1587,30 @@ class LabWorkflowSettingsSerializer(serializers.ModelSerializer):
             "require_clinical_notes",
         ]
         read_only_fields = ["id"]
+
+
+class LaboratoryAlertSettingsSerializer(serializers.ModelSerializer):
+    """Validate critical-result escalation recipients for the active facility."""
+
+    class Meta:
+        model = LaboratoryAlertSettings
+        fields = ["id", "facility", "lab_critical_alert_roles", "lab_critical_alert_users"]
+        read_only_fields = ["id", "facility"]
+
+    def validate_lab_critical_alert_users(self, users):
+        """Explicit recipients must be primary or secondary staff at this facility."""
+        facility = self.instance.facility if self.instance else self.context["request"].facility
+        invalid_users = [
+            user.username
+            for user in users
+            if not hasattr(user, "staff_profile")
+            or (
+                user.staff_profile.primary_facility_id != facility.id
+                and not user.staff_profile.secondary_facilities.filter(pk=facility.id).exists()
+            )
+        ]
+        if invalid_users:
+            raise serializers.ValidationError(
+                f"Recipients must be assigned to {facility.name}: {', '.join(invalid_users)}"
+            )
+        return users

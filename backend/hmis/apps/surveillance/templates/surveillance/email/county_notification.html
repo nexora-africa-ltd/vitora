@@ -1,0 +1,12 @@
+<!-- County surveillance notification HTML email. Context: case, location, facility, reporting, optional MRN, notes, acknowledgement link. -->
+<div style="font-family:Segoe UI,Arial,sans-serif;background:#f8fafc;padding:18px">
+  <div style="max-width:720px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:18px">
+    <h2 style="margin:0 0 6px;color:#0f172a">Disease Surveillance County Notification</h2>
+    <p style="margin:0 0 14px;color:#475569">This notification includes the case context needed for county public-health action.</p>
+    <table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb">
+      <tr><td>Case ID</td><td>{{ case_id }}</td></tr><tr><td>Disease</td><td>{{ disease_name }}</td></tr><tr><td>ICD-10 Codes</td><td>{{ icd_codes }}</td></tr><tr><td>Category</td><td>{{ category }}</td></tr><tr><td>Severity</td><td>{{ severity }}</td></tr><tr><td>Detected</td><td>{{ detected }}</td></tr><tr><td>Reported At</td><td>{{ reported }}</td></tr><tr><td>Notification Deadline</td><td>{{ deadline }}</td></tr><tr><td>County</td><td>{{ county_name }}</td></tr><tr><td>Sub-County</td><td>{{ sub_county_name }}</td></tr><tr><td>Facility</td><td>{{ facility_name }} ({{ facility_code }})</td></tr><tr><td>Reported By</td><td>{{ reporter_name }}</td></tr><tr><td>Notification Triggered By</td><td>{{ notifier_name }}</td></tr><tr><td>Lab Confirmed</td><td>{% if laboratory_confirmed %}Yes{% else %}No{% endif %}</td></tr><tr><td>Current Outcome</td><td>{{ outcome }}</td></tr>
+      {% if patient_mrn %}<tr><td>Patient MRN</td><td>{{ patient_mrn }}</td></tr>{% endif %}{% if notes %}<tr><td>Notes</td><td>{{ notes }}</td></tr>{% endif %}
+    </table>
+    {% if ack_url %}<p><a href="{{ ack_url }}" style="background:#0f766e;color:#fff;text-decoration:none;padding:10px 14px;border-radius:8px">Acknowledge Receipt</a></p>{% else %}<p>Please acknowledge receipt through the designated county process.</p>{% endif %}
+  </div>
+</div>

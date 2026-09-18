@@ -1,0 +1,84 @@
+flowchart TD
+
+subgraph group_clients["Client surfaces"]
+  node_web["Web dashboard<br/>Next.js client<br/>[layout.tsx]"]
+  node_desktop["Desktop shell<br/>Tauri client<br/>[main.rs]"]
+  node_mobile["Outreach mobile<br/>mobile client<br/>[_layout.tsx]"]
+end
+
+subgraph group_backend["Django system of record"]
+  node_api{{"DRF API<br/>HTTP API boundary<br/>[urls.py]"}}
+  node_governance["Tenancy and security<br/>core governance<br/>[models.py]"]
+end
+
+subgraph group_clinical["Care and operations"]
+  node_patients["Patient identity<br/>patient domain<br/>[models.py]"]
+  node_frontdoor["Check-in and triage<br/>care routing<br/>[services.py]"]
+  node_encounters["Encounter care<br/>clinical workflow"]
+  node_clinicalops["Clinical fulfillment<br/>lab, pharmacy, imaging<br/>[workflow.py]"]
+  node_inpatient["Inpatient care<br/>admission workflow"]
+end
+
+subgraph group_exchange["Finance and exchange"]
+  node_billing["Billing and claims<br/>revenue cycle"]
+  node_standards{{"FHIR and HL7<br/>standards gateway"}}
+  node_national["National reporting<br/>DHIS2 and MOH exchange"]
+end
+
+subgraph group_platform["Sync and runtime"]
+  node_database[("Clinical database<br/>SQLite or PostgreSQL")]
+  node_sync["Offline sync<br/>PowerSync pipeline"]
+  node_realtime["Realtime updates<br/>WebSocket delivery"]
+  node_workers["Background workers<br/>Celery runtime<br/>[celery.py]"]
+  node_observability["Monitoring<br/>Prometheus and Grafana"]
+end
+
+node_web -->|"HTTPS API"| node_api
+node_desktop -->|"HTTPS API"| node_api
+node_mobile -->|"sync and API"| node_api
+node_web -->|"offline adapter"| node_sync
+node_mobile -->|"sync engine"| node_sync
+node_api -->|"authorizes and audits"| node_governance
+node_api -->|"patient API"| node_patients
+node_api -->|"arrival workflow"| node_frontdoor
+node_frontdoor -->|"routes visit"| node_encounters
+node_patients -->|"patient context"| node_encounters
+node_encounters -->|"orders"| node_clinicalops
+node_encounters -->|"admit or discharge"| node_inpatient
+node_encounters -->|"chargeable care"| node_billing
+node_clinicalops -->|"inventory and services"| node_billing
+node_billing -->|"SHA/DHA exchange"| node_standards
+node_api -->|"FHIR APIs"| node_standards
+node_api -->|"reporting data"| node_national
+node_api -->|"persists records"| node_database
+node_sync -->|"materialized data"| node_database
+node_api -->|"publishes events"| node_realtime
+node_api -->|"queues async work"| node_workers
+node_workers -.->|"scheduled submissions"| node_national
+node_api -.->|"metrics"| node_observability
+
+click node_web "https://github.com/nexora-africa-ltd/vitora/blob/main/web-app/app/(dashboard)/layout.tsx"
+click node_desktop "https://github.com/nexora-africa-ltd/vitora/blob/main/desktop-app/src-tauri/src/main.rs"
+click node_mobile "https://github.com/nexora-africa-ltd/vitora/blob/main/mobile/app/_layout.tsx"
+click node_api "https://github.com/nexora-africa-ltd/vitora/blob/main/backend/hmis/urls.py"
+click node_governance "https://github.com/nexora-africa-ltd/vitora/blob/main/backend/hmis/apps/core/models.py"
+click node_patients "https://github.com/nexora-africa-ltd/vitora/blob/main/backend/hmis/apps/patients/models.py"
+click node_frontdoor "https://github.com/nexora-africa-ltd/vitora/blob/main/backend/hmis/apps/checkin/services.py"
+click node_encounters "https://github.com/nexora-africa-ltd/vitora/blob/main/backend/hmis/apps/encounters/models_encounter_core.py"
+click node_clinicalops "https://github.com/nexora-africa-ltd/vitora/blob/main/backend/hmis/apps/laboratory/services/workflow.py"
+click node_inpatient "https://github.com/nexora-africa-ltd/vitora/blob/main/backend/hmis/apps/inpatient/services/admission_workflows.py"
+click node_billing "https://github.com/nexora-africa-ltd/vitora/blob/main/backend/hmis/apps/billing/services/sha_claims_workflow.py"
+click node_workers "https://github.com/nexora-africa-ltd/vitora/blob/main/backend/hmis/celery.py"
+
+classDef toneNeutral fill:#f8fafc,stroke:#334155,stroke-width:1.5px,color:#0f172a
+classDef toneBlue fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#172554
+classDef toneAmber fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#78350f
+classDef toneMint fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px,color:#14532d
+classDef toneRose fill:#ffe4e6,stroke:#e11d48,stroke-width:1.5px,color:#881337
+classDef toneIndigo fill:#e0e7ff,stroke:#4f46e5,stroke-width:1.5px,color:#312e81
+classDef toneTeal fill:#ccfbf1,stroke:#0f766e,stroke-width:1.5px,color:#134e4a
+class node_web,node_desktop,node_mobile toneBlue
+class node_api,node_governance toneAmber
+class node_patients,node_frontdoor,node_encounters,node_clinicalops,node_inpatient toneMint
+class node_billing,node_standards,node_national toneRose
+class node_database,node_sync,node_realtime,node_workers,node_observability toneIndigo

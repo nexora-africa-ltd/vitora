@@ -237,6 +237,7 @@ export interface DiagnosticReport {
   cancellation_reason?: string | null;
   pdf_file?: string | null;
   pdf_url?: string | null;
+  verification_url?: string | null;
   fhir_resource_id?: string | null;
   supersedes?: number | null;
   supersedes_report_number?: string | null;
@@ -1119,4 +1120,11 @@ export interface LabWorkflowSettings {
   tat_warning_threshold_percent: number;
   allow_duplicate_orders: boolean;
   require_clinical_notes: boolean;
+}
+
+export interface LaboratoryAlertSettings {
+  id: number;
+  facility: number;
+  lab_critical_alert_roles: number[];
+  lab_critical_alert_users: number[];
 }

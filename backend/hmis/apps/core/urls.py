@@ -38,6 +38,7 @@ from .views import (
     DocumentHubViewSet,
     DocumentShareViewSet,
     DocumentSignatureViewSet,
+    FacilityEmailConfigViewSet,
     FacilityViewSet,
     FeatureFlagViewSet,
     FrontendEventViewSet,
@@ -60,6 +61,9 @@ router.register(r"org-memberships", OrgMembershipViewSet, basename="orgmembershi
 router.register(r"notifications", NotificationViewSet, basename="notification")
 router.register(r"features", FeatureFlagViewSet, basename="featureflag")
 router.register(r"facilities", FacilityViewSet, basename="facility")
+router.register(
+    r"facility-email-config", FacilityEmailConfigViewSet, basename="facility-email-config"
+)
 router.register(r"certificates", CertificateViewSet, basename="certificate")
 router.register(r"signatures", DocumentSignatureViewSet, basename="documentsignature")
 router.register(r"document-hub", DocumentHubViewSet, basename="document-hub")

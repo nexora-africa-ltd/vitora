@@ -299,10 +299,12 @@ body {
 
 .qr {
   width: 60px;
-  height: 60px;
+  min-height: 60px;
+  height: auto;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  overflow: visible;
 }
 .qr img { width: 100%; height: 100%; }
 
@@ -317,8 +319,15 @@ body {
  * Generate QR content for a radiology report
  */
 export function getRadiologyReportQRContent(report: RadiologyReport): QRContent {
-  // For now, encode report number + order number
-  // In production, this could be a verifiable URL
+  if (report.verification_url) {
+    return {
+      data: report.verification_url,
+      isVerifiable: true,
+      label: 'Scan to verify report',
+    };
+  }
+
+  // Fallback reference QR if backend verification URL is unavailable.
   const data = `RPT:${report.report_number}|ORD:${report.order_number}`;
 
   return {

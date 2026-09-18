@@ -29,7 +29,14 @@ class ReviewRequestViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     tenant_facility_chain = "admission__facility"
     tenant_org_chain = "admission__organization"
-    queryset = ReviewRequest.objects.all()
+    queryset = ReviewRequest.objects.select_related(
+        "admission__patient",
+        "admission__ward",
+        "admission__bed",
+        "requested_by",
+        "assigned_to",
+        "acknowledged_by",
+    )
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = [

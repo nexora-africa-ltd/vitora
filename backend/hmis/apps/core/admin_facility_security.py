@@ -173,6 +173,7 @@ class FacilityAdmin(admin.ModelAdmin):
         "has_emergency",
         "has_laboratory",
         "has_pharmacy",
+        "has_custom_email",
     ]
     form = FacilityAdminForm
     search_fields = ["name", "mfl_code", "sha_facility_code"]
@@ -268,6 +269,7 @@ class FacilityAdmin(admin.ModelAdmin):
                     "has_inventory",
                     "has_triage",
                     "has_scheduling",
+                    "has_custom_email",
                     "has_surveillance",
                     "has_immunizations",
                     "has_allied_health",

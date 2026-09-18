@@ -12,6 +12,7 @@ export interface NotifiableDiseaseListItem {
   category: NotifiableDiseaseCategory;
   reporting_hours: number;
   is_immediate: boolean;
+  requires_county_notification: boolean;
   is_active: boolean;
 }
 
@@ -72,6 +73,7 @@ export interface NotifiableCaseDetail {
   is_overdue: boolean;
   hours_until_deadline: number;
   is_immediate: boolean;
+  requires_county_notification: boolean;
   county: number | null;
   county_name: string | null;
   sub_county: number | null;
@@ -83,6 +85,107 @@ export interface NotifiableCaseDetail {
   reported_by_name: string | null;
   notified_by: number | null;
   notified_by_name: string | null;
+  created_at: string;
+  updated_at: string;
+  delivery_status?: CountyNotificationDelivery[];
+}
+
+export type CountyNotificationChannel = 'SMS' | 'EMAIL';
+
+export type CountyNotificationDeliveryStatus =
+  | 'PENDING'
+  | 'SENT'
+  | 'DELIVERED'
+  | 'BOUNCED'
+  | 'RETRY_SCHEDULED'
+  | 'FAILED';
+
+export interface CountyNotificationDelivery {
+  id: number;
+  case: number;
+  channel: CountyNotificationChannel;
+  status: CountyNotificationDeliveryStatus;
+  recipient_masked: string;
+  attempt_count: number;
+  max_retry_attempts: number;
+  retry_backoff_minutes: number;
+  last_error: string;
+  provider: string;
+  provider_message_id: string;
+  provider_event: string;
+  sent_at: string | null;
+  delivered_at: string | null;
+  terminal_status_at: string | null;
+  last_attempt_at: string | null;
+  next_retry_at: string | null;
+  triggered_by: number | null;
+  triggered_by_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SurveillanceFacilitySettings {
+  id: number;
+  facility: number;
+  notify_via_sms: boolean;
+  notify_via_email: boolean;
+  sms_recipient_masked: string;
+  email_recipient_masked: string;
+  include_patient_identifiers: boolean;
+  max_retry_attempts: number;
+  retry_backoff_minutes: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ContactRiskLevel = 'HIGH' | 'MEDIUM' | 'LOW';
+
+export type ContactTracingStatus =
+  | 'IDENTIFIED'
+  | 'CONTACTED'
+  | 'UNDER_MONITORING'
+  | 'CLEARED'
+  | 'SYMPTOMATIC'
+  | 'LOST_TO_FOLLOWUP';
+
+export interface ContactTracingFollowUp {
+  id: number;
+  contact: number;
+  followup_date: string;
+  method: 'PHONE' | 'HOME_VISIT' | 'SMS' | 'CLINIC';
+  symptoms_present: boolean;
+  temperature_c: string | null;
+  notes: string;
+  outcome: 'CONTINUE_MONITORING' | 'ESCALATE_TESTING' | 'ESCALATE_ISOLATION' | 'CLEARED';
+  recorded_by: number | null;
+  recorded_by_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContactTracingContact {
+  id: number;
+  case: number;
+  case_id: number;
+  case_disease_name: string;
+  full_name: string;
+  phone_number_masked: string;
+  relationship_to_case: string;
+  risk_level: ContactRiskLevel;
+  status: ContactTracingStatus;
+  exposure_date: string | null;
+  monitoring_start_date: string | null;
+  monitoring_end_date: string | null;
+  next_followup_date: string | null;
+  last_followup_at: string | null;
+  last_contact_attempt_at: string | null;
+  notes: string;
+  created_by: number | null;
+  created_by_name: string | null;
+  updated_by: number | null;
+  updated_by_name: string | null;
+  followups: ContactTracingFollowUp[];
   created_at: string;
   updated_at: string;
 }

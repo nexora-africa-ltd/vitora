@@ -21,6 +21,7 @@ import {
   PaginatedDepartmentSchema,
   PaginatedRoleSchema,
   PaginatedStaffProfileSchema,
+  PaginatedStaffLookupSchema,
   PaginatedOrgMembershipSchema,
   PaginatedAuditLogSchema,
 } from '@/lib/schemas/rbac.schema';
@@ -38,6 +39,7 @@ import type {
   RoleListParams,
   Permission,
   StaffProfile,
+  StaffLookup,
   StaffProfileCreateData,
   StaffProfileUpdateData,
   StaffPasswordResetData,
@@ -178,6 +180,14 @@ export const permissionsApi = {
 // =============================================================================
 
 export const staffApi = {
+  lookup: async (params?: {
+    search?: string;
+    page_size?: number;
+  }): Promise<PaginatedResponse<StaffLookup>> => {
+    const response = await apiClient.get('/api/staff/lookup/', { params });
+    return parseResponse(PaginatedStaffLookupSchema, response.data, { context: 'staffApi.lookup' });
+  },
+
   list: async (params?: StaffListParams): Promise<PaginatedResponse<StaffProfile>> => {
     const response = await apiClient.get<PaginatedResponse<StaffProfile>>('/api/staff/', {
       params,

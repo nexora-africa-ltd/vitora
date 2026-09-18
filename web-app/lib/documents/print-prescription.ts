@@ -136,6 +136,7 @@ const PRESCRIPTION_CSS = `
     border-bottom: 2px solid var(--border-color, #000);
     padding-bottom: 12px;
     margin-bottom: 16px;
+    align-items: flex-start;
   }
 
   .clinic-info {
@@ -145,11 +146,13 @@ const PRESCRIPTION_CSS = `
 
   .qr {
     width: 90px;
-    height: 90px;
+    min-height: 90px;
+    height: auto;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     font-size: 10px;
+    overflow: visible;
   }
 
   .section {

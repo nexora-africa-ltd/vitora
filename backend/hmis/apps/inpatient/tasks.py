@@ -8,9 +8,12 @@ Provides background tasks for supervisor notifications on critical violations.
 import logging
 
 from celery import shared_task
-from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.mail import send_mail
+from django.db.models import Q
+from django.template import TemplateDoesNotExist, TemplateSyntaxError
+from django.template.loader import render_to_string
+
+from hmis.apps.core.services.email_service import send_transactional_email
 
 logger = logging.getLogger(__name__)
 
@@ -50,14 +53,23 @@ def notify_supervisors_critical_violation(self, admission_id: int) -> dict:  # n
         logger.error("Admission %s not found for critical violation notification", admission_id)
         return {"status": "error", "message": f"Admission {admission_id} not found"}
 
-    # Get all users with receive_critical_alerts permission
+    facility = admission.facility or admission.ward.facility
+    # Restrict recipients to staff assigned to the admission facility. Permissions
+    # can be granted directly or through a same-tenant Django group.
     supervisors = (
         User.objects.filter(
-            user_permissions__codename="receive_critical_alerts",
             is_active=True,
             email__isnull=False,
         )
         .exclude(email="")
+        .filter(
+            Q(staff_profile__primary_facility=facility)
+            | Q(staff_profile__secondary_facilities=facility)
+        )
+        .filter(
+            Q(user_permissions__codename="receive_critical_alerts")
+            | Q(groups__permissions__codename="receive_critical_alerts")
+        )
         .distinct()
     )
 
@@ -77,58 +89,49 @@ def notify_supervisors_critical_violation(self, admission_id: int) -> dict:  # n
         logger.info("Admission %s has no CRITICAL violations, skipping notification", admission_id)
         return {"status": "skipped", "message": "No critical violations", "emails_sent": 0}
 
-    # Build email content
-    violation_details = "\n".join(
-        f"  - {v.get('message', v.get('code'))}" for v in critical_violations
-    )
-
     patient = admission.patient
     ward = admission.ward
     admitted_by = admission.admitting_officer
 
     subject = f"CRITICAL WARD VIOLATION: {patient.first_name} {patient.last_name} - {ward.name}"
 
-    message = f"""
-CRITICAL WARD COMPATIBILITY VIOLATION
-
-Patient: {patient.first_name} {patient.last_name}
-MRN: {patient.mrn}
-Ward: {ward.name} ({ward.code})
-Bed: {admission.bed.bed_number}
-Admitted By: {admitted_by.get_full_name() if admitted_by else "Unknown"}
-Admission Date: {admission.admission_date.strftime("%Y-%m-%d %H:%M")}
-
-CRITICAL VIOLATIONS:
-{violation_details}
-
-Override Reason Given:
-{admission.constraint_override_reason or "None provided"}
-
-This admission requires your immediate review. Please verify the placement is clinically
-appropriate or coordinate a transfer to an appropriate ward.
-
----
-Vitora HMIS - Nexora Consulting Ltd
-This is an automated notification. Do not reply to this email.
-"""
-
-    # Collect supervisor emails
-    supervisor_emails = list(supervisors.values_list("email", flat=True))
+    context = {
+        "patient_name": f"{patient.first_name} {patient.last_name}",
+        "patient_mrn": patient.mrn,
+        "ward_name": ward.name,
+        "ward_code": ward.code,
+        "bed_number": admission.bed.bed_number,
+        "admitted_by": admitted_by.get_full_name() if admitted_by else "Unknown",
+        "admission_date": admission.admission_date.strftime("%Y-%m-%d %H:%M"),
+        "violations": [v.get("message", v.get("code")) for v in critical_violations],
+        "override_reason": admission.constraint_override_reason or "None provided",
+    }
+    text_body = render_to_string("inpatient/email/critical_ward_violation.txt", context)
+    try:
+        html_body = render_to_string("inpatient/email/critical_ward_violation.html", context)
+    except (TemplateDoesNotExist, TemplateSyntaxError) as exc:
+        # The plain-text template is a safe delivery fallback; provider failures still retry.
+        logger.warning("Critical ward violation HTML template unavailable: %s", type(exc).__name__)
+        html_body = text_body.replace("\n", "<br>")
 
     try:
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=supervisor_emails,
-            fail_silently=False,
-        )
+        for supervisor in supervisors:
+            result = send_transactional_email(
+                subject=subject,
+                html_body=html_body,
+                to_email=supervisor.email,
+                facility=facility,
+            )
+            if not result.get("accepted", False):
+                raise RuntimeError(
+                    "Critical ward violation email was not accepted by the provider."
+                )
         logger.info(
             "Sent critical violation email for admission %s to %s supervisors",
             admission_id,
-            len(supervisor_emails),
+            supervisors.count(),
         )
-        return {"status": "success", "emails_sent": len(supervisor_emails)}
+        return {"status": "success", "emails_sent": supervisors.count()}
     except (
         AttributeError,
         TypeError,

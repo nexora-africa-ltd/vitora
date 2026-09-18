@@ -797,7 +797,10 @@ class TriageQueueViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewSet):
     tenant_org_chain = "triage_assessment__organization"
 
     queryset = TriageQueue.objects.all().select_related(
-        "triage_assessment__encounter__patient", "triage_assessment__triaged_by", "called_by"
+        "triage_assessment__encounter__patient",
+        "triage_assessment__triaged_by",
+        "triage_assessment__assigned_clinic",
+        "called_by",
     )
     serializer_class = TriageQueueSerializer
     permission_classes = [IsAuthenticated, ReadRequiresModelPermission, WriteRequiresRolePermission]

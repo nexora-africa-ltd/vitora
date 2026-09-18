@@ -27,6 +27,7 @@ export interface FacilityModules {
   imaging_standalone: boolean;
   triage: boolean;
   scheduling: boolean;
+  custom_email: boolean;
   surveillance: boolean;
   immunizations: boolean;
   allied_health: boolean;

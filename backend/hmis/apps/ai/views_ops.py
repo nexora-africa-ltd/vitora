@@ -465,6 +465,26 @@ def _resolve_verbosity(request: Request, body_value: str | None) -> str:
     return "standard"
 
 
+def _safe_tibabot_status_code(exc: TibaBotError) -> int:
+    """Return a safe HTTP status derived from a TibaBot client error."""
+    status_code = getattr(exc, "status_code", None)
+    if isinstance(status_code, int) and 400 <= status_code <= 599:
+        return status_code
+    return status.HTTP_502_BAD_GATEWAY
+
+
+def _tibabot_error_response(exc: TibaBotError) -> Response:
+    """Map upstream AI failures to sanitized API responses."""
+    status_code = _safe_tibabot_status_code(exc)
+    if status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN):
+        message = "AI provider authentication failed."
+    elif status_code >= 500:
+        message = "Upstream AI service request failed."
+    else:
+        message = "AI provider request failed."
+    return Response({"error": message}, status=status_code)
+
+
 def _build_audit_value_preview(value: object) -> dict[str, str]:
     """Build a sanitized, truncated preview of an accepted suggestion value."""
     value_type = type(value).__name__
@@ -632,11 +652,8 @@ class WebhookRegisterView(AIFeatureGatedMixin, APIView):
                 {"error": "TibaBot service is currently unavailable."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError:
-            return Response(
-                {"error": "Upstream AI service request failed."},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+        except TibaBotError as exc:
+            return _tibabot_error_response(exc)
 
         AuditLog.log(
             action="ai_webhook_register",
@@ -669,11 +686,8 @@ class WebhookListView(AIFeatureGatedMixin, APIView):
                 {"error": "TibaBot service is currently unavailable."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError:
-            return Response(
-                {"error": "Upstream AI service request failed."},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+        except TibaBotError as exc:
+            return _tibabot_error_response(exc)
 
         return Response(result)
 
@@ -698,11 +712,8 @@ class WebhookDetailView(AIFeatureGatedMixin, APIView):
                 {"error": "TibaBot service is currently unavailable."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError:
-            return Response(
-                {"error": "Upstream AI service request failed."},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+        except TibaBotError as exc:
+            return _tibabot_error_response(exc)
 
         return Response(result)
 
@@ -729,11 +740,8 @@ class WebhookDetailView(AIFeatureGatedMixin, APIView):
                 {"error": "TibaBot service is currently unavailable."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError:
-            return Response(
-                {"error": "Upstream AI service request failed."},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+        except TibaBotError as exc:
+            return _tibabot_error_response(exc)
 
         AuditLog.log(
             action="ai_webhook_update",
@@ -756,11 +764,8 @@ class WebhookDetailView(AIFeatureGatedMixin, APIView):
                 {"error": "TibaBot service is currently unavailable."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError:
-            return Response(
-                {"error": "Upstream AI service request failed."},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+        except TibaBotError as exc:
+            return _tibabot_error_response(exc)
 
         AuditLog.log(
             action="ai_webhook_delete",
@@ -793,11 +798,8 @@ class WebhookPauseView(AIFeatureGatedMixin, APIView):
                 {"error": "TibaBot service is currently unavailable."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError:
-            return Response(
-                {"error": "Upstream AI service request failed."},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+        except TibaBotError as exc:
+            return _tibabot_error_response(exc)
 
         AuditLog.log(
             action="ai_webhook_pause",
@@ -830,11 +832,8 @@ class WebhookActivateView(AIFeatureGatedMixin, APIView):
                 {"error": "TibaBot service is currently unavailable."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError:
-            return Response(
-                {"error": "Upstream AI service request failed."},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+        except TibaBotError as exc:
+            return _tibabot_error_response(exc)
 
         AuditLog.log(
             action="ai_webhook_activate",
@@ -867,11 +866,8 @@ class WebhookDeliveryHistoryView(AIFeatureGatedMixin, APIView):
                 {"error": "TibaBot service is currently unavailable."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError:
-            return Response(
-                {"error": "Upstream AI service request failed."},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+        except TibaBotError as exc:
+            return _tibabot_error_response(exc)
 
         return Response(result)
 
@@ -900,12 +896,9 @@ class FacilityKBInfoView(AIFeatureGatedMixin, APIView):
                 {"error": "TibaBot service is currently unavailable."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError:
+        except TibaBotError as exc:
             logger.warning("TibaBot facility KB error")
-            return Response(
-                {"error": "Upstream AI service request failed."},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+            return _tibabot_error_response(exc)
 
         return Response(result)
 
@@ -949,11 +942,8 @@ class FacilityKBUploadView(AIFeatureGatedMixin, APIView):
                 {"error": "TibaBot service is currently unavailable."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError:
-            return Response(
-                {"error": "Upstream AI service request failed."},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+        except TibaBotError as exc:
+            return _tibabot_error_response(exc)
 
         AuditLog.log(
             action="ai_facility_kb_upload",
@@ -986,11 +976,8 @@ class FacilityKBDocumentDeleteView(AIFeatureGatedMixin, APIView):
                 {"error": "TibaBot service is currently unavailable."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError:
-            return Response(
-                {"error": "Upstream AI service request failed."},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+        except TibaBotError as exc:
+            return _tibabot_error_response(exc)
 
         AuditLog.log(
             action="ai_facility_kb_delete",
@@ -1036,11 +1023,8 @@ class FacilityKBSearchView(AIFeatureGatedMixin, APIView):
                 {"error": "TibaBot service is currently unavailable."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except TibaBotError:
-            return Response(
-                {"error": "Upstream AI service request failed."},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+        except TibaBotError as exc:
+            return _tibabot_error_response(exc)
 
         AuditLog.log(
             action="ai_facility_kb_search",

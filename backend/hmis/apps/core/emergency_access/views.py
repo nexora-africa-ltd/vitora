@@ -4,9 +4,14 @@ Views for Emergency Access module.
 """
 
 import logging
+from collections import defaultdict
+from csv import writer
 from datetime import timedelta
+from io import StringIO
+from statistics import median
 
 from django.db.models import Count
+from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
@@ -25,6 +30,12 @@ from .serializers import (
 from .tasks import send_emergency_access_escalation
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_bucket_key(value: str | None, fallback: str) -> str:
+    if not value:
+        return fallback
+    return str(value)
 
 
 def _sanitize_log_field(value: object) -> str:
@@ -259,7 +270,7 @@ class EmergencyAccessViewSet(viewsets.ModelViewSet):
         # Update expired statuses first
         EmergencyAccess.objects.filter(
             status=EmergencyAccessStatus.ACTIVE, expires_at__lt=now
-        ).update(status=EmergencyAccessStatus.EXPIRED)
+        ).update(status=EmergencyAccessStatus.EXPIRED, closed_at=now)
 
         # Aggregate statistics
         total_active = EmergencyAccess.objects.filter(
@@ -288,16 +299,146 @@ class EmergencyAccessViewSet(viewsets.ModelViewSet):
             .values_list("status", "count")
         )
 
+        overdue_reviews = EmergencyAccess.objects.filter(
+            status__in=[EmergencyAccessStatus.ACTIVE, EmergencyAccessStatus.EXPIRED],
+            review_due_at__lt=now,
+        ).count()
+
+        review_durations = []
+        for requested_at, approved_at in EmergencyAccess.objects.filter(
+            status=EmergencyAccessStatus.REVIEWED,
+            approved_at__isnull=False,
+        ).values_list("requested_at", "approved_at"):
+            if requested_at and approved_at and approved_at >= requested_at:
+                review_durations.append((approved_at - requested_at).total_seconds() / 60)
+
+        median_review_minutes = float(median(review_durations)) if review_durations else 0.0
+
+        by_reason_role_raw = (
+            EmergencyAccess.objects.filter(requested_at__gte=week_start)
+            .values("reason", "user__staff_profile__primary_role__code")
+            .annotate(count=Count("id"))
+        )
+        by_reason_role: dict[str, dict[str, int]] = defaultdict(dict)
+        for row in by_reason_role_raw:
+            reason = _normalize_bucket_key(row.get("reason"), "UNKNOWN")
+            role = _normalize_bucket_key(
+                row.get("user__staff_profile__primary_role__code"), "UNASSIGNED"
+            )
+            by_reason_role[reason][role] = row["count"]
+
+        by_reason_facility_raw = (
+            EmergencyAccess.objects.filter(requested_at__gte=week_start)
+            .values("reason", "user__staff_profile__primary_facility__name")
+            .annotate(count=Count("id"))
+        )
+        by_reason_facility: dict[str, dict[str, int]] = defaultdict(dict)
+        for row in by_reason_facility_raw:
+            reason = _normalize_bucket_key(row.get("reason"), "UNKNOWN")
+            facility = _normalize_bucket_key(
+                row.get("user__staff_profile__primary_facility__name"),
+                "UNASSIGNED",
+            )
+            by_reason_facility[reason][facility] = row["count"]
+
         data = {
             "total_active": total_active,
             "total_pending_review": total_pending_review,
             "total_today": total_today,
             "total_this_week": total_this_week,
+            "overdue_reviews": overdue_reviews,
+            "median_review_minutes": median_review_minutes,
             "by_reason": by_reason,
             "by_status": by_status,
+            "by_reason_role": dict(by_reason_role),
+            "by_reason_facility": dict(by_reason_facility),
         }
 
         return Response(data)
+
+    @action(detail=False, methods=["get"], permission_classes=[CanViewEmergencyDashboard])
+    def export(self, request):
+        """Export emergency access compliance report as JSON or CSV."""
+        output_format = (
+            request.query_params.get("export_format")
+            or request.query_params.get("output")
+            or "json"
+        ).lower()
+        queryset = self.get_queryset().order_by("-requested_at")
+        rows = []
+        for record in queryset:
+            rows.append(
+                {
+                    "id": record.id,
+                    "user_username": record.user.username,
+                    "patient_mrn": record.patient.mrn if record.patient else "",
+                    "reason": record.reason,
+                    "status": record.status,
+                    "requested_at": record.requested_at.isoformat() if record.requested_at else "",
+                    "expires_at": record.expires_at.isoformat() if record.expires_at else "",
+                    "review_due_at": record.review_due_at.isoformat()
+                    if record.review_due_at
+                    else "",
+                    "approved_at": record.approved_at.isoformat() if record.approved_at else "",
+                    "closed_at": record.closed_at.isoformat() if record.closed_at else "",
+                    "duration_minutes": record.duration_minutes,
+                    "scope_type": record.scope_type,
+                    "access_mode": record.access_mode,
+                }
+            )
+
+        if output_format == "csv":
+            buffer = StringIO()
+            csv_writer = writer(buffer)
+            csv_writer.writerow(
+                [
+                    "id",
+                    "user_username",
+                    "patient_mrn",
+                    "reason",
+                    "status",
+                    "requested_at",
+                    "expires_at",
+                    "review_due_at",
+                    "approved_at",
+                    "closed_at",
+                    "duration_minutes",
+                    "scope_type",
+                    "access_mode",
+                ]
+            )
+            for row in rows:
+                csv_writer.writerow(
+                    [
+                        row["id"],
+                        row["user_username"],
+                        row["patient_mrn"],
+                        row["reason"],
+                        row["status"],
+                        row["requested_at"],
+                        row["expires_at"],
+                        row["review_due_at"],
+                        row["approved_at"],
+                        row["closed_at"],
+                        row["duration_minutes"],
+                        row["scope_type"],
+                        row["access_mode"],
+                    ]
+                )
+
+            response = HttpResponse(buffer.getvalue(), content_type="text/csv; charset=utf-8")
+            response["Content-Disposition"] = (
+                f'attachment; filename="emergency-access-compliance-{timezone.now().date().isoformat()}.csv"'
+            )
+            return response
+
+        return Response(
+            {
+                "generated_at": timezone.now().isoformat(),
+                "count": len(rows),
+                "records": rows,
+            }
+        )
 
     @action(detail=False, methods=["get"])
     def my_active(self, request):
@@ -309,3 +450,36 @@ class EmergencyAccessViewSet(viewsets.ModelViewSet):
         active = EmergencyAccess.get_active_for_user(request.user)
         serializer = self.get_serializer(active, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def close(self, request, pk=None):
+        """Close current user's active emergency access session."""
+        instance = self.get_object()
+        if instance.user_id != request.user.id and not request.user.has_perm(
+            "core.approve_emergency_access"
+        ):
+            return Response(
+                {"detail": "You can only close your own emergency access sessions."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not instance.is_active:
+            return Response(
+                {"detail": "Emergency access session is no longer active."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        instance.close()
+        AuditLog.log(
+            action="emergency_access_closed",
+            user=request.user,
+            resource_type="EmergencyAccess",
+            resource_id=instance.id,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=instance.patient_id,
+            details={
+                "closed_by_requester": instance.user_id == request.user.id,
+            },
+        )
+        return Response(EmergencyAccessSerializer(instance).data)

@@ -889,11 +889,15 @@ class AlertSettingsSerializer(serializers.ModelSerializer):
         model = AlertSettings
         fields = [
             "id",
+            "facility",
             "low_stock_threshold",
             "expiry_warning_days",
             "expiry_critical_days",
             "enable_email_notifications",
+            "stock_alert_digest_minutes",
             "notification_email_recipients",
+            "stock_alert_roles",
+            "stock_alert_users",
             "updated_by",
             "updated_by_name",
             "updated_at",
@@ -901,6 +905,7 @@ class AlertSettingsSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "facility",
             "updated_by_name",
             "updated_at",
             "created_at",
@@ -914,6 +919,25 @@ class AlertSettingsSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """Validate settings data."""
+        facility = self.instance.facility if self.instance else self.context["request"].facility
+        selected_users = set()
+        selected_users.update(data.get("stock_alert_users", []))
+        if selected_users:
+            invalid_users = [
+                user.username
+                for user in selected_users
+                if not hasattr(user, "staff_profile")
+                or (
+                    user.staff_profile.primary_facility_id != facility.id
+                    and not user.staff_profile.secondary_facilities.filter(pk=facility.id).exists()
+                )
+            ]
+            if invalid_users:
+                raise serializers.ValidationError(
+                    {
+                        "users": f"Recipients must be assigned to {facility.name}: {', '.join(invalid_users)}"
+                    }
+                )
         expiry_warning = data.get("expiry_warning_days")
         expiry_critical = data.get("expiry_critical_days")
 
@@ -923,5 +947,11 @@ class AlertSettingsSerializer(serializers.ModelSerializer):
         low_stock = data.get("low_stock_threshold")
         if low_stock is not None and low_stock < 0:
             raise serializers.ValidationError("Low stock threshold must be non-negative")
+
+        digest_minutes = data.get("stock_alert_digest_minutes")
+        if digest_minutes is not None and digest_minutes < 1:
+            raise serializers.ValidationError(
+                {"stock_alert_digest_minutes": "Digest interval must be at least one minute"}
+            )
 
         return data

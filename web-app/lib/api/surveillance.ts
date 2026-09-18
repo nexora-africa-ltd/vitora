@@ -6,6 +6,9 @@ import { z } from 'zod';
 import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
 import {
+  ContactTracingContactSchema,
+  ContactTracingFollowUpSchema,
+  CountyNotificationDeliveryListSchema,
   CountyReportSchema,
   ExceededThresholdListSchema,
   IDSRDashboardSchema,
@@ -23,10 +26,15 @@ import {
   PaginatedSurveillanceAlertSchema,
   PaginatedIDSRWeeklyReportSchema,
   PaginatedIHRNotificationSchema,
+  PaginatedContactTracingContactSchema,
   SurveillanceAlertListArraySchema,
+  SurveillanceFacilitySettingsSchema,
   SurveillanceDashboardSchema,
 } from '@/lib/schemas/surveillance.schema';
 import type {
+  ContactTracingContact,
+  ContactTracingFollowUp,
+  CountyNotificationDelivery,
   CountyReport,
   ExceededThreshold,
   IDSRDashboard,
@@ -45,7 +53,9 @@ import type {
   NotifiableDiseaseListItem,
   OutbreakThreshold,
   SurveillanceAlertListItem,
+  SurveillanceFacilitySettings,
   SurveillanceDashboard,
+  NotifiableCaseSeverity,
 } from '@/lib/types/surveillance';
 import type { PaginatedResponse } from '@/lib/types';
 
@@ -97,13 +107,87 @@ export const surveillanceApi = {
     });
   },
 
+  async updateCaseSeverity(id: number, severity: NotifiableCaseSeverity): Promise<NotifiableCaseDetail> {
+    const response = await apiClient.patch<NotifiableCaseDetail>(`/api/surveillance/cases/${id}/`, {
+      severity,
+    });
+    return parseResponse(NotifiableCaseDetailSchema, response.data, {
+      context: 'surveillanceApi.updateCaseSeverity',
+    });
+  },
+
+  async updateCaseOnsetDate(id: number, onsetDate: string): Promise<NotifiableCaseDetail> {
+    const response = await apiClient.patch<NotifiableCaseDetail>(`/api/surveillance/cases/${id}/`, {
+      onset_date: onsetDate,
+    });
+    return parseResponse(NotifiableCaseDetailSchema, response.data, {
+      context: 'surveillanceApi.updateCaseOnsetDate',
+    });
+  },
+
+  async updateCaseLaboratoryConfirmed(
+    id: number,
+    laboratoryConfirmed: boolean
+  ): Promise<NotifiableCaseDetail> {
+    const response = await apiClient.patch<NotifiableCaseDetail>(`/api/surveillance/cases/${id}/`, {
+      laboratory_confirmed: laboratoryConfirmed,
+    });
+    return parseResponse(NotifiableCaseDetailSchema, response.data, {
+      context: 'surveillanceApi.updateCaseLaboratoryConfirmed',
+    });
+  },
+
   async notifyCounty(id: number, notes?: string): Promise<NotifiableCaseDetail> {
     const response = await apiClient.post<NotifiableCaseDetail>(
       `/api/surveillance/cases/${id}/notify_county/`,
-      { notes: notes ?? '' }
+      { notification_notes: notes ?? '' }
     );
     return parseResponse(NotifiableCaseDetailSchema, response.data, {
       context: 'surveillanceApi.notifyCounty',
+    });
+  },
+
+  async markCountyNotified(id: number, notes?: string): Promise<NotifiableCaseDetail> {
+    const response = await apiClient.post<NotifiableCaseDetail>(
+      `/api/surveillance/cases/${id}/mark_county_notified/`,
+      { notes: notes ?? '' }
+    );
+    return parseResponse(NotifiableCaseDetailSchema, response.data, {
+      context: 'surveillanceApi.markCountyNotified',
+    });
+  },
+
+  async markCaseInvestigated(id: number, notes?: string): Promise<NotifiableCaseDetail> {
+    const response = await apiClient.post<NotifiableCaseDetail>(
+      `/api/surveillance/cases/${id}/mark_investigated/`,
+      { notes: notes ?? '' }
+    );
+    return parseResponse(NotifiableCaseDetailSchema, response.data, {
+      context: 'surveillanceApi.markCaseInvestigated',
+    });
+  },
+
+  async closeCase(id: number, notes?: string): Promise<NotifiableCaseDetail> {
+    const response = await apiClient.post<NotifiableCaseDetail>(
+      `/api/surveillance/cases/${id}/close_case/`,
+      { notes: notes ?? '' }
+    );
+    return parseResponse(NotifiableCaseDetailSchema, response.data, {
+      context: 'surveillanceApi.closeCase',
+    });
+  },
+
+  async listCaseNotificationDeliveries(id: number): Promise<CountyNotificationDelivery[]> {
+    const response = await apiClient.get(`/api/surveillance/cases/${id}/notification_deliveries/`);
+    return parseResponse(CountyNotificationDeliveryListSchema, response.data, {
+      context: 'surveillanceApi.listCaseNotificationDeliveries',
+    });
+  },
+
+  async retryCaseNotificationDeliveries(id: number): Promise<CountyNotificationDelivery[]> {
+    const response = await apiClient.post(`/api/surveillance/cases/${id}/retry_county_notifications/`);
+    return parseResponse(CountyNotificationDeliveryListSchema, response.data, {
+      context: 'surveillanceApi.retryCaseNotificationDeliveries',
     });
   },
 
@@ -140,6 +224,110 @@ export const surveillanceApi = {
     );
     return parseResponse(PaginatedNotifiableCaseSchema, response.data, {
       context: 'surveillanceApi.listImmediateCases',
+    });
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Facility Notification Settings
+  // ─────────────────────────────────────────────────────────────────────────
+  async getNotificationSettings(): Promise<SurveillanceFacilitySettings> {
+    const response = await apiClient.get('/api/surveillance/settings/current/');
+    return parseResponse(SurveillanceFacilitySettingsSchema, response.data, {
+      context: 'surveillanceApi.getNotificationSettings',
+    });
+  },
+
+  async updateNotificationSettings(
+    id: number,
+    payload: {
+      notify_via_sms?: boolean;
+      notify_via_email?: boolean;
+      sms_recipient?: string;
+      email_recipient?: string;
+      include_patient_identifiers?: boolean;
+      max_retry_attempts?: number;
+      retry_backoff_minutes?: number;
+      is_active?: boolean;
+    }
+  ): Promise<SurveillanceFacilitySettings> {
+    const response = await apiClient.patch(`/api/surveillance/settings/${id}/`, payload);
+    return parseResponse(SurveillanceFacilitySettingsSchema, response.data, {
+      context: 'surveillanceApi.updateNotificationSettings',
+    });
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Contact Tracing Engine
+  // ─────────────────────────────────────────────────────────────────────────
+  async listContacts(params?: {
+    case?: number;
+    status?: string;
+    risk_level?: string;
+    search?: string;
+    ordering?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<PaginatedResponse<ContactTracingContact>> {
+    const response = await apiClient.get('/api/surveillance/contacts/', { params });
+    return parseResponse(PaginatedContactTracingContactSchema, response.data, {
+      context: 'surveillanceApi.listContacts',
+    });
+  },
+
+  async listCaseContacts(
+    caseId: number
+  ): Promise<PaginatedResponse<ContactTracingContact>> {
+    return this.listContacts({ case: caseId });
+  },
+
+  async getContact(contactId: number): Promise<ContactTracingContact> {
+    const response = await apiClient.get(`/api/surveillance/contacts/${contactId}/`);
+    return parseResponse(ContactTracingContactSchema, response.data, {
+      context: 'surveillanceApi.getContact',
+    });
+  },
+
+  async createCaseContact(payload: {
+    case: number;
+    full_name: string;
+    phone_number?: string;
+    relationship_to_case?: string;
+    risk_level?: 'HIGH' | 'MEDIUM' | 'LOW';
+    exposure_date?: string;
+    notes?: string;
+  }): Promise<ContactTracingContact> {
+    const response = await apiClient.post('/api/surveillance/contacts/', payload);
+    return parseResponse(ContactTracingContactSchema, response.data, {
+      context: 'surveillanceApi.createCaseContact',
+    });
+  },
+
+  async transitionContactStatus(
+    contactId: number,
+    action: 'mark_contacted' | 'start_monitoring' | 'mark_symptomatic' | 'mark_cleared',
+    payload?: { notes?: string; monitoring_days?: number }
+  ): Promise<ContactTracingContact> {
+    const response = await apiClient.post(`/api/surveillance/contacts/${contactId}/${action}/`, payload ?? {});
+    return parseResponse(ContactTracingContactSchema, response.data, {
+      context: 'surveillanceApi.transitionContactStatus',
+    });
+  },
+
+  async recordContactFollowup(
+    contactId: number,
+    payload: {
+      followup_date: string;
+      next_followup_date?: string;
+      method: 'PHONE' | 'HOME_VISIT' | 'SMS' | 'CLINIC';
+      symptoms_present?: boolean;
+      temperature_c?: string;
+      notes?: string;
+      outcome?: 'CONTINUE_MONITORING' | 'ESCALATE_TESTING' | 'ESCALATE_ISOLATION' | 'CLEARED';
+    }
+  ): Promise<ContactTracingFollowUp> {
+    const response = await apiClient.post(`/api/surveillance/contacts/${contactId}/record_followup/`, payload);
+    return parseResponse(ContactTracingFollowUpSchema, response.data, {
+      context: 'surveillanceApi.recordContactFollowup',
     });
   },
 

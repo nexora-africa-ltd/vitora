@@ -663,7 +663,10 @@ export const pharmacyApi = {
     expiry_warning_days?: number;
     expiry_critical_days?: number;
     enable_email_notifications?: boolean;
+    stock_alert_digest_minutes?: number;
     notification_email_recipients?: string;
+    stock_alert_roles?: number[];
+    stock_alert_users?: number[];
   }): Promise<AlertSettings> {
     const response = await apiClient.patch('/api/pharmacy/alert-settings/', data);
     return parseResponse(AlertSettingsSchema, response.data, {

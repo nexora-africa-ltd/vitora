@@ -139,6 +139,7 @@ class SubscriptionPlan(TimeStampedModel):
         ("quality", "Quality Improvement & Clinical Audit"),
         ("private_insurance", "Private Insurance Claims"),
         ("moh_reporting", "MOH 705/711/717 Aggregate Reporting"),
+        ("custom_email", "Custom Facility SMTP Email"),
         # Standalone module variants (sold as dedicated SaaS plans)
         ("lis_standalone", "Standalone Laboratory (LIS)"),
         ("pharmacy_standalone", "Standalone Pharmacy / Retail"),

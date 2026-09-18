@@ -10,6 +10,9 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
+    ContactTracingContactViewSet,
+    ContactTracingFollowUpViewSet,
+    CountyNotificationAcknowledgeView,
     CountyReportView,
     IDSRWeeklyReportViewSet,
     IHRNotificationViewSet,
@@ -18,6 +21,8 @@ from .views import (
     OutbreakThresholdViewSet,
     SurveillanceAlertViewSet,
     SurveillanceDashboardView,
+    SurveillanceEmailWebhookView,
+    SurveillanceFacilitySettingsViewSet,
 )
 
 app_name = "surveillance"
@@ -26,13 +31,29 @@ router = DefaultRouter()
 router.register(r"diseases", NotifiableDiseaseViewSet, basename="disease")
 router.register(r"cases", NotifiableCaseViewSet, basename="case")
 router.register(r"alerts", SurveillanceAlertViewSet, basename="alert")
+router.register(r"settings", SurveillanceFacilitySettingsViewSet, basename="surveillance-settings")
+router.register(r"contacts", ContactTracingContactViewSet, basename="contact-tracing-contact")
+router.register(
+    r"contact-followups", ContactTracingFollowUpViewSet, basename="contact-tracing-followup"
+)
 router.register(r"thresholds", OutbreakThresholdViewSet, basename="threshold")
 router.register(r"idsr", IDSRWeeklyReportViewSet, basename="idsr")
+router.register(r"idsr-reports", IDSRWeeklyReportViewSet, basename="idsr-reports")
 router.register(r"ihr", IHRNotificationViewSet, basename="ihr")
 
 urlpatterns = [
     path("", include(router.urls)),
     path("dashboard/", SurveillanceDashboardView.as_view(), name="dashboard"),
+    path(
+        "county-ack/<str:token>/",
+        CountyNotificationAcknowledgeView.as_view(),
+        name="county-notification-acknowledge",
+    ),
+    path(
+        "webhooks/email-delivery/",
+        SurveillanceEmailWebhookView.as_view(),
+        name="email-delivery-webhook",
+    ),
     path(
         "reports/county/<int:county_id>/",
         CountyReportView.as_view(),
