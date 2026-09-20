@@ -18,6 +18,7 @@ jest.mock('@/lib/api/client', () => ({
     patch: (...args: unknown[]) => mockPatch(...args),
     delete: (...args: unknown[]) => mockDelete(...args),
   },
+  getApiBaseUrl: () => 'http://127.0.0.1:9088',
 }));
 
 // Mock parseResponse to pass through data
@@ -28,6 +29,19 @@ jest.mock('@/lib/schemas/validation', () => ({
 describe('imagingApi', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  describe('getThumbnailUrl', () => {
+    it('resolves local backend media URLs against the API origin', () => {
+      expect(imagingApi.getThumbnailUrl('/media/thumbnails/example.jpg')).toBe(
+        'http://127.0.0.1:9088/media/thumbnails/example.jpg'
+      );
+    });
+
+    it('keeps signed Azure thumbnail URLs intact', () => {
+      const signedUrl = 'https://media.example.net/thumbnails/example.jpg?sv=token';
+      expect(imagingApi.getThumbnailUrl(signedUrl)).toBe(signedUrl);
+    });
   });
 
   describe('listProcedures', () => {

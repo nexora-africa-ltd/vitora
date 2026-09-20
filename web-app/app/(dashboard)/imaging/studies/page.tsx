@@ -201,119 +201,129 @@ export default function DICOMStudiesPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {studies.map((study) => (
-                      <TableRow
-                        key={study.study_instance_uid}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => handleViewStudy(study)}
-                      >
-                        <TableCell>
-                          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded bg-black">
-                            {study.thumbnail_path ? (
-                              <Image
-                                src={imagingApi.getThumbnailUrl(study.thumbnail_path) || ''}
-                                alt="Thumbnail"
-                                width={48}
-                                height={48}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium">{study.patient_name}</div>
-                          {study.accession_number && (
-                            <div className="text-xs text-muted-foreground">
-                              ACC: {study.accession_number}
+                    {studies.map((study) => {
+                      const thumbnailUrl = imagingApi.getThumbnailUrl(
+                        study.thumbnail_url || study.thumbnail_path
+                      );
+                      return (
+                        <TableRow
+                          key={study.study_instance_uid}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleViewStudy(study)}
+                        >
+                          <TableCell>
+                            <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded bg-black">
+                              {thumbnailUrl ? (
+                                <Image
+                                  src={thumbnailUrl}
+                                  alt="Thumbnail"
+                                  width={48}
+                                  height={48}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                              )}
                             </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div
-                            className="max-w-[200px] truncate"
-                            title={study.study_description || 'No description'}
-                          >
-                            {study.study_description || '-'}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <ModalityBadge modality={study.modality as ImagingModality} />
-                        </TableCell>
-                        <TableCell>{formatDate(study.study_date)}</TableCell>
-                        <TableCell className="text-center">
-                          {formatCount(study.number_of_series)}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {formatCount(study.number_of_instances)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatStudySize(study.total_file_size)}
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="icon">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">{study.patient_name}</div>
+                            {study.accession_number && (
+                              <div className="text-xs text-muted-foreground">
+                                ACC: {study.accession_number}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div
+                              className="max-w-[200px] truncate"
+                              title={study.study_description || 'No description'}
+                            >
+                              {study.study_description || '-'}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <ModalityBadge modality={study.modality as ImagingModality} />
+                          </TableCell>
+                          <TableCell>{formatDate(study.study_date)}</TableCell>
+                          <TableCell className="text-center">
+                            {formatCount(study.number_of_series)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {formatCount(study.number_of_instances)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatStudySize(study.total_file_size)}
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="icon">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
 
               {/* Mobile Cards */}
               <div className="space-y-3 p-4 md:hidden">
-                {studies.map((study) => (
-                  <Card
-                    key={study.study_instance_uid}
-                    className="cursor-pointer transition-colors hover:bg-muted/50"
-                    onClick={() => handleViewStudy(study)}
-                  >
-                    <CardContent className="p-3">
-                      <div className="flex gap-3">
-                        {/* Thumbnail */}
-                        <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded bg-black">
-                          {study.thumbnail_path ? (
-                            <Image
-                              src={imagingApi.getThumbnailUrl(study.thumbnail_path) || ''}
-                              alt="Thumbnail"
-                              width={56}
-                              height={56}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                          )}
-                        </div>
+                {studies.map((study) => {
+                  const thumbnailUrl = imagingApi.getThumbnailUrl(
+                    study.thumbnail_url || study.thumbnail_path
+                  );
+                  return (
+                    <Card
+                      key={study.study_instance_uid}
+                      className="cursor-pointer transition-colors hover:bg-muted/50"
+                      onClick={() => handleViewStudy(study)}
+                    >
+                      <CardContent className="p-3">
+                        <div className="flex gap-3">
+                          {/* Thumbnail */}
+                          <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded bg-black">
+                            {thumbnailUrl ? (
+                              <Image
+                                src={thumbnailUrl}
+                                alt="Thumbnail"
+                                width={56}
+                                height={56}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                            )}
+                          </div>
 
-                        {/* Info */}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <p className="truncate font-medium">{study.patient_name}</p>
-                              <p
-                                className="truncate text-xs text-muted-foreground"
-                                title={study.study_description || 'No description'}
-                              >
-                                {study.study_description || 'No description'}
-                              </p>
+                          {/* Info */}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <p className="truncate font-medium">{study.patient_name}</p>
+                                <p
+                                  className="truncate text-xs text-muted-foreground"
+                                  title={study.study_description || 'No description'}
+                                >
+                                  {study.study_description || 'No description'}
+                                </p>
+                              </div>
+                              <ModalityBadge modality={study.modality as ImagingModality} />
                             </div>
-                            <ModalityBadge modality={study.modality as ImagingModality} />
-                          </div>
-                          <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {formatDate(study.study_date)}
-                            </span>
-                            <span>{formatCount(study.number_of_series)} series</span>
-                            <span>{formatCount(study.number_of_instances)} img</span>
+                            <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {formatDate(study.study_date)}
+                              </span>
+                              <span>{formatCount(study.number_of_series)} series</span>
+                              <span>{formatCount(study.number_of_instances)} img</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
 
               {/* Pagination */}

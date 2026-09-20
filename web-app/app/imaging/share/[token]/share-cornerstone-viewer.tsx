@@ -107,6 +107,13 @@ export function ShareCornerstoneViewer({
         </div>
       )}
 
+      {cornerstone.isReady && cornerstone.isImageLoading && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-black/80">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <div className="text-sm text-white">Loading selected image...</div>
+        </div>
+      )}
+
       {/* Error state */}
       {cornerstone.error && (
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-black/90 p-8">
