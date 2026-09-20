@@ -8,6 +8,8 @@
 # during Azure Container Registry builds.
 # =============================================================================
 
+FROM docker.io/library/postgres:18-bookworm AS pgtools
+
 FROM docker.io/library/python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -19,19 +21,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     curl \
-    ca-certificates \
-    gnupg \
-    wget \
-    && install -d /usr/share/keyrings \
-    && wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc \
-        | gpg --dearmor -o /usr/share/keyrings/postgresql.gpg \
-    && echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" \
-        > /etc/apt/sources.list.d/pgdg.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends postgresql-client-18 \
     && rm -rf /var/lib/apt/lists/* \
     && addgroup --system app \
     && adduser --system --ingroup app app
+
+# Copy PostgreSQL 18 client binaries from the official postgres image so the
+# backup script uses a pg_dump version compatible with the production server.
+COPY --from=pgtools /usr/lib/postgresql/18 /usr/lib/postgresql/18
+RUN ln -sf /usr/lib/postgresql/18/bin/pg_dump /usr/local/bin/pg_dump \
+    && ln -sf /usr/lib/postgresql/18/bin/pg_restore /usr/local/bin/pg_restore \
+    && ln -sf /usr/lib/postgresql/18/bin/psql /usr/local/bin/psql
 
 WORKDIR /app
 
