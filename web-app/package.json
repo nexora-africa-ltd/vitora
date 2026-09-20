@@ -148,7 +148,10 @@
     "react-is": "^19.0.0-rc-69d4b800-20241021",
     "adm-zip": "^0.6.0",
     "fflate": "^0.8.2",
-    "uuid": "^12.0.1"
+    "uuid": "^12.0.1",
+    "xmlbuilder2": {
+      "js-yaml": "3.15.2"
+    }
   },
   "description": "Next.js web frontend for Vitora Hospital Management Information System.",
   "main": "cucumber.js",
