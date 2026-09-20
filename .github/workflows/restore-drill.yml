@@ -28,7 +28,9 @@ jobs:
           --health-cmd "pg_isready -U restore_drill -d restore_drill"
           --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
       - name: Log in to Azure
         uses: azure/login@v2
         with:
@@ -46,21 +48,33 @@ jobs:
           set -euo pipefail
 
           AZ_STORAGE_AUTH_ARGS=(--auth-mode login)
+          AUTH_MODE="oidc-login"
           if [[ -n "${AZURE_STORAGE_ACCOUNT_KEY:-}" ]]; then
             AZ_STORAGE_AUTH_ARGS=(--account-key "$AZURE_STORAGE_ACCOUNT_KEY")
+            AUTH_MODE="account-key"
           fi
+          echo "Using Azure Storage auth mode: ${AUTH_MODE}"
 
+          echo "Locating latest backup blob..."
           BLOB_NAME=$(az storage blob list --account-name "$STORAGE_ACCOUNT" \
             "${AZ_STORAGE_AUTH_ARGS[@]}" \
             --container-name "$STORAGE_CONTAINER" \
             --query "sort_by([?ends_with(name, '.sql.gz') || ends_with(name, '.sql.gz.gpg')], &properties.creationTime)[-1].name" -o tsv)
-          test -n "$BLOB_NAME"
+          if [[ -z "$BLOB_NAME" ]]; then
+            echo "ERROR: No backup blob found (or list permission denied) in ${STORAGE_CONTAINER}."
+            exit 1
+          fi
+          echo "Latest backup blob: ${BLOB_NAME}"
+
+          echo "Downloading backup and checksum..."
           az storage blob download --account-name "$STORAGE_ACCOUNT" \
             "${AZ_STORAGE_AUTH_ARGS[@]}" \
             --container-name "$STORAGE_CONTAINER" --name "$BLOB_NAME" --file backup
           az storage blob download --account-name "$STORAGE_ACCOUNT" \
             "${AZ_STORAGE_AUTH_ARGS[@]}" \
             --container-name "$STORAGE_CONTAINER" --name "${BLOB_NAME%.gpg}.sha256" --file backup.sha256
+
+          echo "Decrypting backup (if encrypted) and verifying checksum..."
           if [[ "$BLOB_NAME" == *.gpg ]]; then
             gpg --batch --yes --passphrase "$BACKUP_ENCRYPTION_KEY" --output backup.sql.gz --decrypt backup
           else
@@ -69,6 +83,8 @@ jobs:
           EXPECTED_SHA=$(cut -d' ' -f1 backup.sha256)
           ACTUAL_SHA=$(sha256sum backup.sql.gz | cut -d' ' -f1)
           test "$EXPECTED_SHA" = "$ACTUAL_SHA"
+
+          echo "Restoring backup into drill database..."
           gunzip --stdout backup.sql.gz | psql -h 127.0.0.1 -U restore_drill -d restore_drill -v ON_ERROR_STOP=1
           psql -h 127.0.0.1 -U restore_drill -d restore_drill -Atc "SELECT COUNT(*) FROM django_migrations;"
       - name: Publish restore timing
