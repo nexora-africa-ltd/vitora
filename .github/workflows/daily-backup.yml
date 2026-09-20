@@ -199,10 +199,25 @@ jobs:
 
       - name: Verify latest backup
         run: |
-          LATEST=$(az storage blob list \
+          LATEST_NAME=$(az storage blob list \
             --account-name ${{ env.STORAGE_ACCOUNT }} \
             --container-name ${{ env.STORAGE_CONTAINER }} \
             --sas-token "${{ steps.sas.outputs.token }}" \
-            --query "sort_by([].{name:name, size:properties.contentLength, created:properties.creationTime}, &created) | [-1]" \
-            -o table)
-          echo "$LATEST"
+            --query "sort_by([?ends_with(name, '.sql.gz') || ends_with(name, '.sql.gz.gpg')], &properties.creationTime)[-1].name" \
+            -o tsv)
+
+          if [[ -z "$LATEST_NAME" ]]; then
+            echo "ERROR: No backup blob found in container '${{ env.STORAGE_CONTAINER }}'."
+            echo "The backup command may have failed inside the container app."
+            exit 1
+          fi
+
+          echo "Latest backup blob: $LATEST_NAME"
+
+          az storage blob show \
+            --account-name ${{ env.STORAGE_ACCOUNT }} \
+            --container-name ${{ env.STORAGE_CONTAINER }} \
+            --name "$LATEST_NAME" \
+            --sas-token "${{ steps.sas.outputs.token }}" \
+            --query "{name:name,size:properties.contentLength,created:properties.creationTime}" \
+            -o table
