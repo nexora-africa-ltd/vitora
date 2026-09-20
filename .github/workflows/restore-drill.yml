@@ -38,18 +38,28 @@ jobs:
       - name: Download, verify, and restore latest backup
         env:
           BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+          AZURE_STORAGE_ACCOUNT_KEY: ${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}
           STORAGE_ACCOUNT: vitorabackupssa
           STORAGE_CONTAINER: db-backups
           PGPASSWORD: restore_drill
         run: |
           set -euo pipefail
-          BLOB_NAME=$(az storage blob list --auth-mode login --account-name "$STORAGE_ACCOUNT" \
+
+          AZ_STORAGE_AUTH_ARGS=(--auth-mode login)
+          if [[ -n "${AZURE_STORAGE_ACCOUNT_KEY:-}" ]]; then
+            AZ_STORAGE_AUTH_ARGS=(--account-key "$AZURE_STORAGE_ACCOUNT_KEY")
+          fi
+
+          BLOB_NAME=$(az storage blob list --account-name "$STORAGE_ACCOUNT" \
+            "${AZ_STORAGE_AUTH_ARGS[@]}" \
             --container-name "$STORAGE_CONTAINER" \
             --query "sort_by([?ends_with(name, '.sql.gz') || ends_with(name, '.sql.gz.gpg')], &properties.creationTime)[-1].name" -o tsv)
           test -n "$BLOB_NAME"
-          az storage blob download --auth-mode login --account-name "$STORAGE_ACCOUNT" \
+          az storage blob download --account-name "$STORAGE_ACCOUNT" \
+            "${AZ_STORAGE_AUTH_ARGS[@]}" \
             --container-name "$STORAGE_CONTAINER" --name "$BLOB_NAME" --file backup
-          az storage blob download --auth-mode login --account-name "$STORAGE_ACCOUNT" \
+          az storage blob download --account-name "$STORAGE_ACCOUNT" \
+            "${AZ_STORAGE_AUTH_ARGS[@]}" \
             --container-name "$STORAGE_CONTAINER" --name "${BLOB_NAME%.gpg}.sha256" --file backup.sha256
           if [[ "$BLOB_NAME" == *.gpg ]]; then
             gpg --batch --yes --passphrase "$BACKUP_ENCRYPTION_KEY" --output backup.sql.gz --decrypt backup
