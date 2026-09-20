@@ -635,7 +635,7 @@ class PatientViewSet(
 
         def build_diagnoses(encounter: Encounter) -> list[dict]:
             diagnoses = []
-            for diagnosis in encounter.diagnoses.select_related("icd10_code").all():
+            for diagnosis in encounter.diagnoses.all():
                 diagnoses.append(
                     {
                         "id": diagnosis.id,
@@ -655,7 +655,7 @@ class PatientViewSet(
                 plan = encounter.treatment_plan
                 return {
                     "status": plan.status.lower() if plan.status else None,
-                    "medications_count": plan.medications.count(),
+                    "medications_count": len(plan.medications.all()),
                     "follow_up_date": plan.follow_up_date,
                 }
             except Encounter.treatment_plan.RelatedObjectDoesNotExist:
