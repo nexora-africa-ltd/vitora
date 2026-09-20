@@ -152,7 +152,7 @@ jobs:
 
       - name: Run backup in container
         run: |
-          REMOTE_CMD="bash -lc \"cd /app && AZURE_STORAGE_ACCOUNT=${{ env.STORAGE_ACCOUNT }} AZURE_STORAGE_CONTAINER=${{ env.STORAGE_CONTAINER }} AZURE_STORAGE_SAS_TOKEN='${{ steps.sas.outputs.token }}' bash scripts/backup-db.sh\""
+          REMOTE_CMD="bash -c \"cd /app && AZURE_STORAGE_ACCOUNT=${{ env.STORAGE_ACCOUNT }} AZURE_STORAGE_CONTAINER=${{ env.STORAGE_CONTAINER }} AZURE_STORAGE_SAS_TOKEN='${{ steps.sas.outputs.token }}' bash /app/scripts/backup-db.sh\""
 
           if command -v script >/dev/null 2>&1; then
             script -q -e -c "az containerapp exec --name ${{ env.CONTAINER_APP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --command \"$REMOTE_CMD\"" /dev/null
