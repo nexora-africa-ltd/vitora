@@ -29,7 +29,7 @@ jobs:
       LOCUST_PATIENT_ID: ${{ vars.LOCUST_PATIENT_ID }}
       LOCUST_CREATE_WRITES: 'false'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
