@@ -6,7 +6,7 @@
  */
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useId } from 'react';
 import { DICOMViewerTool } from '@/lib/types/imaging';
 import { tokenStorage } from '@/lib/auth/storage';
 
@@ -22,9 +22,36 @@ let cornerstoneTools: any = null;
 let dicomImageLoader: any = null;
 
 let cornerstoneInitialized = false;
+let initializationPromise: Promise<void> | null = null;
 
 // Tool names (will be populated after init)
 let TOOL_NAMES: Record<string, string> = {};
+
+const VALID_VOI_LUT_FUNCTIONS = new Set(['LINEAR', 'LINEAR_EXACT', 'SIGMOID']);
+
+function toImageId(source: string): string {
+  return source.startsWith('dicomfile:') ? source : `wadouri:${source}`;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeVOILUTFunction(image: any): void {
+  const metadataValue = Array.isArray(image.data?.VOILUTFunction)
+    ? image.data.VOILUTFunction[0]
+    : image.data?.VOILUTFunction;
+  const candidate = String(metadataValue ?? image.voiLUTFunction ?? '')
+    .trim()
+    .toUpperCase();
+
+  // DICOM defaults to LINEAR when VOILUTFunction is absent. Cornerstone 5.10.7
+  // may truncate an explicit string to its first character ("S" or "L").
+  image.voiLUTFunction = VALID_VOI_LUT_FUNCTIONS.has(candidate) ? candidate : 'LINEAR';
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function loadAndNormalizeImage(core: any, imageId: string): Promise<void> {
+  const image = await core.imageLoader.loadAndCacheImage(imageId);
+  normalizeVOILUTFunction(image);
+}
 
 function attachDICOMAuth(xhr: XMLHttpRequest): void {
   // Web mode: send httpOnly auth cookies.
@@ -78,11 +105,23 @@ export async function initCornerstone(): Promise<void> {
     throw new Error('Cornerstone can only be initialized in browser environment');
   }
 
+  // StrictMode and multiple viewers can enter before the first import finishes.
+  // Share the whole initialization, not just the completed flag.
+  if (!initializationPromise) {
+    initializationPromise = initializeCornerstone().catch((error) => {
+      initializationPromise = null;
+      throw error;
+    });
+  }
+  return initializationPromise;
+}
+
+async function initializeCornerstone(): Promise<void> {
   try {
     // Dynamic imports to avoid SSR issues
     const [coreModule, toolsModule, dicomLoaderModule] = await Promise.all([
       import('@cornerstonejs/core'),
-      import('@cornerstonejs/tools'),
+        import('@cornerstonejs/tools'),
       import('@cornerstonejs/dicom-image-loader'),
     ]);
 
@@ -90,17 +129,15 @@ export async function initCornerstone(): Promise<void> {
     cornerstoneTools = toolsModule;
     dicomImageLoader = dicomLoaderModule.default || dicomLoaderModule;
 
+    await cornerstoneCore.init();
+
     // Configure codec options to suppress filesystem warnings
     // The "Unable to add filesystem" is a known Emscripten issue when codecs initialize
     const dicomImageLoaderConfig = {
       strict: false,
-      // Use web workers for decoding when available
-      useWebWorkers: true,
-      // Decode config - simpler decoding without advanced codecs if needed
-      decodeConfig: {
-        // Allow native decoding where possible
-        convertFloatPixelDataToInt: false,
-      },
+      // Workers initialize eagerly; a stack viewer does not need one decoder
+      // for every pair of logical CPU cores before displaying its first image.
+      maxWebWorkers: 2,
       // Configure request headers for authentication (httpOnly cookies)
       beforeSend: attachDICOMAuth,
     };
@@ -139,13 +176,9 @@ export async function initCornerstone(): Promise<void> {
       console.warn('[Cornerstone] SharedArrayBuffer not available');
     }
 
-    // Initialize cornerstone core (required before creating RenderingEngine)
-    await cornerstoneCore.init();
-
-    // Initialize tools
+    // Register tools
     await cornerstoneTools.init();
 
-    // Register tools
     cornerstoneTools.addTool(cornerstoneTools.ZoomTool);
     cornerstoneTools.addTool(cornerstoneTools.PanTool);
     cornerstoneTools.addTool(cornerstoneTools.WindowLevelTool);
@@ -198,14 +231,16 @@ export interface UseCornerstoneResult {
   totalImages: number;
   /** Loading progress (0-100) */
   loadingProgress: number;
+  /** Whether a different image is replacing the currently rendered frame */
+  isImageLoading: boolean;
   /** Error message if any */
   error: string | null;
   /** Navigate to next image */
-  nextImage: () => void;
+  nextImage: () => Promise<void>;
   /** Navigate to previous image */
-  previousImage: () => void;
+  previousImage: () => Promise<void>;
   /** Go to specific image index */
-  goToImage: (index: number) => void;
+  goToImage: (index: number) => Promise<void>;
   /** Set the active tool */
   setActiveTool: (tool: DICOMViewerTool) => void;
   /** Reset viewport to initial state */
@@ -229,8 +264,16 @@ export interface UseCornerstoneResult {
  */
 export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneResult {
   const { imageUrls, onImageChange } = options;
+  // Callers often recreate the array during polling/parent renders. Only a
+  // change in URL contents should tear down and reload the viewport.
+  const imageUrlsKey = JSON.stringify(imageUrls);
+  const instanceId = useId();
 
   const containerRef = useRef<HTMLDivElement | null>(null);
+  // Keep the loaded module on this viewer instance. Module globals can be
+  // replaced during Fast Refresh while an already-mounted viewer is navigating.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const cornerstoneCoreRef = useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const renderingEngineRef = useRef<any>(null);
   // Stash callbacks in refs so they don't trigger the setup effect when their identity changes
@@ -245,11 +288,13 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
   const [currentIndex, setCurrentIndex] = useState(0);
   const [totalImages, setTotalImages] = useState(0);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [isImageLoading, setIsImageLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const navigationRequestRef = useRef(0);
 
-  const viewportId = 'dicom-viewport';
-  const renderingEngineId = 'vitora-dicom-engine';
-  const toolGroupId = 'vitora-dicom-toolgroup';
+  const viewportId = `dicom-viewport-${instanceId}`;
+  const renderingEngineId = `vitora-dicom-engine-${instanceId}`;
+  const toolGroupId = `vitora-dicom-toolgroup-${instanceId}`;
   const viewPresentationRef = useRef({
     rotation: 0,
     flipHorizontal: false,
@@ -260,37 +305,54 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
   useEffect(() => {
     let mounted = true;
     let resizeObserver: ResizeObserver | null = null;
+    let cancelLayoutWait: (() => void) | null = null;
+    let removeImageListener: (() => void) | null = null;
+    let removeImageErrorListener: (() => void) | null = null;
+    // Each effect owns its resources. A stale async continuation must never
+    // operate on refs belonging to a newer stack or another viewer.
+    let renderingEngine: InstanceType<typeof cornerstoneCore.RenderingEngine> | null = null;
+    let toolGroupCreated = false;
+    const element = containerRef.current;
+    const urls: string[] = JSON.parse(imageUrlsKey);
+    const startedAt = performance.now();
+    const logTiming = (phase: string) => {
+      if (process.env.NODE_ENV !== 'production') {
+        console.info('[Cornerstone timing]', {
+          phase,
+          elapsed_ms: Math.round(performance.now() - startedAt),
+          images: urls.length,
+        });
+      }
+    };
 
     async function setup() {
-      if (!containerRef.current || imageUrls.length === 0) return;
+      setIsReady(false);
+      setError(null);
+      setLoadingProgress(0);
+      setTotalImages(0);
+      setCurrentIndex(0);
+      if (!element || urls.length === 0) return;
 
       try {
         // Initialize Cornerstone if needed
         await initCornerstone();
+        if (!mounted) return;
+        logTiming('libraries_initialized');
 
         if (!cornerstoneCore || !cornerstoneTools) {
           throw new Error('Cornerstone modules not loaded');
         }
+        cornerstoneCoreRef.current = cornerstoneCore;
 
         const { RenderingEngine, Enums } = cornerstoneCore;
         const { ToolGroupManager } = cornerstoneTools;
 
-        // Debug: log available viewport types
-        console.log('[Cornerstone] ViewportType enum:', Enums?.ViewportType);
-
-        // Clean up any existing rendering engine
-        if (renderingEngineRef.current) {
-          renderingEngineRef.current.destroy();
-        }
-
         // Create rendering engine
-        const renderingEngine = new RenderingEngine(renderingEngineId);
+        renderingEngine = new RenderingEngine(renderingEngineId);
         renderingEngineRef.current = renderingEngine;
 
         // Create viewport - use string literal for ViewportType in v4+
         // In CST3D v4, ViewportType values are: 'stack', 'orthographic', 'perspective', 'video'
-        const element = containerRef.current;
-
         // Wait for the container to have non-zero layout dimensions before
         // calling enableElement().  In flex / dynamic-import layouts the
         // container may still report 0×0 at this point which causes
@@ -307,6 +369,10 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
                 }
               }
             });
+            cancelLayoutWait = () => {
+              ro.disconnect();
+              resolve();
+            };
             ro.observe(element);
           });
           // Bail out if the component was unmounted while we waited
@@ -325,8 +391,8 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
         if (typeof window !== 'undefined' && 'ResizeObserver' in window) {
           resizeObserver?.disconnect();
           resizeObserver = new ResizeObserver(() => {
-            const engine = renderingEngineRef.current;
-            if (!engine) return;
+            const engine = renderingEngine;
+            if (!engine || !mounted) return;
             // keepCamera=true preserves current zoom/pan while resizing.
             engine.resize(true, true);
             engine.getViewport(viewportId)?.render();
@@ -343,16 +409,53 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
         };
 
         // Prepare image IDs with wadouri scheme
-        const imageIds = imageUrls.map((url) => `wadouri:${url}`);
+        const imageIds = urls.map(toImageId);
+        const firstImageId = imageIds[0];
+        if (!firstImageId) return;
+
+        // Cornerstone 5.10.7 can truncate a string VOI LUT function to one
+        // character. Restore the full DICOM value before StackViewport uses it.
+        await loadAndNormalizeImage(cornerstoneCoreRef.current, firstImageId);
+        if (!mounted) return;
+        logTiming('first_image_cached');
+
+        // Subscribe before loading: setStack can render the first frame itself.
+        // Remove before resizing/rendering to prevent re-entrant camera resets.
+        const renderedEvent = Enums.Events.IMAGE_RENDERED;
+        const handleImageRendered = () => {
+          removeImageListener?.();
+          if (!mounted || !renderingEngine) return;
+          renderingEngine.resize(true, true);
+          viewport.resetCamera();
+          viewport.render();
+          logTiming('first_frame_rendered');
+        };
+        removeImageListener = () => element.removeEventListener(renderedEvent, handleImageRendered);
+        element.addEventListener(renderedEvent, handleImageRendered, { once: true });
+
+        let imageLoadError: unknown;
+        const imageLoadErrorEvent = Enums.Events.IMAGE_LOAD_ERROR;
+        const handleImageLoadError = (event: Event) => {
+          imageLoadError = (event as CustomEvent<{ error?: unknown }>).detail?.error;
+        };
+        removeImageErrorListener = () =>
+          element.removeEventListener(imageLoadErrorEvent, handleImageLoadError);
+        element.addEventListener(imageLoadErrorEvent, handleImageLoadError, { once: true });
 
         // Set the stack
         await viewport.setStack(imageIds);
+        removeImageErrorListener();
+        if (imageLoadError) {
+          throw imageLoadError instanceof Error
+            ? imageLoadError
+            : new Error('Cornerstone could not load this DICOM image.');
+        }
+        if (!mounted) return;
+        logTiming('stack_ready');
 
         // Create tool group
-        let toolGroup = ToolGroupManager.getToolGroup(toolGroupId);
-        if (!toolGroup) {
-          toolGroup = ToolGroupManager.createToolGroup(toolGroupId);
-        }
+        const toolGroup = ToolGroupManager.createToolGroup(toolGroupId);
+        toolGroupCreated = Boolean(toolGroup);
         toolGroupRef.current = toolGroup;
 
         // Add viewport to tool group
@@ -382,31 +485,15 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
         // Render initial frame
         viewport.render();
 
-        // Fit the image to the viewport once it has actually rendered.
-        // setStack() returns before the DICOM is loaded, so resetCamera()
-        // called here would have nothing to fit.  The CORNERSTONE_IMAGE_RENDERED
-        // event fires after the image is on the canvas.
-        const handleImageRendered = () => {
-          const engine = renderingEngineRef.current;
-          if (!engine || !mounted) return;
-          engine.resize(true, true);
-          const vp = engine.getViewport(viewportId);
-          if (vp) {
-            vp.resetCamera();
-            vp.render();
-          }
-          element.removeEventListener('CORNERSTONE_IMAGE_RENDERED', handleImageRendered);
-        };
-        element.addEventListener('CORNERSTONE_IMAGE_RENDERED', handleImageRendered);
-
         if (mounted) {
-          setTotalImages(imageUrls.length);
+          setTotalImages(urls.length);
           setCurrentIndex(0);
           setIsReady(true);
           setLoadingProgress(100);
-          onImageChangeRef.current?.(0, imageUrls.length);
+          onImageChangeRef.current?.(0, urls.length);
         }
       } catch (err) {
+        if (!mounted) return;
         console.error('[useCornerstone] Setup error:', err);
         if (mounted) {
           setError(err instanceof Error ? err.message : 'Failed to initialize DICOM viewer');
@@ -418,57 +505,86 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
 
     return () => {
       mounted = false;
+      navigationRequestRef.current += 1;
+      setIsImageLoading(false);
+      cancelLayoutWait?.();
+      removeImageListener?.();
+      removeImageErrorListener?.();
       resizeObserver?.disconnect();
       resizeObserver = null;
       // Cleanup
-      if (renderingEngineRef.current) {
-        renderingEngineRef.current.destroy();
+      renderingEngine?.destroy();
+      if (renderingEngineRef.current === renderingEngine) {
         renderingEngineRef.current = null;
       }
-      if (toolGroupRef.current && cornerstoneTools) {
+      if (toolGroupCreated && cornerstoneTools) {
         cornerstoneTools.ToolGroupManager.destroyToolGroup(toolGroupId);
         toolGroupRef.current = null;
       }
     };
-  }, [imageUrls]);
+  }, [imageUrlsKey, renderingEngineId, toolGroupId, viewportId]);
 
   // Navigation functions
   const goToImage = useCallback(
-    (index: number) => {
+    async (index: number) => {
       if (!renderingEngineRef.current) return;
 
       const clampedIndex = Math.max(0, Math.min(index, totalImages - 1));
+      if (clampedIndex === currentIndex) return;
       const viewport = renderingEngineRef.current.getViewport(viewportId);
 
       if (viewport) {
-        viewport.setImageIdIndex(clampedIndex);
-        viewport.render();
-        setCurrentIndex(clampedIndex);
-        onImageChangeRef.current?.(clampedIndex, totalImages);
+        const requestId = ++navigationRequestRef.current;
+        setIsImageLoading(true);
+        setError(null);
+        try {
+          const imageUrl = (JSON.parse(imageUrlsKey) as string[])[clampedIndex];
+          if (!imageUrl) return;
+          const core = cornerstoneCoreRef.current;
+          if (!core) {
+            throw new Error('Cornerstone is not initialized for this viewer.');
+          }
+          await loadAndNormalizeImage(core, toImageId(imageUrl));
+          if (navigationRequestRef.current !== requestId) return;
+          await viewport.setImageIdIndex(clampedIndex);
+          if (navigationRequestRef.current !== requestId) return;
+          setCurrentIndex(clampedIndex);
+          onImageChangeRef.current?.(clampedIndex, totalImages);
+        } catch (err) {
+          if (navigationRequestRef.current !== requestId) return;
+          setError(err instanceof Error ? err.message : 'Failed to load DICOM image');
+        } finally {
+          if (navigationRequestRef.current === requestId) {
+            setIsImageLoading(false);
+          }
+        }
       }
     },
-    [totalImages]
+    [currentIndex, imageUrlsKey, totalImages, viewportId]
   );
 
   const nextImage = useCallback(() => {
-    goToImage(currentIndex + 1);
+    return goToImage(currentIndex + 1);
   }, [currentIndex, goToImage]);
 
   const previousImage = useCallback(() => {
-    goToImage(currentIndex - 1);
+    return goToImage(currentIndex - 1);
   }, [currentIndex, goToImage]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const withViewport = useCallback((handler: (viewport: any) => void) => {
-    const viewport = renderingEngineRef.current?.getViewport(viewportId);
-    if (!viewport) return;
+  const withViewport = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (handler: (viewport: any) => void) => {
+      const viewport = renderingEngineRef.current?.getViewport(viewportId);
+      if (!viewport) return;
 
-    try {
-      handler(viewport);
-    } catch (error) {
-      console.error('[useCornerstone] Viewport action failed:', error);
-    }
-  }, []);
+      try {
+        handler(viewport);
+      } catch (error) {
+        console.error('[useCornerstone] Viewport action failed:', error);
+      }
+    },
+    [viewportId]
+  );
 
   // Tool management
   const setActiveTool = useCallback(
@@ -596,6 +712,7 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
     currentIndex,
     totalImages,
     loadingProgress,
+    isImageLoading,
     error,
     nextImage,
     previousImage,

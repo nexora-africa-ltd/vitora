@@ -994,6 +994,12 @@ const _allNavItems: NavItemType[] = [
         actionKey: 'imaging.view_studies',
       },
       {
+        label: 'Local Viewer',
+        href: '/imaging/local-viewer',
+        icon: ImageIcon,
+        actionKey: 'imaging.view_studies',
+      },
+      {
         label: 'Equipment',
         href: '/imaging/equipment',
         icon: Cpu,

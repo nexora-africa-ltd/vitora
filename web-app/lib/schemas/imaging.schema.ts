@@ -401,6 +401,7 @@ export const DICOMInstanceSchema = z.object({
   bits_allocated: z.number().nullable().optional(),
   photometric_interpretation: z.string().nullable().optional(),
   thumbnail_path: z.string().nullable().optional(),
+  thumbnail_url: z.string().url().nullable().optional(),
   created_at: z.string(),
 });
 
@@ -419,6 +420,7 @@ export const DICOMSeriesListSchema = z.object({
   number_of_instances: z.number(),
   total_file_size: z.number().nullable().optional(),
   thumbnail_path: z.string().nullable().optional(),
+  thumbnail_url: z.string().url().nullable().optional(),
   created_at: z.string(),
 });
 
@@ -453,6 +455,7 @@ export const DICOMStudySchema = z.object({
   number_of_instances: z.number(),
   total_file_size: z.number().nullable().optional(),
   thumbnail_path: z.string().nullable().optional(),
+  thumbnail_url: z.string().url().nullable().optional(),
   uploaded_by: z.number().nullable().optional(),
   uploaded_by_name: z.string().nullable().optional(),
   station_name: z.string().nullable().optional(),

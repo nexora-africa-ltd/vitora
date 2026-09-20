@@ -82,11 +82,17 @@ function ImageInfo({
 }
 
 // Loading overlay
-function LoadingOverlay({ progress }: { progress: number }) {
+function LoadingOverlay({
+  progress,
+  message = 'Loading DICOM images...',
+}: {
+  progress: number;
+  message?: string;
+}) {
   return (
     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-black/80">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      <div className="text-sm text-white">Loading DICOM images...</div>
+      <div className="text-sm text-white">{message}</div>
       <div className="h-2 w-48 overflow-hidden rounded-full bg-muted">
         <div
           className="h-full bg-primary transition-all duration-300"
@@ -314,6 +320,10 @@ export function DICOMViewer({
 
             {!isLoadingInstances && !cornerstone.isReady && imageUrls.length > 0 && (
               <LoadingOverlay progress={cornerstone.loadingProgress} />
+            )}
+
+            {cornerstone.isReady && cornerstone.isImageLoading && (
+              <LoadingOverlay progress={50} message="Loading selected image..." />
             )}
 
             {/* Error state */}

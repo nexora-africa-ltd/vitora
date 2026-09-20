@@ -246,6 +246,8 @@ if MEDIA_BACKEND == "azure_blob":
             "account_name": AZURE_MEDIA_STORAGE_ACCOUNT_NAME,
             "account_key": AZURE_MEDIA_STORAGE_ACCOUNT_KEY,
             "azure_container": AZURE_MEDIA_CONTAINER,
+            # FileField/ImageField URLs are capability URLs, never permanent public links.
+            "expiration_secs": 600,
             "overwrite_files": False,
         },
     }

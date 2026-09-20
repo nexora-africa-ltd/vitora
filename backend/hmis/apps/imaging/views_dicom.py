@@ -21,7 +21,7 @@ from datetime import datetime
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import DatabaseError, IntegrityError, models
-from django.http import FileResponse, HttpResponse
+from django.http import FileResponse, HttpResponse, StreamingHttpResponse
 from django_filters import rest_framework as filters
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
@@ -926,8 +926,8 @@ class DICOMRetrieveView(APIView):
         )
 
         filename = f"{sop_instance_uid}.dcm"
-        response = FileResponse(
-            pacs.open_file(instance.file_path), content_type="application/dicom"
+        response = StreamingHttpResponse(
+            pacs.stream_chunks(instance.file_path), content_type="application/dicom"
         )
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response

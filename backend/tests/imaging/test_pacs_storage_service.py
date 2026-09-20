@@ -29,11 +29,20 @@ class _FakeDownload:
     def readall(self) -> bytes:
         return self._data
 
+    def chunks(self, chunk_size: int):
+        return (
+            self._data[offset : offset + chunk_size]
+            for offset in range(0, len(self._data), chunk_size)
+        )
+
 
 class _FakeBlobClient:
     def __init__(self, store: dict[str, bytes], name: str):
         self._store = store
         self._name = name
+        self.container_name = "vitora-media"
+        self.blob_name = name
+        self.url = f"https://example.blob.core.windows.net/{self.container_name}/{name}"
 
     def upload_blob(self, data, overwrite=False, content_settings=None):  # noqa: ARG002
         self._store[self._name] = data if isinstance(data, bytes) else data.read()
@@ -51,9 +60,10 @@ class _FakeBlobClient:
 class _FakeContainerClient:
     def __init__(self):
         self._store: dict[str, bytes] = {}
+        self._blobs: dict[str, _FakeBlobClient] = {}
 
     def get_blob_client(self, name: str) -> _FakeBlobClient:
-        return _FakeBlobClient(self._store, name)
+        return self._blobs.setdefault(name, _FakeBlobClient(self._store, name))
 
     def list_blobs(self, name_starts_with: str = ""):
         return [
@@ -109,6 +119,47 @@ def test_materialize_temp_file_downloads_blob_to_temp(settings, fake_blob_contai
             assert handle.read() == b"blob-data"
 
     assert not os.path.exists(local_path)
+
+
+def test_stream_chunks_yields_blob_data_without_reading_all(settings, fake_blob_container, mocker):
+    """Blob retrieval should be streamed to avoid buffering large DICOM files in Django."""
+    settings.MEDIA_BACKEND = "azure_blob"
+    service = PACSStorageService(base_path="/tmp/unused")
+    service.save_bytes("dicom/x/y/z.dcm", b"0123456789")
+    blob = fake_blob_container.get_blob_client("dicom/x/y/z.dcm")
+    mocker.patch.object(blob, "download_blob", wraps=blob.download_blob)
+
+    assert list(service.stream_chunks("dicom/x/y/z.dcm", chunk_size=4)) == [b"0123", b"4567", b"89"]
+    blob.download_blob.assert_called_once_with()
+
+
+def test_stream_chunks_yields_local_file_in_chunks(tmp_path):
+    """Local PACS storage should retain chunked retrieval behavior."""
+    path = tmp_path / "dicom" / "x" / "y" / "z.dcm"
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"0123456789")
+
+    service = PACSStorageService(base_path=str(tmp_path))
+
+    assert list(service.stream_chunks("dicom/x/y/z.dcm", chunk_size=4)) == [b"0123", b"4567", b"89"]
+
+
+def test_temporary_read_url_creates_read_only_expiring_sas(settings, fake_blob_container, mocker):
+    """Private Azure media should be exposed only through bounded read SAS URLs."""
+    settings.MEDIA_BACKEND = "azure_blob"
+    settings.AZURE_MEDIA_STORAGE_ACCOUNT_NAME = "mediaaccount"
+    settings.AZURE_MEDIA_STORAGE_ACCOUNT_KEY = "test-key"
+    mock_generate = mocker.patch(
+        "hmis.apps.imaging.services.pacs.generate_blob_sas", return_value="sv=token"
+    )
+    service = PACSStorageService(base_path="/tmp/unused")
+
+    url = service.temporary_read_url("thumbnails/image.jpg", expires_in_minutes=10)
+
+    assert url == "https://example.blob.core.windows.net/vitora-media/thumbnails/image.jpg?sv=token"
+    assert mock_generate.call_args.kwargs["account_name"] == "mediaaccount"
+    assert mock_generate.call_args.kwargs["blob_name"] == "thumbnails/image.jpg"
+    assert mock_generate.call_args.kwargs["permission"].read is True
 
 
 def test_delete_study_removes_only_prefixed_blobs(settings, fake_blob_container):

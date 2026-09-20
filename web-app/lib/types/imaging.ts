@@ -513,6 +513,7 @@ export interface DICOMInstance {
   bits_allocated?: number | null;
   photometric_interpretation?: string | null;
   thumbnail_path?: string | null;
+  thumbnail_url?: string | null;
   created_at: string;
 }
 
@@ -529,6 +530,7 @@ export interface DICOMSeriesList {
   number_of_instances: number;
   total_file_size?: number | null;
   thumbnail_path?: string | null;
+  thumbnail_url?: string | null;
   created_at: string;
 }
 
@@ -559,6 +561,7 @@ export interface DICOMStudy {
   number_of_instances: number;
   total_file_size?: number | null;
   thumbnail_path?: string | null;
+  thumbnail_url?: string | null;
   uploaded_by?: number | null;
   uploaded_by_name?: string | null;
   station_name?: string | null;

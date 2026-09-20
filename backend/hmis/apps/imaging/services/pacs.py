@@ -21,15 +21,24 @@ import os
 import shutil
 import tempfile
 from contextlib import contextmanager, suppress
+from datetime import timedelta
 from pathlib import Path
 
 from django.conf import settings
+from django.utils import timezone
 
 try:
-    from azure.storage.blob import BlobServiceClient, ContentSettings
+    from azure.storage.blob import (
+        BlobSasPermissions,
+        BlobServiceClient,
+        ContentSettings,
+        generate_blob_sas,
+    )
 except ImportError:  # pragma: no cover - optional dependency in non-blob environments
     BlobServiceClient = None
+    BlobSasPermissions = None
     ContentSettings = None
+    generate_blob_sas = None
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +143,54 @@ class PACSStorageService:
             return stream
 
         return open(os.path.join(self.base_path, normalized), "rb")
+
+    def stream_chunks(self, relative_path: str, *, chunk_size: int = 64 * 1024):
+        """Yield an object in bounded chunks without buffering an entire DICOM file."""
+        normalized = self._normalize_relative_path(relative_path)
+        if self._is_blob_backend():
+            assert self._blob_container_client is not None
+            blob = self._blob_container_client.get_blob_client(normalized)
+            yield from blob.download_blob().chunks(chunk_size=chunk_size)
+            return
+
+        with open(os.path.join(self.base_path, normalized), "rb") as handle:
+            while chunk := handle.read(chunk_size):
+                yield chunk
+
+    def temporary_read_url(self, relative_path: str, *, expires_in_minutes: int = 10) -> str | None:
+        """Return a short-lived read URL for a media object when using Azure Blob."""
+        normalized = self._normalize_relative_path(relative_path)
+        if not self._is_blob_backend():
+            return self.url(normalized)
+        if generate_blob_sas is None or BlobSasPermissions is None:
+            return None
+
+        account_name = str(getattr(settings, "AZURE_MEDIA_STORAGE_ACCOUNT_NAME", "") or "").strip()
+        account_key = str(getattr(settings, "AZURE_MEDIA_STORAGE_ACCOUNT_KEY", "") or "").strip()
+        if not account_name or not account_key:
+            connection_string = str(getattr(settings, "AZURE_STORAGE_CONNECTION_STRING", "") or "")
+            connection_values = dict(
+                part.split("=", 1) for part in connection_string.split(";") if "=" in part
+            )
+            account_name = account_name or connection_values.get("AccountName", "")
+            account_key = account_key or connection_values.get("AccountKey", "")
+        if not account_name or not account_key:
+            logger.error(
+                "Cannot create temporary media URL: Azure account credentials are unavailable"
+            )
+            return None
+
+        assert self._blob_container_client is not None
+        blob = self._blob_container_client.get_blob_client(normalized)
+        token = generate_blob_sas(
+            account_name=account_name,
+            container_name=blob.container_name,
+            blob_name=blob.blob_name,
+            account_key=account_key,
+            permission=BlobSasPermissions(read=True),
+            expiry=timezone.now() + timedelta(minutes=expires_in_minutes),
+        )
+        return f"{blob.url}?{token}"
 
     @contextmanager
     def materialize_temp_file(self, relative_path: str, *, suffix: str = ".dcm"):
