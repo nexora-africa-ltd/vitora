@@ -1,0 +1,7 @@
+# Git submodule configuration for Vitora repositories.
+# Use with: git submodule sync --recursive && git submodule update --init --recursive
+# Supported inputs: submodule path + remote URL declarations consumed by git.
+
+[submodule "vitora-marketing"]
+	path = vitora-marketing
+	url = https://github.com/nexora-africa-ltd/vitora-marketing.git
