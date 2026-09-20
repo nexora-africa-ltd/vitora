@@ -317,9 +317,15 @@ export default function DICOMStudyDetailPage({ params }: StudyDetailPageProps) {
                     <div key={series.series_instance_uid} className="py-3 first:pt-0 last:pb-0">
                       <div className="flex items-center gap-3">
                         <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded bg-black">
-                          {series.thumbnail_path ? (
+                          {imagingApi.getThumbnailUrl(
+                            series.thumbnail_url || series.thumbnail_path
+                          ) ? (
                             <Image
-                              src={imagingApi.getThumbnailUrl(series.thumbnail_path) || ''}
+                              src={
+                                imagingApi.getThumbnailUrl(
+                                  series.thumbnail_url || series.thumbnail_path
+                                )!
+                              }
                               alt={`Series ${series.series_number}`}
                               width={48}
                               height={48}

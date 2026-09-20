@@ -2,12 +2,17 @@ import type { Config } from 'tailwindcss';
 
 const config: Config = {
   darkMode: ['class'],
-  content: [
-    './pages/**/*.{js,ts,jsx,tsx,mdx}',
-    './components/**/*.{js,ts,jsx,tsx,mdx}',
-    './app/**/*.{js,ts,jsx,tsx,mdx}',
-    './lib/**/*.{js,ts,jsx,tsx,mdx}',
-  ],
+  // Turbopack runs PostCSS inside worker contexts. Resolve globs from this
+  // config file rather than the worker's current directory.
+  content: {
+    relative: true,
+    files: [
+      './pages/**/*.{js,ts,jsx,tsx,mdx}',
+      './components/**/*.{js,ts,jsx,tsx,mdx}',
+      './app/**/*.{js,ts,jsx,tsx,mdx}',
+      './lib/**/*.{js,ts,jsx,tsx,mdx}',
+    ],
+  },
   theme: {
     container: {
       center: true,

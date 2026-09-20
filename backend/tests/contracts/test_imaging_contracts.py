@@ -99,6 +99,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "sop_class_uid",
                 "sop_instance_uid",
                 "thumbnail_path",
+                "thumbnail_url",
                 "transfer_syntax_uid",
             }
         ),
@@ -116,6 +117,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "series_instance_uid",
                 "series_number",
                 "thumbnail_path",
+                "thumbnail_url",
                 "total_file_size",
             }
         ),
@@ -134,6 +136,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "series_instance_uid",
                 "series_number",
                 "thumbnail_path",
+                "thumbnail_url",
                 "total_file_size",
             }
         ),
@@ -167,6 +170,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "study_instance_uid",
                 "study_time",
                 "thumbnail_path",
+                "thumbnail_url",
                 "total_file_size",
                 "updated_at",
                 "uploaded_by",
@@ -202,6 +206,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "study_instance_uid",
                 "study_time",
                 "thumbnail_path",
+                "thumbnail_url",
                 "total_file_size",
                 "updated_at",
                 "uploaded_by",

@@ -680,29 +680,13 @@ export const imagingApi = {
   /**
    * Get the URL for a DICOM instance thumbnail.
    */
-  getThumbnailUrl(thumbnailPath: string | null | undefined): string | null {
-    if (!thumbnailPath) return null;
-
-    // Some records may already contain an absolute URL.
-    if (/^https?:\/\//i.test(thumbnailPath)) {
-      return thumbnailPath;
-    }
-
-    const normalizedPath = thumbnailPath
-      .replace(/\\/g, '/')
-      .replace(/^\/+/, '')
-      .replace(/^media\//, '');
-
-    const mediaBaseUrl = process.env.NEXT_PUBLIC_MEDIA_BASE_URL?.replace(/\/+$/, '');
-    if (mediaBaseUrl) {
-      return `${mediaBaseUrl}/${normalizedPath}`;
-    }
-
-    const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
-
-    // thumbnail_path should be MEDIA_ROOT-relative. Normalize defensively so
-    // values like `/media/...` and `media/...` still resolve correctly.
-    return `${baseUrl}/media/${normalizedPath}`;
+  getThumbnailUrl(thumbnailUrl: string | null | undefined): string | null {
+    // The API returns a short-lived, read-only URL after tenant authorization.
+    // Never reconstruct a direct storage URL from a persisted thumbnail path.
+    if (!thumbnailUrl) return null;
+    if (/^https?:\/\//i.test(thumbnailUrl)) return thumbnailUrl;
+    const normalizedPath = thumbnailUrl.replace(/^\/+/, '').replace(/^media\//, '');
+    return `${getApiBaseUrl().replace(/\/+$/, '')}/media/${normalizedPath}`;
   },
 
   // ============ Study Download & Sharing (Phase E) ============

@@ -25,8 +25,8 @@ interface SeriesPanelProps {
   selectedInstanceIndex?: number;
   /** Callback when instance is selected */
   onInstanceSelect?: (index: number) => void;
-  /** Function to get thumbnail URL */
-  getThumbnailUrl?: (path: string | null | undefined) => string | null;
+  /** Function to return a signed thumbnail URL */
+  getThumbnailUrl?: (url: string | null | undefined) => string | null;
   /** Whether panel is collapsed */
   collapsed?: boolean;
   /** Additional class names */
@@ -116,7 +116,7 @@ export function SeriesPanel({
       <ScrollArea className="flex-1">
         <div className="space-y-2 p-2">
           {series.map((s, idx) => {
-            const thumbnailUrl = getThumbnailUrl?.(s.thumbnail_path);
+            const thumbnailUrl = getThumbnailUrl?.(s.thumbnail_url || s.thumbnail_path);
             const isSelected = selectedSeriesIndex === idx;
 
             return (

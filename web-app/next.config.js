@@ -354,6 +354,12 @@ const nextConfig = {
         pathname: '/media/**',
       },
       {
+        // DICOM thumbnails are served from the staging/production Azure Blob media account.
+        hostname: 'vitorareleasessa.blob.core.windows.net',
+        protocol: 'https',
+        pathname: '/vitora-media/**',
+      },
+      {
         protocol: 'https',
         hostname: '*.vitora.digital',
         pathname: '/media/**',

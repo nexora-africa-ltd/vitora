@@ -233,6 +233,7 @@ if _media_backend == "azure_blob":
             "account_name": os.getenv("AZURE_MEDIA_STORAGE_ACCOUNT_NAME", ""),
             "account_key": os.getenv("AZURE_MEDIA_STORAGE_ACCOUNT_KEY", ""),
             "azure_container": os.getenv("AZURE_MEDIA_CONTAINER", "vitora-media"),
+            "expiration_secs": 600,
             "overwrite_files": False,
         },
     }

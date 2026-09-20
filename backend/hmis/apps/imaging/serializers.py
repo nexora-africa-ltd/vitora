@@ -24,6 +24,7 @@ from .models import (
     RadiologyReport,
     ReportAmendment,
 )
+from .services.pacs import PACSStorageService
 from .standalone.models import ExternalImagingOrderRequest
 
 
@@ -538,8 +539,23 @@ class AppointmentSummarySerializer(serializers.Serializer):
 # ============================================================================
 
 
-class DICOMInstanceSerializer(serializers.ModelSerializer):
+class ThumbnailURLSerializerMixin:
+    """Expose private media thumbnails through short-lived Azure read URLs."""
+
+    def get_thumbnail_url(self, obj) -> str | None:
+        if not obj.thumbnail_path:
+            return None
+        storage = self.context.get("pacs_storage")
+        if storage is None:
+            storage = PACSStorageService()
+            self.context["pacs_storage"] = storage
+        return storage.temporary_read_url(obj.thumbnail_path)
+
+
+class DICOMInstanceSerializer(ThumbnailURLSerializerMixin, serializers.ModelSerializer):
     """Serializer for a single DICOM instance."""
+
+    thumbnail_url = serializers.SerializerMethodField()
 
     class Meta:
         model = DICOMInstance
@@ -556,15 +572,17 @@ class DICOMInstanceSerializer(serializers.ModelSerializer):
             "bits_allocated",
             "photometric_interpretation",
             "thumbnail_path",
+            "thumbnail_url",
             "created_at",
         ]
         read_only_fields = fields
 
 
-class DICOMSeriesSerializer(serializers.ModelSerializer):
+class DICOMSeriesSerializer(ThumbnailURLSerializerMixin, serializers.ModelSerializer):
     """Serializer for a DICOM series with nested instances."""
 
     instances = DICOMInstanceSerializer(many=True, read_only=True)
+    thumbnail_url = serializers.SerializerMethodField()
 
     class Meta:
         model = DICOMSeries
@@ -578,14 +596,17 @@ class DICOMSeriesSerializer(serializers.ModelSerializer):
             "number_of_instances",
             "total_file_size",
             "thumbnail_path",
+            "thumbnail_url",
             "instances",
             "created_at",
         ]
         read_only_fields = fields
 
 
-class DICOMSeriesListSerializer(serializers.ModelSerializer):
+class DICOMSeriesListSerializer(ThumbnailURLSerializerMixin, serializers.ModelSerializer):
     """Compact series serializer without instances (for listing)."""
+
+    thumbnail_url = serializers.SerializerMethodField()
 
     class Meta:
         model = DICOMSeries
@@ -599,17 +620,19 @@ class DICOMSeriesListSerializer(serializers.ModelSerializer):
             "number_of_instances",
             "total_file_size",
             "thumbnail_path",
+            "thumbnail_url",
             "created_at",
         ]
         read_only_fields = fields
 
 
-class DICOMStudySerializer(serializers.ModelSerializer):
+class DICOMStudySerializer(ThumbnailURLSerializerMixin, serializers.ModelSerializer):
     """Serializer for a DICOM study (list view)."""
 
     patient_name = serializers.SerializerMethodField()
     uploaded_by_name = serializers.SerializerMethodField()
     equipment_name = serializers.SerializerMethodField()
+    thumbnail_url = serializers.SerializerMethodField()
 
     class Meta:
         model = DICOMStudy
@@ -630,6 +653,7 @@ class DICOMStudySerializer(serializers.ModelSerializer):
             "number_of_instances",
             "total_file_size",
             "thumbnail_path",
+            "thumbnail_url",
             "uploaded_by",
             "uploaded_by_name",
             "station_name",
