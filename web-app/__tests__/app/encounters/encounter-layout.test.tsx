@@ -12,19 +12,31 @@
  * 6. Handle invalid encounterId gracefully
  */
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import { useParams, useRouter } from 'next/navigation';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { useParams } from 'next/navigation';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useEncounterEditStore } from '@/lib/stores/encounter-edit-store';
+import { useEncounterWorkspaceStore } from '@/lib/stores/ui-store';
+import { isDesktop } from '@/lib/desktop';
+
+const mockPush = jest.fn();
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
   useParams: jest.fn(),
   useRouter: jest.fn(() => ({
-    push: jest.fn(),
+    push: mockPush,
     back: jest.fn(),
     replace: jest.fn(),
   })),
   usePathname: jest.fn(() => '/encounters/100'),
+  useSearchParams: jest.fn(() => ({
+    toString: () => '',
+  })),
+}));
+
+jest.mock('@/lib/desktop', () => ({
+  isDesktop: jest.fn(() => false),
 }));
 
 // Mock APIs
@@ -51,6 +63,7 @@ import { mockPatient, mockEncounter } from '../../fixtures/patient-shell-fixture
 const mockPatientsApi = patientsApi as jest.Mocked<typeof patientsApi>;
 const mockEncountersApi = encountersApi as jest.Mocked<typeof encountersApi>;
 const mockUseParams = useParams as jest.MockedFunction<typeof useParams>;
+const mockIsDesktop = isDesktop as jest.MockedFunction<typeof isDesktop>;
 
 // Helper to create QueryClient wrapper
 function createWrapper() {
@@ -72,7 +85,14 @@ function createWrapper() {
 describe('Encounter Shell Layout', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    const workspaceInitialState = useEncounterWorkspaceStore.getInitialState();
+    useEncounterWorkspaceStore.setState(workspaceInitialState, true);
+    const editInitialState = useEncounterEditStore.getInitialState();
+    useEncounterEditStore.setState(editInitialState, true);
+    localStorage.clear();
+
     mockUseParams.mockReturnValue({ id: '100' });
+    mockIsDesktop.mockReturnValue(false);
     mockPatientsApi.getPatient.mockResolvedValue(mockPatient);
     mockEncountersApi.get.mockResolvedValue(mockEncounter);
   });
@@ -328,6 +348,157 @@ describe('Encounter Shell Layout', () => {
       // These use different query keys so aren't deduped, but this is acceptable overhead for the routing flow
       // Patient should only be fetched ONCE by PatientProvider
       expect(mockPatientsApi.getPatient).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('Encounter Workspace Tabs', () => {
+    it('should navigate to the selected workspace tab route on tab switch', async () => {
+      mockIsDesktop.mockReturnValue(true);
+
+      useEncounterWorkspaceStore.setState(
+        {
+          tabs: [
+            {
+              encounterId: 100,
+              title: 'Jane Doe',
+              subtitle: 'MRN-20260115-0001',
+              status: 'IN_PROGRESS',
+              lastRoute: '/encounters/100',
+              openedAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+            {
+              encounterId: 200,
+              title: 'Encounter 200',
+              subtitle: 'MRN-200',
+              status: 'IN_PROGRESS',
+              lastRoute: '/encounters/200/edit/vitals',
+              openedAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+          ],
+          activeEncounterId: 100,
+          maxTabs: 8,
+        },
+        false
+      );
+
+      const Wrapper = createWrapper();
+      render(
+        <Wrapper>
+          <EncounterLayout>
+            <div>Content</div>
+          </EncounterLayout>
+        </Wrapper>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Encounter 200')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /^Encounter 200/i }));
+
+      expect(mockPush).toHaveBeenCalledWith('/encounters/200/edit/vitals');
+    });
+
+    it('should navigate to adjacent tab route when closing active tab', async () => {
+      mockIsDesktop.mockReturnValue(true);
+
+      const now = new Date().toISOString();
+      useEncounterWorkspaceStore.setState(
+        {
+          tabs: [
+            {
+              encounterId: 100,
+              title: 'Jane Doe',
+              subtitle: 'MRN-20260115-0001',
+              status: 'IN_PROGRESS',
+              lastRoute: '/encounters/100',
+              openedAt: now,
+              updatedAt: now,
+            },
+            {
+              encounterId: 201,
+              title: 'Encounter 201',
+              subtitle: 'MRN-201',
+              status: 'IN_PROGRESS',
+              lastRoute: '/encounters/201?focus=orders',
+              openedAt: now,
+              updatedAt: now,
+            },
+          ],
+          activeEncounterId: 100,
+          maxTabs: 8,
+        },
+        false
+      );
+
+      const Wrapper = createWrapper();
+      render(
+        <Wrapper>
+          <EncounterLayout>
+            <div>Content</div>
+          </EncounterLayout>
+        </Wrapper>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Close encounter 100 tab')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByLabelText('Close encounter 100 tab'));
+
+      expect(mockPush).toHaveBeenCalledWith('/encounters/201?focus=orders');
+    });
+
+    it('should navigate to encounters list when close all is clicked', async () => {
+      mockIsDesktop.mockReturnValue(true);
+
+      const now = new Date().toISOString();
+      useEncounterWorkspaceStore.setState(
+        {
+          tabs: [
+            {
+              encounterId: 100,
+              title: 'Jane Doe',
+              subtitle: 'MRN-20260115-0001',
+              status: 'IN_PROGRESS',
+              lastRoute: '/encounters/100',
+              openedAt: now,
+              updatedAt: now,
+            },
+            {
+              encounterId: 210,
+              title: 'Encounter 210',
+              subtitle: 'MRN-210',
+              status: 'IN_PROGRESS',
+              lastRoute: '/encounters/210',
+              openedAt: now,
+              updatedAt: now,
+            },
+          ],
+          activeEncounterId: 100,
+          maxTabs: 8,
+        },
+        false
+      );
+
+      const Wrapper = createWrapper();
+      render(
+        <Wrapper>
+          <EncounterLayout>
+            <div>Content</div>
+          </EncounterLayout>
+        </Wrapper>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Close All' })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Close All' }));
+
+      expect(mockPush).toHaveBeenCalledWith('/encounters');
     });
   });
 });

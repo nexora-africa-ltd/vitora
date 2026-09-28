@@ -15,6 +15,15 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Desktop 1.0.14] - 2026-09-28
+
+### Desktop
+
+- Added desktop-only clinician encounter workspace tabs inside the web shell so multiple encounters can stay open and switchable in one window.
+- Added route-aware tab session tracking (`lastRoute` per encounter), close/close-others/close-all actions, and unsaved draft indicators sourced from encounter edit session state.
+- Added focused regression tests for workspace tab interactions, including switch-route navigation, close-active fallback navigation, and close-all routing to `/encounters`.
+- Bumped desktop app version metadata to `1.0.14` across `desktop-app/package.json`, `desktop-app/src-tauri/Cargo.toml`, `desktop-app/src-tauri/tauri.conf.json`, `desktop-app/package-lock.json`, and `desktop-app/src-tauri/Cargo.lock`.
+
 ## [Desktop 1.0.12] - 2026-09-15
 
 ### Desktop
