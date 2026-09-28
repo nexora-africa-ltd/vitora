@@ -266,11 +266,17 @@ export default function DocumentHubPage() {
         <Card>
           <CardContent className="space-y-3 pb-4 pt-4">
             <Tabs value={tab} onValueChange={(value) => setTab(value as HubTab)}>
-              <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+              <TabsList className="grid h-auto w-full grid-cols-2 md:grid-cols-4">
                 <TabsTrigger value="mine">Mine</TabsTrigger>
-                <TabsTrigger value="shared">Shared With Me</TabsTrigger>
+                <TabsTrigger value="shared">
+                  <span className="sm:hidden">Shared</span>
+                  <span className="hidden sm:inline">Shared With Me</span>
+                </TabsTrigger>
                 <TabsTrigger value="signed">Signed</TabsTrigger>
-                <TabsTrigger value="pending">Pending Signature</TabsTrigger>
+                <TabsTrigger value="pending">
+                  <span className="sm:hidden">Pending</span>
+                  <span className="hidden sm:inline">Pending Signature</span>
+                </TabsTrigger>
               </TabsList>
             </Tabs>
             <Input
@@ -329,7 +335,7 @@ export default function DocumentHubPage() {
                               setIframeLoading(true);
                               setPreviewUrlIndex(0);
                             }}
-                            className="inline-flex items-center gap-1"
+                            className="inline-flex flex-1 items-center gap-1 sm:flex-none"
                           >
                             <Eye className="h-4 w-4" />
                             View
@@ -340,6 +346,7 @@ export default function DocumentHubPage() {
                             size="sm"
                             onClick={() => handleSign(item)}
                             disabled={signDocument.isPending}
+                            className="flex-1 sm:flex-none"
                           >
                             Sign
                           </Button>
@@ -352,6 +359,7 @@ export default function DocumentHubPage() {
                               setSelected(item);
                               setShareOpen(true);
                             }}
+                            className="flex-1 sm:flex-none"
                           >
                             Share
                           </Button>
@@ -368,12 +376,12 @@ export default function DocumentHubPage() {
                 Showing {pageStart}-{pageEnd} of {totalCount}
                 {isFetching && !isLoading ? ' • Refreshing...' : ''}
               </p>
-              <div className="flex items-center justify-end gap-2">
+              <div className="flex flex-wrap items-center justify-start gap-2 md:justify-end">
                 <Select
                   value={String(pageSize)}
                   onValueChange={(value) => setPageSize(Number(value))}
                 >
-                  <SelectTrigger className="h-8 w-[110px]">
+                  <SelectTrigger className="h-8 w-[104px] sm:w-[110px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -388,7 +396,8 @@ export default function DocumentHubPage() {
                   onClick={() => setPage((current) => Math.max(1, current - 1))}
                   disabled={page <= 1 || isFetching}
                 >
-                  Previous
+                  <span className="sm:hidden">Prev</span>
+                  <span className="hidden sm:inline">Previous</span>
                 </Button>
                 <p className="min-w-[60px] text-center text-xs text-muted-foreground">
                   Page {page} / {pageCount}
@@ -399,7 +408,8 @@ export default function DocumentHubPage() {
                   onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
                   disabled={page >= pageCount || isFetching}
                 >
-                  Next
+                  <span className="sm:hidden">Next</span>
+                  <span className="hidden sm:inline">Next</span>
                 </Button>
               </div>
             </div>
@@ -416,7 +426,7 @@ export default function DocumentHubPage() {
             }
           }}
         >
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Share Document</DialogTitle>
               <DialogDescription>
@@ -452,7 +462,7 @@ export default function DocumentHubPage() {
                 </p>
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
               <Button
                 variant="outline"
                 onClick={() => {
@@ -460,10 +470,15 @@ export default function DocumentHubPage() {
                   setSelectedRecipientId(undefined);
                   setPermission('VIEW');
                 }}
+                className="w-full sm:w-auto"
               >
                 Cancel
               </Button>
-              <Button onClick={handleShare} disabled={shareDocument.isPending}>
+              <Button
+                onClick={handleShare}
+                disabled={shareDocument.isPending}
+                className="w-full sm:w-auto"
+              >
                 {shareDocument.isPending ? 'Sharing...' : 'Share'}
               </Button>
             </DialogFooter>
@@ -481,7 +496,7 @@ export default function DocumentHubPage() {
             }
           }}
         >
-          <DialogContent className="max-w-5xl">
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl lg:max-w-5xl">
             <DialogHeader>
               <DialogTitle>
                 {previewItem?.document_type} {previewItem?.document_number}
@@ -555,12 +570,12 @@ export default function DocumentHubPage() {
                 {iframeSrc ? (
                   <div className="overflow-hidden rounded-md border">
                     {iframeLoading ? (
-                      <div className="flex h-[420px] items-center justify-center text-muted-foreground">
+                      <div className="flex h-[300px] items-center justify-center text-muted-foreground sm:h-[420px]">
                         Loading preview...
                       </div>
                     ) : null}
                     {iframeError ? (
-                      <div className="flex h-[420px] items-center justify-center px-4 text-center text-muted-foreground">
+                      <div className="flex h-[300px] items-center justify-center px-4 text-center text-muted-foreground sm:h-[420px]">
                         Unable to load inline preview. Use Open Full Page to view this document.
                       </div>
                     ) : (
@@ -568,7 +583,7 @@ export default function DocumentHubPage() {
                         ref={iframeRef}
                         title={`Document preview ${previewItem.document_type} ${previewItem.document_number}`}
                         src={iframeSrc}
-                        className={`h-[420px] w-full ${iframeLoading ? 'hidden' : 'block'}`}
+                        className={`h-[300px] w-full sm:h-[420px] ${iframeLoading ? 'hidden' : 'block'}`}
                         onLoad={() => {
                           const frame = iframeRef.current;
                           let detected404 = false;
@@ -616,12 +631,12 @@ export default function DocumentHubPage() {
                 )}
               </div>
             ) : null}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setPreviewItem(null)}>
+            <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button variant="outline" onClick={() => setPreviewItem(null)} className="w-full sm:w-auto">
                 Close
               </Button>
               {previewHref ? (
-                <Button asChild>
+                <Button asChild className="w-full sm:w-auto">
                   <Link href={previewHref} onClick={() => setPreviewItem(null)}>
                     Open Full Page
                   </Link>
