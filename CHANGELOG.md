@@ -15,6 +15,14 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Desktop 1.0.16] - 2026-09-29
+
+### Desktop
+
+- Fixed desktop window-control ACLs, preventing title-bar minimize, maximize, and close commands from being rejected.
+- Kept the frameless workspace title bar above the expanded sidebar instead of allowing the sidebar to cover tabs.
+- Regenerated the Windows ICO with 16px through 256px assets so Start Menu and taskbar shortcuts receive a proper application icon.
+
 ## [Desktop 1.0.15] - 2026-09-29
 
 ### Desktop

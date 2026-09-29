@@ -38,6 +38,7 @@ import {
 } from '@/lib/config/navigation';
 import { useNavigationItems } from '@/lib/hooks/use-navigation-items';
 import { useSidebarBadges, type SidebarBadges } from '@/lib/hooks/use-sidebar-badges';
+import { isDesktop } from '@/lib/desktop';
 
 const SIDEBAR_COLLAPSED_KEY = 'vitora-sidebar-collapsed';
 const SIDEBAR_OPEN_MENUS_KEY = 'vitora-sidebar-open-menus';
@@ -705,6 +706,7 @@ const NavGroup = memo(function NavGroup({
 // -----------------------------------------------------------------------------
 
 export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: SidebarProps) {
+  const desktopMode = isDesktop();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const logout = useLogout();
@@ -800,7 +802,8 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          'fixed left-0 top-0 z-50 h-dvh overscroll-contain border-r bg-card/95 backdrop-blur',
+          'fixed left-0 z-50 overscroll-contain border-r bg-card/95 backdrop-blur',
+          desktopMode ? 'top-9 h-[calc(100dvh-2.25rem)]' : 'top-0 h-dvh',
           'transition-transform duration-300 ease-out',
           'w-full xl:w-auto',
           effectiveCollapsed ? 'xl:w-20' : 'xl:w-64',
