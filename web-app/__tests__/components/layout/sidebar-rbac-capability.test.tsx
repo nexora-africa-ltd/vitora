@@ -16,6 +16,7 @@ const mockCanAccessModule = jest.fn(() => true);
 const mockCanPerformAction = jest.fn(() => true);
 const mockHasModule = jest.fn(() => true);
 const mockSearchParams = jest.fn(() => new URLSearchParams());
+const mockRouterPush = jest.fn();
 const mockUseNavigationMode = jest.fn(() => ({
   navigationMode: 'standard',
   isClinicalNavigationEligible: true,
@@ -28,6 +29,7 @@ const mockPatientJourneyState = {
 jest.mock('next/navigation', () => ({
   usePathname: jest.fn(() => '/'),
   useSearchParams: () => mockSearchParams(),
+  useRouter: () => ({ push: mockRouterPush }),
 }));
 
 jest.mock('@/lib/auth/hooks', () => ({
