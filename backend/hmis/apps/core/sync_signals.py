@@ -126,6 +126,27 @@ def _create_sync_queue_entry(**kwargs) -> SyncQueue | None:
         return None
 
 
+def _refresh_pending_membership_queue_entry(**kwargs) -> SyncQueue | None:
+    """Keep one pending OrgMembership event with the latest facilities payload."""
+    pending = (
+        SyncQueue.objects.filter(
+            status="PENDING",
+            model_name=kwargs["model_name"],
+            record_id=kwargs["record_id"],
+        )
+        .order_by("-created_at")
+        .first()
+    )
+    if pending is None:
+        return _create_sync_queue_entry(**kwargs)
+
+    pending.data = kwargs["data"]
+    pending.organization = kwargs["organization"]
+    pending.facility = kwargs["facility"]
+    pending.save(update_fields=["data", "organization", "facility"])
+    return pending
+
+
 def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) -> dict:
     """Serialize a model instance into JSON-safe sync data."""
     model_label = get_model_label(instance)
@@ -818,7 +839,7 @@ def requeue_org_membership_on_facility_m2m(sender, instance, action, **kwargs): 
         return
 
     data = add_sync_meta(data, direction=entry.direction, priority=entry.priority)
-    _create_sync_queue_entry(
+    _refresh_pending_membership_queue_entry(
         operation="UPDATE",
         organization=organization,
         facility=facility,

@@ -680,6 +680,138 @@ class TestSyncHubLicenseAuthentication:
         assert profile.primary_role == sample_role
 
 
+class TestHubIdentityCollisionUpserts:
+    """Hub identity upserts should prefer installation-scoped natural keys."""
+
+    def test_staff_profile_upsert_uses_natural_match_when_hub_pk_collides(
+        self, sample_organization, sample_facility, sample_department, sample_role
+    ):
+        """A colliding hub PK must not block the canonical staff profile update."""
+        from hmis.apps.core.models import StaffProfile
+        from hmis.apps.core.sync_views import _upsert_hub_staff_profile
+        from hmis.apps.licensing.models import Installation
+
+        User = get_user_model()
+        canonical_user = User.objects.create_user(username="canonical_staff")
+        collision_user = User.objects.create_user(username="collision_staff")
+        canonical = StaffProfile.objects.create(
+            user=canonical_user,
+            employee_id="STAFF-CANONICAL",
+            primary_role=sample_role,
+            primary_department=sample_department,
+            organization=sample_organization,
+            primary_facility=sample_facility,
+            date_joined="2026-01-01",
+        )
+        collision = StaffProfile.objects.create(
+            user=collision_user,
+            employee_id="STAFF-COLLISION",
+            primary_role=sample_role,
+            primary_department=sample_department,
+            organization=sample_organization,
+            primary_facility=sample_facility,
+            date_joined="2026-01-01",
+        )
+        installation = Installation.objects.create(
+            installation_id="staff-collision-hub",
+            organization=sample_organization,
+            facility=sample_facility,
+            name="Staff Collision Hub",
+            status=Installation.Status.ACTIVE,
+        )
+
+        result = _upsert_hub_staff_profile(
+            record_id=collision.pk,
+            installation=installation,
+            data={
+                "id": collision.pk,
+                "user": canonical_user.pk,
+                "employee_id": canonical.employee_id,
+                "primary_role": sample_role.pk,
+                "primary_department": sample_department.pk,
+                "date_joined": "2026-01-01",
+                "title": "Dr.",
+            },
+        )
+
+        canonical.refresh_from_db()
+        collision.refresh_from_db()
+        assert result == {"success": True}
+        assert canonical.title == "Dr."
+        assert collision.employee_id == "STAFF-COLLISION"
+
+    def test_membership_upsert_uses_identity_hints_when_hub_ids_collide(
+        self, sample_organization, sample_facility, sample_department, sample_role
+    ):
+        """Natural staff and membership keys must win over colliding hub-local PKs."""
+        from hmis.apps.core.models import OrgMembership, StaffProfile
+        from hmis.apps.core.sync_views import _upsert_hub_org_membership
+        from hmis.apps.licensing.models import Installation
+
+        User = get_user_model()
+        canonical_user = User.objects.create_user(username="membership_canonical")
+        collision_user = User.objects.create_user(username="membership_collision")
+        canonical = StaffProfile.objects.create(
+            user=canonical_user,
+            employee_id="MEMBERSHIP-CANONICAL",
+            primary_role=sample_role,
+            primary_department=sample_department,
+            organization=sample_organization,
+            primary_facility=sample_facility,
+            date_joined="2026-01-01",
+        )
+        collision = StaffProfile.objects.create(
+            user=collision_user,
+            employee_id="MEMBERSHIP-COLLISION",
+            primary_role=sample_role,
+            primary_department=sample_department,
+            organization=sample_organization,
+            primary_facility=sample_facility,
+            date_joined="2026-01-01",
+        )
+        canonical_membership = OrgMembership.objects.create(
+            staff_profile=canonical,
+            organization=sample_organization,
+            role=sample_role,
+            department=sample_department,
+            status=OrgMembership.MembershipStatus.ACTIVE,
+        )
+        collision_membership = OrgMembership.objects.create(
+            staff_profile=collision,
+            organization=sample_organization,
+            role=sample_role,
+            department=sample_department,
+            status=OrgMembership.MembershipStatus.SUSPENDED,
+        )
+        installation = Installation.objects.create(
+            installation_id="membership-collision-hub",
+            organization=sample_organization,
+            facility=sample_facility,
+            name="Membership Collision Hub",
+            status=Installation.Status.ACTIVE,
+        )
+
+        result = _upsert_hub_org_membership(
+            record_id=collision_membership.pk,
+            installation=installation,
+            data={
+                "id": collision_membership.pk,
+                "staff_profile": collision.pk,
+                "staff_username": canonical_user.username,
+                "staff_profile_employee_id": canonical.employee_id,
+                "role": sample_role.pk,
+                "department": sample_department.pk,
+                "status": OrgMembership.MembershipStatus.REVOKED,
+            },
+        )
+
+        canonical_membership.refresh_from_db()
+        collision_membership.refresh_from_db()
+        assert result == {"success": True}
+        assert canonical_membership.status == OrgMembership.MembershipStatus.REVOKED
+        assert collision_membership.status == OrgMembership.MembershipStatus.SUSPENDED
+
+
 # ===========================================================================
 # Hub→Cloud Sync Worker Tests
 # ===========================================================================
