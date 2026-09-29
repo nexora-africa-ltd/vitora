@@ -54,6 +54,7 @@ export const useUIStore = create<UIState>()(
 );
 
 export interface DesktopWorkspaceTab {
+  id: string;
   route: string;
   title: string;
   subtitle?: string;
@@ -61,7 +62,7 @@ export interface DesktopWorkspaceTab {
   updatedAt: string;
 }
 
-interface UpsertDesktopTabInput {
+interface DesktopTabInput {
   title: string;
   subtitle?: string;
   route: string;
@@ -69,15 +70,18 @@ interface UpsertDesktopTabInput {
 
 interface DesktopWorkspaceState {
   tabs: DesktopWorkspaceTab[];
-  activeRoute: string | null;
+  activeTabId: string | null;
   maxTabs: number;
 
-  upsertFromRoute: (input: UpsertDesktopTabInput) => void;
-  setActive: (route: string) => void;
-  closeTab: (route: string) => void;
-  closeOthers: (route: string) => void;
+  /** Updates the current browser tab during ordinary in-app navigation. */
+  updateActiveFromRoute: (input: DesktopTabInput) => void;
+  /** Opens an entity in a new tab, or focuses its existing tab. */
+  openTab: (input: DesktopTabInput) => void;
+  setActive: (tabId: string) => void;
+  closeTab: (tabId: string) => void;
+  closeOthers: (tabId: string) => void;
   closeAll: () => void;
-  getNextAfterClose: (route: string) => string | null;
+  getNextAfterClose: (tabId: string) => DesktopWorkspaceTab | null;
 }
 
 const DEFAULT_MAX_WORKSPACE_TABS = 8;
@@ -86,14 +90,18 @@ function nowIsoString(): string {
   return new Date().toISOString();
 }
 
+function createTabId(): string {
+  return `tab-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 function pickEvictionIndex(
   tabs: DesktopWorkspaceTab[],
-  activeRoute: string | null,
-  protectedRoutes: string[]
+  activeTabId: string | null,
+  protectedTabIds: string[]
 ): number {
-  const protectedSet = new Set<string>([...protectedRoutes, ...(activeRoute ? [activeRoute] : [])]);
+  const protectedSet = new Set<string>([...protectedTabIds, ...(activeTabId ? [activeTabId] : [])]);
 
-  const nonProtectedIdx = tabs.findIndex((tab) => !protectedSet.has(tab.route));
+  const nonProtectedIdx = tabs.findIndex((tab) => !protectedSet.has(tab.id));
   if (nonProtectedIdx >= 0) {
     return nonProtectedIdx;
   }
@@ -105,22 +113,21 @@ export const useDesktopWorkspaceStore = create<DesktopWorkspaceState>()(
   persist(
     (set, get) => ({
       tabs: [],
-      activeRoute: null,
+      activeTabId: null,
       maxTabs: DEFAULT_MAX_WORKSPACE_TABS,
 
-      upsertFromRoute: ({ title, subtitle, route }) => {
+      updateActiveFromRoute: ({ title, subtitle, route }) => {
         set((state) => {
           const ts = nowIsoString();
-          const existingIndex = state.tabs.findIndex((tab) => tab.route === route);
-
-          if (existingIndex >= 0) {
-            const existing = state.tabs[existingIndex];
-            if (!existing) {
-              return state;
-            }
+          const existingIndex = state.tabs.findIndex(
+            (tab) => tab.id === state.activeTabId || (!state.activeTabId && tab.route === route)
+          );
+          const existing = state.tabs[existingIndex];
+          if (existing) {
             const nextTabs = [...state.tabs];
             nextTabs[existingIndex] = {
               ...existing,
+              route,
               title,
               subtitle,
               updatedAt: ts,
@@ -128,11 +135,12 @@ export const useDesktopWorkspaceStore = create<DesktopWorkspaceState>()(
 
             return {
               tabs: nextTabs,
-              activeRoute: route,
+              activeTabId: existing.id,
             };
           }
 
           const nextTab: DesktopWorkspaceTab = {
+            id: createTabId(),
             route,
             title,
             subtitle,
@@ -142,52 +150,80 @@ export const useDesktopWorkspaceStore = create<DesktopWorkspaceState>()(
 
           const nextTabs = [...state.tabs, nextTab];
           const maxTabs = state.maxTabs > 0 ? state.maxTabs : DEFAULT_MAX_WORKSPACE_TABS;
+          if (nextTabs.length > maxTabs) {
+            nextTabs.splice(pickEvictionIndex(nextTabs, null, [nextTab.id]), 1);
+          }
+          return { tabs: nextTabs, activeTabId: nextTab.id };
+        });
+      },
+
+      openTab: ({ title, subtitle, route }) => {
+        set((state) => {
+          const ts = nowIsoString();
+          const existingIndex = state.tabs.findIndex((tab) => tab.route === route);
+          const existing = state.tabs[existingIndex];
+          if (existing) {
+            const nextTabs = [...state.tabs];
+            nextTabs[existingIndex] = { ...existing, title, subtitle, updatedAt: ts };
+            return { tabs: nextTabs, activeTabId: existing.id };
+          }
+
+          const nextTab: DesktopWorkspaceTab = {
+            id: createTabId(),
+            route,
+            title,
+            subtitle,
+            openedAt: ts,
+            updatedAt: ts,
+          };
+          const nextTabs = [...state.tabs, nextTab];
+          const maxTabs = state.maxTabs > 0 ? state.maxTabs : DEFAULT_MAX_WORKSPACE_TABS;
 
           if (nextTabs.length <= maxTabs) {
             return {
               tabs: nextTabs,
-              activeRoute: route,
+              activeTabId: nextTab.id,
             };
           }
 
-          const evictionIdx = pickEvictionIndex(nextTabs, state.activeRoute, [route]);
+          const evictionIdx = pickEvictionIndex(nextTabs, state.activeTabId, [nextTab.id]);
           nextTabs.splice(evictionIdx, 1);
 
           return {
             tabs: nextTabs,
-            activeRoute: route,
+            activeTabId: nextTab.id,
           };
         });
       },
 
-      setActive: (route) => {
-        const tab = get().tabs.find((item) => item.route === route);
+      setActive: (tabId) => {
+        const tab = get().tabs.find((item) => item.id === tabId);
         if (!tab) {
           return;
         }
-        set({ activeRoute: route });
+        set({ activeTabId: tabId });
       },
 
-      closeTab: (route) => {
+      closeTab: (tabId) => {
         set((state) => {
-          const nextTabs = state.tabs.filter((tab) => tab.route !== route);
-          const nextActive = state.activeRoute === route ? null : (state.activeRoute ?? null);
+          const nextTabs = state.tabs.filter((tab) => tab.id !== tabId);
+          const nextActive = state.activeTabId === tabId ? null : state.activeTabId;
           return {
             tabs: nextTabs,
-            activeRoute: nextActive,
+            activeTabId: nextActive,
           };
         });
       },
 
-      closeOthers: (route) => {
+      closeOthers: (tabId) => {
         set((state) => {
-          const keep = state.tabs.find((tab) => tab.route === route);
+          const keep = state.tabs.find((tab) => tab.id === tabId);
           if (!keep) {
             return state;
           }
           return {
             tabs: [keep],
-            activeRoute: route,
+            activeTabId: tabId,
           };
         });
       },
@@ -195,25 +231,25 @@ export const useDesktopWorkspaceStore = create<DesktopWorkspaceState>()(
       closeAll: () => {
         set({
           tabs: [],
-          activeRoute: null,
+          activeTabId: null,
         });
       },
 
-      getNextAfterClose: (route) => {
+      getNextAfterClose: (tabId) => {
         const tabs = get().tabs;
-        const idx = tabs.findIndex((tab) => tab.route === route);
+        const idx = tabs.findIndex((tab) => tab.id === tabId);
         if (idx === -1) {
           return null;
         }
 
         const right = tabs[idx + 1];
         if (right) {
-          return right.route;
+          return right;
         }
 
         const left = tabs[idx - 1];
         if (left) {
-          return left.route;
+          return left;
         }
 
         return null;
@@ -222,9 +258,19 @@ export const useDesktopWorkspaceStore = create<DesktopWorkspaceState>()(
     {
       name: 'vitora-desktop-workspace',
       storage: createJSONStorage(() => localStorage),
+      version: 1,
+      migrate: (persistedState) => {
+        const state = persistedState as {
+          tabs?: Array<Omit<DesktopWorkspaceTab, 'id'> & { id?: string }>;
+          activeRoute?: string | null;
+        };
+        const tabs = (state.tabs ?? []).map((tab) => ({ ...tab, id: tab.id ?? createTabId() }));
+        const activeTabId = tabs.find((tab) => tab.route === state.activeRoute)?.id ?? tabs[0]?.id ?? null;
+        return { ...state, tabs, activeTabId };
+      },
       partialize: (state) => ({
         tabs: state.tabs,
-        activeRoute: state.activeRoute,
+        activeTabId: state.activeTabId,
         maxTabs: state.maxTabs,
       }),
     }

@@ -15,6 +15,12 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Desktop 1.0.17] - 2026-09-29
+
+### Desktop
+
+- Changed workspace navigation so ordinary routing reuses the current tab, while modifier/middle-click and sidebar context-menu actions explicitly open destinations in new tabs.
+
 ## [Desktop 1.0.16] - 2026-09-29
 
 ### Desktop

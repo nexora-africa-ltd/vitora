@@ -31,6 +31,9 @@ const ROUTE_LABELS: Record<string, string> = {
   '/transactions': 'Transactions',
 };
 
+const ENTITY_ROUTE_PATTERN =
+  /^\/(?:patients|encounters|transactions\/invoices|laboratory\/orders|admissions|pharmacy\/prescriptions|theatre\/cases)\/[^/]+\/?$/;
+
 function getRouteTitle(pathname: string): string {
   const exactTitle = ROUTE_LABELS[pathname];
   if (exactTitle) return exactTitle;
@@ -47,8 +50,9 @@ export function DesktopTitlebar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const tabs = useDesktopWorkspaceStore((state) => state.tabs);
-  const activeRoute = useDesktopWorkspaceStore((state) => state.activeRoute);
-  const upsertFromRoute = useDesktopWorkspaceStore((state) => state.upsertFromRoute);
+  const activeTabId = useDesktopWorkspaceStore((state) => state.activeTabId);
+  const updateActiveFromRoute = useDesktopWorkspaceStore((state) => state.updateActiveFromRoute);
+  const openTab = useDesktopWorkspaceStore((state) => state.openTab);
   const setActive = useDesktopWorkspaceStore((state) => state.setActive);
   const closeTab = useDesktopWorkspaceStore((state) => state.closeTab);
   const getNextAfterClose = useDesktopWorkspaceStore((state) => state.getNextAfterClose);
@@ -57,19 +61,53 @@ export function DesktopTitlebar() {
   const currentRoute = queryString ? `${pathname}?${queryString}` : pathname;
 
   useEffect(() => {
-    if (desktopMode) upsertFromRoute({ route: currentRoute, title: getRouteTitle(pathname) });
-  }, [currentRoute, desktopMode, pathname, upsertFromRoute]);
+    if (desktopMode) updateActiveFromRoute({ route: currentRoute, title: getRouteTitle(pathname) });
+  }, [currentRoute, desktopMode, pathname, updateActiveFromRoute]);
+
+  useEffect(() => {
+    if (!desktopMode) return;
+
+    const openEntityLink = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+
+      const anchor = target.closest('a[href]');
+      if (!(anchor instanceof HTMLAnchorElement)) return;
+
+      const url = new URL(anchor.href, window.location.href);
+      if (url.origin !== window.location.origin || !ENTITY_ROUTE_PATTERN.test(url.pathname)) return;
+
+      event.preventDefault();
+      const route = `${url.pathname}${url.search}`;
+      openTab({ route, title: getRouteTitle(url.pathname) });
+      startTransition(() => router.push(route));
+    };
+
+    const handleClick = (event: MouseEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.button === 0) openEntityLink(event);
+    };
+    const handleAuxClick = (event: MouseEvent) => {
+      if (event.button === 1) openEntityLink(event);
+    };
+
+    document.addEventListener('click', handleClick, true);
+    document.addEventListener('auxclick', handleAuxClick, true);
+    return () => {
+      document.removeEventListener('click', handleClick, true);
+      document.removeEventListener('auxclick', handleAuxClick, true);
+    };
+  }, [desktopMode, openTab, router]);
 
   if (!desktopMode) return null;
 
-  const navigate = (route: string) => {
-    setActive(route);
-    startTransition(() => router.push(route));
+  const navigate = (tab: (typeof tabs)[number]) => {
+    setActive(tab.id);
+    startTransition(() => router.push(tab.route));
   };
 
-  const handleCloseTab = (route: string) => {
-    const fallbackRoute = activeRoute === route ? getNextAfterClose(route) || '/dashboard' : null;
-    closeTab(route);
+  const handleCloseTab = (tab: (typeof tabs)[number]) => {
+    const fallbackRoute = activeTabId === tab.id ? getNextAfterClose(tab.id)?.route || '/dashboard' : null;
+    closeTab(tab.id);
     if (fallbackRoute) startTransition(() => router.push(fallbackRoute));
   };
 
@@ -92,23 +130,23 @@ export function DesktopTitlebar() {
       <div className="flex min-w-0 flex-1 items-end gap-1 overflow-x-auto px-1 pt-1">
         {tabs.map((tab) => (
           <div
-            key={tab.route}
+            key={tab.id}
             className={`flex h-7 max-w-52 shrink-0 items-center gap-1 rounded-t-md border border-b-0 px-2 text-xs ${
-              tab.route === activeRoute
+              tab.id === activeTabId
                 ? 'border-border bg-background text-foreground'
                 : 'border-transparent text-muted-foreground hover:bg-muted'
             }`}
           >
             <button
               type="button"
-              onClick={() => navigate(tab.route)}
+              onClick={() => navigate(tab)}
               className="min-w-0 flex-1 truncate text-left"
             >
               {tab.title}
             </button>
             <button
               type="button"
-              onClick={() => handleCloseTab(tab.route)}
+              onClick={() => handleCloseTab(tab)}
               className="rounded p-0.5 hover:bg-muted-foreground/20"
               aria-label={`Close ${tab.title} tab`}
             >

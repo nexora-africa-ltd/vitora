@@ -42,38 +42,59 @@ describe('Desktop Workspace Store', () => {
     localStorage.clear();
   });
 
-  it('should create and activate a tab for any dashboard route', () => {
-    useDesktopWorkspaceStore.getState().upsertFromRoute({
-      title: 'Patients',
-      route: '/encounters/101',
-    });
-
-    const state = useDesktopWorkspaceStore.getState();
-    expect(state.tabs).toHaveLength(1);
-    expect(state.tabs[0]?.route).toBe('/encounters/101');
-    expect(state.activeRoute).toBe('/encounters/101');
-  });
-
-  it('should update an existing route tab without duplication', () => {
+  it('should initialize one tab and update its route during normal navigation', () => {
     const store = useDesktopWorkspaceStore.getState();
-    store.upsertFromRoute({
+    store.updateActiveFromRoute({
+      title: 'Patients',
+      route: '/patients',
+    });
+    const tabId = useDesktopWorkspaceStore.getState().tabs[0]?.id;
+    store.updateActiveFromRoute({
       title: 'Patient record',
       route: '/patients/101',
     });
-    store.upsertFromRoute({
+
+    const state = useDesktopWorkspaceStore.getState();
+    expect(state.tabs).toHaveLength(1);
+    expect(state.tabs[0]).toMatchObject({
+      id: tabId,
+      route: '/patients/101',
+      title: 'Patient record',
+    });
+    expect(state.activeTabId).toBe(tabId);
+  });
+
+  it('should focus an explicitly opened entity tab instead of duplicating it', () => {
+    const store = useDesktopWorkspaceStore.getState();
+    store.updateActiveFromRoute({
+      title: 'Patient record',
+      route: '/patients',
+    });
+    const firstTabId = useDesktopWorkspaceStore.getState().activeTabId;
+    store.openTab({
       title: 'Jane Doe',
+      route: '/patients/101',
+    });
+    const entityTabId = useDesktopWorkspaceStore.getState().activeTabId;
+    store.setActive(firstTabId!);
+    store.openTab({
+      title: 'Jane Doe updated',
       route: '/patients/101',
     });
 
     const state = useDesktopWorkspaceStore.getState();
-    expect(state.tabs).toHaveLength(1);
-    expect(state.tabs[0]?.title).toBe('Jane Doe');
+    expect(state.tabs).toHaveLength(2);
+    expect(state.activeTabId).toBe(entityTabId);
+    expect(state.tabs.find((tab) => tab.id === entityTabId)).toMatchObject({
+      route: '/patients/101',
+      title: 'Jane Doe updated',
+    });
   });
 
   it('should cap tabs and preserve the active route', () => {
     const store = useDesktopWorkspaceStore.getState();
     for (let i = 1; i <= 9; i += 1) {
-      store.upsertFromRoute({
+      store.openTab({
         title: `Page ${i}`,
         route: `/page-${i}`,
       });
@@ -82,35 +103,43 @@ describe('Desktop Workspace Store', () => {
     const state = useDesktopWorkspaceStore.getState();
     expect(state.tabs).toHaveLength(8);
     expect(state.tabs.some((tab) => tab.route === '/page-9')).toBe(true);
-    expect(state.activeRoute).toBe('/page-9');
+    expect(state.tabs.find((tab) => tab.id === state.activeTabId)?.route).toBe('/page-9');
   });
 
   it('should return right-side tab first when closing active tab', () => {
     const store = useDesktopWorkspaceStore.getState();
     ['/patients', '/encounters', '/triage'].forEach((route) => {
-      store.upsertFromRoute({
+      store.openTab({
         title: route,
         route,
       });
     });
 
-    const next = store.getNextAfterClose('/encounters');
-    expect(next).toBe('/triage');
+    const encounterTabId = useDesktopWorkspaceStore.getState().tabs[1]?.id;
+    const next = store.getNextAfterClose(encounterTabId!);
+    expect(next?.route).toBe('/triage');
+
+    store.closeTab(encounterTabId!);
+    store.updateActiveFromRoute({ title: '/triage', route: '/triage' });
+    const state = useDesktopWorkspaceStore.getState();
+    expect(state.tabs).toHaveLength(2);
+    expect(state.activeTabId).toBe(next?.id);
   });
 
   it('should close others and keep only the selected page tab', () => {
     const store = useDesktopWorkspaceStore.getState();
     ['/patients', '/encounters', '/triage'].forEach((route) => {
-      store.upsertFromRoute({
+      store.openTab({
         title: route,
         route,
       });
     });
 
-    store.closeOthers('/encounters');
+    const encounterTabId = useDesktopWorkspaceStore.getState().tabs[1]?.id;
+    store.closeOthers(encounterTabId!);
     const state = useDesktopWorkspaceStore.getState();
     expect(state.tabs).toHaveLength(1);
     expect(state.tabs[0]?.route).toBe('/encounters');
-    expect(state.activeRoute).toBe('/encounters');
+    expect(state.activeTabId).toBe(encounterTabId);
   });
 });
