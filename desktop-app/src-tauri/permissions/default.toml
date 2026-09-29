@@ -33,6 +33,10 @@ permissions = [
   "allow-get-credentials",
   "allow-clear-credentials",
   "allow-check-for-updates",
+  "allow-drag-window",
+  "allow-minimize-window",
+  "allow-toggle-maximize-window",
+  "allow-close-window",
 ]
 
 [[permission]]
@@ -138,3 +142,19 @@ commands.allow = ["clear_credentials"]
 [[permission]]
 identifier = "allow-check-for-updates"
 commands.allow = ["check_for_updates"]
+
+[[permission]]
+identifier = "allow-drag-window"
+commands.allow = ["drag_window"]
+
+[[permission]]
+identifier = "allow-minimize-window"
+commands.allow = ["minimize_window"]
+
+[[permission]]
+identifier = "allow-toggle-maximize-window"
+commands.allow = ["toggle_maximize_window"]
+
+[[permission]]
+identifier = "allow-close-window"
+commands.allow = ["close_window"]

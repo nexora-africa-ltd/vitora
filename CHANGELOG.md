@@ -15,6 +15,13 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Desktop 1.0.15] - 2026-09-29
+
+### Desktop
+
+- Moved desktop workspace tabs into custom Tauri window chrome, with native drag, minimize, maximize, and close controls.
+- Removed the dashboard-level workspace tab strip; browser and web deployments retain their normal native browser chrome.
+
 ## [Desktop 1.0.14] - 2026-09-28
 
 ### Desktop

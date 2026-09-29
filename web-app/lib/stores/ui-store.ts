@@ -53,37 +53,31 @@ export const useUIStore = create<UIState>()(
   )
 );
 
-export interface EncounterWorkspaceTab {
-  encounterId: number;
+export interface DesktopWorkspaceTab {
+  route: string;
   title: string;
   subtitle?: string;
-  status?: string;
-  lastRoute: string;
   openedAt: string;
   updatedAt: string;
 }
 
-interface UpsertEncounterTabInput {
-  encounterId: number;
+interface UpsertDesktopTabInput {
   title: string;
   subtitle?: string;
-  status?: string;
   route: string;
 }
 
-interface EncounterWorkspaceState {
-  tabs: EncounterWorkspaceTab[];
-  activeEncounterId: number | null;
+interface DesktopWorkspaceState {
+  tabs: DesktopWorkspaceTab[];
+  activeRoute: string | null;
   maxTabs: number;
 
-  upsertFromRoute: (input: UpsertEncounterTabInput) => void;
-  setActive: (encounterId: number) => void;
-  updateRoute: (encounterId: number, route: string) => void;
-  closeTab: (encounterId: number) => void;
-  closeOthers: (encounterId: number) => void;
+  upsertFromRoute: (input: UpsertDesktopTabInput) => void;
+  setActive: (route: string) => void;
+  closeTab: (route: string) => void;
+  closeOthers: (route: string) => void;
   closeAll: () => void;
-  getTab: (encounterId: number) => EncounterWorkspaceTab | null;
-  getNextAfterClose: (encounterId: number) => number | null;
+  getNextAfterClose: (route: string) => string | null;
 }
 
 const DEFAULT_MAX_WORKSPACE_TABS = 8;
@@ -93,16 +87,13 @@ function nowIsoString(): string {
 }
 
 function pickEvictionIndex(
-  tabs: EncounterWorkspaceTab[],
-  activeEncounterId: number | null,
-  protectedEncounterIds: number[]
+  tabs: DesktopWorkspaceTab[],
+  activeRoute: string | null,
+  protectedRoutes: string[]
 ): number {
-  const protectedSet = new Set<number>([
-    ...protectedEncounterIds,
-    ...(activeEncounterId ? [activeEncounterId] : []),
-  ]);
+  const protectedSet = new Set<string>([...protectedRoutes, ...(activeRoute ? [activeRoute] : [])]);
 
-  const nonProtectedIdx = tabs.findIndex((tab) => !protectedSet.has(tab.encounterId));
+  const nonProtectedIdx = tabs.findIndex((tab) => !protectedSet.has(tab.route));
   if (nonProtectedIdx >= 0) {
     return nonProtectedIdx;
   }
@@ -110,17 +101,17 @@ function pickEvictionIndex(
   return 0;
 }
 
-export const useEncounterWorkspaceStore = create<EncounterWorkspaceState>()(
+export const useDesktopWorkspaceStore = create<DesktopWorkspaceState>()(
   persist(
     (set, get) => ({
       tabs: [],
-      activeEncounterId: null,
+      activeRoute: null,
       maxTabs: DEFAULT_MAX_WORKSPACE_TABS,
 
-      upsertFromRoute: ({ encounterId, title, subtitle, status, route }) => {
+      upsertFromRoute: ({ title, subtitle, route }) => {
         set((state) => {
           const ts = nowIsoString();
-          const existingIndex = state.tabs.findIndex((tab) => tab.encounterId === encounterId);
+          const existingIndex = state.tabs.findIndex((tab) => tab.route === route);
 
           if (existingIndex >= 0) {
             const existing = state.tabs[existingIndex];
@@ -132,23 +123,19 @@ export const useEncounterWorkspaceStore = create<EncounterWorkspaceState>()(
               ...existing,
               title,
               subtitle,
-              status,
-              lastRoute: route,
               updatedAt: ts,
             };
 
             return {
               tabs: nextTabs,
-              activeEncounterId: encounterId,
+              activeRoute: route,
             };
           }
 
-          const nextTab: EncounterWorkspaceTab = {
-            encounterId,
+          const nextTab: DesktopWorkspaceTab = {
+            route,
             title,
             subtitle,
-            status,
-            lastRoute: route,
             openedAt: ts,
             updatedAt: ts,
           };
@@ -159,63 +146,48 @@ export const useEncounterWorkspaceStore = create<EncounterWorkspaceState>()(
           if (nextTabs.length <= maxTabs) {
             return {
               tabs: nextTabs,
-              activeEncounterId: encounterId,
+              activeRoute: route,
             };
           }
 
-          const evictionIdx = pickEvictionIndex(nextTabs, state.activeEncounterId, [encounterId]);
+          const evictionIdx = pickEvictionIndex(nextTabs, state.activeRoute, [route]);
           nextTabs.splice(evictionIdx, 1);
 
           return {
             tabs: nextTabs,
-            activeEncounterId: encounterId,
+            activeRoute: route,
           };
         });
       },
 
-      setActive: (encounterId) => {
-        const tab = get().tabs.find((item) => item.encounterId === encounterId);
+      setActive: (route) => {
+        const tab = get().tabs.find((item) => item.route === route);
         if (!tab) {
           return;
         }
-        set({ activeEncounterId: encounterId });
+        set({ activeRoute: route });
       },
 
-      updateRoute: (encounterId, route) => {
-        set((state) => ({
-          tabs: state.tabs.map((tab) =>
-            tab.encounterId === encounterId
-              ? {
-                  ...tab,
-                  lastRoute: route,
-                  updatedAt: nowIsoString(),
-                }
-              : tab
-          ),
-        }));
-      },
-
-      closeTab: (encounterId) => {
+      closeTab: (route) => {
         set((state) => {
-          const nextTabs = state.tabs.filter((tab) => tab.encounterId !== encounterId);
-          const nextActive =
-            state.activeEncounterId === encounterId ? null : (state.activeEncounterId ?? null);
+          const nextTabs = state.tabs.filter((tab) => tab.route !== route);
+          const nextActive = state.activeRoute === route ? null : (state.activeRoute ?? null);
           return {
             tabs: nextTabs,
-            activeEncounterId: nextActive,
+            activeRoute: nextActive,
           };
         });
       },
 
-      closeOthers: (encounterId) => {
+      closeOthers: (route) => {
         set((state) => {
-          const keep = state.tabs.find((tab) => tab.encounterId === encounterId);
+          const keep = state.tabs.find((tab) => tab.route === route);
           if (!keep) {
             return state;
           }
           return {
             tabs: [keep],
-            activeEncounterId: encounterId,
+            activeRoute: route,
           };
         });
       },
@@ -223,42 +195,41 @@ export const useEncounterWorkspaceStore = create<EncounterWorkspaceState>()(
       closeAll: () => {
         set({
           tabs: [],
-          activeEncounterId: null,
+          activeRoute: null,
         });
       },
 
-      getTab: (encounterId) => {
-        return get().tabs.find((tab) => tab.encounterId === encounterId) || null;
-      },
-
-      getNextAfterClose: (encounterId) => {
+      getNextAfterClose: (route) => {
         const tabs = get().tabs;
-        const idx = tabs.findIndex((tab) => tab.encounterId === encounterId);
+        const idx = tabs.findIndex((tab) => tab.route === route);
         if (idx === -1) {
           return null;
         }
 
         const right = tabs[idx + 1];
         if (right) {
-          return right.encounterId;
+          return right.route;
         }
 
         const left = tabs[idx - 1];
         if (left) {
-          return left.encounterId;
+          return left.route;
         }
 
         return null;
       },
     }),
     {
-      name: 'vitora-encounter-workspace',
+      name: 'vitora-desktop-workspace',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         tabs: state.tabs,
-        activeEncounterId: state.activeEncounterId,
+        activeRoute: state.activeRoute,
         maxTabs: state.maxTabs,
       }),
     }
   )
 );
+
+/** @deprecated Workspace tabs now represent all desktop routes. */
+export const useEncounterWorkspaceStore = useDesktopWorkspaceStore;

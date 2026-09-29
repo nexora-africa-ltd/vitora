@@ -59,6 +59,6 @@ export {
 } from './new-encounter-store';
 
 export {
-  useEncounterWorkspaceStore,
-  type EncounterWorkspaceTab,
+  useDesktopWorkspaceStore,
+  type DesktopWorkspaceTab,
 } from './ui-store';

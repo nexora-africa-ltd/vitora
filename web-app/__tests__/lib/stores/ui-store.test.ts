@@ -1,4 +1,4 @@
-import { useEncounterWorkspaceStore, useUIStore } from '@/lib/stores/ui-store';
+import { useDesktopWorkspaceStore, useUIStore } from '@/lib/stores/ui-store';
 
 describe('UI Store', () => {
   beforeEach(() => {
@@ -35,94 +35,82 @@ describe('UI Store', () => {
   });
 });
 
-describe('Encounter Workspace Store', () => {
+describe('Desktop Workspace Store', () => {
   beforeEach(() => {
-    const initialState = useEncounterWorkspaceStore.getInitialState();
-    useEncounterWorkspaceStore.setState(initialState, true);
+    const initialState = useDesktopWorkspaceStore.getInitialState();
+    useDesktopWorkspaceStore.setState(initialState, true);
     localStorage.clear();
   });
 
-  it('should create and activate a tab from route', () => {
-    useEncounterWorkspaceStore.getState().upsertFromRoute({
-      encounterId: 101,
-      title: 'Jane Doe',
-      subtitle: 'MRN-001',
-      status: 'IN_PROGRESS',
+  it('should create and activate a tab for any dashboard route', () => {
+    useDesktopWorkspaceStore.getState().upsertFromRoute({
+      title: 'Patients',
       route: '/encounters/101',
     });
 
-    const state = useEncounterWorkspaceStore.getState();
+    const state = useDesktopWorkspaceStore.getState();
     expect(state.tabs).toHaveLength(1);
-    expect(state.tabs[0]?.lastRoute).toBe('/encounters/101');
-    expect(state.activeEncounterId).toBe(101);
+    expect(state.tabs[0]?.route).toBe('/encounters/101');
+    expect(state.activeRoute).toBe('/encounters/101');
   });
 
-  it('should update route for existing tab without duplication', () => {
-    const store = useEncounterWorkspaceStore.getState();
+  it('should update an existing route tab without duplication', () => {
+    const store = useDesktopWorkspaceStore.getState();
     store.upsertFromRoute({
-      encounterId: 101,
-      title: 'Jane Doe',
-      subtitle: 'MRN-001',
-      status: 'IN_PROGRESS',
-      route: '/encounters/101',
+      title: 'Patient record',
+      route: '/patients/101',
     });
     store.upsertFromRoute({
-      encounterId: 101,
       title: 'Jane Doe',
-      subtitle: 'MRN-001',
-      status: 'IN_PROGRESS',
-      route: '/encounters/101/edit/review',
+      route: '/patients/101',
     });
 
-    const state = useEncounterWorkspaceStore.getState();
+    const state = useDesktopWorkspaceStore.getState();
     expect(state.tabs).toHaveLength(1);
-    expect(state.tabs[0]?.lastRoute).toBe('/encounters/101/edit/review');
+    expect(state.tabs[0]?.title).toBe('Jane Doe');
   });
 
-  it('should cap tabs and preserve active/new encounter', () => {
-    const store = useEncounterWorkspaceStore.getState();
+  it('should cap tabs and preserve the active route', () => {
+    const store = useDesktopWorkspaceStore.getState();
     for (let i = 1; i <= 9; i += 1) {
       store.upsertFromRoute({
-        encounterId: i,
-        title: `Encounter ${i}`,
-        route: `/encounters/${i}`,
+        title: `Page ${i}`,
+        route: `/page-${i}`,
       });
     }
 
-    const state = useEncounterWorkspaceStore.getState();
+    const state = useDesktopWorkspaceStore.getState();
     expect(state.tabs).toHaveLength(8);
-    expect(state.tabs.some((tab) => tab.encounterId === 9)).toBe(true);
-    expect(state.activeEncounterId).toBe(9);
+    expect(state.tabs.some((tab) => tab.route === '/page-9')).toBe(true);
+    expect(state.activeRoute).toBe('/page-9');
   });
 
   it('should return right-side tab first when closing active tab', () => {
-    const store = useEncounterWorkspaceStore.getState();
-    [10, 11, 12].forEach((id) => {
+    const store = useDesktopWorkspaceStore.getState();
+    ['/patients', '/encounters', '/triage'].forEach((route) => {
       store.upsertFromRoute({
-        encounterId: id,
-        title: `Encounter ${id}`,
-        route: `/encounters/${id}`,
+        title: route,
+        route,
       });
     });
 
-    const next = store.getNextAfterClose(11);
-    expect(next).toBe(12);
+    const next = store.getNextAfterClose('/encounters');
+    expect(next).toBe('/triage');
   });
 
-  it('should close others and keep only selected encounter tab', () => {
-    const store = useEncounterWorkspaceStore.getState();
-    [21, 22, 23].forEach((id) => {
+  it('should close others and keep only the selected page tab', () => {
+    const store = useDesktopWorkspaceStore.getState();
+    ['/patients', '/encounters', '/triage'].forEach((route) => {
       store.upsertFromRoute({
-        encounterId: id,
-        title: `Encounter ${id}`,
-        route: `/encounters/${id}`,
+        title: route,
+        route,
       });
     });
 
-    store.closeOthers(22);
-    const state = useEncounterWorkspaceStore.getState();
+    store.closeOthers('/encounters');
+    const state = useDesktopWorkspaceStore.getState();
     expect(state.tabs).toHaveLength(1);
-    expect(state.tabs[0]?.encounterId).toBe(22);
-    expect(state.activeEncounterId).toBe(22);
+    expect(state.tabs[0]?.route).toBe('/encounters');
+    expect(state.activeRoute).toBe('/encounters');
   });
 });
