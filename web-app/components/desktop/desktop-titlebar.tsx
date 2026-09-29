@@ -16,6 +16,7 @@ import {
   toggleMaximizeDesktopWindow,
 } from '@/lib/desktop';
 import { useDesktopWorkspaceStore } from '@/lib/stores/ui-store';
+import { VitoraLogo } from '@/components/ui/vitora-logo';
 
 const ROUTE_LABELS: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -106,13 +107,14 @@ export function DesktopTitlebar() {
   };
 
   const handleCloseTab = (tab: (typeof tabs)[number]) => {
-    const fallbackRoute = activeTabId === tab.id ? getNextAfterClose(tab.id)?.route || '/dashboard' : null;
+    const fallbackRoute =
+      activeTabId === tab.id ? getNextAfterClose(tab.id)?.route || '/dashboard' : null;
     closeTab(tab.id);
     if (fallbackRoute) startTransition(() => router.push(fallbackRoute));
   };
 
   return (
-    <div className="flex h-9 select-none border-b border-border bg-card text-foreground">
+    <div className="sticky top-0 z-[60] flex h-9 select-none border-b border-border bg-card text-foreground">
       <button
         type="button"
         aria-label="Drag Vitora window"
@@ -122,10 +124,8 @@ export function DesktopTitlebar() {
         onDoubleClick={() => void toggleMaximizeDesktopWindow()}
         className="flex w-28 shrink-0 items-center gap-2 px-3 text-xs font-semibold tracking-wide text-muted-foreground hover:bg-muted"
       >
-        <span className="grid h-4 w-4 place-items-center rounded-sm bg-primary text-[9px] text-primary-foreground">
-          V
-        </span>
-        Vitora
+        <VitoraLogo variant="icon" tone="dark" alt="Vitora" className="h-5 w-5 shrink-0" priority />
+        <span>Vitora</span>
       </button>
       <div className="flex min-w-0 flex-1 items-end gap-1 overflow-x-auto px-1 pt-1">
         {tabs.map((tab) => (

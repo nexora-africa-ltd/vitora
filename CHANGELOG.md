@@ -15,6 +15,13 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Desktop 1.0.18] - 2026-09-29
+
+### Desktop
+
+- Force frameless Tauri window decorations at native startup, keep workspace tabs sticky, and render the real Vitora logo in the title bar.
+- Explicitly use the multi-resolution ICO for Windows NSIS installer and shortcut packaging.
+
 ## [Desktop 1.0.17] - 2026-09-29
 
 ### Desktop

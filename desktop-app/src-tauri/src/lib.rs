@@ -993,6 +993,15 @@ pub fn run() {
             // has a chance to run.
             SidecarState::purge_webview_data(&handle);
 
+            // Defense in depth: releases before the custom workspace chrome
+            // used native decorations, so force the intended frame even when
+            // an installer or platform cache supplies stale window metadata.
+            if let Some(main_window) = app.get_webview_window("main") {
+                if let Err(error) = main_window.set_decorations(false) {
+                    log::error!("Failed to disable native window decorations: {}", error);
+                }
+            }
+
             // --- System tray ---
             setup_tray(app)?;
 
