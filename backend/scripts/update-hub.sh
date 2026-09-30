@@ -17,6 +17,7 @@ CDN_BASE_URL="https://get.vitora.digital"
 APP_DIR="/opt/vitora"
 VENV_DIR="${APP_DIR}/venv"
 SERVICE_NAME="vitora-hub"
+SYNC_SERVICE_NAME="vitora-hub-sync"
 VERSION=""
 BACKUP_DIR="${APP_DIR}/backup"
 BACKUP_PATH="${BACKUP_DIR}/pre-update-current"
@@ -131,8 +132,11 @@ if [[ -z "$URL" ]]; then
 fi
 info "Downloading ${URL}..."
 
-# Stop service
-info "Stopping hub service..."
+# Stop services before migrating SQLite schema.
+info "Stopping hub API and sync services..."
+if systemctl list-unit-files "${SYNC_SERVICE_NAME}.service" --no-legend 2>/dev/null | grep -q "${SYNC_SERVICE_NAME}"; then
+    systemctl stop "$SYNC_SERVICE_NAME" || true
+fi
 systemctl stop "$SERVICE_NAME"
 
 # Backup current code (not data — that's in /var/lib/vitora)
@@ -173,6 +177,9 @@ export DJANGO_SETTINGS_MODULE=hmis.settings
 # Restart service
 info "Starting hub service..."
 systemctl start "$SERVICE_NAME"
+if systemctl list-unit-files "${SYNC_SERVICE_NAME}.service" --no-legend 2>/dev/null | grep -q "${SYNC_SERVICE_NAME}"; then
+    systemctl start "$SYNC_SERVICE_NAME"
+fi
 
 # Verify
 sleep 2

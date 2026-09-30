@@ -469,8 +469,12 @@ if (-not $downloadSucceeded) {
     exit 1
 }
 
-# --- Step 3: Stop service ---
-Write-Step 3 "Stopping $ServiceName service..."
+# --- Step 3: Stop services ---
+Write-Step 3 "Stopping hub API and sync services..."
+$syncSvc = Get-Service -Name $SyncServiceName -ErrorAction SilentlyContinue
+if ($syncSvc -and $syncSvc.Status -eq 'Running') {
+    Stop-Service -Name $SyncServiceName -Force
+}
 $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 if ($svc -and $svc.Status -eq 'Running') {
     Stop-Service -Name $ServiceName -Force

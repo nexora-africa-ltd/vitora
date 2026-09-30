@@ -15,6 +15,12 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Hub 1.0.22] - 2026-09-30
+
+### Hub
+
+- Stop the dedicated hub sync service before applying database migrations during updates, then restart it after the API service starts. This prevents SQLite migration locks from the continuous sync watcher.
+
 ## [Desktop 1.0.20] - 2026-09-30
 
 ### Desktop
