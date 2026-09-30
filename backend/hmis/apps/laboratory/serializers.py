@@ -1585,6 +1585,7 @@ class LabWorkflowSettingsSerializer(serializers.ModelSerializer):
             "tat_warning_threshold_percent",
             "allow_duplicate_orders",
             "require_clinical_notes",
+            "auto_create_standalone_diagnostic_report_draft",
         ]
         read_only_fields = ["id"]
 

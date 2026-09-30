@@ -40,7 +40,7 @@ export default function NewMCHRegistrationPage() {
         title: 'Registration Created',
         description: `MCH registration ${registration.mch_number} has been created${!enrollmentId ? ' with auto-generated ANC enrollment' : ''}.`,
       });
-      router.push(`/mch/${registration.id}`);
+      router.push('/mch');
     },
     onError: (error: Error) => {
       toast({

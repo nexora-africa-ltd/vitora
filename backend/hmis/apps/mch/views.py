@@ -10,7 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.clinics.models import Clinic, ClinicSession, ClinicVisit
-from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
+from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import (
     ReadRequiresModelPermission,
@@ -234,7 +234,7 @@ class HEIFollowUpFilter(django_filters.FilterSet):
 # =============================================================================
 
 
-class MCHRegistrationViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+class MCHRegistrationViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """ViewSet for MCH registrations."""
 
     queryset = MCHRegistration.objects.select_related(
@@ -267,7 +267,10 @@ class MCHRegistrationViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         return MCHRegistrationSerializer
 
     def perform_create(self, serializer):
-        instance = serializer.save(registered_by=self.request.user)
+        instance = serializer.save(
+            registered_by=self.request.user,
+            **self.get_tenant_save_kwargs(),
+        )
         AuditLog.log(
             action="mch_registration_create",
             user=self.request.user,
@@ -287,20 +290,6 @@ class MCHRegistrationViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             details={"mch_number": instance.mch_number, "status": instance.status},
             ip_address=get_client_ip(self.request),
         )
-
-    def create(self, request, *args, **kwargs):
-        """Override create to return full serializer response (not the write-only create serializer)."""
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        # Re-serialize with the full detail serializer
-        instance = serializer.instance
-        # Re-fetch with select_related to ensure computed fields work
-        # Note: skip annotate here — the model already has anc_visit_count/pnc_visit_count
-        # properties. Annotating would clash with the property setters.
-        instance = self.get_queryset().get(pk=instance.pk)
-        output_serializer = MCHRegistrationSerializer(instance)
-        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
 
     def _route_to_clinic(self, registration, clinic_type: str, clinic_id=None, notes: str = ""):
         """Route an MCH registration into a clinic queue."""

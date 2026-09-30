@@ -7,6 +7,7 @@ import logging
 from io import StringIO
 
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q, Sum
 from django.http import HttpResponse
 from django.utils import timezone
@@ -27,9 +28,19 @@ from hmis.apps.core.permissions import (
 )
 from hmis.apps.core.serializers_org_facility import FacilityDetailSerializer
 from hmis.apps.laboratory.analyzers.models import InstrumentChannel
-from hmis.apps.laboratory.models import Instrument, LabOrder, LabWorkflowSettings, TestCatalog
+from hmis.apps.laboratory.models import (
+    DiagnosticReport,
+    Instrument,
+    LabOrder,
+    LabWorkflowSettings,
+    TestCatalog,
+)
 from hmis.apps.laboratory.permissions import LaboratoryModuleRequired, LISStandaloneRequired
-from hmis.apps.laboratory.serializers import LabOrderSerializer
+from hmis.apps.laboratory.serializers import (
+    DiagnosticReportCreateSerializer,
+    DiagnosticReportSerializer,
+    LabOrderSerializer,
+)
 
 from .models import (
     ExternalOrderRequest,
@@ -1168,6 +1179,102 @@ class StandaloneBillingViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
             f'attachment; filename="standalone-invoice-{invoice.invoice_number}.pdf"'
         )
         return response
+
+
+class StandaloneDiagnosticReportViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
+    """Standalone diagnostic report listing, creation, and finalization."""
+
+    tenant_scope = "facility"
+    lookup_field = "report_number"
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        RequiresActiveShiftPermission,
+        LISStandaloneRequired,
+        ReadRequiresModelPermission,
+    ]
+
+    def get_queryset(self):
+        tenant = self.get_tenant_save_kwargs()
+        facility = tenant.get("facility")
+        organization = tenant.get("organization")
+
+        qs = DiagnosticReport.objects.select_related(
+            "lab_order",
+            "lab_order__patient",
+            "issued_by",
+            "amended_by",
+        ).filter(lab_order__is_walkin=True)
+        if facility is not None:
+            qs = qs.filter(lab_order__facility=facility)
+        if organization is not None:
+            qs = qs.filter(lab_order__organization=organization)
+        return qs.order_by("-created_at")
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = DiagnosticReportSerializer(page, many=True, context={"request": request})
+            return self.get_paginated_response(serializer.data)
+        serializer = DiagnosticReportSerializer(queryset, many=True, context={"request": request})
+        return Response(serializer.data)
+
+    def create(self, request, *args, **kwargs):
+        serializer = DiagnosticReportCreateSerializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+
+        lab_order = serializer.validated_data["lab_order"]
+        if not lab_order.is_walkin:
+            return Response(
+                {"detail": "Standalone reports can only be created for walk-in lab orders."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        tenant = self.get_tenant_save_kwargs()
+        facility = tenant.get("facility")
+        organization = tenant.get("organization")
+        if facility is not None and lab_order.facility_id != facility.id:
+            return Response(
+                {"detail": "Lab order is outside your facility scope."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if organization is not None and lab_order.organization_id != organization.id:
+            return Response(
+                {"detail": "Lab order is outside your organization scope."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        existing = (
+            self.get_queryset()
+            .filter(lab_order=lab_order)
+            .exclude(status=DiagnosticReport.Status.CANCELLED)
+            .filter(superseding_reports__isnull=True)
+            .order_by("-created_at")
+            .first()
+        )
+        if existing is not None:
+            out = DiagnosticReportSerializer(existing, context={"request": request})
+            return Response(out.data, status=status.HTTP_200_OK)
+
+        report = serializer.save()
+        out = DiagnosticReportSerializer(report, context={"request": request})
+        return Response(out.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"])
+    def finalize(self, request, report_number=None):
+        report = self.get_object()
+        try:
+            report.finalize()
+            return Response(DiagnosticReportSerializer(report, context={"request": request}).data)
+        except (DjangoValidationError, ValueError, TypeError) as exc:
+            detail = "Unable to finalize diagnostic report."
+            messages = list(getattr(exc, "messages", []) or [])
+            if messages:
+                detail = str(messages[0])
+            return Response({"detail": detail}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["get"], url_path=r"payments/(?P<payment_id>[^/.]+)/receipt-pdf")
     def payment_receipt_pdf(self, request, payment_id=None):

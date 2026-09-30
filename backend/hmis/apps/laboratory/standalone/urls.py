@@ -12,6 +12,7 @@ from .views import (
     LISMessageMappingViewSet,
     ResultDeliveryLogViewSet,
     StandaloneBillingViewSet,
+    StandaloneDiagnosticReportViewSet,
     StandaloneOrderViewSet,
     WalkInPatientViewSet,
     standalone_onboarding_facility_details,
@@ -32,6 +33,7 @@ router.register(r"interop/crosswalk", ExternalPatientIdentifierCrosswalkViewSet,
 router.register(r"interop/delivery-logs", ResultDeliveryLogViewSet, basename="result-delivery-log")
 router.register(r"interop/mappings", LISMessageMappingViewSet, basename="interop-mapping")
 router.register(r"billing", StandaloneBillingViewSet, basename="standalone-billing")
+router.register(r"reports", StandaloneDiagnosticReportViewSet, basename="standalone-report")
 
 urlpatterns = [
     path(

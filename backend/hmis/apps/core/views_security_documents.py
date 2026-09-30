@@ -459,12 +459,6 @@ class DocumentSignatureViewSet(viewsets.GenericViewSet, ListModelMixin, Retrieve
 
 
 DOCUMENT_HUB_CONFIG: dict[str, dict[str, str]] = {
-    "LabResult": {
-        "app": "laboratory",
-        "model": "LabResult",
-        "owner_field": "entered_by",
-        "number_field": "id",
-    },
     "Prescription": {
         "app": "pharmacy",
         "model": "Prescription",
@@ -574,8 +568,6 @@ def _get_patient_name(document) -> str:
 
 
 def _can_sign_by_state(document_type: str, document) -> bool:
-    if document_type == "LabResult":
-        return getattr(document, "verification_status", "") == "VERIFIED"
     if document_type == "RadiologyReport":
         return getattr(document, "status", "") in ("FINAL", "AMENDED")
     if document_type == "DiagnosticReport":
