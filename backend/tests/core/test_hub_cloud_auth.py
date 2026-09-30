@@ -44,6 +44,7 @@ class TestHubCloudAuthFallback:
                 "email": "cloud.nurse@example.com",
                 "first_name": "Cloud",
                 "last_name": "Nurse",
+                "is_staff": True,
                 "role": sample_role.code,
             },
         }
@@ -56,6 +57,7 @@ class TestHubCloudAuthFallback:
         assert user.is_active is True
         assert user.check_password("CorrectPass123!") is True
         assert user.first_name == "Cloud"
+        assert user.is_staff is True
         assert user.staff_profile.organization == sample_organization
         assert user.staff_profile.primary_facility == sample_facility
         post.assert_called_once()

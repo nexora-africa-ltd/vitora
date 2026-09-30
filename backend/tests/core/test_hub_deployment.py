@@ -107,6 +107,15 @@ class TestHubHealthEndpoint:
         assert data["hub_id"] == "test-hub-001"
         assert data["facility_id"] == "42"
 
+    def test_health_uses_installed_hub_version(self, api_client, db, monkeypatch):
+        """Hub health reports the release version written by the installer."""
+        monkeypatch.setenv("HUB_VERSION", "1.0.20")
+
+        response = api_client.get(self.URL)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["version"] == "1.0.20"
+
     def test_health_sync_shows_pending_count(
         self, api_client, db, sample_facility, sample_organization
     ):
@@ -219,6 +228,53 @@ class TestHubRoleOwnershipGuard:
 
         assert response.status_code == status.HTTP_409_CONFLICT
         assert response.data["code"] == "cloud_owned_role_read_only"
+
+
+class TestHubRbacHealthPersistence:
+    """RBAC health must survive a one-shot hub_sync command process."""
+
+    @override_settings(ENVIRONMENT="hub")
+    def test_rbac_health_snapshot_loads_from_sync_state_file(self, tmp_path, monkeypatch):
+        """Health endpoint process should see reconciliation completed by another process."""
+        import hmis.apps.core.hub_sync as hub_sync
+
+        with override_settings(HUB_DATA_DIR=str(tmp_path)):
+            worker = hub_sync.HubCloudSyncWorker()
+            summary = {
+                "roles_checked": 42,
+                "role_groups_corrected": 0,
+                "profiles_checked": 29,
+                "profile_groups_corrected": 0,
+            }
+
+            with patch(
+                "hmis.apps.core.role_permissions_sync.reconcile_hub_rbac_state",
+                return_value=summary,
+            ):
+                assert worker._run_rbac_reconciliation(trigger="startup_self_heal") is True
+
+            monkeypatch.setattr(
+                hub_sync,
+                "_RBAC_SYNC_HEALTH",
+                {
+                    "last_status": "never",
+                    "last_trigger": None,
+                    "last_started_at": None,
+                    "last_completed_at": None,
+                    "roles_checked": 0,
+                    "role_groups_corrected": 0,
+                    "profiles_checked": 0,
+                    "profile_groups_corrected": 0,
+                    "failures": 0,
+                },
+            )
+
+            health = hub_sync.get_rbac_sync_health_snapshot()
+
+            assert health["last_status"] == "ok"
+            assert health["last_trigger"] == "startup_self_heal"
+            assert health["roles_checked"] == 42
+            assert health["profiles_checked"] == 29
 
 
 # ===========================================================================
@@ -1976,6 +2032,29 @@ class TestHubCloudSyncWorker:
             call_command("hub_sync")
 
         worker.sync_once.assert_called_once()
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+    )
+    def test_hub_sync_command_watch_starts_dedicated_watcher(self, db):
+        """The service mode delegates to one long-running watcher, not Celery."""
+        with (
+            patch(
+                "hmis.apps.core.management.commands.hub_sync.HubCloudSyncWorker"
+            ) as mock_worker_cls,
+            patch("hmis.apps.core.management.commands.hub_sync.Command._watch") as watch,
+        ):
+            worker = mock_worker_cls.return_value
+            worker.is_configured = True
+            worker.has_license_token = True
+            worker.interval = 30
+
+            call_command("hub_sync", watch=True)
+
+        watch.assert_called_once_with(worker, 30)
+        worker.sync_once.assert_not_called()
 
     @override_settings(
         SYNC_SERVER_URL="https://cloud.example.com/api/sync",

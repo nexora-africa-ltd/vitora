@@ -1301,8 +1301,19 @@ class FacilityViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if not user.is_superuser:
             profile = getattr(user, "staff_profile", None)
-            if profile and profile.organization_id:
-                qs = qs.filter(organization_id=profile.organization_id)
+            if profile:
+                # StaffProfile.organization is a denormalized cache. Use the
+                # directly assigned facility's organization when available so
+                # interrupted hub identity sync cannot turn a valid assignment
+                # into a tenant-scoped 404.
+                primary_facility = getattr(profile, "primary_facility", None)
+                organization_id = getattr(primary_facility, "organization_id", None)
+                if organization_id is None:
+                    organization_id = profile.organization_id
+                if organization_id is not None:
+                    qs = qs.filter(organization_id=organization_id)
+                else:
+                    return qs.none()
             else:
                 return qs.none()
         # Simple exact-match filters

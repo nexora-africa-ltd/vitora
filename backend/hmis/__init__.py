@@ -1,11 +1,33 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-"""
-Vitora HMIS Backend Package.
+"""Vitora HMIS backend package and runtime release metadata."""
 
-This is the main package for the Vitora HMIS backend application.
-"""
+import os
+from importlib.metadata import PackageNotFoundError, version
+from pathlib import Path
 
-__version__ = "0.1.0"
+
+def get_runtime_version() -> str:
+    """Return the deployed release version, preferring hub/cloud runtime metadata."""
+    for variable in ("VITORA_VERSION", "HUB_VERSION"):
+        value = os.getenv(variable, "").strip()
+        if value:
+            return value
+
+    version_file = Path(__file__).resolve().parent.parent / "VERSION"
+    try:
+        value = version_file.read_text(encoding="utf-8").strip()
+        if value:
+            return value
+    except OSError:
+        pass
+
+    try:
+        return version("vitora-hmis")
+    except PackageNotFoundError:
+        return "1.0.21"
+
+
+__version__ = get_runtime_version()
 
 # Import Celery app so it's loaded when Django starts (optional for tests)
 try:

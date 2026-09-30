@@ -15,6 +15,22 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Desktop 1.0.20] - 2026-09-30
+
+### Desktop
+
+- Accept subscription-filtered hub facility payloads by treating omitted module capabilities as disabled, preventing valid hub facility responses from failing client-side schema validation.
+- Add regression coverage for the filtered facility response contract used by desktop sidecars.
+
+## [Hub 1.0.21] - 2026-09-30
+
+### Hub
+
+- Report the installed hub/cloud runtime version in both health endpoints instead of stale source constants.
+- Preserve cloud-authoritative `is_staff` during hub cloud-auth login and resolve facility reads through the directly assigned facility when the profile organization cache is stale.
+- Persist RBAC reconciliation health across one-shot sync processes so hub health reflects completed reconciliation.
+- Install a dedicated singleton hub sync service on Windows and Linux. The service runs `hub_sync --watch` without requiring Redis, Celery workers, or Celery Beat.
+
 ## [Desktop 1.0.18] - 2026-09-29
 
 ### Desktop

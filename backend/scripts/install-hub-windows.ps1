@@ -38,6 +38,9 @@ $AppName = "VitoraHub"
 $ServiceName = "VitoraHub"
 $ServiceDisplayName = "Vitora HMIS Facility Hub"
 $ServiceDescription = "Local facility hub for Vitora HMIS offline-first sync"
+$SyncServiceName = "VitoraHubSync"
+$SyncServiceDisplayName = "Vitora HMIS Hub Sync"
+$SyncServiceDescription = "Dedicated cloud synchronization worker for Vitora HMIS Facility Hub"
 $InstallDir = "C:\VitoraHub"
 $VenvDir = "$InstallDir\venv"
 $DataDir = "$InstallDir\data"
@@ -1068,10 +1071,21 @@ if ($existingService) {
     Start-Sleep -Seconds 2
 }
 
+$existingSyncService = Get-Service -Name $SyncServiceName -ErrorAction SilentlyContinue
+if ($existingSyncService) {
+    if ($existingSyncService.Status -eq 'Running') {
+        & $nssmExe stop $SyncServiceName 2>&1 | Out-Null
+    }
+    $global:LASTEXITCODE = 0
+    & $nssmExe remove $SyncServiceName confirm 2>&1 | Out-Null
+    $global:LASTEXITCODE = 0
+}
+
 # Install service via launcher (loads .env + DPAPI secrets at runtime)
 $powershellExe = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
 $launcherPath = "$InstallDir\start-hub.ps1"
-$launcherArgs = "-NoProfile -ExecutionPolicy Bypass -File `"$launcherPath`""
+$launcherArgs = "-NoProfile -ExecutionPolicy Bypass -File `"$launcherPath`" -Mode api"
+$syncLauncherArgs = "-NoProfile -ExecutionPolicy Bypass -File `"$launcherPath`" -Mode sync"
 
 & $nssmExe install $ServiceName $powershellExe $launcherArgs
 
@@ -1102,9 +1116,27 @@ $envVars = @(
 & $nssmExe set $ServiceName AppExit Default Restart
 & $nssmExe set $ServiceName AppRestartDelay 10000
 
+# Dedicated sync service: one watcher process prevents multi-worker API servers
+# from starting competing hub sync loops.
+& $nssmExe install $SyncServiceName $powershellExe $syncLauncherArgs
+& $nssmExe set $SyncServiceName DisplayName $SyncServiceDisplayName
+& $nssmExe set $SyncServiceName Description $SyncServiceDescription
+& $nssmExe set $SyncServiceName AppDirectory $InstallDir
+& $nssmExe set $SyncServiceName Start SERVICE_AUTO_START
+& $nssmExe set $SyncServiceName AppEnvironmentExtra $envVars
+& $nssmExe set $SyncServiceName AppStdout "$LogDir\hub-sync-stdout.log"
+& $nssmExe set $SyncServiceName AppStderr "$LogDir\hub-sync-stderr.log"
+& $nssmExe set $SyncServiceName AppStdoutCreationDisposition 4
+& $nssmExe set $SyncServiceName AppStderrCreationDisposition 4
+& $nssmExe set $SyncServiceName AppRotateFiles 1
+& $nssmExe set $SyncServiceName AppRotateBytes 10485760
+& $nssmExe set $SyncServiceName AppExit Default Restart
+& $nssmExe set $SyncServiceName AppRestartDelay 10000
+
 # --- Start Service ---
 Write-Info "Starting service..."
 & $nssmExe start $ServiceName
+& $nssmExe start $SyncServiceName
 
 Start-Sleep -Seconds 3
 $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue

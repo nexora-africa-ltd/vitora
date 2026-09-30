@@ -21,6 +21,7 @@ $ErrorActionPreference = "Stop"
 # --- Configuration ---
 $CdnBaseUrl = "https://get.vitora.digital"
 $ServiceName = "VitoraHub"
+$SyncServiceName = "VitoraHubSync"
 $InstallDir = "C:\VitoraHub"
 $VenvDir = "$InstallDir\venv"
 $BackupDir = "$InstallDir\backup"
@@ -903,7 +904,8 @@ if (Test-Path $launcherTemplate) {
 $nssmExe = "$InstallDir\nssm\nssm.exe"
 if (Test-Path $nssmExe) {
     $powershellExe = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
-    $launcherArgs = "-NoProfile -ExecutionPolicy Bypass -File `"$launcherPath`""
+    $launcherArgs = "-NoProfile -ExecutionPolicy Bypass -File `"$launcherPath`" -Mode api"
+    $syncLauncherArgs = "-NoProfile -ExecutionPolicy Bypass -File `"$launcherPath`" -Mode sync"
 
     & $nssmExe set $ServiceName Application $powershellExe 2>&1 | Out-Null
     & $nssmExe set $ServiceName AppParameters $launcherArgs 2>&1 | Out-Null
@@ -911,6 +913,18 @@ if (Test-Path $nssmExe) {
 
     $envVars = Build-HubServiceEnvironment
     & $nssmExe set $ServiceName AppEnvironmentExtra $envVars 2>&1 | Out-Null
+    if (-not (Get-Service -Name $SyncServiceName -ErrorAction SilentlyContinue)) {
+        & $nssmExe install $SyncServiceName $powershellExe $syncLauncherArgs 2>&1 | Out-Null
+    }
+    & $nssmExe set $SyncServiceName Application $powershellExe 2>&1 | Out-Null
+    & $nssmExe set $SyncServiceName AppParameters $syncLauncherArgs 2>&1 | Out-Null
+    & $nssmExe set $SyncServiceName AppDirectory $InstallDir 2>&1 | Out-Null
+    & $nssmExe set $SyncServiceName AppEnvironmentExtra $envVars 2>&1 | Out-Null
+    & $nssmExe set $SyncServiceName Start SERVICE_AUTO_START 2>&1 | Out-Null
+    & $nssmExe set $SyncServiceName AppStdout "$LogDir\hub-sync-stdout.log" 2>&1 | Out-Null
+    & $nssmExe set $SyncServiceName AppStderr "$LogDir\hub-sync-stderr.log" 2>&1 | Out-Null
+    & $nssmExe set $SyncServiceName AppExit Default Restart 2>&1 | Out-Null
+    & $nssmExe set $SyncServiceName AppRestartDelay 10000 2>&1 | Out-Null
     Write-Ok "Service launcher and environment refreshed."
     Log "Service launcher and environment refreshed"
 } else {
@@ -955,6 +969,7 @@ if (-not (Ensure-HubPortAvailable -Port $hubPort -InstallRoot $InstallDir)) {
 $startFailed = $false
 try {
     Start-Service -Name $ServiceName -ErrorAction Stop
+    Start-Service -Name $SyncServiceName -ErrorAction Stop
 } catch {
     Write-Err "Failed to start $ServiceName service: $($_.Exception.Message)"
     Log "ERROR: Start-Service failed: $($_.Exception.Message)"

@@ -29,6 +29,7 @@ APP_USER="vitora"
 APP_DIR="/opt/vitora"
 VENV_DIR="${APP_DIR}/venv"
 SERVICE_NAME="vitora-hub"
+SYNC_SERVICE_NAME="vitora-hub-sync"
 HUB_PORT="${HUB_PORT:-9088}"
 LOG_DIR="/var/log/vitora"
 DB_DIR="/var/lib/vitora"
@@ -787,9 +788,39 @@ StandardError=append:${LOG_DIR}/hub-error.log
 WantedBy=multi-user.target
 EOF
 
+cat > "/etc/systemd/system/${SYNC_SERVICE_NAME}.service" <<EOF
+[Unit]
+Description=Vitora HMIS Facility Hub Sync
+After=network.target ${SERVICE_NAME}.service
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=${APP_USER}
+Group=${APP_USER}
+WorkingDirectory=${APP_DIR}
+EnvironmentFile=${APP_DIR}/.env
+ExecStart=${VENV_DIR}/bin/python manage.py hub_sync --watch
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=${DB_DIR} ${LOG_DIR}
+PrivateTmp=true
+StandardOutput=append:${LOG_DIR}/hub-sync.log
+StandardError=append:${LOG_DIR}/hub-sync-error.log
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 systemctl daemon-reload
 systemctl enable "$SERVICE_NAME"
+systemctl enable "$SYNC_SERVICE_NAME"
 systemctl start "$SERVICE_NAME"
+systemctl start "$SYNC_SERVICE_NAME"
 
 # --- Firewall ---
 step "7/7 Configuring network..."
