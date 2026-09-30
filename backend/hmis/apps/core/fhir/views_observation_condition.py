@@ -18,11 +18,13 @@ from datetime import date, datetime
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import serializers, status
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from hmis.apps.core.fhir.security import request_can_access_fhir_resource
+from hmis.apps.core.oauth.permissions import SMARTPatientAccessPermission, SMARTScopePermission
 from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
 
 logger = logging.getLogger(__name__)
@@ -69,9 +71,14 @@ class FHIRSchemaMixin:
 
 
 class PublicFHIRReadAPIView(FHIRSchemaMixin, APIView):
-    """Shared Inferno-friendly config for unauthenticated FHIR read endpoints."""
+    """Shared authorization for clinical FHIR read endpoints."""
 
-    permission_classes = [AllowAny]
+    permission_classes = [
+        IsAuthenticated,
+        SMARTScopePermission,
+        SMARTPatientAccessPermission,
+        ReadRequiresModelPermission,
+    ]
     renderer_classes = FHIR_RENDERER_CLASSES
 
 
@@ -296,6 +303,8 @@ class FHIRObservationView(PublicFHIRReadAPIView):
             social_history_observation = SocialHistoryObservation.objects.select_related(
                 "patient", "encounter"
             ).get(fhir_id=pk)
+            if not request_can_access_fhir_resource(request, social_history_observation):
+                return Response(status=status.HTTP_403_FORBIDDEN)
             return Response(
                 self._social_history_to_fhir(social_history_observation, request),
                 status=status.HTTP_200_OK,
@@ -307,6 +316,8 @@ class FHIRObservationView(PublicFHIRReadAPIView):
             pregnancy_observation = PregnancyObservation.objects.select_related(
                 "patient", "encounter", "mch_registration", "delivery"
             ).get(fhir_id=pk)
+            if not request_can_access_fhir_resource(request, pregnancy_observation):
+                return Response(status=status.HTTP_403_FORBIDDEN)
             return Response(
                 self._pregnancy_observation_to_fhir(pregnancy_observation, request),
                 status=status.HTTP_200_OK,
@@ -334,6 +345,8 @@ class FHIRObservationView(PublicFHIRReadAPIView):
 
         try:
             study = DICOMStudy.objects.prefetch_related("reports").get(pk=int_pk)
+            if not request_can_access_fhir_resource(request, study):
+                return Response(status=status.HTTP_403_FORBIDDEN)
             return Response(
                 self._radiology_study_to_fhir(study, request),
                 status=status.HTTP_200_OK,
@@ -348,6 +361,8 @@ class FHIRObservationView(PublicFHIRReadAPIView):
             lab_result = LabResult.objects.select_related(
                 "order_item__lab_order__patient",
             ).get(pk=int_pk)
+            if not request_can_access_fhir_resource(request, lab_result):
+                return Response(status=status.HTTP_403_FORBIDDEN)
             return Response(
                 self._lab_result_to_fhir(lab_result, request), status=status.HTTP_200_OK
             )
@@ -359,6 +374,8 @@ class FHIRObservationView(PublicFHIRReadAPIView):
 
         try:
             encounter = Encounter.objects.select_related("patient").get(pk=int_pk)
+            if not request_can_access_fhir_resource(request, encounter):
+                return Response(status=status.HTTP_403_FORBIDDEN)
             # Return first vital sign as observation
             return Response(
                 self._encounter_vitals_to_fhir(encounter, request), status=status.HTTP_200_OK
@@ -943,6 +960,9 @@ class FHIRConditionView(PublicFHIRReadAPIView):
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+        if not request_can_access_fhir_resource(request, diagnosis):
+            return Response(status=status.HTTP_403_FORBIDDEN)
 
         fhir_condition = self._to_fhir_condition(diagnosis, request)
         return Response(fhir_condition, status=status.HTTP_200_OK)

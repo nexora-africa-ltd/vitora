@@ -18,12 +18,14 @@ from datetime import date, datetime
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import serializers, status
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
+from hmis.apps.core.fhir.security import request_can_access_fhir_resource
+from hmis.apps.core.oauth.permissions import SMARTPatientAccessPermission, SMARTScopePermission
+from hmis.apps.core.permissions import ReadRequiresModelPermission
 
 logger = logging.getLogger(__name__)
 
@@ -69,9 +71,14 @@ class FHIRSchemaMixin:
 
 
 class PublicFHIRReadAPIView(FHIRSchemaMixin, APIView):
-    """Shared Inferno-friendly config for unauthenticated FHIR read endpoints."""
+    """Shared authorization for clinical FHIR read endpoints."""
 
-    permission_classes = [AllowAny]
+    permission_classes = [
+        IsAuthenticated,
+        SMARTScopePermission,
+        SMARTPatientAccessPermission,
+        ReadRequiresModelPermission,
+    ]
     renderer_classes = FHIR_RENDERER_CLASSES
 
 
@@ -305,6 +312,9 @@ class FHIRDeviceView(PublicFHIRReadAPIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        if not request_can_access_fhir_resource(request, implant):
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
         return Response(self._to_fhir_device(implant), status=status.HTTP_200_OK)
 
     def _to_fhir_device(self, implant) -> dict:
@@ -375,6 +385,9 @@ class FHIRDeviceUseStatementView(PublicFHIRReadAPIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        if not request_can_access_fhir_resource(request, implant):
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
         return Response(self._to_fhir_device_use_statement(implant), status=status.HTTP_200_OK)
 
     def _to_fhir_device_use_statement(self, implant) -> dict:
@@ -432,6 +445,9 @@ class FHIRMedicationView(PublicFHIRReadAPIView):
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+        if not request_can_access_fhir_resource(request, drug):
+            return Response(status=status.HTTP_403_FORBIDDEN)
 
         return Response(self._to_fhir_medication(drug), status=status.HTTP_200_OK)
 
@@ -492,6 +508,9 @@ class FHIRSpecimenView(PublicFHIRReadAPIView):
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+        if not request_can_access_fhir_resource(request, specimen):
+            return Response(status=status.HTTP_403_FORBIDDEN)
 
         return Response(self._to_fhir_specimen(specimen), status=status.HTTP_200_OK)
 
@@ -567,6 +586,9 @@ class FHIRDiagnosticReportView(PublicFHIRReadAPIView):
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+        if not request_can_access_fhir_resource(request, report):
+            return Response(status=status.HTTP_403_FORBIDDEN)
 
         return Response(self._to_fhir_diagnostic_report(report), status=status.HTTP_200_OK)
 
@@ -655,6 +677,9 @@ class FHIRImmunizationView(PublicFHIRReadAPIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        if not request_can_access_fhir_resource(request, record):
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
         return Response(self._to_fhir_immunization(record), status=status.HTTP_200_OK)
 
     def _to_fhir_immunization(self, record) -> dict:
@@ -716,6 +741,9 @@ class FHIRProcedureView(PublicFHIRReadAPIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        if not request_can_access_fhir_resource(request, order):
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
         return Response(self._to_fhir_procedure(order), status=status.HTTP_200_OK)
 
     def _to_fhir_procedure(self, order) -> dict:
@@ -770,6 +798,9 @@ class FHIRImagingStudyView(PublicFHIRReadAPIView):
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+        if not request_can_access_fhir_resource(request, study):
+            return Response(status=status.HTTP_403_FORBIDDEN)
 
         return Response(self._to_fhir_imaging_study(study), status=status.HTTP_200_OK)
 
@@ -835,6 +866,9 @@ class FHIRMediaView(PublicFHIRReadAPIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        if not request_can_access_fhir_resource(request, instance):
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
         return Response(self._to_fhir_media(instance), status=status.HTTP_200_OK)
 
     def _to_fhir_media(self, instance) -> dict:
@@ -865,7 +899,13 @@ class FHIRCarePlanView(APIView):
     Maps Django TreatmentPlan to FHIR CarePlan resource for IPS Plan of Care section.
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
+    permission_classes = [
+        IsAuthenticated,
+        SMARTScopePermission,
+        SMARTPatientAccessPermission,
+        ReadRequiresModelPermission,
+    ]
+    renderer_classes = FHIR_RENDERER_CLASSES
 
     # Status mapping from Django to FHIR CarePlan status
     STATUS_MAP = {
@@ -901,6 +941,9 @@ class FHIRCarePlanView(APIView):
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+        if not request_can_access_fhir_resource(request, treatment_plan):
+            return Response(status=status.HTTP_403_FORBIDDEN)
 
         fhir_resource = self._to_fhir_care_plan(treatment_plan, request)
         return Response(fhir_resource, status=status.HTTP_200_OK)

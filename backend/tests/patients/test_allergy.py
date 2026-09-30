@@ -41,6 +41,34 @@ class TestAllergyModel:
         assert allergy.substance_type == "medication"
         assert allergy.is_active is True
 
+    def test_allergy_history_tracks_resolution_and_severity_changes(
+        self, db, sample_patient, sample_organization
+    ):
+        """Clinical changes create immutable history rows for medication safety review."""
+        from hmis.apps.patients.models import Allergy
+
+        allergy = Allergy.objects.create(
+            patient=sample_patient,
+            substance="Penicillin",
+            severity="moderate",
+            status="active",
+            organization=sample_organization,
+        )
+        allergy.severity = "life_threatening"
+        allergy.save()
+        allergy.status = "resolved"
+        allergy.save()
+
+        history = list(allergy.history.order_by("history_date"))
+
+        assert len(history) == 3
+        assert history[0].severity == "moderate"
+        assert history[0].status == "active"
+        assert history[1].severity == "life_threatening"
+        assert history[1].status == "active"
+        assert history[2].severity == "life_threatening"
+        assert history[2].status == "resolved"
+
     def test_allergy_str_representation(self, db, sample_patient, sample_organization):
         """Should have a meaningful string representation."""
         from hmis.apps.patients.models import Allergy

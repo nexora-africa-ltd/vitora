@@ -273,6 +273,7 @@ AUTHENTICATION_BACKENDS = [
 # Django REST Framework
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
+        "hmis.apps.core.oauth.authentication.SMARTOAuth2Authentication",
         "rest_framework_simplejwt.authentication.JWTAuthentication",
         "hmis.apps.core.cookie_auth_backend.CookieJWTAuthentication",
     ],
@@ -1166,6 +1167,9 @@ OAUTH2_PROVIDER = {
     # Response types
     "AUTHORIZATION_CODE_EXPIRE_SECONDS": 600,  # 10 minutes
 }
+# django-oauth-toolkit marks AccessToken as swappable. Pin the stock model so
+# SMARTTokenContext migrations can safely depend on the token table.
+OAUTH2_PROVIDER_ACCESS_TOKEN_MODEL = "oauth2_provider.AccessToken"  # noqa: S105
 
 # FHIR server base URL (used in SMART configuration)
 FHIR_BASE_URL = os.getenv("FHIR_BASE_URL", "http://localhost:9088")

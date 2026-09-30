@@ -27,6 +27,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.core.fhir.views import FHIR_RENDERER_CLASSES, FHIRSchemaMixin
+from hmis.apps.core.oauth.permissions import (
+    SMARTPatientAccessPermission,
+    SMARTScopePermission,
+    get_patient_context_id,
+    get_smart_filter_for_patient_scopes,
+)
 from hmis.apps.core.permissions import ReadRequiresModelPermission
 
 logger = logging.getLogger(__name__)
@@ -143,7 +149,12 @@ class FHIRSearchMixin:
 class FHIRSearchAPIView(FHIRSearchMixin, FHIRSchemaMixin, APIView):
     """Base class for FHIR search endpoints (authenticated)."""
 
-    permission_classes = [IsAuthenticated, ReadRequiresModelPermission]
+    permission_classes = [
+        IsAuthenticated,
+        SMARTScopePermission,
+        SMARTPatientAccessPermission,
+        ReadRequiresModelPermission,
+    ]
     renderer_classes = FHIR_RENDERER_CLASSES
 
 
@@ -165,7 +176,9 @@ class FHIRPatientSearchView(FHIRSearchAPIView):
     def get(self, request):
         from hmis.apps.patients.models import Patient
 
-        queryset = Patient.objects.select_related("county", "sub_county", "ward")
+        queryset = get_smart_filter_for_patient_scopes(
+            request, Patient.objects.select_related("county", "sub_county", "ward")
+        )
 
         # _id
         _id = request.query_params.get("_id")
@@ -254,7 +267,7 @@ class FHIRObservationSearchView(FHIRSearchAPIView):
         from hmis.apps.laboratory.models import LabResult
 
         entries = []
-        patient_id = request.query_params.get("patient")
+        patient_id = get_patient_context_id(request, request.query_params.get("patient"))
         code = request.query_params.get("code")
         category = request.query_params.get("category")
         obs_date = request.query_params.get("date")
@@ -385,7 +398,7 @@ class FHIRConditionSearchView(FHIRSearchAPIView):
 
         queryset = Diagnosis.objects.select_related("encounter__patient", "icd10_code")
 
-        patient_id = request.query_params.get("patient")
+        patient_id = get_patient_context_id(request, request.query_params.get("patient"))
         if patient_id:
             queryset = queryset.filter(encounter__patient_id=patient_id)
 
@@ -484,7 +497,7 @@ class FHIRMedicationStatementSearchView(FHIRSearchAPIView):
 
         queryset = Prescription.objects.select_related("patient")
 
-        patient_id = request.query_params.get("patient")
+        patient_id = get_patient_context_id(request, request.query_params.get("patient"))
         if patient_id:
             queryset = queryset.filter(patient_id=patient_id)
 
@@ -549,7 +562,7 @@ class FHIREncounterSearchView(FHIRSearchAPIView):
 
         queryset = Encounter.objects.select_related("patient")
 
-        patient_id = request.query_params.get("patient")
+        patient_id = get_patient_context_id(request, request.query_params.get("patient"))
         if patient_id:
             queryset = queryset.filter(patient_id=patient_id)
 
@@ -629,7 +642,7 @@ class FHIRDiagnosticReportSearchView(FHIRSearchAPIView):
 
         queryset = DiagnosticReport.objects.select_related("lab_order__patient", "lab_order")
 
-        patient_id = request.query_params.get("patient")
+        patient_id = get_patient_context_id(request, request.query_params.get("patient"))
         if patient_id:
             queryset = queryset.filter(lab_order__patient_id=patient_id)
 
