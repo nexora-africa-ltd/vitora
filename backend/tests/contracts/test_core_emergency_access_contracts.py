@@ -20,8 +20,8 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         EmergencyAccessCreateSerializer,
         frozenset(
             {
-                "duration_minutes",
                 "access_mode",
+                "duration_minutes",
                 "patient_mrn",
                 "reason",
                 "reason_details",
@@ -59,9 +59,9 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         EmergencyAccessSerializer,
         frozenset(
             {
-                "approval_notes",
                 "access_mode",
                 "access_mode_display",
+                "approval_notes",
                 "approved_at",
                 "approver",
                 "approver_username",
@@ -82,8 +82,8 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "reason_details",
                 "reason_display",
                 "remaining_minutes",
-                "review_due_at",
                 "requested_at",
+                "review_due_at",
                 "revocation_reason",
                 "revoked_at",
                 "revoked_by",
