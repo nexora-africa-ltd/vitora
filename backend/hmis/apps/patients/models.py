@@ -426,7 +426,6 @@ class Patient(HistoryMixin, models.Model):
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
     # Version history tracking (DHA Audit Trail Enhancement)
     history = HistoricalRecords(
         table_name="patients_patient_history",
@@ -1235,6 +1234,10 @@ class Allergy(models.Model):
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    history = HistoricalRecords(
+        table_name="patients_allergy_history",
+        excluded_fields=["updated_at"],
+    )
 
     class Meta:
         """Meta options for Allergy model."""

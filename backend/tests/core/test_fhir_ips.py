@@ -669,13 +669,12 @@ class TestFHIRIPSBundle:
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert response.data["resourceType"] == "OperationOutcome"
 
-    def test_ips_bundle_allows_unauthenticated_access(self, api_client, sample_patient):
-        """IPS summary should be callable without auth for Inferno IPS tests."""
+    def test_ips_bundle_requires_authenticated_access(self, api_client, sample_patient):
+        """IPS summary must never expose clinical data to unauthenticated callers."""
         url = reverse("fhir:patient-summary", args=[sample_patient.id])
         response = api_client.get(url)
 
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["resourceType"] == "Bundle"
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_composition_read_allows_unauthenticated_access(self, api_client, sample_patient):
         """Composition read should be callable without auth for Inferno IPS tests."""

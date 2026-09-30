@@ -125,8 +125,8 @@ export default function SDMXContractsPage() {
                     createContract.mutate(form);
                   }}
                 >
-                  <ContractField label="Partner" value={form.partner} onChange={(value) => setForm({ ...form, partner: value as SDMXContractCreateData['partner'] })} />
-                  <ContractField label="Environment" value={form.environment} onChange={(value) => setForm({ ...form, environment: value as SDMXContractCreateData['environment'] })} />
+                  <ContractSelect label="Partner" value={form.partner} options={[['DHA', 'DHA'], ['KHIS', 'KHIS'], ['OTHER', 'Other']]} onChange={(partner) => setForm({ ...form, partner: partner as SDMXContractCreateData['partner'] })} />
+                  <ContractSelect label="Environment" value={form.environment} options={[['SANDBOX', 'Sandbox'], ['PRODUCTION', 'Production']]} onChange={(environment) => setForm({ ...form, environment: environment as SDMXContractCreateData['environment'] })} />
                   <ContractField label="Agency ID" required value={form.agency_id} onChange={(agency_id) => setForm({ ...form, agency_id })} />
                   <ContractField label="Dataflow ID" required value={form.dataflow_id} onChange={(dataflow_id) => setForm({ ...form, dataflow_id })} />
                   <ContractField label="DSD ID" required value={form.dsd_id} onChange={(dsd_id) => setForm({ ...form, dsd_id })} />
@@ -199,4 +199,9 @@ export default function SDMXContractsPage() {
 function ContractField({ label, value, onChange, required = false, type = 'text' }: { label: string; value: string; onChange: (value: string) => void; required?: boolean; type?: string }) {
   const id = label.toLowerCase().replaceAll(' ', '-');
   return <div className="space-y-2"><Label htmlFor={id}>{label}</Label><Input id={id} type={type} required={required} value={value} onChange={(event) => onChange(event.target.value)} /></div>;
+}
+
+function ContractSelect({ label, value, options, onChange }: { label: string; value: string; options: readonly (readonly [string, string])[]; onChange: (value: string) => void }) {
+  const id = label.toLowerCase().replaceAll(' ', '-');
+  return <div className="space-y-2"><Label htmlFor={id}>{label}</Label><select id={id} className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={value} onChange={(event) => onChange(event.target.value)}>{options.map(([optionValue, optionLabel]) => <option key={optionValue} value={optionValue}>{optionLabel}</option>)}</select></div>;
 }

@@ -23,6 +23,7 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from hmis.apps.core.oauth.permissions import SMARTScopePermission
 from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
 
 logger = logging.getLogger(__name__)
@@ -304,7 +305,8 @@ class FHIRPatientSummaryView(FHIRSchemaMixin, APIView):
     - CarePlan resources (from treatment plans)
     """
 
-    permission_classes = [AllowAny]
+    smart_resource_type = "Patient"
+    permission_classes = [IsAuthenticated, SMARTScopePermission, ReadRequiresModelPermission]
     renderer_classes = FHIR_RENDERER_CLASSES
 
     @extend_schema(
