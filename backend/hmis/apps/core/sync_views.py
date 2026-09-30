@@ -333,6 +333,32 @@ def _validate_hub_identity_fields(*, table: str, data: dict, allowed_fields: set
     return {"ok": True, "reason": "", "cleaned_data": data}
 
 
+def _augment_downward_auth_user_data(*, record_id, data: dict | None) -> dict:
+    """Inject cloud-authoritative auth.User flags for hub pulls.
+
+    `is_staff` is intentionally cloud-authoritative and should flow only from
+    cloud -> hub. Hub -> cloud payloads are validated against
+    `HUB_USER_ALLOWED_FIELDS`, which excludes `is_staff`.
+    """
+    payload = dict(data or {})
+    User = get_user_model()
+
+    user = None
+    resolved_id = _record_id_to_int(record_id)
+    if resolved_id is not None:
+        user = User.objects.filter(pk=resolved_id).first()
+    if user is None:
+        username = str(payload.get("username") or "").strip()
+        if username:
+            user = User.objects.filter(username=username).first()
+
+    if user is None:
+        return payload
+
+    payload["is_staff"] = bool(user.is_staff)
+    return payload
+
+
 def _apply_hub_identity_change(*, table: str, operation: str, record_id, data: dict, installation):
     """Apply tightly scoped hub identity changes directly on the cloud."""
     if installation is None:
@@ -1210,6 +1236,8 @@ def _build_downward_snapshot_changes(
 
             try:
                 data = serialize_instance_for_sync(instance, exclude_fields=entry.exclude_fields)
+                if model_label == "auth.User":
+                    data = _augment_downward_auth_user_data(record_id=instance.pk, data=data)
                 data = add_sync_meta(data, direction=entry.direction, priority=entry.priority)
             except (TypeError, ValueError, AttributeError):
                 logger.exception(
@@ -1559,12 +1587,15 @@ def sync_pull(request):
     changes = []
     for entry in entries:
         record_id = entry.record_id if direction == "down" else str(entry.record_id)
+        data = entry.data
+        if direction == "down" and entry.model_name == "auth.User":
+            data = _augment_downward_auth_user_data(record_id=entry.record_id, data=entry.data)
         changes.append(
             {
                 "table": entry.model_name,
                 "operation": entry.operation,
                 "record_id": record_id if entry.record_id else None,
-                "data": entry.data,
+                "data": data,
                 "timestamp": entry.synced_at or entry.created_at,
                 "server_sequence": entry.pk,
             }

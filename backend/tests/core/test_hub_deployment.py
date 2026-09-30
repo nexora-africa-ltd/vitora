@@ -605,6 +605,7 @@ class TestSyncHubLicenseAuthentication:
                             "username": "hub_admin_attempt",
                             "password": make_password("hub-pass-123"),
                             "is_superuser": True,
+                            "is_staff": True,
                         },
                         "timestamp": timezone.now().isoformat(),
                         "client_id": "sync-test-hub",
