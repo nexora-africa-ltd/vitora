@@ -35,6 +35,7 @@ import { clearCacheAndReload } from '@/lib/utils/version-check';
 import { useNavigationMode } from '@/lib/context/navigation-mode-context';
 import { CommandMenuTrigger } from '@/components/layout/command-menu';
 import { Switch } from '@/components/ui/switch';
+import { isDesktop } from '@/lib/desktop';
 import { cn } from '@/lib/utils/cn';
 
 interface HeaderProps {
@@ -53,6 +54,7 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
   const [isClearingCache, setIsClearingCache] = useState(false);
   const { navigationMode, setNavigationMode, isClinicalNavigationEligible } = useNavigationMode();
   const isClinicalMode = navigationMode === 'clinical';
+  const desktopMode = isDesktop();
 
   const handleClearCache = async () => {
     setIsClearingCache(true);
@@ -77,7 +79,12 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
     : 'U';
 
   return (
-    <header className="sticky top-0 z-30 h-16 w-full border-b bg-background/95 backdrop-blur">
+    <header
+      className={cn(
+        'sticky z-30 h-16 w-full border-b bg-background/95 backdrop-blur',
+        desktopMode ? 'top-9' : 'top-0'
+      )}
+    >
       <div className="flex h-full items-center justify-between px-4 md:px-6">
         {/* Left side */}
         <div className="flex min-w-0 items-center gap-2 lg:gap-4">
