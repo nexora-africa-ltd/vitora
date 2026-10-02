@@ -25,6 +25,7 @@ env:
   CONTAINER_APP_ENV: vitora-env-private-sa
   REGISTRY_NAME: ${{ vars.ACR_NAME || 'vitoraacrsa' }}
   IMAGE_NAME: vitora-api-private-sa
+  EXPECTED_AZURE_SUBSCRIPTION_ID: b7dc0a20-1bad-484b-bd8a-c22e7698bdd3
 
 jobs:
   build-and-deploy:
@@ -56,6 +57,15 @@ jobs:
           client-id: ${{ secrets.AZURE_SA_CLIENT_ID != '' && secrets.AZURE_SA_CLIENT_ID || secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_SA_TENANT_ID != '' && secrets.AZURE_SA_TENANT_ID || secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SA_SUBSCRIPTION_ID != '' && secrets.AZURE_SA_SUBSCRIPTION_ID || secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Verify Azure deployment subscription
+        run: |
+          ACTUAL_SUBSCRIPTION_ID=$(az account show --query id --output tsv)
+          if [ "$ACTUAL_SUBSCRIPTION_ID" != "${{ env.EXPECTED_AZURE_SUBSCRIPTION_ID }}" ]; then
+            echo "ERROR: Azure login selected $ACTUAL_SUBSCRIPTION_ID, but vitoraacrsa is in ${{ env.EXPECTED_AZURE_SUBSCRIPTION_ID }}."
+            echo "Set the production AZURE_SA_SUBSCRIPTION_ID GitHub environment secret to the expected subscription ID."
+            exit 1
+          fi
 
       - name: Log in to Azure Container Registry
         run: |
