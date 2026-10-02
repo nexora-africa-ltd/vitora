@@ -1,6 +1,6 @@
 # Vitora HMIS — Architecture Diagrams
 
-> **Last Updated**: August 2026
+> **Last Updated**: October 2026
 > **Purpose**: Visual reference for the full system architecture
 
 ---
@@ -17,15 +17,15 @@ graph TB
 
     subgraph Cloud["Cloud Tier"]
         API["Django REST API<br/>(Python 3.12 / DRF)"]
-        PG["PostgreSQL 16<br/>(Neon - Cloud DB)"]
-        REDIS["Redis<br/>(Celery Broker)"]
-        CELERY["Celery Workers<br/>(Background Tasks)"]
+        PG["PostgreSQL 16<br/>(Azure South Africa North)"]
+        REDIS["Optional Redis<br/>(Broker / Cache)"]
+        CELERY["Optional Celery Workers<br/>(Async Tasks)"]
         PS["PowerSync Cloud<br/>(Logical Replication)"]
-        WS["WebSocket Server<br/>(Django Channels)"]
+        ASGI["Django ASGI<br/>(REST API + Channels WebSockets)"]
     end
 
     subgraph Facility["Facility Tier (LAN)"]
-        HUB["Facility Hub<br/>(Django + SQLite/PostgreSQL)"]
+        HUB["Facility Hub<br/>(Django + SQLite WAL)<br/>PostgreSQL: future optional path"]
         PC1["Workstation 1<br/>(Tauri + SQLite)"]
         PC2["Workstation 2<br/>(Tauri + SQLite)"]
         PC3["Workstation 3<br/>(Tauri + SQLite)"]
@@ -36,28 +36,29 @@ graph TB
         KHIS["KHIS / DHIS2<br/>(Health Reporting)"]
         MPESA["M-Pesa<br/>(Payments)"]
         FHIR["FHIR R4<br/>(Interoperability)"]
+        TIBABOT["TibaBot<br/>(External AI Service)"]
     end
 
-    WEB -->|"REST + PowerSync"| API
+    WEB -->|"REST + WebSocket"| ASGI
     WEB <-->|"Sync Stream"| PS
-    MOB -->|"REST API"| API
-    DESK -->|"REST (when online)"| API
+    MOB -->|"REST + WebSocket"| ASGI
+    DESK -->|"REST (when online)"| ASGI
 
-    API --> PG
-    API --> REDIS
+    ASGI --> PG
+    ASGI -. "when async workers are enabled" .-> REDIS
     REDIS --> CELERY
     PG -->|"Logical Replication"| PS
-    API --> WS
 
-    HUB -->|"Batch Sync (when online)"| API
+    HUB -->|"Batch Sync (when online)"| ASGI
     PC1 <-->|"LAN HTTP + WS"| HUB
     PC2 <-->|"LAN HTTP + WS"| HUB
     PC3 <-->|"LAN HTTP + WS"| HUB
 
-    API --> SHA
-    API --> KHIS
-    API --> MPESA
-    API --> FHIR
+    ASGI --> SHA
+    ASGI --> KHIS
+    ASGI --> MPESA
+    ASGI --> FHIR
+    ASGI --> TIBABOT
 ```
 
 ---
@@ -72,7 +73,7 @@ graph LR
     end
 
     subgraph Mode2["LAN Hub Mode"]
-        H["Hub Server<br/>(Django + DB)"]
+        H["Hub Server<br/>(Django + SQLite WAL)"]
         C1["Client PC 1"]
         C2["Client PC 2"]
         C1 -->|LAN| H
@@ -285,7 +286,9 @@ graph TB
     end
 
     subgraph Security["Security Layers"]
-        FERNET["Fernet Encryption<br/>(PII: national_id, phone, email)"]
+        FERNET["Fernet Encryption<br/>(Selected PII fields)"]
+        KMS_CURRENT["Current Key Management<br/>(Local Fernet key in environment)"]
+        KMS_TARGET["Target Production KMS<br/>(Azure Key Vault / HSM,<br/>managed identity and rotation)"]
         AUDIT["Audit Log<br/>(7yr retention, DPA 2019)"]
         RBAC["RBAC<br/>(Roles → Permissions Matrix)"]
         SENSITIVE["Sensitive Patient Filter<br/>(HIV, GBV, Mental Health)"]
@@ -294,6 +297,8 @@ graph TB
     end
 
     COOKIES --> MFA_CHECK
+    KMS_CURRENT --> FERNET
+    KMS_CURRENT -. "planned migration" .-> KMS_TARGET
 ```
 
 ---
@@ -309,12 +314,12 @@ graph LR
     end
 
     subgraph PowerSync["PowerSync Cloud"]
-        STREAM["Sync Streams<br/>(18 tables, 3 scopes)"]
+        STREAM["Permission-Gated Sync Streams<br/>(26 relations; global, organization,<br/>and facility scopes)"]
     end
 
     subgraph Backend["Cloud Backend"]
         DJANGO["Django REST API"]
-        NEON["PostgreSQL"]
+        PG_SYNC["Azure PostgreSQL<br/>(South Africa North)"]
     end
 
     subgraph Desktop["Desktop Client (Tauri)"]
@@ -324,10 +329,10 @@ graph LR
 
     WASM <-->|"Read (instant)"| SDK
     SDK <-->|"Bidirectional Sync"| STREAM
-    STREAM <-->|"Logical Replication"| NEON
+    STREAM <-->|"Logical Replication"| PG_SYNC
     SDK -->|"uploadData()"| DJANGO
     RQ -->|"REST (fallback)"| DJANGO
-    DJANGO --> NEON
+    DJANGO --> PG_SYNC
 
     LOCAL_DB <-->|"Read/Write"| SIDECAR
     SIDECAR -->|"REST Batch Sync<br/>(when online)"| DJANGO
@@ -352,8 +357,8 @@ graph TB
 
     subgraph Consumers["Event Consumers"]
         PROJ["Read-Model<br/>Projections"]
-        WSOCK["WebSocket<br/>Consumers (6)"]
-        TASK["Celery Tasks<br/>(9 modules)"]
+        WSOCK["Module WebSocket<br/>Consumers (Django Channels)"]
+        TASK["Celery Tasks<br/>(when async workers are enabled)"]
     end
 
     subgraph WSChannels["WebSocket Channels"]
@@ -481,19 +486,20 @@ graph LR
     end
 
     subgraph Parallel["Parallel Jobs"]
-        BE["Backend<br/>• Ruff Lint<br/>• Black Format<br/>• Pytest (80%+)<br/>• mypy Types"]
-        FE["Frontend<br/>• ESLint<br/>• Jest Tests<br/>• Build Check<br/>• tsc --noEmit"]
-        SEC["Security<br/>• Bandit<br/>• Trivy<br/>• CodeQL<br/>• Secret Scan"]
-        FHIR_CI["FHIR<br/>• Inferno IPS<br/>• Profile Validation"]
+        BE["Backend<br/>• Ruff / Black<br/>• Pytest (75% threshold)<br/>• mypy advisory"]
+        FE["Frontend<br/>• App-specific checks<br/>• Build/type checks where configured"]
+        SEC["Security<br/>• Bandit / Trivy / CodeQL<br/>• Secret scanning"]
+        FHIR_CI["FHIR Current<br/>• HAPI FHIR integration<br/>• Pytest contract tests"]
+        INFERNO["FHIR Planned CI Gate<br/>• Inferno IPS conformance"]
     end
 
     subgraph Gate["Quality Gate"]
-        QG{"All Pass?<br/>Coverage ≥80%<br/>No Critical Vulns"}
+        QG{"Required checks pass<br/>before deployment"}
     end
 
     subgraph Deploy["Deployment"]
         STG["Staging<br/>(Azure Container App)"]
-        PROD["Production<br/>(Azure + Neon)"]
+        PROD["Production<br/>(Vercel + Azure Container Apps<br/>+ Azure PostgreSQL)"]
     end
 
     PUSH --> Parallel
@@ -504,6 +510,7 @@ graph LR
     FE --> QG
     SEC --> QG
     FHIR_CI --> QG
+    INFERNO -. "add after automated runner is implemented" .-> QG
 
     QG -->|"Pass"| STG
     STG -->|"Manual Approve"| PROD
@@ -606,9 +613,9 @@ mindmap
       Python 3.12
       Django 5.x
       Django REST Framework
-      Celery + Redis
+      Celery + Redis (optional async mode)
       Django Channels (WebSocket)
-      PostgreSQL 16 / SQLite
+      Azure PostgreSQL 16 / SQLite WAL (hub)
     Frontend
       Next.js 16
       React 19
@@ -640,16 +647,19 @@ mindmap
       Azure Container Apps
       PostgreSQL
       PowerSync Cloud
-      GitHub Actions (4 workflows)
+      Vercel (web frontend)
+      Azure PostgreSQL (South Africa North)
+      GitHub Actions (multiple workflows)
       Docker
     Security
-      Fernet Encryption (PII)
+      Fernet Encryption (selected PII)
+      Local KMS (current) / Azure Key Vault + HSM (target)
       JWT + httpOnly Cookies
       MFA (TOTP)
       RBAC (Role Matrix)
       PKI (RSA-2048)
       Audit Hash Chain (SHA-256)
-      Kenya DPA 2019 Compliant
+      Kenya DPA 2019 controls in progress
 ```
 
 ---
@@ -664,25 +674,28 @@ graph TB
         MOBILE_APP["Mobile (React Native)"]
     end
 
-    subgraph Azure["Azure Cloud"]
-        ACA["Azure Container App<br/>(Django API + Daphne)"]
-        STORAGE["Azure Blob Storage<br/>(Media / Documents)"]
+    subgraph Vercel["Vercel"]
+        VERCEL["Next.js Frontend<br/>(Static + SSR)"]
     end
 
-    subgraph Neon["Neon (Database)"]
-        NEON_PG["PostgreSQL 16<br/>(eu-central-1)"]
+    subgraph Azure["Azure Cloud - South Africa North"]
+        ACA["Azure Container App<br/>(Django API + Daphne)"]
+        AZURE_PG["Azure PostgreSQL 16<br/>(Primary Database)"]
+        STORAGE["Azure Blob Storage<br/>(Media / Documents)"]
+        BACKUPS["Azure Blob Storage<br/>(Encrypted Daily Backups,<br/>30-Day Retention)"]
     end
 
     subgraph PowerSyncCloud["PowerSync Cloud"]
-        PS_INSTANCE["PowerSync Instance<br/>(EU Central)"]
+        PS_INSTANCE["PowerSync Instance"]
     end
 
-    subgraph Redis_Cloud["Redis Cloud"]
-        REDIS_INST["Redis<br/>(Celery Broker + Cache)"]
+    subgraph Async["Optional Async Infrastructure"]
+        REDIS_INST["TLS Redis<br/>(Broker + Cache when enabled)"]
     end
 
-    subgraph CDN["Vercel"]
-        VERCEL["Next.js Frontend<br/>(Static + SSR)"]
+    subgraph DR["Recovery Validation"]
+        RESTORE["Monthly Restore Drill<br/>(Isolated PostgreSQL)"]
+        DHA_TARGET["DHA Target State<br/>RPO <=15 min; RTO <=2 hr;<br/>in-country DR failover/fallback"]
     end
 
     BROWSER --> VERCEL
@@ -691,10 +704,13 @@ graph TB
     TAURI --> ACA
     MOBILE_APP --> ACA
 
-    ACA --> NEON_PG
-    ACA --> REDIS_INST
+    ACA --> AZURE_PG
+    ACA -. "when async workers are enabled" .-> REDIS_INST
     ACA --> STORAGE
-    NEON_PG -->|"Logical Replication"| PS_INSTANCE
+    AZURE_PG -->|"Logical Replication"| PS_INSTANCE
+    AZURE_PG -->|"Daily encrypted backup"| BACKUPS
+    BACKUPS -->|"Validate restore"| RESTORE
+    DHA_TARGET -. "target architecture; not yet evidenced" .-> RESTORE
 ```
 
 ---
