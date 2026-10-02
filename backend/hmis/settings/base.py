@@ -211,6 +211,9 @@ MEDIA_SERVE_FROM_DJANGO = os.getenv("MEDIA_SERVE_FROM_DJANGO", "false").lower() 
 
 # Blob storage media backend (used by imaging PACS files and thumbnails)
 AZURE_STORAGE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING", "")
+AZURE_MEDIA_STORAGE_CONNECTION_STRING = os.getenv(
+    "AZURE_MEDIA_STORAGE_CONNECTION_STRING", AZURE_STORAGE_CONNECTION_STRING
+)
 AZURE_MEDIA_STORAGE_ACCOUNT_NAME = os.getenv("AZURE_MEDIA_STORAGE_ACCOUNT_NAME", "")
 AZURE_MEDIA_STORAGE_ACCOUNT_KEY = os.getenv("AZURE_MEDIA_STORAGE_ACCOUNT_KEY", "")
 AZURE_MEDIA_CONTAINER = os.getenv("AZURE_MEDIA_CONTAINER", "vitora-media")
@@ -242,7 +245,7 @@ if MEDIA_BACKEND == "azure_blob":
     STORAGES["default"] = {
         "BACKEND": "storages.backends.azure_storage.AzureStorage",
         "OPTIONS": {
-            "connection_string": AZURE_STORAGE_CONNECTION_STRING,
+            "connection_string": AZURE_MEDIA_STORAGE_CONNECTION_STRING,
             "account_name": AZURE_MEDIA_STORAGE_ACCOUNT_NAME,
             "account_key": AZURE_MEDIA_STORAGE_ACCOUNT_KEY,
             "azure_container": AZURE_MEDIA_CONTAINER,

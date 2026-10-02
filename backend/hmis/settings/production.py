@@ -229,7 +229,10 @@ if _media_backend == "azure_blob":
     STORAGES["default"] = {
         "BACKEND": "storages.backends.azure_storage.AzureStorage",
         "OPTIONS": {
-            "connection_string": os.getenv("AZURE_STORAGE_CONNECTION_STRING", ""),
+            "connection_string": os.getenv(
+                "AZURE_MEDIA_STORAGE_CONNECTION_STRING",
+                os.getenv("AZURE_STORAGE_CONNECTION_STRING", ""),
+            ),
             "account_name": os.getenv("AZURE_MEDIA_STORAGE_ACCOUNT_NAME", ""),
             "account_key": os.getenv("AZURE_MEDIA_STORAGE_ACCOUNT_KEY", ""),
             "azure_container": os.getenv("AZURE_MEDIA_CONTAINER", "vitora-media"),
