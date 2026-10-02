@@ -74,7 +74,8 @@ class PACSStorageService:
         account_name = str(getattr(settings, "AZURE_MEDIA_STORAGE_ACCOUNT_NAME", "") or "").strip()
         account_key = str(getattr(settings, "AZURE_MEDIA_STORAGE_ACCOUNT_KEY", "") or "").strip()
         connection_string = str(
-            getattr(settings, "AZURE_STORAGE_CONNECTION_STRING", "") or ""
+            getattr(settings, "AZURE_MEDIA_STORAGE_CONNECTION_STRING", "")
+            or getattr(settings, "AZURE_STORAGE_CONNECTION_STRING", "")
         ).strip()
         container_name = str(getattr(settings, "AZURE_MEDIA_CONTAINER", "") or "").strip()
 
@@ -168,7 +169,10 @@ class PACSStorageService:
         account_name = str(getattr(settings, "AZURE_MEDIA_STORAGE_ACCOUNT_NAME", "") or "").strip()
         account_key = str(getattr(settings, "AZURE_MEDIA_STORAGE_ACCOUNT_KEY", "") or "").strip()
         if not account_name or not account_key:
-            connection_string = str(getattr(settings, "AZURE_STORAGE_CONNECTION_STRING", "") or "")
+            connection_string = str(
+                getattr(settings, "AZURE_MEDIA_STORAGE_CONNECTION_STRING", "")
+                or getattr(settings, "AZURE_STORAGE_CONNECTION_STRING", "")
+            )
             connection_values = dict(
                 part.split("=", 1) for part in connection_string.split(";") if "=" in part
             )

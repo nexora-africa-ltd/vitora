@@ -127,6 +127,7 @@ az containerapp update \
     "DB_CONN_MAX_AGE=${DB_CONN_MAX_AGE:-300}" \
     "ENCRYPTION_KEY=secretref:encryption-key" \
     "PII_HMAC_KEY=secretref:pii-hmac-key" \
+    "ORGANIZATION_PII_ENCRYPTION_ENABLED=true" \
     "AZURE_STORAGE_CONNECTION_STRING=secretref:azure-storage-connection-string" \
     "PAYSTACK_SECRET_KEY=secretref:paystack-secret-key" \
     "PAYSTACK_PUBLIC_KEY=${PAYSTACK_PUBLIC_KEY:-}" \

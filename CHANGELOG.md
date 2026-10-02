@@ -15,6 +15,15 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Hub 1.0.23] - 2026-10-02
+
+### Hub
+
+- Add protocol-v2 hub re-enrollment with device-encrypted activation secrets and organization-scoped PII key packages.
+- Move fresh Linux and Windows hub secret handling away from plaintext `.env` key storage; Windows uses DPAPI-protected secret bundles.
+- Add organization-scoped v2 PII encryption, blind-index lookup, and a resumable all-model re-encryption command.
+- Add Azure Key Vault environment separation and dedicated private media-storage configuration for cloud/hub interoperability.
+
 ## [Hub 1.0.22] - 2026-09-30
 
 ### Hub
