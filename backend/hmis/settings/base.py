@@ -640,6 +640,12 @@ PII_HMAC_KEY = os.getenv("PII_HMAC_KEY", "")
 # Key rotation policy (in days) - minimum 365 per DHA compliance
 KMS_KEY_ROTATION_DAYS = int(os.getenv("KMS_KEY_ROTATION_DAYS", "365"))
 
+# Per-organization AES-GCM PII ciphertext is deployed behind this gate until the
+# organization-scoped blind-index query migration is enabled with it.
+ORGANIZATION_PII_ENCRYPTION_ENABLED = (
+    os.getenv("ORGANIZATION_PII_ENCRYPTION_ENABLED", "false").lower() == "true"
+)
+
 # Azure Key Vault settings (when KMS_PROVIDER="azure")
 AZURE_KEY_VAULT_URL = os.getenv("AZURE_KEY_VAULT_URL", "")
 AZURE_KEY_NAME = os.getenv("AZURE_KEY_NAME", "vitora-hmis-key")

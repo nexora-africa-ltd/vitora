@@ -88,9 +88,25 @@ def encrypted_pii_property(field_name: str):
         raw = getattr(self, encrypted_attr, "")
         if not raw:
             return ""
-        from hmis.apps.core.kms import get_kms_provider
 
         try:
+            if raw.startswith("v2."):
+                from hmis.apps.core.pii_v2 import (
+                    OrganizationPIIEncryptionService,
+                    resolve_pii_organization,
+                )
+
+                organization = resolve_pii_organization(self)
+                if organization is None:
+                    raise ValueError("organization is required to decrypt v2 PII")
+                return OrganizationPIIEncryptionService().decrypt(
+                    organization,
+                    raw,
+                    model_label=self._meta.label_lower,
+                    field_name=field_name,
+                )
+            from hmis.apps.core.kms import get_kms_provider
+
             return get_kms_provider().decrypt_string(raw)
         except (
             AttributeError,
@@ -124,14 +140,34 @@ def encrypted_pii_property(field_name: str):
             if hasattr(self, hmac_attr):
                 setattr(self, hmac_attr, "")
             return
-        from hmis.apps.core.kms import get_kms_provider
+        from django.conf import settings
 
-        kms = get_kms_provider()
-        setattr(self, encrypted_attr, kms.encrypt_string(value))
+        from hmis.apps.core.pii_v2 import OrganizationPIIEncryptionService, resolve_pii_organization
+
+        organization = resolve_pii_organization(self)
+        if organization is not None and settings.ORGANIZATION_PII_ENCRYPTION_ENABLED:
+            setattr(
+                self,
+                encrypted_attr,
+                OrganizationPIIEncryptionService().encrypt(
+                    organization,
+                    value,
+                    model_label=self._meta.label_lower,
+                    field_name=field_name,
+                ),
+            )
+        else:
+            from hmis.apps.core.kms import get_kms_provider
+
+            kms = get_kms_provider()
+            setattr(self, encrypted_attr, kms.encrypt_string(value))
         # Also set HMAC if the column exists
         hmac_attr = f"{field_name}_hmac"
         if hasattr(self, hmac_attr):
-            setattr(self, hmac_attr, kms.compute_hmac(value))
+            # Preserve global blind indexes until their query path is migrated to v2 keys.
+            from hmis.apps.core.kms import get_kms_provider
+
+            setattr(self, hmac_attr, get_kms_provider().compute_hmac(value))
 
     _getter.fget.__doc__ = f"Decrypt and return the {field_name} value."
     return _getter

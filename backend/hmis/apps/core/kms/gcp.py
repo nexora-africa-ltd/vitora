@@ -92,6 +92,16 @@ class GCPKMSProvider(KMSProvider):
         self._not_implemented()
         return ""  # unreachable
 
+    def wrap_key(self, _key_material: bytes) -> bytes:
+        """Not yet implemented."""
+        self._not_implemented()
+        return b""  # unreachable
+
+    def unwrap_key(self, _wrapped_key_material: bytes) -> bytes:
+        """Not yet implemented."""
+        self._not_implemented()
+        return b""  # unreachable
+
     def rotate_key(self) -> KeyMetadata:
         """Not yet implemented."""
         self._not_implemented()

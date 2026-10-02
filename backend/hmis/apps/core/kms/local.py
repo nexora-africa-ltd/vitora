@@ -168,6 +168,14 @@ class LocalKMSProvider(KMSProvider):
         decrypted = self.decrypt(encrypted, context)
         return decrypted.decode("utf-8")
 
+    def wrap_key(self, key_material: bytes) -> bytes:
+        """Wrap key material with the configured local Fernet key."""
+        return self.encrypt(key_material)
+
+    def unwrap_key(self, wrapped_key_material: bytes) -> bytes:
+        """Unwrap key material with the configured local Fernet key."""
+        return self.decrypt(wrapped_key_material)
+
     def rotate_key(self) -> KeyMetadata:
         """
         Generate a new Fernet key.

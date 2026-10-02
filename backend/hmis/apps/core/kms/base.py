@@ -157,6 +157,16 @@ class KMSProvider(ABC):
         ).hexdigest()
 
     @abstractmethod
+    def wrap_key(self, key_material: bytes) -> bytes:
+        """Wrap DEK or HMAC material for durable storage outside the KMS."""
+        pass
+
+    @abstractmethod
+    def unwrap_key(self, wrapped_key_material: bytes) -> bytes:
+        """Unwrap DEK or HMAC material previously produced by ``wrap_key``."""
+        pass
+
+    @abstractmethod
     def rotate_key(self) -> KeyMetadata:
         """
         Trigger key rotation.

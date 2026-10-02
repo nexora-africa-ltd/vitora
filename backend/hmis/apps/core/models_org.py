@@ -446,3 +446,41 @@ class Organization(TimeStampedModel):
         ]
 
         return steps
+
+
+class OrganizationPIIKeyVersion(TimeStampedModel):
+    """Wrapped tenant PII key material used by versioned envelope encryption."""
+
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="pii_key_versions",
+    )
+    version = models.PositiveIntegerField(help_text="Monotonic version within the organization.")
+    wrapped_dek = models.TextField(help_text="KMS-wrapped AES-256 data encryption key.")
+    wrapped_hmac_key = models.TextField(help_text="KMS-wrapped HMAC key for future blind indices.")
+    kms_provider = models.CharField(
+        max_length=32, help_text="Provider that wrapped this key material."
+    )
+    kms_key_id = models.CharField(max_length=512, help_text="KMS key identifier used for wrapping.")
+    is_active = models.BooleanField(default=True, db_index=True)
+
+    class Meta:
+        """Keep versions unique and make current-key lookup efficient."""
+
+        ordering = ["organization_id", "-version"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "version"],
+                name="core_org_pii_key_version_unique",
+            ),
+            models.UniqueConstraint(
+                fields=["organization"],
+                condition=models.Q(is_active=True),
+                name="core_org_pii_one_active_key",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        """Return a safe identifier without exposing encrypted material."""
+        return f"{self.organization_id}:v{self.version}"

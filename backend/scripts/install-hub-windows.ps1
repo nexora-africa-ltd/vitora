@@ -138,15 +138,7 @@ function Write-DpapiSecretsBundle {
     } | ConvertTo-Json -Compress
 
     if (-not (Initialize-DpapiType)) {
-        $payload = @{
-            version = 1
-            scope = "PlaintextFallback"
-            generated_at = (Get-Date).ToUniversalTime().ToString("o")
-            secrets = $Secrets
-        } | ConvertTo-Json
-        Set-Content -Path $Path -Value $payload
-        Write-Warn "DPAPI unavailable; wrote plaintext secret bundle fallback at $Path"
-        return
+        throw "DPAPI is required for fresh hub installations; refusing plaintext secret storage."
     }
 
     $plainBytes = [Text.Encoding]::UTF8.GetBytes($plaintext)
@@ -368,6 +360,10 @@ Write-Info "Using EULA version: $EulaVersion"
 # --- Activate with Cloud ---
 Write-Step "A" "Activating hub with cloud..."
 $InstallationId = "hub-$($env:COMPUTERNAME)-$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
+$devicePrivateKeyFile = Join-Path $env:TEMP "vitora-device-x25519.pem"
+$bootstrapPython = (Get-Command python -ErrorAction Stop).Source
+& $bootstrapPython -m pip install --quiet cryptography
+$DevicePublicKey = & $bootstrapPython -c "import base64,sys; from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey; from cryptography.hazmat.primitives.serialization import Encoding,NoEncryption,PrivateFormat,PublicFormat; k=X25519PrivateKey.generate(); open(sys.argv[1],'wb').write(k.private_bytes(Encoding.PEM,PrivateFormat.PKCS8,NoEncryption())); print(base64.b64encode(k.public_key().public_bytes(Encoding.Raw,PublicFormat.Raw)).decode('ascii'))" $devicePrivateKeyFile
 
 try {
     $activationBody = @{
@@ -375,6 +371,8 @@ try {
         installation_id = $InstallationId
         eula_accepted = $true
         eula_version = $EulaVersion
+        protocol_version = 2
+        device_public_key = $DevicePublicKey
     } | ConvertTo-Json
 
     $activationResponse = Invoke-RestMethod -Uri "$CloudUrl/api/licensing/activate/" `
@@ -410,8 +408,6 @@ if (-not $CloudApiBaseUrl) {
 }
 $OrgName = $activationResponse.organization.name
 $FacilityName = $activationResponse.facility.name
-$EncryptionKey = if ($activationResponse.encryption_key) { $activationResponse.encryption_key } else { "" }
-$PiiHmacKey = if ($activationResponse.pii_hmac_key) { $activationResponse.pii_hmac_key } else { "" }
 $TibaBotConfig = $activationResponse.tibabot
 $TibaBotEnabled = Resolve-ConfigValue "TIBABOT_ENABLED" $TibaBotConfig.enabled "true"
 $TibaBotApiUrl = Resolve-ConfigValue "TIBABOT_API_URL" $TibaBotConfig.api_url ""
@@ -740,12 +736,14 @@ if (Test-Path "$InstallDir\requirements-hub.txt") {
 }
 & $python -m pip install --quiet daphne whitenoise
 
-# --- Generate Secret Key ---
+# --- Decrypt activation secrets and generate local application key ---
 $secretKey = & $python -c "import secrets; print(secrets.token_urlsafe(50))"
-if ((-not $PiiHmacKey) -or ($PiiHmacKey -eq "dev-hmac-key-not-for-production")) {
-    Write-Warn "Activation response did not include pii_hmac_key; generating a local fallback. Cross-system PII exact-match lookup may differ."
-    $PiiHmacKey = & $python -c "import secrets; print(secrets.token_urlsafe(32))"
-}
+$decryptedSecretsJson = & $python -c "import json,sys; from cryptography.hazmat.primitives.serialization import load_pem_private_key; from hmis.apps.licensing.activation_secrets import decrypt_activation_secrets; r=json.load(open(sys.argv[1])); k=load_pem_private_key(open(sys.argv[2],'rb').read(),password=None); print(json.dumps(decrypt_activation_secrets(r['secrets_envelope'],k,installation_id=sys.argv[3],organization_id=int(sys.argv[4]),facility_id=int(sys.argv[5]))))" $activationFile $devicePrivateKeyFile $InstallationId $OrgId $FacilityId
+$decryptedSecrets = $decryptedSecretsJson | ConvertFrom-Json
+$EncryptionKey = $decryptedSecrets.encryption_key
+$PiiHmacKey = $decryptedSecrets.pii_hmac_key
+$PiiKeyPackageJson = $decryptedSecrets.organization_pii_key_package | ConvertTo-Json -Compress
+Remove-Item -Path $devicePrivateKeyFile -Force
 
 # --- Write Environment File ---
 Write-Step 5 "Writing configuration..."
@@ -753,8 +751,6 @@ $HubSecretsFile = "$InstallDir\secrets\hub-secrets.dpapi.json"
 $envContent = @"
 DJANGO_ENV=hub
 DJANGO_SECRET_KEY=$secretKey
-ENCRYPTION_KEY=$EncryptionKey
-PII_HMAC_KEY=$PiiHmacKey
 HUB_ID=$HubId
 HUB_FACILITY_ID=$FacilityId
 HUB_ORGANIZATION_ID=$OrgId
@@ -990,7 +986,7 @@ if ($LASTEXITCODE -ne 0) {
 
 # Seed org/facility from activation data
 Write-Info "Seeding organization and facility from activation data..."
-& $python manage.py seed_from_activation --response-file="$activationFile" --skip-locations
+$PiiKeyPackageJson | & $python manage.py seed_from_activation --response-file="$activationFile" --skip-locations --pii-key-package-stdin
 if ($LASTEXITCODE -ne 0) {
     Write-Err "seed_from_activation failed (exit $LASTEXITCODE). Aborting install."
     exit 1

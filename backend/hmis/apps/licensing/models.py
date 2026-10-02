@@ -101,6 +101,12 @@ class Installation(TimeStampedModel):
         default="",
         help_text="Version of the EULA accepted during activation.",
     )
+    device_public_key = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        help_text="Base64-encoded raw X25519 public key registered during protocol-v2 activation.",
+    )
 
     # ------------------------------------------------------------------
     # License Token

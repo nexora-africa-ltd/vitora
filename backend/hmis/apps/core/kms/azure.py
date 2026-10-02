@@ -309,6 +309,28 @@ class AzureKeyVaultProvider(KMSProvider):
         decrypted = self.decrypt(encrypted, context)
         return decrypted.decode("utf-8")
 
+    def wrap_key(self, key_material: bytes) -> bytes:
+        """Wrap a tenant DEK or HMAC key with the configured Key Vault key."""
+        try:
+            return self._crypto_client.encrypt(
+                self._EncryptionAlgorithm.rsa_oaep_256,
+                key_material,
+            ).ciphertext
+        except _azure_kms_handled_exceptions() as e:
+            logger.error("Azure key wrapping failed (%s)", type(e).__name__)
+            raise EncryptionError(f"Azure Key Vault key wrapping failed: {e}") from e
+
+    def unwrap_key(self, wrapped_key_material: bytes) -> bytes:
+        """Unwrap a tenant DEK or HMAC key with the configured Key Vault key."""
+        try:
+            return self._crypto_client.decrypt(
+                self._EncryptionAlgorithm.rsa_oaep_256,
+                wrapped_key_material,
+            ).plaintext
+        except _azure_kms_handled_exceptions() as e:
+            logger.error("Azure key unwrapping failed (%s)", type(e).__name__)
+            raise DecryptionError(f"Azure Key Vault key unwrapping failed: {e}") from e
+
     def rotate_key(self) -> KeyMetadata:
         """
         Trigger key rotation in Azure Key Vault.

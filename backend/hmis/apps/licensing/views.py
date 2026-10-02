@@ -250,6 +250,9 @@ def activate_installation(request: Request) -> Response:
     installation.app_version = data.get("app_version", "")
     installation.os_info = data.get("os_info", "")
     installation.check_in_ip = _get_client_ip(request)
+    protocol_version = data["protocol_version"]
+    if protocol_version == 2:
+        installation.device_public_key = data["device_public_key"]
 
     # Sign the license token
     payload = build_license_payload(installation)
@@ -267,7 +270,9 @@ def activate_installation(request: Request) -> Response:
     decoded = pyjwt.decode(token, options={"verify_signature": False})
 
     return Response(
-        build_activation_bootstrap_payload(installation, token, decoded, request=request),
+        build_activation_bootstrap_payload(
+            installation, token, decoded, request=request, protocol_version=protocol_version
+        ),
         status=status.HTTP_200_OK,
     )
 

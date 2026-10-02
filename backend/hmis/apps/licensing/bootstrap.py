@@ -11,6 +11,8 @@ from typing import Any
 from django.conf import settings
 from django.core.management.base import CommandError
 
+from .activation_secrets import encrypt_activation_secrets
+
 
 def _safe_pii_hmac_key() -> str:
     """Return a production-safe PII HMAC key for activation payloads.
@@ -93,7 +95,11 @@ def _build_tibabot_config(facility) -> dict[str, Any]:
 
 
 def build_activation_bootstrap_payload(
-    installation, token: str, decoded: dict[str, Any], request: Any | None = None
+    installation,
+    token: str,
+    decoded: dict[str, Any],
+    request: Any | None = None,
+    protocol_version: int = 1,
 ) -> dict[str, Any]:
     """Build the activation response used by installers to seed a hub."""
     organization = installation.organization
@@ -108,8 +114,7 @@ def build_activation_bootstrap_payload(
         "expires_at": decoded.get("exp"),
         "check_in_by": decoded.get("check_in_by"),
         "sync_url": _activation_sync_url(request),
-        "encryption_key": getattr(settings, "ENCRYPTION_KEY", ""),
-        "pii_hmac_key": _safe_pii_hmac_key(),
+        "protocol_version": protocol_version,
         # WebAuthn config so installers can seed sensible defaults. Leaving
         # these blank lets the installer fall back to localhost-scoped values
         # (which is the only WebAuthn config that works over HTTP).
@@ -124,6 +129,27 @@ def build_activation_bootstrap_payload(
         },
         "tibabot": _build_tibabot_config(facility),
     }
+    if protocol_version == 1:
+        # Explicit compatibility path for released installers that cannot decrypt v2 envelopes.
+        payload["legacy_plaintext_secrets"] = True
+        payload["encryption_key"] = getattr(settings, "ENCRYPTION_KEY", "")
+        payload["pii_hmac_key"] = _safe_pii_hmac_key()
+    else:
+        from hmis.apps.core.pii_v2 import OrganizationPIIEncryptionService
+
+        payload["secrets_envelope"] = encrypt_activation_secrets(
+            {
+                "encryption_key": getattr(settings, "ENCRYPTION_KEY", ""),
+                "pii_hmac_key": _safe_pii_hmac_key(),
+                "organization_pii_key_package": OrganizationPIIEncryptionService().export_active_key_package(
+                    organization
+                ),
+            },
+            installation.device_public_key,
+            installation_id=str(installation.installation_id),
+            organization_id=organization.id,
+            facility_id=facility.id if facility else None,
+        )
     return payload
 
 
@@ -391,7 +417,9 @@ def load_activation_response(response_file: str) -> dict[str, Any]:
         raise CommandError(f"Invalid activation response JSON: {exc}") from exc
 
 
-def seed_from_activation_payload(payload: dict[str, Any]) -> tuple[Any, Any]:
+def seed_from_activation_payload(
+    payload: dict[str, Any], organization_pii_key_package: dict[str, Any] | None = None
+) -> tuple[Any, Any]:
     """Create/update local Organization and Facility records from activation data."""
     from hmis.apps.core.models import County, Facility, Organization, SubCounty, SubscriptionPlan
 
@@ -454,6 +482,10 @@ def seed_from_activation_payload(payload: dict[str, Any]) -> tuple[Any, Any]:
             ),
         },
     )
+    if organization_pii_key_package is not None:
+        from hmis.apps.core.pii_v2 import import_organization_pii_key_package
+
+        import_organization_pii_key_package(org, organization_pii_key_package)
     org.contact_email = org_data.get("contact_email", "")
     org.contact_phone = org_data.get("contact_phone", "")
     org.save(update_fields=["contact_email_encrypted", "contact_phone_encrypted", "updated_at"])
