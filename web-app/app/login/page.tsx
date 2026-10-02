@@ -537,6 +537,16 @@ export default function LoginPage() {
                       Verify a document
                     </Link>
                   </p>
+                  <p className="text-xs text-muted-foreground">
+                    <a
+                      href="https://vitora.digital/legal/privacy"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline transition-colors hover:text-foreground"
+                    >
+                      Privacy Notice
+                    </a>
+                  </p>
                 </div>
               </form>
 

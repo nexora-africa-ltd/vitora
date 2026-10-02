@@ -69,11 +69,30 @@ class PatientQuerySet(models.QuerySet):
         "phone_number": "phone_number_hmac",
     }
 
-    def _rewrite_pii_kwargs(self, kwargs: dict) -> dict:
-        from hmis.apps.core.kms import get_kms_provider
+    def _clone(self):
+        clone = super()._clone()
+        clone._pii_organization_id = getattr(self, "_pii_organization_id", None)
+        return clone
+
+    def _organization_from_kwargs(self, kwargs: dict):
+        """Resolve an organization supplied by a tenant-scoped filter."""
+        organization = kwargs.get("organization")
+        if organization is not None:
+            return organization
+        organization_id = kwargs.get("organization_id")
+        if organization_id is None:
+            organization_id = getattr(self, "_pii_organization_id", None)
+        if organization_id is None:
+            return None
+        from hmis.apps.core.models import Organization
+
+        return Organization.objects.filter(pk=organization_id).first()
+
+    def _rewrite_pii_kwargs(self, kwargs: dict, organization=None) -> dict:
+        from django.conf import settings
 
         rewritten = {}
-        kms = None
+        service = None
         for key, value in kwargs.items():
             # Match `field`, `field__exact`, `field__iexact`, `field__icontains`.
             # HMAC is a deterministic hash, so case-insensitive and substring
@@ -84,24 +103,35 @@ class PatientQuerySet(models.QuerySet):
                     base = key[: -len(suffix)]
                     break
             if base in self._HMAC_REWRITES and isinstance(value, str) and value:
-                if kms is None:
-                    kms = get_kms_provider()
                 hmac_col = self._HMAC_REWRITES[base]
-                rewritten[hmac_col] = kms.compute_hmac(value)
+                if settings.ORGANIZATION_PII_ENCRYPTION_ENABLED:
+                    if organization is None:
+                        # New v2 indexes are tenant-scoped and must never fall back to global HMACs.
+                        rewritten["pk__in"] = []
+                    else:
+                        if service is None:
+                            from hmis.apps.core.pii_v2 import OrganizationPIIEncryptionService
+
+                            service = OrganizationPIIEncryptionService()
+                        rewritten[f"{hmac_col}__in"] = service.hmac_candidates(organization, value)
+                else:
+                    from hmis.apps.core.kms import get_kms_provider
+
+                    rewritten[hmac_col] = get_kms_provider().compute_hmac(value)
             else:
                 rewritten[key] = value
         return rewritten
 
-    def _rewrite_q(self, q):
+    def _rewrite_q(self, q, organization=None):
         """Recursively rewrite a Q object, translating PII lookups to HMAC."""
         from django.db.models import Q
 
         new_q = Q(_connector=q.connector, _negated=q.negated)
         for child in q.children:
             if isinstance(child, Q):
-                new_q.children.append(self._rewrite_q(child))
+                new_q.children.append(self._rewrite_q(child, organization))
             elif isinstance(child, tuple) and len(child) == 2:
-                rewritten = self._rewrite_pii_kwargs({child[0]: child[1]})
+                rewritten = self._rewrite_pii_kwargs({child[0]: child[1]}, organization)
                 # Take the (possibly renamed) single kwarg
                 new_key, new_val = next(iter(rewritten.items()))
                 new_q.children.append((new_key, new_val))
@@ -109,16 +139,30 @@ class PatientQuerySet(models.QuerySet):
                 new_q.children.append(child)
         return new_q
 
-    def _rewrite_args(self, args):
+    def _rewrite_args(self, args, organization=None):
         from django.db.models import Q
 
-        return tuple(self._rewrite_q(a) if isinstance(a, Q) else a for a in args)
+        return tuple(self._rewrite_q(a, organization) if isinstance(a, Q) else a for a in args)
 
     def filter(self, *args, **kwargs):
-        return super().filter(*self._rewrite_args(args), **self._rewrite_pii_kwargs(kwargs))
+        organization = self._organization_from_kwargs(kwargs)
+        queryset = super().filter(
+            *self._rewrite_args(args, organization),
+            **self._rewrite_pii_kwargs(kwargs, organization),
+        )
+        if organization is not None:
+            queryset._pii_organization_id = organization.pk
+        return queryset
 
     def exclude(self, *args, **kwargs):
-        return super().exclude(*self._rewrite_args(args), **self._rewrite_pii_kwargs(kwargs))
+        organization = self._organization_from_kwargs(kwargs)
+        queryset = super().exclude(
+            *self._rewrite_args(args, organization),
+            **self._rewrite_pii_kwargs(kwargs, organization),
+        )
+        if organization is not None:
+            queryset._pii_organization_id = organization.pk
+        return queryset
 
 
 PatientManager = models.Manager.from_queryset(PatientQuerySet)
@@ -426,7 +470,6 @@ class Patient(HistoryMixin, models.Model):
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
     # Version history tracking (DHA Audit Trail Enhancement)
     history = HistoricalRecords(
         table_name="patients_patient_history",
@@ -468,7 +511,7 @@ class Patient(HistoryMixin, models.Model):
         constraints = [
             # Prevent duplicate patients with same identification (via HMAC blind index)
             models.UniqueConstraint(
-                fields=["identification_type", "identification_number_hmac"],
+                fields=["organization", "identification_type", "identification_number_hmac"],
                 condition=~models.Q(identification_number_hmac=""),
                 name="unique_patient_identification_hmac",
             ),
@@ -1235,6 +1278,10 @@ class Allergy(models.Model):
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    history = HistoricalRecords(
+        table_name="patients_allergy_history",
+        excluded_fields=["updated_at"],
+    )
 
     class Meta:
         """Meta options for Allergy model."""

@@ -3,6 +3,7 @@
 
 import json
 import os
+import sys
 from pathlib import Path
 
 from django.core.management import call_command
@@ -31,6 +32,11 @@ class Command(BaseCommand):
             help="Path to the JSON response returned by /api/licensing/activate/.",
         )
         parser.add_argument(
+            "--pii-key-package-stdin",
+            action="store_true",
+            help="Read the decrypted organization PII key package from standard input.",
+        )
+        parser.add_argument(
             "--skip-locations",
             action="store_true",
             help="Skip loading Kenya county location data.",
@@ -44,7 +50,13 @@ class Command(BaseCommand):
             self._load_kenya_locations()
 
         # Seed org and facility
-        organization, facility = seed_from_activation_payload(payload)
+        pii_key_package = None
+        if options["pii_key_package_stdin"]:
+            try:
+                pii_key_package = json.load(sys.stdin)
+            except json.JSONDecodeError as exc:
+                raise ValueError("Invalid organization PII key package on standard input") from exc
+        organization, facility = seed_from_activation_payload(payload, pii_key_package)
         self.stdout.write(
             self.style.SUCCESS(
                 f"Seeded organization {organization.id} ({organization.name}) "

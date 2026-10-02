@@ -151,8 +151,6 @@ def _get_patient_name(document) -> str:
 
 
 def _can_sign_by_state(document_type: str, document) -> bool:
-    if document_type == "LabResult":
-        return getattr(document, "verification_status", "") == "VERIFIED"
     if document_type == "RadiologyReport":
         return getattr(document, "status", "") in ("FINAL", "AMENDED")
     if document_type == "DiagnosticReport":

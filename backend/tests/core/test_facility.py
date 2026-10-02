@@ -370,6 +370,36 @@ class TestFacilityAPI:
         assert response.data["mfl_code"] == "99999"
         assert "modules" in response.data
 
+    def test_retrieve_uses_primary_facility_organization_when_profile_cache_is_stale(
+        self,
+        authenticated_client,
+        sample_facility,
+        sample_organization,
+        test_staff_profile,
+        test_user,
+    ):
+        """A stale profile organization cache must not hide the directly assigned facility."""
+        from hmis.apps.core.models import Organization
+
+        other_organization = Organization.objects.create(
+            name="Other Health Group",
+            slug="other-health-group",
+            contact_email="admin@other-health.example",
+            is_active=True,
+        )
+        assert other_organization.id != sample_organization.id
+
+        # Simulate historical hub data imported before the profile cache was repaired.
+        type(test_staff_profile).objects.filter(pk=test_staff_profile.pk).update(
+            organization=other_organization
+        )
+        authenticated_client.force_authenticate(user=type(test_user).objects.get(pk=test_user.pk))
+
+        response = authenticated_client.get(f"/api/facilities/{sample_facility.id}/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["id"] == sample_facility.id
+
     def test_create_forbidden_for_non_admin(self, authenticated_client, facility_data):
         """Non-admin users should get 403 Forbidden when creating a facility."""
         response = authenticated_client.post("/api/facilities/", facility_data)

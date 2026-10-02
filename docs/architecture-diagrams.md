@@ -1,6 +1,6 @@
 # Vitora HMIS — Architecture Diagrams
 
-> **Last Updated**: August 2026
+> **Last Updated**: October 2026
 > **Purpose**: Visual reference for the full system architecture
 
 ---
@@ -17,15 +17,15 @@ graph TB
 
     subgraph Cloud["Cloud Tier"]
         API["Django REST API<br/>(Python 3.12 / DRF)"]
-        PG["PostgreSQL 16<br/>(Neon - Cloud DB)"]
-        REDIS["Redis<br/>(Celery Broker)"]
-        CELERY["Celery Workers<br/>(Background Tasks)"]
+        PG["PostgreSQL 16<br/>(Azure South Africa North)"]
+        REDIS["Optional Redis<br/>(Broker / Cache)"]
+        CELERY["Optional Celery Workers<br/>(Async Tasks)"]
         PS["PowerSync Cloud<br/>(Logical Replication)"]
-        WS["WebSocket Server<br/>(Django Channels)"]
+        ASGI["Django ASGI<br/>(REST API + Channels WebSockets)"]
     end
 
     subgraph Facility["Facility Tier (LAN)"]
-        HUB["Facility Hub<br/>(Django + SQLite/PostgreSQL)"]
+        HUB["Facility Hub<br/>(Django + SQLite WAL)<br/>PostgreSQL: future optional path"]
         PC1["Workstation 1<br/>(Tauri + SQLite)"]
         PC2["Workstation 2<br/>(Tauri + SQLite)"]
         PC3["Workstation 3<br/>(Tauri + SQLite)"]
@@ -36,43 +36,43 @@ graph TB
         KHIS["KHIS / DHIS2<br/>(Health Reporting)"]
         MPESA["M-Pesa<br/>(Payments)"]
         FHIR["FHIR R4<br/>(Interoperability)"]
+        TIBABOT["TibaBot<br/>(External AI Service)"]
     end
 
-    WEB -->|"REST + PowerSync"| API
+    WEB -->|"REST + WebSocket"| ASGI
     WEB <-->|"Sync Stream"| PS
-    MOB -->|"REST API"| API
-    DESK -->|"REST (when online)"| API
+    MOB -->|"REST + WebSocket"| ASGI
+    DESK -->|"REST (when online)"| ASGI
 
-    API --> PG
-    API --> REDIS
+    ASGI --> PG
+    ASGI -. "when async workers are enabled" .-> REDIS
     REDIS --> CELERY
     PG -->|"Logical Replication"| PS
-    API --> WS
 
-    HUB -->|"Batch Sync (when online)"| API
+    HUB -->|"Batch Sync (when online)"| ASGI
     PC1 <-->|"LAN HTTP + WS"| HUB
     PC2 <-->|"LAN HTTP + WS"| HUB
     PC3 <-->|"LAN HTTP + WS"| HUB
 
-    API --> SHA
-    API --> KHIS
-    API --> MPESA
-    API --> FHIR
+    ASGI --> SHA
+    ASGI --> KHIS
+    ASGI --> MPESA
+    ASGI --> FHIR
+    ASGI --> TIBABOT
 ```
-
 ---
 
 ## 2. Deployment Modes
 
 ```mermaid
-graph LR
+graph TB
     subgraph Mode1["Standalone Mode"]
         S1["Single PC<br/>(Tauri + SQLite)"]
         S1 -->|"Sync when online"| CLOUD1["Cloud API"]
     end
 
     subgraph Mode2["LAN Hub Mode"]
-        H["Hub Server<br/>(Django + DB)"]
+        H["Hub Server<br/>(Django + SQLite WAL)"]
         C1["Client PC 1"]
         C2["Client PC 2"]
         C1 -->|LAN| H
@@ -264,36 +264,53 @@ graph TB
 
 ---
 
-## 6. Authentication & Security
+## 6. Authentication
 
 ```mermaid
 graph TB
-    subgraph Auth["Authentication Flow"]
-        LOGIN["POST /api/auth/login/"]
-        LOGIN -->|"Credentials"| BACKEND["Django Backend"]
-        BACKEND -->|"Validate"| DB["User DB"]
-        BACKEND -->|"Set httpOnly Cookies"| COOKIES["Access + Refresh<br/>JWT Cookies"]
-    end
+    LOGIN["POST /api/auth/login/"]
+    LOGIN -->|"Credentials"| BACKEND["Django Backend"]
+    BACKEND -->|"Validate"| DB["User DB"]
+    BACKEND -->|"Set httpOnly Cookies"| COOKIES["Access and Refresh<br/>JWT Cookies"]
+```
 
-    subgraph MFA["MFA Enforcement"]
-        MFA_CHECK{"MFA Required?<br/>(ADMIN, CLINICAL_SENIOR,<br/>MANAGEMENT)"}
-        MFA_CHECK -->|"Yes + Grace Period Active"| GRACE["72h Grace Period<br/>(Full Access + Banner)"]
-        MFA_CHECK -->|"Yes + Grace Expired"| BLOCK["403: mfa_setup_required<br/>(Only auth/MFA endpoints)"]
-        MFA_CHECK -->|"No"| PASS["Full Access"]
-        GRACE --> TOTP["TOTP Setup<br/>(Authenticator App)"]
-        TOTP --> PASS
-    end
+---
 
-    subgraph Security["Security Layers"]
-        FERNET["Fernet Encryption<br/>(PII: national_id, phone, email)"]
-        AUDIT["Audit Log<br/>(7yr retention, DPA 2019)"]
-        RBAC["RBAC<br/>(Roles → Permissions Matrix)"]
-        SENSITIVE["Sensitive Patient Filter<br/>(HIV, GBV, Mental Health)"]
-        PKI["PKI / Digital Signatures<br/>(RSA-2048)"]
-        HASHCHAIN["Tamper-Resistant Audit<br/>(SHA-256 Hash Chain)"]
-    end
+## 6b. MFA Enforcement
 
-    COOKIES --> MFA_CHECK
+```mermaid
+graph TB
+    CHECK{"MFA Required?"}
+    CHECK -->|"No"| PASS["Full Access"]
+    CHECK -->|"Yes"| GRACE_CHECK{"Grace Period Active?"}
+    GRACE_CHECK -->|"Yes"| GRACE["72-hour Grace Period<br/>(Access and Setup Banner)"]
+    GRACE --> TOTP["TOTP Setup"]
+    TOTP --> PASS
+    GRACE_CHECK -->|"No"| BLOCK["403 mfa_setup_required<br/>(Auth and MFA endpoints only)"]
+```
+
+---
+
+## 6c. Security Controls
+
+```mermaid
+graph TB
+    SECURITY["Vitora Security Controls"]
+
+    SECURITY --> ACCESS["Access Control"]
+    ACCESS --> RBAC["RBAC<br/>(Roles to Permissions Matrix)"]
+    ACCESS --> SENSITIVE["Sensitive Patient Filter<br/>(HIV, GBV, Mental Health)"]
+    ACCESS --> MFA["MFA and Session Controls"]
+
+    SECURITY --> DATA["Data Protection"]
+    DATA --> FERNET["Fernet Encryption<br/>(Selected PII fields)"]
+    DATA --> KMS_CURRENT["Current Key Management<br/>(Local Fernet key in environment)"]
+    KMS_CURRENT -. "planned migration" .-> KMS_TARGET["Target Production KMS<br/>(Azure Key Vault and HSM,<br/>managed identity and rotation)"]
+
+    SECURITY --> ACCOUNTABILITY["Accountability"]
+    ACCOUNTABILITY --> AUDIT["Audit Log<br/>(7-year policy)"]
+    ACCOUNTABILITY --> HASHCHAIN["Tamper-Resistant Audit<br/>(SHA-256 Hash Chain)"]
+    ACCOUNTABILITY --> PKI["PKI and Digital Signatures<br/>(RSA-2048)"]
 ```
 
 ---
@@ -309,12 +326,12 @@ graph LR
     end
 
     subgraph PowerSync["PowerSync Cloud"]
-        STREAM["Sync Streams<br/>(18 tables, 3 scopes)"]
+        STREAM["Permission-Gated Sync Streams<br/>(26 relations; global, organization,<br/>and facility scopes)"]
     end
 
     subgraph Backend["Cloud Backend"]
         DJANGO["Django REST API"]
-        NEON["PostgreSQL"]
+        PG_SYNC["Azure PostgreSQL<br/>(South Africa North)"]
     end
 
     subgraph Desktop["Desktop Client (Tauri)"]
@@ -324,10 +341,10 @@ graph LR
 
     WASM <-->|"Read (instant)"| SDK
     SDK <-->|"Bidirectional Sync"| STREAM
-    STREAM <-->|"Logical Replication"| NEON
+    STREAM <-->|"Logical Replication"| PG_SYNC
     SDK -->|"uploadData()"| DJANGO
     RQ -->|"REST (fallback)"| DJANGO
-    DJANGO --> NEON
+    DJANGO --> PG_SYNC
 
     LOCAL_DB <-->|"Read/Write"| SIDECAR
     SIDECAR -->|"REST Batch Sync<br/>(when online)"| DJANGO
@@ -352,8 +369,8 @@ graph TB
 
     subgraph Consumers["Event Consumers"]
         PROJ["Read-Model<br/>Projections"]
-        WSOCK["WebSocket<br/>Consumers (6)"]
-        TASK["Celery Tasks<br/>(9 modules)"]
+        WSOCK["Module WebSocket<br/>Consumers (Django Channels)"]
+        TASK["Celery Tasks<br/>(when async workers are enabled)"]
     end
 
     subgraph WSChannels["WebSocket Channels"]
@@ -384,7 +401,7 @@ graph TB
 
 ## 9. SHA / DHA HIE Integration
 
-### 9a. Claims Lifecycle
+### 9a. Eligibility and Consent
 
 ```mermaid
 sequenceDiagram
@@ -408,14 +425,30 @@ sequenceDiagram
     V->>DHA: POST /consent/start-visit
     DHA-->>V: Visit Started
 
-    Note over V,SHA_SYS: Claims Submission
+```
+
+### 9b. Claim Submission and Adjudication
+
+```mermaid
+sequenceDiagram
+    participant V as Vitora HMIS
+    participant DHA as DHA HIE Gateway
+    participant SHA_SYS as SHA Systems
+
     V->>V: Generate FHIR R4 Bundle
     V->>DHA: POST /claims/submit
     DHA->>SHA_SYS: Route to SHA
     SHA_SYS-->>DHA: Adjudication Result
     DHA-->>V: Claim Status
+```
 
-    Note over V,SHA_SYS: ILM Intervention Lifecycle
+### 9c. ILM and Remittance
+
+```mermaid
+sequenceDiagram
+    participant V as Vitora HMIS
+    participant DHA as DHA HIE Gateway
+
     V->>DHA: POST /claims/{id}/ilm/interventions/retire
     DHA-->>V: Intervention Retired
     V->>DHA: POST /claims/{id}/ilm/interventions/restore
@@ -423,13 +456,12 @@ sequenceDiagram
     V->>DHA: POST /claims/{id}/ilm/preview-payer
     DHA-->>V: Payer Adjudication View (14 states)
 
-    Note over V,SHA_SYS: Remittance Reconciliation
     V->>DHA: GET /remittances/fetch
     DHA-->>V: Payment Details
     V->>V: Auto-reconcile to Local Claims
 ```
 
-### 9b. Preauthorization Workflow
+### 9d. Preauthorization Workflow
 
 ```mermaid
 sequenceDiagram
@@ -481,19 +513,20 @@ graph LR
     end
 
     subgraph Parallel["Parallel Jobs"]
-        BE["Backend<br/>• Ruff Lint<br/>• Black Format<br/>• Pytest (80%+)<br/>• mypy Types"]
-        FE["Frontend<br/>• ESLint<br/>• Jest Tests<br/>• Build Check<br/>• tsc --noEmit"]
-        SEC["Security<br/>• Bandit<br/>• Trivy<br/>• CodeQL<br/>• Secret Scan"]
-        FHIR_CI["FHIR<br/>• Inferno IPS<br/>• Profile Validation"]
+        BE["Backend<br/>• Ruff / Black<br/>• Pytest (75% threshold)<br/>• mypy advisory"]
+        FE["Frontend<br/>• App-specific checks<br/>• Build/type checks where configured"]
+        SEC["Security<br/>• Bandit / Trivy / CodeQL<br/>• Secret scanning"]
+        FHIR_CI["FHIR Current<br/>• HAPI FHIR integration<br/>• Pytest contract tests"]
+        INFERNO["FHIR Planned CI Gate<br/>• Inferno IPS conformance"]
     end
 
     subgraph Gate["Quality Gate"]
-        QG{"All Pass?<br/>Coverage ≥80%<br/>No Critical Vulns"}
+        QG{"Required checks pass<br/>before deployment"}
     end
 
     subgraph Deploy["Deployment"]
         STG["Staging<br/>(Azure Container App)"]
-        PROD["Production<br/>(Azure + Neon)"]
+        PROD["Production<br/>(Vercel + Azure Container Apps<br/>+ Azure PostgreSQL)"]
     end
 
     PUSH --> Parallel
@@ -504,6 +537,7 @@ graph LR
     FE --> QG
     SEC --> QG
     FHIR_CI --> QG
+    INFERNO -. "add after automated runner is implemented" .-> QG
 
     QG -->|"Pass"| STG
     STG -->|"Manual Approve"| PROD
@@ -511,7 +545,7 @@ graph LR
 
 ---
 
-## 11. Frontend Architecture (Web App)
+## 11. Frontend Application Shell and Providers
 
 ```mermaid
 graph TB
@@ -530,24 +564,40 @@ graph TB
         QUERY["QueryClientProvider<br/>(React Query)"]
     end
 
+    LAYOUT --> Providers
+    Providers --> DASH
+```
+
+---
+
+## 11b. Frontend Data and UI Layers
+
+```mermaid
+graph TB
+    DASH["Dashboard Routes"]
+
     subgraph DataLayer["Data Layer"]
-        API_CLIENT["API Client<br/>(Axios + Interceptors)"]
-        ZOD["Zod Schemas<br/>(66 files, runtime validation)"]
-        HOOKS["Custom Hooks<br/>(usePowerSyncQuery,<br/>usePermissions, etc.)"]
-        POWERSYNC_SDK["PowerSync SDK<br/>(Offline reads)"]
+        API_CLIENT["API Client<br/>(Axios and Interceptors)"]
+        ZOD["Zod Schemas<br/>(Runtime Validation)"]
+        HOOKS["Custom Hooks<br/>(PowerSync Query, Permissions)"]
+        POWERSYNC_SDK["PowerSync SDK<br/>(Offline Reads)"]
+        QUERY["React Query<br/>(Server-state Cache)"]
     end
 
     subgraph UI["UI Components"]
         SHADCN["shadcn/ui<br/>(Base Components)"]
         SHARED["Shared Components<br/>(PageHeader, ResponsiveTable,<br/>PullToRefresh, StatusBadge)"]
-        FORMS["Form Components<br/>(Zod + React Hook Form)"]
+        FORMS["Form Components<br/>(Zod and React Hook Form)"]
     end
 
-    LAYOUT --> Providers
-    Providers --> DASH
-    DASH --> DataLayer
-    DataLayer --> UI
+    DASH --> API_CLIENT
+    DASH --> HOOKS
+    HOOKS --> POWERSYNC_SDK
     API_CLIENT --> ZOD
+    API_CLIENT --> QUERY
+    DASH --> SHADCN
+    DASH --> SHARED
+    DASH --> FORMS
 ```
 
 ---
@@ -606,9 +656,9 @@ mindmap
       Python 3.12
       Django 5.x
       Django REST Framework
-      Celery + Redis
-      Django Channels (WebSocket)
-      PostgreSQL 16 / SQLite
+      Celery and Redis optional async mode
+      Django Channels WebSocket
+      Azure PostgreSQL 16 and SQLite WAL hub
     Frontend
       Next.js 16
       React 19
@@ -629,27 +679,32 @@ mindmap
       better-sqlite3
       Local SQLite
     Integrations
-      SHA / DHA HIE (15 APIs)
+      SHA and DHA HIE 15 APIs
       FHIR R4
       HL7v2
-      KHIS / DHIS2
+      KHIS and DHIS2
       M-Pesa
       SNOMED CT
-      ICD-10 / ICD-11
+      ICD 10 and ICD 11
     Infrastructure
       Azure Container Apps
+      Azure Front Door Standard shared profile isolated app endpoint
       PostgreSQL
       PowerSync Cloud
-      GitHub Actions (4 workflows)
+      Vercel web frontend
+      Azure PostgreSQL South Africa North
+      GitHub Actions multiple workflows
       Docker
     Security
-      Fernet Encryption (PII)
-      JWT + httpOnly Cookies
-      MFA (TOTP)
-      RBAC (Role Matrix)
-      PKI (RSA-2048)
-      Audit Hash Chain (SHA-256)
-      Kenya DPA 2019 Compliant
+      Fernet encryption selected PII
+      Local KMS current
+      Azure Key Vault and HSM target
+      JWT and httpOnly cookies
+      MFA TOTP
+      RBAC role matrix
+      PKI RSA 2048
+      Audit hash chain SHA 256
+      Kenya DPA 2019 controls in progress
 ```
 
 ---
@@ -664,45 +719,53 @@ graph TB
         MOBILE_APP["Mobile (React Native)"]
     end
 
-    subgraph Azure["Azure Cloud"]
-        ACA["Azure Container App<br/>(Django API + Daphne)"]
-        STORAGE["Azure Blob Storage<br/>(Media / Documents)"]
+    subgraph CurrentWeb["Current Web Delivery"]
+        VERCEL["Vercel<br/>(Next.js Frontend, current app.vitora.digital origin)"]
     end
 
-    subgraph Neon["Neon (Database)"]
-        NEON_PG["PostgreSQL 16<br/>(eu-central-1)"]
+    subgraph FrontDoor["Azure Front Door Standard - vitora-cdn"]
+        AFD_APP["vitoraappsa<br/>(Application endpoint; DNS cutover pending)"]
+        AFD_RELEASES["vitorareleases<br/>(Release endpoint; get.vitora.digital)"]
+    end
+
+    subgraph Azure["Azure Cloud - South Africa North"]
+        ACA["Azure Container App<br/>(Django API + Daphne)"]
+        WEB_ACA["Azure Container App<br/>(Next.js SSR web origin)"]
+        AZURE_PG["Azure PostgreSQL 16<br/>(Primary Database)"]
+        STORAGE["Azure Blob Storage<br/>(Media / Documents)"]
+        BACKUPS["Azure Blob Storage<br/>(Encrypted Daily Backups,<br/>30-Day Retention)"]
+        RELEASES["Azure Blob Storage<br/>(Signed Desktop / Hub Releases)"]
     end
 
     subgraph PowerSyncCloud["PowerSync Cloud"]
-        PS_INSTANCE["PowerSync Instance<br/>(EU Central)"]
+        PS_INSTANCE["PowerSync Instance"]
     end
 
-    subgraph Redis_Cloud["Redis Cloud"]
-        REDIS_INST["Redis<br/>(Celery Broker + Cache)"]
+    subgraph Async["Optional Async Infrastructure"]
+        REDIS_INST["TLS Redis<br/>(Broker + Cache when enabled)"]
     end
 
-    subgraph CDN["Vercel"]
-        VERCEL["Next.js Frontend<br/>(Static + SSR)"]
+    subgraph DR["Recovery Validation"]
+        RESTORE["Monthly Restore Drill<br/>(Isolated PostgreSQL)"]
+        DHA_TARGET["DHA Target State<br/>RPO <=15 min; RTO <=2 hr;<br/>in-country DR failover/fallback"]
     end
 
     BROWSER --> VERCEL
     VERCEL --> ACA
+    BROWSER -. "after app.vitora.digital DNS cutover" .-> AFD_APP
+    AFD_APP --> WEB_ACA
+    WEB_ACA --> ACA
     BROWSER <--> PS_INSTANCE
     TAURI --> ACA
     MOBILE_APP --> ACA
+    TAURI -->|"Updater downloads"| AFD_RELEASES
+    AFD_RELEASES --> RELEASES
 
-    ACA --> NEON_PG
-    ACA --> REDIS_INST
+    ACA --> AZURE_PG
+    ACA -. "when async workers are enabled" .-> REDIS_INST
     ACA --> STORAGE
-    NEON_PG -->|"Logical Replication"| PS_INSTANCE
+    AZURE_PG -->|"Logical Replication"| PS_INSTANCE
+    AZURE_PG -->|"Daily encrypted backup"| BACKUPS
+    BACKUPS -->|"Validate restore"| RESTORE
+    DHA_TARGET -. "target architecture; not yet evidenced" .-> RESTORE
 ```
-
----
-
-## Notes
-
-- All diagrams use Mermaid syntax and render on GitHub and in VS Code (with bierner.markdown-mermaid extension).
-- For the module list and descriptions, see `docs/modules-reference.md`.
-- For API endpoint details, see `docs/api-reference.md`.
-- For domain event catalog, see `docs/domain-events.md`.
-- For multi-tenancy details, see `docs/multitenancy.md`.

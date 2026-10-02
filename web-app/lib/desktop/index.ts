@@ -34,6 +34,27 @@ function getInvoke() {
   return window.__TAURI__?.core.invoke ?? window.__TAURI_INTERNALS__?.invoke ?? null;
 }
 
+/** Native custom-title-bar controls. No-op outside the Tauri shell. */
+export async function dragDesktopWindow(): Promise<void> {
+  const invoke = getInvoke();
+  if (invoke) await invoke('drag_window');
+}
+
+export async function minimizeDesktopWindow(): Promise<void> {
+  const invoke = getInvoke();
+  if (invoke) await invoke('minimize_window');
+}
+
+export async function toggleMaximizeDesktopWindow(): Promise<void> {
+  const invoke = getInvoke();
+  if (invoke) await invoke('toggle_maximize_window');
+}
+
+export async function closeDesktopWindow(): Promise<void> {
+  const invoke = getInvoke();
+  if (invoke) await invoke('close_window');
+}
+
 function normalizeDesktopApiUrl(url?: string | null): string {
   const normalized = (url || '').trim().replace(/\/+$/, '');
   if (!normalized) {

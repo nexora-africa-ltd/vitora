@@ -78,6 +78,7 @@ def authenticate_cloud_user_for_hub(username: str | None, password: str | None):
         password=password,
         first_name=user_data.get("first_name", ""),
         last_name=user_data.get("last_name", ""),
+        is_staff=user_data.get("is_staff") if isinstance(user_data.get("is_staff"), bool) else None,
         is_superuser=bool(user_data.get("is_superuser", False)),
         role_code=user_data.get("role") or "",
     )
@@ -122,6 +123,7 @@ def upsert_hub_user_from_cloud(
     password: str,
     first_name: str,
     last_name: str,
+    is_staff: bool | None,
     is_superuser: bool,
     role_code: str,
 ):
@@ -144,7 +146,10 @@ def upsert_hub_user_from_cloud(
     user.first_name = first_name
     user.last_name = last_name
     user.is_superuser = is_superuser
-    user.is_staff = bool(is_superuser)
+    # Only the authenticated cloud response may update staff status. Older
+    # cloud responses without this field must not undo a downstream sync.
+    if is_staff is not None:
+        user.is_staff = bool(is_superuser or is_staff)
     user.is_active = True
     user.set_password(password)
     user.save()

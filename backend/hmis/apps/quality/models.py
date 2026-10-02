@@ -16,10 +16,12 @@ from __future__ import annotations
 from decimal import Decimal
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from hmis.apps.clinics.models import Clinic, MonthlyClinicReport
+from hmis.apps.core.mixins import FacilityScopedModel
 from hmis.apps.core.models import TimeStampedModel
 
 # =============================================================================
@@ -515,3 +517,194 @@ class BenchmarkObservation(models.Model):
 
     def __str__(self) -> str:
         return f"{self.indicator_code} = {self.value} ({self.time_period}, {self.source})"
+
+
+# =============================================================================
+# SDMX Platform Configuration
+# =============================================================================
+
+
+class SDMXContract(TimeStampedModel):
+    """Versioned DHA/KHIS SDMX contract managed by Nexora platform staff."""
+
+    class Partner(models.TextChoices):
+        DHA = "DHA", "DHA"
+        KHIS = "KHIS", "KHIS"
+        OTHER = "OTHER", "Other"
+
+    class Environment(models.TextChoices):
+        SANDBOX = "SANDBOX", "Sandbox"
+        PRODUCTION = "PRODUCTION", "Production"
+
+    partner = models.CharField(max_length=20, choices=Partner.choices)
+    environment = models.CharField(max_length=20, choices=Environment.choices)
+    agency_id = models.CharField(max_length=100)
+    dataflow_id = models.CharField(max_length=100)
+    dsd_id = models.CharField(max_length=100)
+    version = models.CharField(max_length=50)
+    endpoint_url = models.URLField()
+    receiver_id = models.CharField(max_length=100)
+    secret_reference = models.CharField(max_length=255, blank=True)
+    effective_from = models.DateField(null=True, blank=True)
+    effective_until = models.DateField(null=True, blank=True)
+    is_active = models.BooleanField(default=False)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_sdmx_contracts",
+    )
+
+    class Meta:
+        ordering = ["partner", "dataflow_id", "-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["partner", "environment", "agency_id", "dataflow_id", "version"],
+                name="unique_sdmx_contract_external_version",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(effective_until__isnull=True)
+                | models.Q(effective_from__isnull=True)
+                | models.Q(effective_until__gte=models.F("effective_from")),
+                name="sdmx_contract_effective_range_valid",
+            ),
+        ]
+
+    @property
+    def display_name(self) -> str:
+        """Return the stable human-readable contract label."""
+        return f"{self.partner} {self.dataflow_id} v{self.version}"
+
+    def __str__(self) -> str:
+        return f"{self.display_name} ({self.get_environment_display()})"
+
+
+class SDMXCodeMapping(TimeStampedModel):
+    """Map Vitora reporting values to authoritative codes for an SDMX contract."""
+
+    class Dimension(models.TextChoices):
+        INDICATOR = "INDICATOR", "Indicator"
+        FACILITY = "FACILITY", "Facility"
+        GEOGRAPHY = "GEOGRAPHY", "Geography"
+        DISEASE = "DISEASE", "Disease"
+        AGE_GROUP = "AGE_GROUP", "Age group"
+        SEX = "SEX", "Sex"
+        FREQUENCY = "FREQUENCY", "Frequency"
+        UNIT = "UNIT", "Unit"
+
+    contract = models.ForeignKey(SDMXContract, on_delete=models.CASCADE, related_name="mappings")
+    dimension = models.CharField(max_length=30, choices=Dimension.choices)
+    source_code = models.CharField(max_length=150)
+    target_code = models.CharField(max_length=150)
+    target_name = models.CharField(max_length=255, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["dimension", "source_code"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["contract", "dimension", "source_code"],
+                name="unique_sdmx_source_mapping",
+            )
+        ]
+
+    def clean(self):
+        """Require an authoritative target code before activating a mapping."""
+        if self.is_active and not self.target_code.strip():
+            raise ValidationError({"target_code": "An active mapping requires a target code."})
+
+    def __str__(self) -> str:
+        return f"{self.contract.display_name}: {self.dimension} {self.source_code} -> {self.target_code}"
+
+
+class SDMXSubmission(TimeStampedModel):
+    """Immutable journal entry for a generated SDMX delivery attempt."""
+
+    class Status(models.TextChoices):
+        DRAFT = "DRAFT", "Draft"
+        VALIDATED = "VALIDATED", "Validated"
+        QUEUED = "QUEUED", "Queued"
+        ACCEPTED = "ACCEPTED", "Accepted"
+        REJECTED = "REJECTED", "Rejected"
+        FAILED = "FAILED", "Failed"
+
+    contract = models.ForeignKey(SDMXContract, on_delete=models.PROTECT, related_name="submissions")
+    facility = models.ForeignKey(
+        "core.Facility",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="sdmx_submissions",
+    )
+    report_type = models.CharField(max_length=50)
+    report_id = models.BigIntegerField()
+    reporting_period = models.CharField(max_length=30)
+    payload_sha256 = models.CharField(max_length=64, db_index=True)
+    idempotency_key = models.CharField(max_length=128, unique=True)
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.DRAFT, db_index=True
+    )
+    remote_reference = models.CharField(max_length=255, blank=True)
+    response_body = models.JSONField(default=dict, blank=True)
+    retry_count = models.PositiveIntegerField(default=0)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_sdmx_submissions",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["contract", "status"]),
+            models.Index(fields=["facility", "report_type", "report_id"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.contract.display_name} {self.report_type}#{self.report_id} ({self.status})"
+
+
+class FacilitySDMXConfiguration(FacilityScopedModel, TimeStampedModel):
+    """Facility-specific enablement and readiness state for an SDMX contract."""
+
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="sdmx_configurations",
+    )
+    contract = models.ForeignKey(
+        SDMXContract, on_delete=models.PROTECT, related_name="facility_configs"
+    )
+    is_enabled = models.BooleanField(default=False)
+    facility_code = models.CharField(max_length=100, blank=True)
+    report_types = models.JSONField(default=list, blank=True)
+    last_validated_at = models.DateTimeField(null=True, blank=True)
+    last_successful_submission_at = models.DateTimeField(null=True, blank=True)
+    enabled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="enabled_sdmx_facilities",
+    )
+
+    class Meta:
+        ordering = ["facility__name", "contract__partner", "contract__dataflow_id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "contract"],
+                name="unique_facility_sdmx_contract_config",
+            )
+        ]
+
+    @property
+    def is_ready(self) -> bool:
+        """Return whether an enabled facility has the minimum local mapping context."""
+        return self.is_enabled and bool(self.facility_code.strip()) and bool(self.report_types)
+
+    def __str__(self) -> str:
+        return f"{self.facility} - {self.contract.display_name}"

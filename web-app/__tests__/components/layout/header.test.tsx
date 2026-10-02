@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Header } from '@/components/layout/header';
+import { isDesktop } from '@/lib/desktop';
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
@@ -102,6 +103,10 @@ jest.mock('@/lib/context/navigation-mode-context', () => ({
   })),
 }));
 
+jest.mock('@/lib/desktop', () => ({
+  isDesktop: jest.fn(() => false),
+}));
+
 // Mock NotificationPanel component
 jest.mock('@/components/notifications/notification-panel', () => ({
   NotificationPanel: () =>
@@ -131,6 +136,7 @@ jest.mock('@/components/ui/tooltip', () => ({
 }));
 
 describe('Header', () => {
+  const mockIsDesktop = isDesktop as jest.MockedFunction<typeof isDesktop>;
   const defaultProps = {
     onMenuClick: jest.fn(),
     sidebarCollapsed: false,
@@ -138,6 +144,15 @@ describe('Header', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockIsDesktop.mockReturnValue(false);
+  });
+
+  it('stays below the desktop workspace tabs when scrolling', () => {
+    mockIsDesktop.mockReturnValue(true);
+
+    render(<Header {...defaultProps} />);
+
+    expect(screen.getByRole('banner')).toHaveClass('top-9');
   });
 
   it('should render mobile menu button', () => {

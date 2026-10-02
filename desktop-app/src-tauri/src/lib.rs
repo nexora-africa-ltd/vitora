@@ -13,7 +13,7 @@ use tauri::{
     image::Image,
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
     tray::TrayIconBuilder,
-    AppHandle, Manager, State, WindowEvent,
+    AppHandle, Manager, State, WebviewWindow, WindowEvent,
 };
 #[cfg(not(debug_assertions))]
 use tauri::Emitter;
@@ -37,6 +37,30 @@ use updater::{check_for_updates, get_update_status, install_available_update};
 const SIDECAR_READY_TIMEOUT: Duration = Duration::from_secs(10 * 60);
 const SIDECAR_READY_POLL_INTERVAL: Duration = Duration::from_millis(250);
 const PREFERRED_SIDECAR_PORT: u16 = 50872;
+
+#[tauri::command]
+fn drag_window(window: WebviewWindow) -> Result<(), String> {
+    window.start_dragging().map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn minimize_window(window: WebviewWindow) -> Result<(), String> {
+    window.minimize().map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn toggle_maximize_window(window: WebviewWindow) -> Result<(), String> {
+    if window.is_maximized().map_err(|error| error.to_string())? {
+        window.unmaximize().map_err(|error| error.to_string())
+    } else {
+        window.maximize().map_err(|error| error.to_string())
+    }
+}
+
+#[tauri::command]
+fn close_window(window: WebviewWindow) -> Result<(), String> {
+    window.close().map_err(|error| error.to_string())
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum WindowFocusAction {
@@ -954,6 +978,10 @@ pub fn run() {
             check_for_updates,
             get_update_status,
             install_available_update,
+            drag_window,
+            minimize_window,
+            toggle_maximize_window,
+            close_window,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
@@ -964,6 +992,15 @@ pub fn run() {
             // upgrades and serve stale Next.js chunks before web cleanup code
             // has a chance to run.
             SidecarState::purge_webview_data(&handle);
+
+            // Defense in depth: releases before the custom workspace chrome
+            // used native decorations, so force the intended frame even when
+            // an installer or platform cache supplies stale window metadata.
+            if let Some(main_window) = app.get_webview_window("main") {
+                if let Err(error) = main_window.set_decorations(false) {
+                    log::error!("Failed to disable native window decorations: {}", error);
+                }
+            }
 
             // --- System tray ---
             setup_tray(app)?;

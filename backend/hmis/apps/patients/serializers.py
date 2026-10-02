@@ -284,7 +284,12 @@ class PatientSerializer(serializers.ModelSerializer):
             gender = data.get("gender", "")
 
             if first_name and last_name and dob and gender:
+                organization = self.context.get("organization")
+                request = self.context.get("request")
+                if organization is None and request is not None:
+                    organization = getattr(request, "organization", None)
                 duplicate_qs = Patient.objects.filter(
+                    organization=organization,
                     first_name__iexact=first_name,
                     last_name__iexact=last_name,
                     date_of_birth=dob,

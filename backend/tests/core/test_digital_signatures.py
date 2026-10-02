@@ -10,6 +10,7 @@ from decimal import Decimal
 import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.utils import timezone
 from rest_framework import status
 
 from hmis.apps.billing.models import (
@@ -124,6 +125,23 @@ def admin_client(api_client, admin_user, sample_organization, sample_facility):
     ensure_staff_profile(admin_user, sample_organization, sample_facility)
     api_client.force_authenticate(user=admin_user)
     return api_client
+
+
+@pytest.fixture
+def sample_diagnostic_report(db, sample_lab_order, test_user):
+    """Create a finalized diagnostic report for signing tests."""
+    from hmis.apps.laboratory.models import DiagnosticReport, LabOrder
+
+    LabOrder.objects.filter(pk=sample_lab_order.pk).update(status="COMPLETED")
+    sample_lab_order.refresh_from_db()
+
+    return DiagnosticReport.objects.create(
+        lab_order=sample_lab_order,
+        issued_by=test_user,
+        status=DiagnosticReport.Status.FINAL,
+        issued_at=timezone.now(),
+        conclusion="Final consolidated lab report.",
+    )
 
 
 class TestCAInitialization:
@@ -245,15 +263,17 @@ class TestCertificateVerification:
 class TestDocumentSigning:
     """Tests for document signing and verification."""
 
-    def test_sign_lab_result(self, user_cert, test_user, sample_lab_result, signing_service):
-        """Signing a lab result creates a DocumentSignature record."""
+    def test_sign_diagnostic_report(
+        self, user_cert, test_user, sample_diagnostic_report, signing_service
+    ):
+        """Signing a diagnostic report creates a DocumentSignature record."""
         sig = signing_service.sign_document(
-            document_type="LabResult",
-            document_id=sample_lab_result.pk,
+            document_type="DiagnosticReport",
+            document_id=sample_diagnostic_report.pk,
             user=test_user,
         )
-        assert sig.document_type == "LabResult"
-        assert sig.document_id == sample_lab_result.pk
+        assert sig.document_type == "DiagnosticReport"
+        assert sig.document_id == sample_diagnostic_report.pk
         assert sig.signer == test_user
         assert sig.certificate == user_cert
         assert len(sig.content_hash) == 64
@@ -290,11 +310,13 @@ class TestDocumentSigning:
         assert sig.document_id == attachment.pk
         assert sig.signer == test_user
 
-    def test_verify_valid_signature(self, user_cert, test_user, sample_lab_result, signing_service):
+    def test_verify_valid_signature(
+        self, user_cert, test_user, sample_diagnostic_report, signing_service
+    ):
         """Verifying an unmodified signed document returns valid=True."""
         sig = signing_service.sign_document(
-            document_type="LabResult",
-            document_id=sample_lab_result.pk,
+            document_type="DiagnosticReport",
+            document_id=sample_diagnostic_report.pk,
             user=test_user,
         )
         result = signing_service.verify_signature(sig)
@@ -303,56 +325,75 @@ class TestDocumentSigning:
         assert result.signature_valid is True
 
     def test_verify_tampered_document(
-        self, user_cert, test_user, sample_lab_result, signing_service
+        self, user_cert, test_user, sample_diagnostic_report, signing_service
     ):
         """Verifying a modified document returns valid=False."""
         sig = signing_service.sign_document(
-            document_type="LabResult",
-            document_id=sample_lab_result.pk,
+            document_type="DiagnosticReport",
+            document_id=sample_diagnostic_report.pk,
             user=test_user,
         )
 
-        # Tamper with the lab result
-        from hmis.apps.laboratory.models import LabResult
+        # Tamper with the report conclusion
+        from hmis.apps.laboratory.models import DiagnosticReport
 
-        LabResult.objects.filter(pk=sample_lab_result.pk).update(numeric_value=999.0)
+        DiagnosticReport.objects.filter(pk=sample_diagnostic_report.pk).update(
+            conclusion="Tampered report summary"
+        )
 
         result = signing_service.verify_signature(sig)
         assert result.valid is False
         assert result.content_matches is False
 
     def test_user_without_cert_cannot_sign(
-        self, db, another_user, sample_lab_result, signing_service
+        self, db, another_user, sample_diagnostic_report, signing_service
     ):
         """A user without a certificate cannot sign documents."""
         with pytest.raises(ValueError, match="no valid certificate"):
             signing_service.sign_document(
-                document_type="LabResult",
-                document_id=sample_lab_result.pk,
+                document_type="DiagnosticReport",
+                document_id=sample_diagnostic_report.pk,
                 user=another_user,
             )
 
     def test_content_serialization_is_deterministic(
-        self, user_cert, test_user, sample_lab_result, signing_service
+        self, user_cert, test_user, sample_diagnostic_report, signing_service
     ):
         """Serializing the same document twice produces the same content."""
-        content1 = signing_service.get_signable_content("LabResult", sample_lab_result)
-        content2 = signing_service.get_signable_content("LabResult", sample_lab_result)
+        content1 = signing_service.get_signable_content(
+            "DiagnosticReport", sample_diagnostic_report
+        )
+        content2 = signing_service.get_signable_content(
+            "DiagnosticReport", sample_diagnostic_report
+        )
         assert content1 == content2
 
-    def test_audit_log_on_sign(self, user_cert, test_user, sample_lab_result, signing_service):
+    def test_audit_log_on_sign(
+        self, user_cert, test_user, sample_diagnostic_report, signing_service
+    ):
         """Signing creates an audit log entry."""
         signing_service.sign_document(
-            document_type="LabResult",
-            document_id=sample_lab_result.pk,
+            document_type="DiagnosticReport",
+            document_id=sample_diagnostic_report.pk,
             user=test_user,
         )
         audit = AuditLog.objects.filter(
             action="document_sign",
-            resource_type="LabResult",
-            resource_id=sample_lab_result.pk,
+            resource_type="DiagnosticReport",
+            resource_id=sample_diagnostic_report.pk,
         ).first()
         assert audit is not None
+
+    def test_sign_lab_result_rejected(
+        self, user_cert, test_user, sample_lab_result, signing_service
+    ):
+        """Lab results are not directly signable; use DiagnosticReport instead."""
+        with pytest.raises(ValueError, match="Unsupported document type"):
+            signing_service.sign_document(
+                document_type="LabResult",
+                document_id=sample_lab_result.pk,
+                user=test_user,
+            )
 
     def test_unsupported_document_type_raises(self, user_cert, test_user, signing_service):
         """Signing an unsupported document type raises ValueError."""
@@ -588,21 +629,21 @@ class TestPKIAPI:
         user_cert.refresh_from_db()
         assert user_cert.is_revoked is True
 
-    def test_sign_via_api(self, authenticated_client, user_cert, sample_lab_result):
+    def test_sign_via_api(self, authenticated_client, user_cert, sample_diagnostic_report):
         """Users can sign documents via the API."""
         response = authenticated_client.post(
             "/api/core/signatures/sign/",
-            {"document_type": "LabResult", "document_id": sample_lab_result.pk},
+            {"document_type": "DiagnosticReport", "document_id": sample_diagnostic_report.pk},
         )
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data["document_type"] == "LabResult"
+        assert response.data["document_type"] == "DiagnosticReport"
 
-    def test_verify_via_api(self, authenticated_client, user_cert, sample_lab_result):
+    def test_verify_via_api(self, authenticated_client, user_cert, sample_diagnostic_report):
         """Users can verify signatures via the API."""
         # First sign
         sign_resp = authenticated_client.post(
             "/api/core/signatures/sign/",
-            {"document_type": "LabResult", "document_id": sample_lab_result.pk},
+            {"document_type": "DiagnosticReport", "document_id": sample_diagnostic_report.pk},
         )
         sig_id = sign_resp.data["id"]
 
@@ -614,38 +655,38 @@ class TestPKIAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["valid"] is True
 
-    def test_for_document_api(self, authenticated_client, user_cert, sample_lab_result):
+    def test_for_document_api(self, authenticated_client, user_cert, sample_diagnostic_report):
         """Can get all signatures for a document."""
         # Sign the document
         authenticated_client.post(
             "/api/core/signatures/sign/",
-            {"document_type": "LabResult", "document_id": sample_lab_result.pk},
+            {"document_type": "DiagnosticReport", "document_id": sample_diagnostic_report.pk},
         )
 
         response = authenticated_client.get(
-            f"/api/core/signatures/for_document/?type=LabResult&id={sample_lab_result.pk}"
+            f"/api/core/signatures/for_document/?type=DiagnosticReport&id={sample_diagnostic_report.pk}"
         )
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) >= 1
 
-    def test_list_signatures(self, authenticated_client, user_cert, sample_lab_result):
+    def test_list_signatures(self, authenticated_client, user_cert, sample_diagnostic_report):
         """Can list all signatures."""
         authenticated_client.post(
             "/api/core/signatures/sign/",
-            {"document_type": "LabResult", "document_id": sample_lab_result.pk},
+            {"document_type": "DiagnosticReport", "document_id": sample_diagnostic_report.pk},
         )
         response = authenticated_client.get("/api/core/signatures/")
         assert response.status_code == status.HTTP_200_OK
 
     def test_create_document_share_defaults_to_view(
-        self, authenticated_client, sample_lab_result, another_user
+        self, authenticated_client, sample_diagnostic_report, another_user
     ):
         """Creating a share defaults to VIEW permission."""
         response = authenticated_client.post(
             "/api/core/document-shares/",
             {
-                "document_type": "LabResult",
-                "document_id": sample_lab_result.pk,
+                "document_type": "DiagnosticReport",
+                "document_id": sample_diagnostic_report.pk,
                 "shared_with": another_user.pk,
             },
             format="json",
@@ -657,7 +698,7 @@ class TestPKIAPI:
         self,
         api_client,
         another_user,
-        sample_lab_result,
+        sample_diagnostic_report,
         authenticated_client,
         root_ca,
         pki_service,
@@ -666,8 +707,8 @@ class TestPKIAPI:
         authenticated_client.post(
             "/api/core/document-shares/",
             {
-                "document_type": "LabResult",
-                "document_id": sample_lab_result.pk,
+                "document_type": "DiagnosticReport",
+                "document_id": sample_diagnostic_report.pk,
                 "shared_with": another_user.pk,
                 "permission": "VIEW",
             },
@@ -679,7 +720,7 @@ class TestPKIAPI:
 
         response = api_client.post(
             "/api/core/signatures/sign/",
-            {"document_type": "LabResult", "document_id": sample_lab_result.pk},
+            {"document_type": "DiagnosticReport", "document_id": sample_diagnostic_report.pk},
             format="json",
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -689,7 +730,7 @@ class TestPKIAPI:
         self,
         api_client,
         another_user,
-        sample_lab_result,
+        sample_diagnostic_report,
         authenticated_client,
         root_ca,
         pki_service,
@@ -698,8 +739,8 @@ class TestPKIAPI:
         authenticated_client.post(
             "/api/core/document-shares/",
             {
-                "document_type": "LabResult",
-                "document_id": sample_lab_result.pk,
+                "document_type": "DiagnosticReport",
+                "document_id": sample_diagnostic_report.pk,
                 "shared_with": another_user.pk,
                 "permission": "SIGN",
             },
@@ -711,20 +752,20 @@ class TestPKIAPI:
 
         response = api_client.post(
             "/api/core/signatures/sign/",
-            {"document_type": "LabResult", "document_id": sample_lab_result.pk},
+            {"document_type": "DiagnosticReport", "document_id": sample_diagnostic_report.pk},
             format="json",
         )
         assert response.status_code == status.HTTP_201_CREATED
 
     def test_document_hub_shared_tab(
-        self, api_client, authenticated_client, another_user, sample_lab_result
+        self, api_client, authenticated_client, another_user, sample_diagnostic_report
     ):
         """Shared document should appear in recipient's Shared With Me tab."""
         share_resp = authenticated_client.post(
             "/api/core/document-shares/",
             {
-                "document_type": "LabResult",
-                "document_id": sample_lab_result.pk,
+                "document_type": "DiagnosticReport",
+                "document_id": sample_diagnostic_report.pk,
                 "shared_with": another_user.pk,
             },
             format="json",
@@ -737,7 +778,31 @@ class TestPKIAPI:
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get("results", response.data)
         assert any(
-            item["document_type"] == "LabResult" and item["document_id"] == sample_lab_result.pk
+            item["document_type"] == "DiagnosticReport"
+            and item["document_id"] == sample_diagnostic_report.pk
+            for item in results
+        )
+
+    def test_sign_lab_result_via_api_rejected(
+        self, authenticated_client, user_cert, sample_lab_result
+    ):
+        """LabResult signing endpoint is blocked to enforce DiagnosticReport-only flow."""
+        response = authenticated_client.post(
+            "/api/core/signatures/sign/",
+            {"document_type": "LabResult", "document_id": sample_lab_result.pk},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "not a valid choice" in str(response.data).lower()
+
+    def test_document_hub_mine_excludes_lab_results(self, authenticated_client, sample_lab_result):
+        """Document hub no longer lists LabResult entries in Mine tab."""
+        response = authenticated_client.get("/api/core/document-hub/?tab=mine")
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get("results", response.data)
+        assert all(
+            not (
+                item["document_type"] == "LabResult" and item["document_id"] == sample_lab_result.pk
+            )
             for item in results
         )
 

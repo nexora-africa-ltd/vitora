@@ -1,0 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
+# Purpose: Dependency range for build_model.py; use in a Python 3.10+ environment.
+# Usage: Supply this file to the environment's dependency manager. No env inputs.
+XlsxWriter>=3.2,<4

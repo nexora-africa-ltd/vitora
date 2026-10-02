@@ -57,3 +57,8 @@ export {
   type NewEncounterNotes,
   type NewEncounterSession,
 } from './new-encounter-store';
+
+export {
+  useDesktopWorkspaceStore,
+  type DesktopWorkspaceTab,
+} from './ui-store';

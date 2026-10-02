@@ -46,7 +46,6 @@ class VerificationResult:
 SIGNABLE_DOCUMENT_TYPES = {
     "ClinicalReferral",
     "DiagnosticReport",
-    "LabResult",
     "Prescription",
     "Discharge",
     "RadiologyReport",

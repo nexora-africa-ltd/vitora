@@ -18,7 +18,15 @@ from hmis.apps.blood_bank.models import UnitStatus
 from hmis.apps.core.events import LaboratoryEvents, publish_event
 from hmis.apps.core.sync_context import is_sync_materialization_active
 
-from .models import LabOrder, LabOrderItem, LabQueue, LabResult, Specimen
+from .models import (
+    DiagnosticReport,
+    LabOrder,
+    LabOrderItem,
+    LabQueue,
+    LabResult,
+    LabWorkflowSettings,
+    Specimen,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -453,6 +461,58 @@ def handle_lab_order_billing(sender, instance, **kwargs):
             "Billing agent: failed to bill lab order %s: %s",
             instance.order_number,
             e,
+        )
+
+
+@receiver(post_save, sender=LabOrder)
+def auto_create_standalone_diagnostic_report_draft(sender, instance, created, **kwargs):
+    """Create a draft diagnostic report when standalone walk-in orders complete."""
+    if is_sync_materialization_active():
+        return
+
+    if instance.status != "COMPLETED" or not instance.is_walkin:
+        return
+
+    facility = getattr(instance, "facility", None)
+    if facility is None:
+        return
+
+    if facility.operating_mode != facility.OperatingMode.STANDALONE_LAB:
+        return
+
+    settings = LabWorkflowSettings.objects.filter(facility=facility).first()
+    if not settings or not settings.auto_create_standalone_diagnostic_report_draft:
+        return
+
+    existing_report = (
+        DiagnosticReport.objects.filter(lab_order=instance)
+        .exclude(status=DiagnosticReport.Status.CANCELLED)
+        .filter(superseding_reports__isnull=True)
+        .exists()
+    )
+    if existing_report:
+        return
+
+    issued_by = instance.status_changed_by or instance.ordered_by
+    if issued_by is None:
+        return
+
+    try:
+        DiagnosticReport.objects.create(
+            lab_order=instance,
+            issued_by=issued_by,
+            status=DiagnosticReport.Status.DRAFT,
+            clinical_info=instance.clinical_notes or "",
+        )
+        logger.info(
+            "Auto-created draft DiagnosticReport for standalone order %s",
+            instance.order_number,
+        )
+    except _laboratory_signal_handled_exceptions() as exc:
+        logger.error(
+            "Failed auto-creating standalone DiagnosticReport for order %s: %s",
+            instance.order_number,
+            exc,
         )
 
 

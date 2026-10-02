@@ -5,13 +5,14 @@
 
 .DESCRIPTION
     Loads hub runtime configuration from .env, then overlays secrets from a
-    DPAPI-encrypted secret bundle, and finally starts Daphne.
+    DPAPI-encrypted secret bundle, and finally starts Daphne or the hub sync watcher.
 
     This script is intended to be the NSSM entrypoint so secrets are read at
     service start time instead of being persisted in NSSM AppEnvironmentExtra.
 
 .USAGE
-    powershell -NoProfile -ExecutionPolicy Bypass -File C:\VitoraHub\start-hub.ps1
+    powershell -NoProfile -ExecutionPolicy Bypass -File C:\VitoraHub\start-hub.ps1 -Mode api
+    powershell -NoProfile -ExecutionPolicy Bypass -File C:\VitoraHub\start-hub.ps1 -Mode sync
 
 .INPUTS
     Environment variables from C:\VitoraHub\.env and optional
@@ -23,6 +24,11 @@
     DJANGO_ENV             Defaults to hub when unset
     DJANGO_SETTINGS_MODULE Defaults to hmis.settings.hub when unset
 #>
+
+param(
+    [ValidateSet("api", "sync")]
+    [string]$Mode = "api"
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -240,17 +246,24 @@ try {
         Set-ProcessEnv -Name "DJANGO_SETTINGS_MODULE" -Value "hmis.settings.hub" -Source "default"
     }
 
-    $port = if ($env:HUB_PORT) { $env:HUB_PORT } else { "9088" }
-    $daphneExe = Join-Path $InstallDir "venv\Scripts\daphne.exe"
-
-    if (-not (Test-Path $daphneExe)) {
-        throw "Daphne executable not found at $daphneExe"
+    if ($Mode -eq "sync") {
+        $pythonExe = Join-Path $InstallDir "venv\Scripts\python.exe"
+        if (-not (Test-Path $pythonExe)) {
+            throw "Python executable not found at $pythonExe"
+        }
+        Write-StartupLog -Level "INFO" -Message "Starting dedicated hub sync watcher"
+        & $pythonExe manage.py hub_sync --watch
+    } else {
+        $port = if ($env:HUB_PORT) { $env:HUB_PORT } else { "9088" }
+        $daphneExe = Join-Path $InstallDir "venv\Scripts\daphne.exe"
+        if (-not (Test-Path $daphneExe)) {
+            throw "Daphne executable not found at $daphneExe"
+        }
+        Write-StartupLog -Level "INFO" -Message "Starting Daphne on 0.0.0.0:$port"
+        & $daphneExe -b 0.0.0.0 -p $port hmis.asgi:application
     }
-
-    Write-StartupLog -Level "INFO" -Message "Starting Daphne on 0.0.0.0:$port"
-    & $daphneExe -b 0.0.0.0 -p $port hmis.asgi:application
     $exitCode = $LASTEXITCODE
-    Write-StartupLog -Level "INFO" -Message "Daphne exited with code $exitCode"
+    Write-StartupLog -Level "INFO" -Message "Hub $Mode process exited with code $exitCode"
     exit $exitCode
 } catch {
     Write-StartupLog -Level "ERROR" -Message "Startup failed: $($_.Exception.Message)"

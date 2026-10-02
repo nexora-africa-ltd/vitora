@@ -564,6 +564,68 @@ class TestSyncPullEndpoint:
             for entry in response.data["entries"]
         )
 
+    def test_full_downward_pull_auth_user_includes_cloud_is_staff(
+        self, authenticated_client, sync_pull_url, test_user
+    ):
+        """Cloud->hub auth.User snapshots should include cloud-authoritative is_staff."""
+        test_user.is_staff = True
+        test_user.save(update_fields=["is_staff"])
+
+        response = authenticated_client.get(
+            sync_pull_url,
+            {"full": "true", "direction": "down", "tables": "auth.User", "limit": "50"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        user_entry = next(
+            entry for entry in response.data["entries"] if entry["table"] == "auth.User"
+        )
+        assert user_entry["record_id"] == test_user.pk
+        assert user_entry["data"]["is_staff"] is True
+
+    def test_incremental_downward_pull_auth_user_includes_cloud_is_staff(
+        self, authenticated_client, sync_pull_url, sample_facility, sample_organization, test_user
+    ):
+        """Cloud->hub incremental pulls should include cloud-authoritative is_staff."""
+        from hmis.apps.core.models import SyncQueue
+
+        test_user.is_staff = True
+        test_user.save(update_fields=["is_staff"])
+
+        SyncQueue.objects.create(
+            operation="UPDATE",
+            model_name="auth.User",
+            record_id=test_user.pk,
+            data={
+                "id": test_user.pk,
+                "username": test_user.username,
+                "email": test_user.email,
+                "first_name": test_user.first_name,
+                "last_name": test_user.last_name,
+                "is_active": test_user.is_active,
+            },
+            status="SYNCED",
+            synced_at=timezone.now(),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        response = authenticated_client.get(
+            sync_pull_url,
+            {
+                "since": (timezone.now() - timedelta(minutes=1)).isoformat(),
+                "direction": "down",
+                "tables": "auth.User",
+            },
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["entries"]) == 1
+        entry = response.data["entries"][0]
+        assert entry["table"] == "auth.User"
+        assert entry["record_id"] == test_user.pk
+        assert entry["data"]["is_staff"] is True
+
     def test_full_downward_pull_cursor_returns_next_snapshot_page(
         self,
         authenticated_client,

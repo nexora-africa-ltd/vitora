@@ -207,9 +207,16 @@ class TestAutoCreateANCEnrollment:
         assert registration.anc_enrollment is None  # No clinic found, no enrollment created
 
     def test_api_returns_enrollment_in_response(
-        self, authenticated_client, anc_clinic, sample_patient
+        self,
+        authenticated_client,
+        anc_clinic,
+        sample_patient,
+        sample_facility,
+        sample_organization,
     ):
         """API should return the auto-created anc_enrollment in the response."""
+        from hmis.apps.mch.models import MCHRegistration
+
         response = authenticated_client.post(
             "/api/mch/registrations/",
             {
@@ -220,7 +227,12 @@ class TestAutoCreateANCEnrollment:
         )
 
         assert response.status_code == 201
+        assert response.data["id"] is not None
         assert response.data["anc_enrollment"] is not None
+
+        registration = MCHRegistration.objects.get(pk=response.data["id"])
+        assert registration.facility_id == sample_facility.id
+        assert registration.organization_id == sample_organization.id
 
 
 # =============================================================================

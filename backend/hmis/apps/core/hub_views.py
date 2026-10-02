@@ -80,6 +80,8 @@ def hub_health(request):  # noqa: ARG001
         - sync: pending/failed counts, last sync time
         - version: software version
     """
+    from hmis import get_runtime_version
+
     health = {
         "status": "healthy",
         "degraded_reasons": [],
@@ -88,7 +90,7 @@ def hub_health(request):  # noqa: ARG001
         "organization_id": getattr(settings, "HUB_ORGANIZATION_ID", ""),
         "uptime_seconds": int(time.time() - _START_TIME),
         "server_time": timezone.now().isoformat(),
-        "version": "0.3.0",
+        "version": get_runtime_version(),
     }
 
     # Database check

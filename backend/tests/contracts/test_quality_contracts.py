@@ -10,12 +10,17 @@ import pytest  # type: ignore
 
 from hmis.apps.quality.serializers import (
     AnnualReportSerializer,
+    FacilitySDMXConfigurationSerializer,
     QualityDashboardSerializer,
     QualityMeasureExportSerializer,
     QualityMeasureImportSerializer,
     QualityMeasureResultSerializer,
     QualityMeasureSerializer,
     QuarterlyReportSerializer,
+    SDMXCodeMappingSerializer,
+    SDMXContractCreateSerializer,
+    SDMXContractDetailSerializer,
+    SDMXContractListSerializer,
 )
 
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
@@ -57,6 +62,28 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "under_5_visits",
                 "updated_at",
                 "year",
+            }
+        ),
+    ),
+    (
+        FacilitySDMXConfigurationSerializer,
+        frozenset(
+            {
+                "contract",
+                "contract_name",
+                "created_at",
+                "enabled_by",
+                "facility",
+                "facility_code",
+                "facility_name",
+                "id",
+                "is_enabled",
+                "is_ready",
+                "last_successful_submission_at",
+                "last_validated_at",
+                "organization",
+                "report_types",
+                "updated_at",
             }
         ),
     ),
@@ -187,6 +214,88 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "under_5_visits",
                 "updated_at",
                 "year",
+            }
+        ),
+    ),
+    (
+        SDMXCodeMappingSerializer,
+        frozenset(
+            {
+                "contract",
+                "contract_name",
+                "created_at",
+                "dimension",
+                "id",
+                "is_active",
+                "source_code",
+                "target_code",
+                "target_name",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        SDMXContractCreateSerializer,
+        frozenset(
+            {
+                "agency_id",
+                "dataflow_id",
+                "dsd_id",
+                "effective_from",
+                "effective_until",
+                "endpoint_url",
+                "environment",
+                "is_active",
+                "partner",
+                "receiver_id",
+                "secret_reference",
+                "version",
+            }
+        ),
+    ),
+    (
+        SDMXContractDetailSerializer,
+        frozenset(
+            {
+                "agency_id",
+                "created_at",
+                "created_by",
+                "dataflow_id",
+                "display_name",
+                "dsd_id",
+                "effective_from",
+                "effective_until",
+                "endpoint_url",
+                "environment",
+                "id",
+                "is_active",
+                "mapping_count",
+                "partner",
+                "receiver_id",
+                "secret_reference",
+                "updated_at",
+                "version",
+            }
+        ),
+    ),
+    (
+        SDMXContractListSerializer,
+        frozenset(
+            {
+                "agency_id",
+                "dataflow_id",
+                "display_name",
+                "dsd_id",
+                "effective_from",
+                "effective_until",
+                "environment",
+                "id",
+                "is_active",
+                "mapping_count",
+                "partner",
+                "receiver_id",
+                "updated_at",
+                "version",
             }
         ),
     ),

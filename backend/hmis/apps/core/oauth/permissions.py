@@ -44,19 +44,17 @@ class SMARTScopePermission(permissions.BasePermission):
         """
         Check if the request has the required SMART scope.
         """
-        # Skip scope check for non-OAuth2 authentication
-        if not hasattr(request, "auth") or not request.auth:
-            return True
-
-        # Get the access token
+        # Only our SMART authenticator sets access_token. JWT/cookie users keep
+        # their established internal authorization path.
         access_token = getattr(request, "access_token", None)
         if not access_token:
-            return True  # Non-SMART request, allow other permission classes to handle
+            return True
 
         # Get granted scopes
         granted_scopes = self._get_granted_scopes(access_token)
         if not granted_scopes:
-            return True  # No SMART scopes, allow other checks
+            logger.warning("SMART access token has no scopes; denying FHIR request")
+            return False
 
         # Determine required scope
         resource_type = self._get_resource_type(view)
@@ -112,8 +110,13 @@ class SMARTScopePermission(permissions.BasePermission):
         if hasattr(view, "smart_resource_type"):
             return view.smart_resource_type
 
-        # Try to infer from view name
+        # Infer FHIR resource names from the conventional FHIRPatientView etc.
         view_name = view.__class__.__name__
+        if view_name.startswith("FHIR"):
+            resource_name = view_name[4:]
+            for suffix in ("SearchView", "CreateView", "View"):
+                if resource_name.endswith(suffix):
+                    return resource_name[: -len(suffix)]
         if view_name.endswith("ViewSet"):
             return view_name[:-7]  # Remove 'ViewSet' suffix
 
@@ -192,12 +195,12 @@ class SMARTScopePermission(permissions.BasePermission):
             if hasattr(encounter, "patient_id"):
                 return str(encounter.patient_id) == patient_id
 
-        # Default: allow if we can't determine patient relationship
+        # Unknown patient relationships must never broaden patient-scoped data.
         logger.warning(
             f"Cannot determine patient relationship for {type(obj).__name__}. "
-            f"Allowing access by default."
+            f"Denying access by default."
         )
-        return True
+        return False
 
 
 class SMARTLaunchContextPermission(permissions.BasePermission):
@@ -345,4 +348,35 @@ def get_smart_filter_for_patient_scopes(request: Request, queryset):
             if model.__name__ == "Patient":
                 return queryset.filter(id=context_patient_id)
 
+        # A patient-scoped token must never receive an unfiltered queryset.
+        return queryset.none()
+
     return queryset
+
+
+def is_patient_context_allowed(request: Request, patient_id: object) -> bool:
+    """Fail closed for patient-scoped SMART tokens and allow internal/broad access."""
+    access_token = getattr(request, "access_token", None)
+    if not access_token:
+        return True
+    scopes = (getattr(access_token, "scope", "") or "").split()
+    patient_scoped = any(scope.startswith("patient/") for scope in scopes)
+    broader_scoped = any(scope.startswith(("user/", "system/")) for scope in scopes)
+    if not patient_scoped or broader_scoped:
+        return True
+    return str(getattr(request, "launch_context", {}).get("patient", "")) == str(patient_id)
+
+
+def get_patient_context_id(
+    request: Request, requested_patient_id: object | None = None
+) -> str | None:
+    """Return the effective patient filter, overriding user input for SMART patient scopes."""
+    access_token = getattr(request, "access_token", None)
+    if not access_token:
+        return str(requested_patient_id) if requested_patient_id is not None else None
+    scopes = (getattr(access_token, "scope", "") or "").split()
+    patient_scoped = any(scope.startswith("patient/") for scope in scopes)
+    broader_scoped = any(scope.startswith(("user/", "system/")) for scope in scopes)
+    if patient_scoped and not broader_scoped:
+        return getattr(request, "launch_context", {}).get("patient")
+    return str(requested_patient_id) if requested_patient_id is not None else None

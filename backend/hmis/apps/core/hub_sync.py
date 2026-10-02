@@ -47,8 +47,31 @@ _RBAC_SYNC_HEALTH: dict[str, object] = {
 }
 
 
+def _get_sync_state_file() -> Path:
+    """Return the shared hub sync state file path."""
+    data_dir = getattr(settings, "HUB_DATA_DIR", "")
+    if data_dir:
+        return Path(data_dir) / SYNC_STATE_FILENAME
+    return Path(settings.BASE_DIR) / SYNC_STATE_FILENAME
+
+
+def _load_persisted_rbac_sync_health() -> None:
+    """Hydrate process-local RBAC health from a one-shot sync worker's state."""
+    try:
+        state = json.loads(_get_sync_state_file().read_text())
+    except (json.JSONDecodeError, OSError):
+        return
+
+    persisted = state.get("rbac_sync_health")
+    if not isinstance(persisted, dict):
+        return
+
+    _RBAC_SYNC_HEALTH.update({key: persisted[key] for key in _RBAC_SYNC_HEALTH if key in persisted})
+
+
 def get_rbac_sync_health_snapshot() -> dict[str, object]:
-    """Return the latest RBAC reconciliation health snapshot."""
+    """Return the latest RBAC reconciliation health snapshot across hub processes."""
+    _load_persisted_rbac_sync_health()
     return dict(_RBAC_SYNC_HEALTH)
 
 
@@ -113,10 +136,7 @@ class HubCloudSyncWorker:
 
     def _resolve_state_file(self) -> Path:
         """Determine the path for persisted sync state."""
-        data_dir = getattr(settings, "HUB_DATA_DIR", "")
-        if data_dir:
-            return Path(data_dir) / SYNC_STATE_FILENAME
-        return Path(settings.BASE_DIR) / SYNC_STATE_FILENAME
+        return _get_sync_state_file()
 
     def _load_state(self):
         """Load persisted last_pull_timestamp and full_pull_cursor from disk."""
@@ -134,6 +154,7 @@ class HubCloudSyncWorker:
                 rbac_heal_at = state.get("last_rbac_self_heal_at")
                 if rbac_heal_at:
                     self._last_rbac_self_heal_at = datetime.fromisoformat(rbac_heal_at)
+                _load_persisted_rbac_sync_health()
             except (json.JSONDecodeError, ValueError, OSError) as exc:
                 logger.warning("Could not load sync state: %s", exc)
 
@@ -147,6 +168,7 @@ class HubCloudSyncWorker:
             "last_rbac_self_heal_at": (
                 self._last_rbac_self_heal_at.isoformat() if self._last_rbac_self_heal_at else None
             ),
+            "rbac_sync_health": dict(_RBAC_SYNC_HEALTH),
         }
         try:
             self._state_file.write_text(json.dumps(state))
@@ -766,6 +788,7 @@ class HubCloudSyncWorker:
             _RBAC_SYNC_HEALTH.update(summary)
             _RBAC_SYNC_HEALTH["last_status"] = "ok"
             _RBAC_SYNC_HEALTH["last_completed_at"] = timezone.now().isoformat()
+            self._save_state()
             logger.info(
                 "RBAC reconciliation (%s) complete: roles_checked=%s corrected_roles=%s "
                 "profiles_checked=%s corrected_profiles=%s",
@@ -780,6 +803,7 @@ class HubCloudSyncWorker:
             _RBAC_SYNC_HEALTH["last_status"] = "failed"
             _RBAC_SYNC_HEALTH["last_completed_at"] = timezone.now().isoformat()
             _RBAC_SYNC_HEALTH["failures"] = int(_RBAC_SYNC_HEALTH.get("failures", 0)) + 1
+            self._save_state()
             logger.exception("RBAC reconciliation (%s) failed", trigger)
             return False
 

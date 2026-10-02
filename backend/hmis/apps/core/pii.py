@@ -88,10 +88,28 @@ def encrypted_pii_property(field_name: str):
         raw = getattr(self, encrypted_attr, "")
         if not raw:
             return ""
-        from hmis.apps.core.kms import get_kms_provider
 
         try:
-            return get_kms_provider().decrypt_string(raw)
+            if raw.startswith("v2."):
+                from hmis.apps.core.pii_v2 import (
+                    OrganizationPIIEncryptionService,
+                    resolve_pii_organization,
+                )
+
+                organization = resolve_pii_organization(self)
+                if organization is None:
+                    raise ValueError("organization is required to decrypt v2 PII")
+                return OrganizationPIIEncryptionService().decrypt(
+                    organization,
+                    raw,
+                    model_label=self._meta.label_lower,
+                    field_name=field_name,
+                )
+            from django.conf import settings
+
+            from hmis.apps.core.kms.local import LocalKMSProvider
+
+            return LocalKMSProvider(settings.ENCRYPTION_KEY).decrypt_string(raw)
         except (
             AttributeError,
             TypeError,
@@ -124,15 +142,46 @@ def encrypted_pii_property(field_name: str):
             if hasattr(self, hmac_attr):
                 setattr(self, hmac_attr, "")
             return
-        from hmis.apps.core.kms import get_kms_provider
+        from django.conf import settings
 
-        kms = get_kms_provider()
-        setattr(self, encrypted_attr, kms.encrypt_string(value))
+        from hmis.apps.core.pii_v2 import OrganizationPIIEncryptionService, resolve_pii_organization
+
+        organization = resolve_pii_organization(self)
+        if organization is not None and settings.ORGANIZATION_PII_ENCRYPTION_ENABLED:
+            setattr(
+                self,
+                encrypted_attr,
+                OrganizationPIIEncryptionService().encrypt(
+                    organization,
+                    value,
+                    model_label=self._meta.label_lower,
+                    field_name=field_name,
+                ),
+            )
+        else:
+            from hmis.apps.core.kms.local import LocalKMSProvider
+
+            kms = LocalKMSProvider(settings.ENCRYPTION_KEY)
+            setattr(self, encrypted_attr, kms.encrypt_string(value))
         # Also set HMAC if the column exists
         hmac_attr = f"{field_name}_hmac"
         if hasattr(self, hmac_attr):
-            setattr(self, hmac_attr, kms.compute_hmac(value))
+            if organization is not None and settings.ORGANIZATION_PII_ENCRYPTION_ENABLED:
+                setattr(
+                    self,
+                    hmac_attr,
+                    OrganizationPIIEncryptionService().compute_hmac(organization, value),
+                )
+            elif settings.ORGANIZATION_PII_ENCRYPTION_ENABLED:
+                # Feature-gated records without a tenant must not create global indexes.
+                setattr(self, hmac_attr, "")
+            else:
+                from hmis.apps.core.kms import get_kms_provider
 
+                setattr(self, hmac_attr, get_kms_provider().compute_hmac(value))
+
+    # Allows maintenance commands to discover only descriptors created by this factory.
+    _getter.fget._encrypted_pii_field_name = field_name
     _getter.fget.__doc__ = f"Decrypt and return the {field_name} value."
     return _getter
 

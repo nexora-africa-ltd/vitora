@@ -15,6 +15,65 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Hub 1.0.22] - 2026-09-30
+
+### Hub
+
+- Stop the dedicated hub sync service before applying database migrations during updates, then restart it after the API service starts. This prevents SQLite migration locks from the continuous sync watcher.
+
+## [Desktop 1.0.20] - 2026-09-30
+
+### Desktop
+
+- Accept subscription-filtered hub facility payloads by treating omitted module capabilities as disabled, preventing valid hub facility responses from failing client-side schema validation.
+- Add regression coverage for the filtered facility response contract used by desktop sidecars.
+
+## [Hub 1.0.21] - 2026-09-30
+
+### Hub
+
+- Report the installed hub/cloud runtime version in both health endpoints instead of stale source constants.
+- Preserve cloud-authoritative `is_staff` during hub cloud-auth login and resolve facility reads through the directly assigned facility when the profile organization cache is stale.
+- Persist RBAC reconciliation health across one-shot sync processes so hub health reflects completed reconciliation.
+- Install a dedicated singleton hub sync service on Windows and Linux. The service runs `hub_sync --watch` without requiring Redis, Celery workers, or Celery Beat.
+
+## [Desktop 1.0.18] - 2026-09-29
+
+### Desktop
+
+- Force frameless Tauri window decorations at native startup, keep workspace tabs sticky, and render the real Vitora logo in the title bar.
+- Explicitly use the multi-resolution ICO for Windows NSIS installer and shortcut packaging.
+
+## [Desktop 1.0.17] - 2026-09-29
+
+### Desktop
+
+- Changed workspace navigation so ordinary routing reuses the current tab, while modifier/middle-click and sidebar context-menu actions explicitly open destinations in new tabs.
+
+## [Desktop 1.0.16] - 2026-09-29
+
+### Desktop
+
+- Fixed desktop window-control ACLs, preventing title-bar minimize, maximize, and close commands from being rejected.
+- Kept the frameless workspace title bar above the expanded sidebar instead of allowing the sidebar to cover tabs.
+- Regenerated the Windows ICO with 16px through 256px assets so Start Menu and taskbar shortcuts receive a proper application icon.
+
+## [Desktop 1.0.15] - 2026-09-29
+
+### Desktop
+
+- Moved desktop workspace tabs into custom Tauri window chrome, with native drag, minimize, maximize, and close controls.
+- Removed the dashboard-level workspace tab strip; browser and web deployments retain their normal native browser chrome.
+
+## [Desktop 1.0.14] - 2026-09-28
+
+### Desktop
+
+- Added desktop-only clinician encounter workspace tabs inside the web shell so multiple encounters can stay open and switchable in one window.
+- Added route-aware tab session tracking (`lastRoute` per encounter), close/close-others/close-all actions, and unsaved draft indicators sourced from encounter edit session state.
+- Added focused regression tests for workspace tab interactions, including switch-route navigation, close-active fallback navigation, and close-all routing to `/encounters`.
+- Bumped desktop app version metadata to `1.0.14` across `desktop-app/package.json`, `desktop-app/src-tauri/Cargo.toml`, `desktop-app/src-tauri/tauri.conf.json`, `desktop-app/package-lock.json`, and `desktop-app/src-tauri/Cargo.lock`.
+
 ## [Desktop 1.0.12] - 2026-09-15
 
 ### Desktop

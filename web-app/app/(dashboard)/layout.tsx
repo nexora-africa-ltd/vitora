@@ -10,6 +10,7 @@ import { AIChatWidget } from '@/components/shared/ai-chat-widget';
 import { PermissionDebugPanel } from '@/components/shared/permission-debug-panel';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
+import { DesktopTitlebar } from '@/components/desktop/desktop-titlebar';
 import { CommandMenu } from '@/components/layout/command-menu';
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
 import { MFAGraceBanner } from '@/components/auth/mfa-grace-banner';
@@ -82,6 +83,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <IdleTimerProvider>
             <LicenseGuard>
               <div className="min-h-screen bg-background">
+                <DesktopTitlebar />
                 {/* Sidebar */}
                 <Sidebar
                   collapsed={sidebarCollapsed}

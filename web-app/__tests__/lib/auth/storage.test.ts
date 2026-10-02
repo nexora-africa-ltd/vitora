@@ -3,7 +3,7 @@
  * Tests localStorage-based token and user storage
  */
 
-import { tokenStorage } from '@/lib/auth/storage';
+import { tokenStorage, registerAuthCleanup, waitForAuthCleanup } from '@/lib/auth/storage';
 
 describe('tokenStorage', () => {
   beforeEach(() => {
@@ -80,6 +80,22 @@ describe('tokenStorage', () => {
   });
 
   describe('clearAll', () => {
+    it('starts cleanup synchronously and waits before another session can initialize', async () => {
+      let finish!: () => void;
+      const cleanup = jest.fn(() => new Promise<void>((resolve) => { finish = resolve; }));
+      const unsubscribe = registerAuthCleanup(cleanup);
+      tokenStorage.clearAll();
+      expect(cleanup).toHaveBeenCalledTimes(1);
+      let completed = false;
+      const waiting = waitForAuthCleanup().then(() => { completed = true; });
+      await Promise.resolve();
+      expect(completed).toBe(false);
+      finish();
+      await waiting;
+      expect(completed).toBe(true);
+      unsubscribe();
+    });
+
     it('should remove all stored tokens and user data', () => {
       localStorage.setItem('vitora_access_token', 'token');
       localStorage.setItem('vitora_refresh_token', 'refresh');

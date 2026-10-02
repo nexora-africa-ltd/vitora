@@ -64,7 +64,7 @@
 
 | Platform | Minimum | Recommended |
 |----------|---------|-------------|
-| **Windows** | Windows 10 (1809+) | Windows 11 |
+| **Windows** | Windows 10 (1809+) | Windows 10 or Windows 11 with current security updates |
 | **Linux** | Ubuntu 22.04+ / Debian 12+ | Ubuntu 24.04 |
 | **macOS** | macOS 12 (Monterey) | macOS 14+ (Apple Silicon) |
 | **RAM** | 512MB free | 1GB+ free |
@@ -72,6 +72,10 @@
 | **Network** | LAN connectivity to hub or internet | Stable connection |
 
 WebView2 is bundled in the Windows installer (silent embed). Linux requires WebKitGTK 4.1.
+
+The packaged desktop application includes its required local Node/Next.js sidecar. Windows desktop users do not
+need a separate Python installation. Windows DPAPI is not a desktop-client prerequisite; it applies only to optional
+DPAPI-protected secret bundles used by Windows facility hub installations.
 
 ### Developers (Building)
 

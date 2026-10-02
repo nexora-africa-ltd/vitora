@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo, memo } from 'react';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import {
   ChevronLeft,
@@ -24,6 +24,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ScrollMoreButton } from '@/components/ui/scroll-more-button';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 import { useLogout } from '@/lib/auth/hooks';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { usePatientJourneyStore } from '@/lib/stores/patient-journey';
@@ -38,6 +44,8 @@ import {
 } from '@/lib/config/navigation';
 import { useNavigationItems } from '@/lib/hooks/use-navigation-items';
 import { useSidebarBadges, type SidebarBadges } from '@/lib/hooks/use-sidebar-badges';
+import { isDesktop } from '@/lib/desktop';
+import { useDesktopWorkspaceStore } from '@/lib/stores/ui-store';
 
 const SIDEBAR_COLLAPSED_KEY = 'vitora-sidebar-collapsed';
 const SIDEBAR_OPEN_MENUS_KEY = 'vitora-sidebar-open-menus';
@@ -521,8 +529,18 @@ const NavLink = memo(function NavLink({
   onMobileClose,
   badgeCounts,
 }: NavLinkProps) {
+  const router = useRouter();
+  const openTab = useDesktopWorkspaceStore((state) => state.openTab);
   const isActive = useIsActive(item.href, pathname, searchParamsString);
   const Icon = item.icon;
+  const desktopMode = isDesktop();
+
+  const openInNewTab = () => {
+    if (!desktopMode) return;
+    openTab({ route: item.href, title: item.label });
+    onMobileClose();
+    router.push(item.href);
+  };
 
   // Dynamic badge: prefer live count from badgeCounts, fall back to static item.badge
   const badgeCount = badgeCounts?.[item.href] ?? item.badge ?? 0;
@@ -537,44 +555,66 @@ const NavLink = memo(function NavLink({
     'text-muted-foreground hover:text-cyan-600 dark:hover:text-cyan-300 active:scale-[0.98]';
 
   const link = (
-    <Link
-      href={item.href}
-      onClick={onMobileClose}
-      aria-current={isActive ? 'page' : undefined}
-      className={cn(
-        baseStyles,
-        isChild && !collapsed && 'ml-4 pl-3 opacity-90',
-        isActive ? activeStyles : inactiveStyles,
-        collapsed && 'justify-center px-0'
-      )}
-    >
-      <div
-        className={cn(
-          'ease-[cubic-bezier(0.34,_1.56,_0.64,_1)] relative flex shrink-0 items-center justify-center rounded-lg transition-all duration-300',
-          collapsed ? 'h-10 w-10' : 'h-8 w-8',
-          'group-hover:scale-110 group-hover:bg-cyan-500/15 group-hover:shadow-sm'
-        )}
-      >
-        <Icon
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <Link
+          href={item.href}
+          onClick={(event) => {
+            if (desktopMode && (event.ctrlKey || event.metaKey)) {
+              event.preventDefault();
+              openInNewTab();
+              return;
+            }
+            onMobileClose();
+          }}
+          onAuxClick={(event) => {
+            if (desktopMode && event.button === 1) {
+              event.preventDefault();
+              openInNewTab();
+            }
+          }}
+          aria-current={isActive ? 'page' : undefined}
           className={cn(
-            'ease-[cubic-bezier(0.34,_1.56,_0.64,_1)] transition-transform duration-300 group-hover:scale-110',
-            collapsed ? 'h-6 w-6' : 'h-5 w-5'
+            baseStyles,
+            isChild && !collapsed && 'ml-4 pl-3 opacity-90',
+            isActive ? activeStyles : inactiveStyles,
+            collapsed && 'justify-center px-0'
           )}
-        />
-        {/* Collapsed: show dot indicator */}
-        {collapsed && badgeCount > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-card" />
-        )}
-      </div>
+        >
+          <div
+            className={cn(
+              'ease-[cubic-bezier(0.34,_1.56,_0.64,_1)] relative flex shrink-0 items-center justify-center rounded-lg transition-all duration-300',
+              collapsed ? 'h-10 w-10' : 'h-8 w-8',
+              'group-hover:scale-110 group-hover:bg-cyan-500/15 group-hover:shadow-sm'
+            )}
+          >
+            <Icon
+              className={cn(
+                'ease-[cubic-bezier(0.34,_1.56,_0.64,_1)] transition-transform duration-300 group-hover:scale-110',
+                collapsed ? 'h-6 w-6' : 'h-5 w-5'
+              )}
+            />
+            {/* Collapsed: show dot indicator */}
+            {collapsed && badgeCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-card" />
+            )}
+          </div>
 
-      {!collapsed && <span>{item.label}</span>}
+          {!collapsed && <span>{item.label}</span>}
 
-      {!collapsed && badgeCount > 0 && (
-        <span className="ml-auto rounded-full bg-destructive px-2 py-0.5 text-xs font-medium text-destructive-foreground">
-          {badgeCount > 99 ? '99+' : badgeCount}
-        </span>
+          {!collapsed && badgeCount > 0 && (
+            <span className="ml-auto rounded-full bg-destructive px-2 py-0.5 text-xs font-medium text-destructive-foreground">
+              {badgeCount > 99 ? '99+' : badgeCount}
+            </span>
+          )}
+        </Link>
+      </ContextMenuTrigger>
+      {desktopMode && (
+        <ContextMenuContent>
+          <ContextMenuItem onSelect={openInNewTab}>Open in New Tab</ContextMenuItem>
+        </ContextMenuContent>
       )}
-    </Link>
+    </ContextMenu>
   );
 
   if (collapsed) {
@@ -705,6 +745,7 @@ const NavGroup = memo(function NavGroup({
 // -----------------------------------------------------------------------------
 
 export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: SidebarProps) {
+  const desktopMode = isDesktop();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const logout = useLogout();
@@ -800,7 +841,8 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          'fixed left-0 top-0 z-50 h-dvh overscroll-contain border-r bg-card/95 backdrop-blur',
+          'fixed left-0 z-50 overscroll-contain border-r bg-card/95 backdrop-blur',
+          desktopMode ? 'top-9 h-[calc(100dvh-2.25rem)]' : 'top-0 h-dvh',
           'transition-transform duration-300 ease-out',
           'w-full xl:w-auto',
           effectiveCollapsed ? 'xl:w-20' : 'xl:w-64',

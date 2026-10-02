@@ -15,8 +15,18 @@ import {
   UpdateType,
 } from '@powersync/web';
 import { AxiosError } from 'axios';
-import { tokenStorage } from '@/lib/auth/storage';
-import { apiClient } from '@/lib/api/client';
+import { getAuthEpoch, tokenStorage } from '@/lib/auth/storage';
+import { apiClient, getActiveFacilityId } from '@/lib/api/client';
+import { z } from 'zod';
+
+const CredentialsSchema = z.object({
+  token: z.string().min(1),
+  powersync_url: z.string().url(),
+  expires_at: z.number().int().positive(),
+  sync_policy_version: z.literal(2),
+  user_id: z.string().min(1),
+  facility_id: z.number().int().nullable(),
+});
 
 /** URL of the PowerSync service (Cloud or self-hosted). */
 const POWERSYNC_URL = process.env.NEXT_PUBLIC_POWERSYNC_URL || '';
@@ -70,6 +80,19 @@ const TABLE_TO_ENDPOINT: Record<string, string> = {
 };
 
 export class VitoraPowerSyncConnector implements PowerSyncBackendConnector {
+  private readonly userId = tokenStorage.getUser<{ id: number | string }>()?.id;
+  private readonly facilityId = getActiveFacilityId();
+  private readonly epoch = getAuthEpoch();
+
+  constructor(private readonly onCredentials?: (expiry: Date) => void) {}
+
+  private assertSession(): void {
+    if (!this.userId || this.epoch !== getAuthEpoch() ||
+        this.userId !== tokenStorage.getUser<{ id: number | string }>()?.id ||
+        this.facilityId !== getActiveFacilityId()) {
+      throw new Error('Offline session changed. Reauthentication required.');
+    }
+  }
   /**
    * Returns credentials for the PowerSync service.
    *
@@ -77,10 +100,10 @@ export class VitoraPowerSyncConnector implements PowerSyncBackendConnector {
    * returns a purpose-built JWT with the required `kid` header, `sub`
    * claim, and correct `aud` claim that PowerSync Cloud verifies.
    *
-   * Falls back to the main access token if the endpoint fails (e.g.
-   * backend doesn't have the endpoint yet during a rolling deploy).
+   * Requires the current privacy policy version; older backends use API mode.
    */
   async fetchCredentials() {
+    this.assertSession();
     // Auth is handled by httpOnly cookies; check if user is logged in
     if (!tokenStorage.isAuthenticated()) {
       throw new Error('User is not authenticated — please log in first.');
@@ -94,17 +117,27 @@ export class VitoraPowerSyncConnector implements PowerSyncBackendConnector {
         expires_at: number;
       }>('/api/powersync/credentials/');
 
-      const { token, powersync_url, expires_at } = response.data;
+      this.assertSession();
+      const { token, powersync_url, expires_at, user_id, facility_id } = CredentialsSchema.parse(response.data);
+      if (user_id !== String(this.userId) ||
+          (this.facilityId !== null && facility_id !== this.facilityId)) {
+        throw new Error('Offline credentials do not match the requested session.');
+      }
+      const expiresAt = new Date(expires_at * 1000);
+      if (expiresAt.getTime() <= Date.now()) throw new Error('Expired offline credentials');
+      this.onCredentials?.(expiresAt);
 
       return {
         endpoint: powersync_url || POWERSYNC_URL,
         token,
-        expiresAt: new Date(expires_at * 1000),
+        expiresAt,
+        userId: user_id,
+        facilityId: facility_id,
       };
     } catch (error) {
       // The PowerSync credentials endpoint is the only way to get a token now
       // (access tokens are in httpOnly cookies, inaccessible to JS)
-      console.error('[PowerSync] Credentials endpoint failed:', error);
+      console.error('[PowerSync] Credentials endpoint failed.');
       throw new Error('Failed to fetch PowerSync credentials');
     }
   }
@@ -125,11 +158,13 @@ export class VitoraPowerSyncConnector implements PowerSyncBackendConnector {
    * On failure, PowerSync retries automatically with backoff.
    */
   async uploadData(database: AbstractPowerSyncDatabase): Promise<void> {
+    this.assertSession();
     const transaction = await database.getNextCrudTransaction();
     if (!transaction) return;
 
     try {
       for (const entry of transaction.crud) {
+        this.assertSession();
         await this.uploadCrudEntry(entry);
       }
       await transaction.complete();

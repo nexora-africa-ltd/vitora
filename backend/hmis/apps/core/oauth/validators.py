@@ -118,6 +118,21 @@ class SMARTOAuth2Validator(OAuth2Validator):
 
         super().save_bearer_token(token, request, *args, **kwargs)
 
+        # DOT does not persist arbitrary token dict fields. Store launch state
+        # separately against the generated AccessToken instead.
+        launch_context = getattr(request, "launch_context", {}) or {}
+        if launch_context:
+            from oauth2_provider.models import AccessToken
+
+            from hmis.apps.core.models import SMARTTokenContext
+
+            access_token = AccessToken.objects.filter(token=token.get("access_token")).first()
+            if access_token:
+                SMARTTokenContext.objects.update_or_create(
+                    access_token=access_token,
+                    defaults={"launch_context": launch_context},
+                )
+
     def validate_bearer_token(self, token: str, scopes: list[str], request) -> bool:
         """
         Validate bearer token and extract SMART context.
@@ -129,8 +144,12 @@ class SMARTOAuth2Validator(OAuth2Validator):
         if valid and hasattr(request, "access_token"):
             # Extract launch context from token if present
             access_token = request.access_token
-            if hasattr(access_token, "launch_context"):
-                request.launch_context = access_token.launch_context
+            from hmis.apps.core.models import SMARTTokenContext
+
+            try:
+                request.launch_context = access_token.smart_context.context
+            except SMARTTokenContext.DoesNotExist:
+                request.launch_context = {}
 
         return valid
 

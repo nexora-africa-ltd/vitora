@@ -273,6 +273,7 @@ AUTHENTICATION_BACKENDS = [
 # Django REST Framework
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
+        "hmis.apps.core.oauth.authentication.SMARTOAuth2Authentication",
         "rest_framework_simplejwt.authentication.JWTAuthentication",
         "hmis.apps.core.cookie_auth_backend.CookieJWTAuthentication",
     ],
@@ -638,6 +639,12 @@ PII_HMAC_KEY = os.getenv("PII_HMAC_KEY", "")
 
 # Key rotation policy (in days) - minimum 365 per DHA compliance
 KMS_KEY_ROTATION_DAYS = int(os.getenv("KMS_KEY_ROTATION_DAYS", "365"))
+
+# Per-organization AES-GCM PII ciphertext is deployed behind this gate until the
+# organization-scoped blind-index query migration is enabled with it.
+ORGANIZATION_PII_ENCRYPTION_ENABLED = (
+    os.getenv("ORGANIZATION_PII_ENCRYPTION_ENABLED", "false").lower() == "true"
+)
 
 # Azure Key Vault settings (when KMS_PROVIDER="azure")
 AZURE_KEY_VAULT_URL = os.getenv("AZURE_KEY_VAULT_URL", "")
@@ -1166,6 +1173,9 @@ OAUTH2_PROVIDER = {
     # Response types
     "AUTHORIZATION_CODE_EXPIRE_SECONDS": 600,  # 10 minutes
 }
+# django-oauth-toolkit marks AccessToken as swappable. Pin the stock model so
+# SMARTTokenContext migrations can safely depend on the token table.
+OAUTH2_PROVIDER_ACCESS_TOKEN_MODEL = "oauth2_provider.AccessToken"  # noqa: S105
 
 # FHIR server base URL (used in SMART configuration)
 FHIR_BASE_URL = os.getenv("FHIR_BASE_URL", "http://localhost:9088")

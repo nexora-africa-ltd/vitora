@@ -505,7 +505,7 @@ def _set_cached_tibabot_health(payload: dict[str, object]) -> None:
 @never_cache
 def health_check(request):
     """Comprehensive health endpoint for monitoring and diagnostics."""
-    from hmis import __version__
+    from hmis import get_runtime_version
 
     lite_mode = _is_truthy(request.GET.get("lite"))
     cache_key = "lite" if lite_mode else "full"
@@ -523,7 +523,7 @@ def health_check(request):
         payload = {
             "status": overall_status,
             "service": "vitora-hmis",
-            "version": __version__,
+            "version": get_runtime_version(),
             "mode": "lite",
             "timestamp": timestamp,
             "uptime_seconds": uptime_seconds,
@@ -558,7 +558,7 @@ def health_check(request):
     payload = {
         "status": overall_status,
         "service": "vitora-hmis",
-        "version": __version__,
+        "version": get_runtime_version(),
         "timestamp": timestamp,
         "uptime_seconds": uptime_seconds,
         "uptime_human": f"{uptime_seconds // 3600}h {(uptime_seconds % 3600) // 60}m",

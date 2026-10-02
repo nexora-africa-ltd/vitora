@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 
+from django.db.models import Count
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
@@ -23,25 +24,34 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from hmis.apps.core.mixins import NestedTenantScopeMixin
+from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin
+from hmis.apps.core.models import AuditLog
 from hmis.apps.core.openapi import SchemaFallbackSerializer
 from hmis.apps.core.permissions import ReadRequiresModelPermission
 
 from .models import (
     AnnualReport,
     BenchmarkObservation,
+    FacilitySDMXConfiguration,
     QualityMeasure,
     QualityMeasureResult,
     QuarterlyReport,
+    SDMXCodeMapping,
+    SDMXContract,
 )
 from .serializers import (
     AnnualReportSerializer,
+    FacilitySDMXConfigurationSerializer,
     QualityDashboardSerializer,
     QualityMeasureExportSerializer,
     QualityMeasureImportSerializer,
     QualityMeasureResultSerializer,
     QualityMeasureSerializer,
     QuarterlyReportSerializer,
+    SDMXCodeMappingSerializer,
+    SDMXContractCreateSerializer,
+    SDMXContractDetailSerializer,
+    SDMXContractListSerializer,
 )
 from .services.evaluation import EVALUATOR_REGISTRY, get_period_date_range
 from .services.import_export import (
@@ -56,6 +66,150 @@ from .services.reporting import (
     generate_annual_report,
     generate_quarterly_report,
 )
+
+# =============================================================================
+# SDMX Platform Configuration
+# =============================================================================
+
+
+class IsPlatformSuperuser(permissions.BasePermission):
+    """Restrict national SDMX contract management to Nexora superusers."""
+
+    message = "Only Nexora superusers can manage SDMX contracts and mappings."
+
+    def has_permission(self, request, view):  # noqa: ARG002
+        return bool(request.user and request.user.is_authenticated and request.user.is_superuser)
+
+
+class SDMXContractViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
+    """Manage global DHA/KHIS SDMX contracts for the platform."""
+
+    permission_classes = [IsPlatformSuperuser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["partner", "environment", "is_active"]
+    search_fields = ["agency_id", "dataflow_id", "dsd_id", "version"]
+    ordering_fields = ["partner", "dataflow_id", "version", "created_at", "updated_at"]
+    ordering = ["partner", "dataflow_id", "-created_at"]
+
+    def get_queryset(self):
+        return SDMXContract.objects.annotate(mapping_count=Count("mappings")).select_related(
+            "created_by"
+        )
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return SDMXContractListSerializer
+        if self.action in {"create", "update", "partial_update"}:
+            return SDMXContractCreateSerializer
+        return SDMXContractDetailSerializer
+
+    def perform_create(self, serializer):
+        contract = serializer.save(created_by=self.request.user)
+        AuditLog.log(
+            action="sdmx_contract_create",
+            user=self.request.user,
+            resource_type="SDMXContract",
+            resource_id=contract.pk,
+            details={"contract": contract.display_name},
+            request=self.request,
+        )
+
+    def perform_update(self, serializer):
+        contract = serializer.save()
+        AuditLog.log(
+            action="sdmx_contract_update",
+            user=self.request.user,
+            resource_type="SDMXContract",
+            resource_id=contract.pk,
+            details={"contract": contract.display_name},
+            request=self.request,
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete an unused contract after confirming Django delete permission."""
+        if not request.user.has_perm("quality.delete_sdmxcontract"):
+            return Response(
+                {"detail": "You do not have permission to delete this resource."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        instance = self.get_object()
+        AuditLog.log(
+            action="sdmx_contract_delete",
+            user=request.user,
+            resource_type="SDMXContract",
+            resource_id=instance.pk,
+            details={"contract": instance.display_name},
+            request=request,
+        )
+        return super().destroy(request, *args, **kwargs)
+
+
+class SDMXCodeMappingViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
+    """Manage authoritative codelist mappings for SDMX contracts."""
+
+    serializer_class = SDMXCodeMappingSerializer
+    permission_classes = [IsPlatformSuperuser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["contract", "dimension", "is_active"]
+    search_fields = ["source_code", "target_code", "target_name"]
+    ordering_fields = ["dimension", "source_code", "target_code", "updated_at"]
+    ordering = ["dimension", "source_code"]
+    queryset = SDMXCodeMapping.objects.select_related("contract")
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete a mapping only when the platform user has Django permission."""
+        if not request.user.has_perm("quality.delete_sdmxcodemapping"):
+            return Response(
+                {"detail": "You do not have permission to delete this resource."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().destroy(request, *args, **kwargs)
+
+
+class FacilitySDMXConfigurationViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
+    """Manage Nexora-controlled SDMX enablement for individual facilities."""
+
+    serializer_class = FacilitySDMXConfigurationSerializer
+    permission_classes = [IsPlatformSuperuser]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["facility", "organization", "contract", "is_enabled"]
+    ordering_fields = ["facility__name", "is_enabled", "updated_at"]
+    ordering = ["facility__name"]
+    queryset = FacilitySDMXConfiguration.objects.select_related(
+        "facility", "organization", "contract", "enabled_by"
+    )
+
+    def perform_create(self, serializer):
+        config = serializer.save(enabled_by=self.request.user)
+        AuditLog.log(
+            action="facility_sdmx_config_create",
+            user=self.request.user,
+            resource_type="FacilitySDMXConfiguration",
+            resource_id=config.pk,
+            details={"facility_id": config.facility_id, "contract": config.contract.display_name},
+            request=self.request,
+        )
+
+    def perform_update(self, serializer):
+        config = serializer.save()
+        AuditLog.log(
+            action="facility_sdmx_config_update",
+            user=self.request.user,
+            resource_type="FacilitySDMXConfiguration",
+            resource_id=config.pk,
+            details={"facility_id": config.facility_id, "contract": config.contract.display_name},
+            request=self.request,
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete a facility configuration only with Django delete permission."""
+        if not request.user.has_perm("quality.delete_facilitysdmxconfiguration"):
+            return Response(
+                {"detail": "You do not have permission to delete this resource."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().destroy(request, *args, **kwargs)
+
 
 # =============================================================================
 # QuarterlyReport ViewSet

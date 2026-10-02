@@ -12,9 +12,11 @@ from hmis.apps.licensing.serializers import (
     ActivationRequestSerializer,
     ActivationResponseSerializer,
     CheckInRequestSerializer,
+    DeviceReenrollmentSerializer,
     GenerateActivationCodeSerializer,
     InstallationDetailSerializer,
     InstallationListSerializer,
+    InstallationReenrollmentSerializer,
     LicenseStatusSerializer,
     RevokeSerializer,
 )
@@ -26,12 +28,14 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             {
                 "activation_code",
                 "app_version",
+                "device_public_key",
                 "eula_accepted",
                 "eula_version",
                 "installation_id",
                 "name",
                 "os",
                 "os_info",
+                "protocol_version",
             }
         ),
     ),
@@ -70,6 +74,15 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "uptime_seconds",
                 "user_count_24h",
                 "version",
+            }
+        ),
+    ),
+    (
+        DeviceReenrollmentSerializer,
+        frozenset(
+            {
+                "device_public_key",
+                "protocol_version",
             }
         ),
     ),
@@ -134,6 +147,16 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "org_name",
                 "os_info",
                 "status",
+            }
+        ),
+    ),
+    (
+        InstallationReenrollmentSerializer,
+        frozenset(
+            {
+                "device_public_key",
+                "installation_id",
+                "protocol_version",
             }
         ),
     ),

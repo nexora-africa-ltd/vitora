@@ -1536,6 +1536,13 @@ const _allNavItems: NavItemType[] = [
         visibleWhen: ({ isSuperuser }) => isSuperuser === true,
       },
       {
+        label: 'SDMX Contracts',
+        href: '/admin/sdmx-contracts',
+        icon: Network,
+        actionKey: 'admin.manage_departments',
+        visibleWhen: ({ isSuperuser }) => isSuperuser === true,
+      },
+      {
         label: 'Subscription Billing',
         href: '/admin/subscription-periods',
         icon: Receipt,

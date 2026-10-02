@@ -13,6 +13,7 @@ router.register("installations", views.InstallationViewSet, basename="installati
 
 urlpatterns = [
     path("activate/", views.activate_installation, name="licensing-activate"),
+    path("re-enroll/", views.re_enroll_installation, name="licensing-re-enroll"),
     path("eula/", views.hub_eula, name="licensing-eula"),
     path("check-in/", views.check_in, name="licensing-check-in"),
     path("status/", views.license_status, name="licensing-status"),

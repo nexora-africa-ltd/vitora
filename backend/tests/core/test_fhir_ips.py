@@ -669,46 +669,40 @@ class TestFHIRIPSBundle:
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert response.data["resourceType"] == "OperationOutcome"
 
-    def test_ips_bundle_allows_unauthenticated_access(self, api_client, sample_patient):
-        """IPS summary should be callable without auth for Inferno IPS tests."""
+    def test_ips_bundle_requires_authenticated_access(self, api_client, sample_patient):
+        """IPS summary must never expose clinical data to unauthenticated callers."""
         url = reverse("fhir:patient-summary", args=[sample_patient.id])
         response = api_client.get(url)
 
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["resourceType"] == "Bundle"
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_composition_read_allows_unauthenticated_access(self, api_client, sample_patient):
-        """Composition read should be callable without auth for Inferno IPS tests."""
+    def test_composition_read_requires_authentication(self, api_client, sample_patient):
+        """Composition is clinical data and must not be publicly readable."""
         url = reverse("fhir:composition-read", args=[sample_patient.id])
         response = api_client.get(url, HTTP_ACCEPT="application/fhir+json")
 
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["resourceType"] == "Composition"
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_composition_document_allows_unauthenticated_access(self, api_client, sample_patient):
-        """Composition/$document should be callable without auth for Inferno IPS tests."""
+    def test_composition_document_requires_authentication(self, api_client, sample_patient):
+        """Composition documents are clinical data and must not be public."""
         url = reverse("fhir:composition-document", args=[sample_patient.id])
         response = api_client.get(url, HTTP_ACCEPT="application/fhir+json")
 
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["resourceType"] == "Bundle"
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_bundle_read_allows_unauthenticated_access(self, api_client, sample_patient):
-        """Persisted IPS bundle IDs should resolve without auth for Inferno IPS tests."""
+    def test_bundle_read_requires_authentication(self, api_client, sample_patient):
+        """Persisted IPS bundles contain clinical data and must not be public."""
         url = reverse("fhir:bundle-read", args=[f"ips-{sample_patient.id}"])
         response = api_client.get(url, HTTP_ACCEPT="application/fhir+json")
 
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["resourceType"] == "Bundle"
-        assert response.data["id"] == f"ips-{sample_patient.id}"
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_bundle_read_rejects_unknown_bundle_format(self, api_client):
         """Only patient-backed IPS bundle IDs should resolve."""
         url = reverse("fhir:bundle-read", args=["not-an-ips-bundle"])
         response = api_client.get(url, HTTP_ACCEPT="application/fhir+json")
 
-        assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert response.data["resourceType"] == "OperationOutcome"
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 class TestFHIRObservation:
@@ -816,19 +810,18 @@ class TestFHIRObservation:
         assert response.data["valueQuantity"]["value"] == 1
         assert response.data["valueQuantity"]["code"] == "{#}"
 
-    def test_observation_endpoint_allows_unauthenticated_fhir_json_access(
+    def test_observation_endpoint_requires_authentication(
         self,
         api_client,
         sample_social_history_observation,
     ):
-        """Observation read should allow Inferno profile access without auth."""
+        """Observation data must not be accessible without authentication."""
         response = api_client.get(
             reverse("fhir:observation-read", args=[sample_social_history_observation.fhir_id]),
             HTTP_ACCEPT="application/fhir+json",
         )
 
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["resourceType"] == "Observation"
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 class TestFHIRAdditionalResources:
@@ -853,7 +846,7 @@ class TestFHIRAdditionalResources:
             ("sample_implant_consumable", "device-use-statement-read", "DeviceUseStatement", "id"),
         ],
     )
-    def test_profile_read_endpoints_allow_unauthenticated_fhir_json_access(
+    def test_profile_read_endpoints_require_authentication(
         self,
         request,
         api_client,
@@ -862,7 +855,7 @@ class TestFHIRAdditionalResources:
         resource_type,
         id_attr,
     ):
-        """Inferno profile reads should work without auth using FHIR JSON."""
+        """FHIR resource reads are clinical and must require authentication."""
         resource = request.getfixturevalue(fixture_name)
         resource_id = getattr(resource, id_attr)
 
@@ -871,8 +864,7 @@ class TestFHIRAdditionalResources:
             HTTP_ACCEPT="application/fhir+json",
         )
 
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["resourceType"] == resource_type
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_practitioner_role_endpoint(self, authenticated_client, test_staff_profile):
         response = authenticated_client.get(
@@ -1117,24 +1109,23 @@ class TestFHIRIPSMedicationStatement:
         assert response.data["resourceType"] == "MedicationStatement"
         assert response.data["id"] == str(item.id)
 
-    def test_medication_statement_endpoint_allows_unauthenticated_access(
+    def test_medication_statement_endpoint_requires_authentication(
         self, api_client, sample_prescription_with_items
     ):
-        """MedicationStatement read should allow unauthenticated Inferno access."""
+        """MedicationStatement data must not be accessible without authentication."""
         item = sample_prescription_with_items.items.first()
 
         response = api_client.get(reverse("fhir:medication-statement-read", args=[item.id]))
 
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["resourceType"] == "MedicationStatement"
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_medication_statement_endpoint_supports_fhir_json_accept(
-        self, api_client, sample_prescription_with_items
+        self, authenticated_client, sample_prescription_with_items
     ):
         """MedicationStatement read should negotiate the FHIR JSON media type."""
         item = sample_prescription_with_items.items.first()
 
-        response = api_client.get(
+        response = authenticated_client.get(
             reverse("fhir:medication-statement-read", args=[item.id]),
             HTTP_ACCEPT="application/fhir+json",
         )

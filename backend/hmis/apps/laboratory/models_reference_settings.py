@@ -235,6 +235,13 @@ class LabWorkflowSettings(FacilityScopedModel):
     require_clinical_notes = models.BooleanField(
         default=False, help_text="Make clinical notes mandatory on lab orders"
     )
+    auto_create_standalone_diagnostic_report_draft = models.BooleanField(
+        default=False,
+        help_text=(
+            "Automatically create a draft DiagnosticReport when a standalone (walk-in) "
+            "lab order reaches COMPLETED status"
+        ),
+    )
 
     class Meta:
         verbose_name = "Lab Workflow Settings"

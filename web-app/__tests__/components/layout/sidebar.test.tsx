@@ -3,6 +3,7 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import { Sidebar } from '@/components/layout/sidebar';
 
 const mockSearchParams = jest.fn(() => new URLSearchParams());
+const mockRouterPush = jest.fn();
 const mockUseNavigationMode = jest.fn(() => ({
   navigationMode: 'standard',
   isClinicalNavigationEligible: true,
@@ -18,6 +19,7 @@ const mockPatientJourneyState = {
 jest.mock('next/navigation', () => ({
   usePathname: jest.fn(() => '/'),
   useSearchParams: () => mockSearchParams(),
+  useRouter: () => ({ push: mockRouterPush }),
 }));
 
 // Mock auth hooks

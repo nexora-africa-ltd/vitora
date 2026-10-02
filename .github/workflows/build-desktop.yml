@@ -114,10 +114,25 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - name: Restore Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: web-app/.next/cache
+          key: desktop-next-${{ runner.os }}-${{ hashFiles('web-app/package-lock.json', 'web-app/next.config.*') }}
+          restore-keys: |
+            desktop-next-${{ runner.os }}-${{ hashFiles('web-app/package-lock.json') }}-
+
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
           workspaces: desktop-app/src-tauri -> target
+
+      - name: Restore Tauri CLI
+        id: tauri-cli-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/tauri*
+          key: tauri-cli-${{ runner.os }}-${{ matrix.target }}-v2
 
       # --- Linux system deps (WebKit2GTK for Tauri WebView) ---
       - name: Install Linux dependencies
@@ -163,10 +178,6 @@ jobs:
       # --- Bundle standalone Next.js server into Tauri resources ---
       # `bundle-standalone` creates standalone.tar.gz containing server.js,
       # .next/, and node_modules — extracted at runtime by the Rust sidecar manager.
-      - name: Install desktop-app dependencies
-        run: npm ci
-        working-directory: desktop-app
-
       - name: Bundle standalone Next.js server
         run: npm run bundle-standalone
         working-directory: desktop-app
@@ -200,6 +211,7 @@ jobs:
         working-directory: desktop-app
 
       - name: Install Tauri CLI
+        if: steps.tauri-cli-cache.outputs.cache-hit != 'true'
         run: cargo install tauri-cli --version "^2" --locked
 
       # --- Compile Rust + bundle installer (NSIS/deb/dmg) ---

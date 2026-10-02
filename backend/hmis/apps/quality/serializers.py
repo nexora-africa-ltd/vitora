@@ -8,7 +8,156 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from .models import AnnualReport, QualityMeasure, QualityMeasureResult, QuarterlyReport
+from .models import (
+    AnnualReport,
+    FacilitySDMXConfiguration,
+    QualityMeasure,
+    QualityMeasureResult,
+    QuarterlyReport,
+    SDMXCodeMapping,
+    SDMXContract,
+)
+
+
+class SDMXContractListSerializer(serializers.ModelSerializer):
+    """Compact platform-admin representation of an SDMX contract."""
+
+    display_name = serializers.CharField(read_only=True)
+    mapping_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = SDMXContract
+        fields = [
+            "id",
+            "display_name",
+            "partner",
+            "environment",
+            "agency_id",
+            "dataflow_id",
+            "dsd_id",
+            "version",
+            "receiver_id",
+            "is_active",
+            "mapping_count",
+            "effective_from",
+            "effective_until",
+            "updated_at",
+        ]
+
+
+class SDMXContractDetailSerializer(SDMXContractListSerializer):
+    """Full platform-admin representation without exposing secret material."""
+
+    class Meta(SDMXContractListSerializer.Meta):
+        fields = SDMXContractListSerializer.Meta.fields + [
+            "endpoint_url",
+            "secret_reference",
+            "created_by",
+            "created_at",
+        ]
+        read_only_fields = [
+            "id",
+            "display_name",
+            "mapping_count",
+            "created_by",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class SDMXContractCreateSerializer(serializers.ModelSerializer):
+    """Write serializer for a versioned SDMX contract."""
+
+    class Meta:
+        model = SDMXContract
+        fields = [
+            "partner",
+            "environment",
+            "agency_id",
+            "dataflow_id",
+            "dsd_id",
+            "version",
+            "endpoint_url",
+            "receiver_id",
+            "secret_reference",
+            "effective_from",
+            "effective_until",
+            "is_active",
+        ]
+
+    def validate(self, attrs):
+        """Apply model-level date and mapping-independent contract validation."""
+        instance = SDMXContract(**attrs)
+        instance.full_clean(exclude=["created_by"])
+        return attrs
+
+
+class SDMXCodeMappingSerializer(serializers.ModelSerializer):
+    """Platform-admin serializer for SDMX codelist mappings."""
+
+    contract_name = serializers.CharField(source="contract.display_name", read_only=True)
+
+    class Meta:
+        model = SDMXCodeMapping
+        fields = [
+            "id",
+            "contract",
+            "contract_name",
+            "dimension",
+            "source_code",
+            "target_code",
+            "target_name",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "contract_name", "created_at", "updated_at"]
+
+    def validate(self, attrs):
+        """Run model validation for active mapping requirements."""
+        instance = SDMXCodeMapping(**attrs)
+        instance.full_clean()
+        return attrs
+
+
+class FacilitySDMXConfigurationSerializer(serializers.ModelSerializer):
+    """Platform-managed facility enablement configuration for an SDMX contract."""
+
+    facility_name = serializers.CharField(source="facility.name", read_only=True)
+    contract_name = serializers.CharField(source="contract.display_name", read_only=True)
+    is_ready = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = FacilitySDMXConfiguration
+        fields = [
+            "id",
+            "organization",
+            "facility",
+            "facility_name",
+            "contract",
+            "contract_name",
+            "is_enabled",
+            "facility_code",
+            "report_types",
+            "is_ready",
+            "last_validated_at",
+            "last_successful_submission_at",
+            "enabled_by",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "organization",
+            "facility_name",
+            "contract_name",
+            "is_ready",
+            "last_validated_at",
+            "last_successful_submission_at",
+            "enabled_by",
+            "created_at",
+            "updated_at",
+        ]
 
 
 class QuarterlyReportSerializer(serializers.ModelSerializer):

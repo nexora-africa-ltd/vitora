@@ -26,3 +26,4 @@ from hmis.apps.core.models_org_facility import *  # noqa: F403
 from hmis.apps.core.models_reference import *  # noqa: F403
 from hmis.apps.core.models_reference_pricing import SubscriptionPeriod  # noqa: F401
 from hmis.apps.core.models_security import *  # noqa: F403
+from hmis.apps.core.models_smart import SMARTTokenContext  # noqa: F401

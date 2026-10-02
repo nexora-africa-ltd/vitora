@@ -585,6 +585,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "allow_duplicate_orders",
+                "auto_create_standalone_diagnostic_report_draft",
                 "auto_print_labels_on_collect",
                 "auto_print_on_verify",
                 "auto_release_normal_results",

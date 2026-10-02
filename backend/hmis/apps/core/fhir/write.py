@@ -16,12 +16,18 @@ from datetime import date
 
 from django.db import IntegrityError
 from rest_framework import status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.core.fhir.views import FHIR_RENDERER_CLASSES, FHIRSchemaMixin
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.oauth.permissions import (
+    SMARTPatientAccessPermission,
+    SMARTScopePermission,
+    is_patient_context_allowed,
+)
 from hmis.apps.core.permissions import ReadRequiresModelPermission, get_client_ip
 
 logger = logging.getLogger(__name__)
@@ -30,8 +36,38 @@ logger = logging.getLogger(__name__)
 class FHIRWriteAPIView(FHIRSchemaMixin, APIView):
     """Base class for FHIR write endpoints (authenticated)."""
 
-    permission_classes = [IsAuthenticated, ReadRequiresModelPermission]
+    permission_classes = [
+        IsAuthenticated,
+        SMARTScopePermission,
+        SMARTPatientAccessPermission,
+        ReadRequiresModelPermission,
+    ]
     renderer_classes = FHIR_RENDERER_CLASSES
+
+    def initial(self, request, *args, **kwargs):
+        """Reject patient-scoped writes that target another patient or no patient."""
+        super().initial(request, *args, **kwargs)
+        access_token = getattr(request, "access_token", None)
+        scopes = (getattr(access_token, "scope", "") or "").split()
+        patient_only = (
+            access_token
+            and any(scope.startswith("patient/") for scope in scopes)
+            and not any(scope.startswith(("user/", "system/")) for scope in scopes)
+        )
+        if not patient_only:
+            return
+
+        reference = (
+            request.data.get("subject", {}).get("reference")
+            or request.data.get("patient", {}).get("reference")
+            or ""
+        )
+        if not reference.startswith("Patient/"):
+            raise PermissionDenied(
+                "Patient-scoped SMART writes require the launch patient reference."
+            )
+        if not is_patient_context_allowed(request, reference.removeprefix("Patient/")):
+            raise PermissionDenied("Access denied to patient data outside your authorized context.")
 
     def operation_outcome(self, severity: str, code: str, diagnostics: str, http_status=400):
         """Build a FHIR OperationOutcome response."""

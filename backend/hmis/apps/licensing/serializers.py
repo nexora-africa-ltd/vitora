@@ -5,6 +5,7 @@ Serializers for the licensing API.
 
 from rest_framework import serializers
 
+from .activation_secrets import validate_device_public_key
 from .models import Installation
 
 
@@ -50,6 +51,22 @@ class ActivationRequestSerializer(serializers.Serializer):
         required=True,
         help_text="Version of the EULA accepted by the installer/user.",
     )
+    # Omitted by released installers: preserve their activation path, but flag the
+    # plaintext response so callers can migrate to v2.
+    protocol_version = serializers.IntegerField(required=False, default=1, min_value=1, max_value=2)
+    device_public_key = serializers.CharField(required=False, allow_blank=True, max_length=128)
+
+    def validate(self, attrs):
+        if attrs["protocol_version"] == 2 and not attrs.get("device_public_key"):
+            raise serializers.ValidationError(
+                {"device_public_key": "Required for protocol version 2."}
+            )
+        if attrs["protocol_version"] == 2:
+            try:
+                attrs["device_public_key"] = validate_device_public_key(attrs["device_public_key"])
+            except ValueError as exc:
+                raise serializers.ValidationError({"device_public_key": str(exc)}) from exc
+        return attrs
 
     def validate_eula_accepted(self, value: bool) -> bool:
         if not value:
@@ -249,6 +266,30 @@ class RevokeSerializer(serializers.Serializer):
         required=False,
         default="",
     )
+
+
+class DeviceReenrollmentSerializer(serializers.Serializer):
+    """Request a v2 activation-secret envelope for an active installation."""
+
+    protocol_version = serializers.IntegerField(required=True)
+    device_public_key = serializers.CharField(required=True, max_length=128)
+
+    def validate(self, attrs):
+        if attrs["protocol_version"] != 2:
+            raise serializers.ValidationError(
+                {"protocol_version": "Existing installations support protocol version 2 only."}
+            )
+        try:
+            attrs["device_public_key"] = validate_device_public_key(attrs["device_public_key"])
+        except ValueError as exc:
+            raise serializers.ValidationError({"device_public_key": str(exc)}) from exc
+        return attrs
+
+
+class InstallationReenrollmentSerializer(DeviceReenrollmentSerializer):
+    """Device re-enrollment request addressed by stable installation identifier."""
+
+    installation_id = serializers.CharField(max_length=200)
 
 
 class LicenseStatusSerializer(serializers.Serializer):

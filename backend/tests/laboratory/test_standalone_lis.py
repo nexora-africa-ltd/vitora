@@ -309,6 +309,309 @@ class TestStandaloneOrderAPI:
         assert response.data["patient"] == sample_patient.id
         assert response.data["encounter"] is None
 
+
+class TestStandaloneDiagnosticReportAPI:
+    """Tests for standalone LIS diagnostic report endpoints."""
+
+    def _enable_standalone_mode(self, sample_facility):
+        sample_facility.has_lis_standalone = True
+        sample_facility.has_laboratory = True
+        sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB
+        sample_facility.save(
+            update_fields=["has_lis_standalone", "has_laboratory", "operating_mode"]
+        )
+
+    def _create_completed_walkin_order(
+        self, sample_facility, sample_organization, test_user, sample_test_catalog
+    ):
+        from hmis.apps.laboratory.models import LabOrder, LabOrderItem
+
+        order = LabOrder.objects.create(
+            ordered_by=test_user,
+            order_type="IN_HOUSE",
+            status="COMPLETED",
+            priority="ROUTINE",
+            is_walkin=True,
+            walkin_patient_name="Standalone Patient",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        LabOrderItem.objects.create(
+            lab_order=order,
+            test=sample_test_catalog,
+            unit_cost=sample_test_catalog.cost,
+        )
+        return order
+
+    def test_create_standalone_diagnostic_report(
+        self,
+        authenticated_client,
+        sample_facility,
+        sample_organization,
+        test_user,
+        sample_test_catalog,
+    ):
+        """POST /api/lab/standalone/reports/ creates a report for completed walk-in orders."""
+        self._enable_standalone_mode(sample_facility)
+        order = self._create_completed_walkin_order(
+            sample_facility,
+            sample_organization,
+            test_user,
+            sample_test_catalog,
+        )
+
+        response = authenticated_client.post(
+            "/api/lab/standalone/reports/",
+            {
+                "lab_order": order.id,
+                "conclusion": "Standalone diagnostic report",
+                "clinical_info": "Walk-in follow-up",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["lab_order"] == order.id
+        assert response.data["status"] == "DRAFT"
+
+    def test_create_standalone_diagnostic_report_rejects_non_walkin_order(
+        self,
+        authenticated_client,
+        sample_facility,
+        sample_lab_order,
+    ):
+        """Standalone report endpoint rejects non-walk-in lab orders."""
+        self._enable_standalone_mode(sample_facility)
+        sample_lab_order.status = "COMPLETED"
+        sample_lab_order.save(update_fields=["status", "updated_at"])
+
+        response = authenticated_client.post(
+            "/api/lab/standalone/reports/",
+            {
+                "lab_order": sample_lab_order.id,
+                "conclusion": "Should fail",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_finalize_standalone_diagnostic_report(
+        self,
+        authenticated_client,
+        sample_facility,
+        sample_organization,
+        test_user,
+        sample_test_catalog,
+    ):
+        """POST finalize marks standalone diagnostic report as FINAL."""
+        from hmis.apps.laboratory.models import DiagnosticReport
+
+        self._enable_standalone_mode(sample_facility)
+        order = self._create_completed_walkin_order(
+            sample_facility,
+            sample_organization,
+            test_user,
+            sample_test_catalog,
+        )
+        report = DiagnosticReport.objects.create(
+            lab_order=order,
+            issued_by=test_user,
+            status=DiagnosticReport.Status.DRAFT,
+            conclusion="Draft report",
+        )
+
+        response = authenticated_client.post(
+            f"/api/lab/standalone/reports/{report.report_number}/finalize/",
+            {},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["status"] == "FINAL"
+
+    def test_list_standalone_reports_excludes_non_walkin(
+        self,
+        authenticated_client,
+        sample_facility,
+        sample_organization,
+        sample_lab_order,
+        test_user,
+        sample_test_catalog,
+    ):
+        """Standalone report listing includes walk-in reports only."""
+        from hmis.apps.laboratory.models import DiagnosticReport
+
+        self._enable_standalone_mode(sample_facility)
+        walkin_order = self._create_completed_walkin_order(
+            sample_facility,
+            sample_organization,
+            test_user,
+            sample_test_catalog,
+        )
+        walkin_report = DiagnosticReport.objects.create(
+            lab_order=walkin_order,
+            issued_by=test_user,
+            status=DiagnosticReport.Status.FINAL,
+            issued_at=timezone.now(),
+        )
+
+        sample_lab_order.status = "COMPLETED"
+        sample_lab_order.save(update_fields=["status", "updated_at"])
+        DiagnosticReport.objects.create(
+            lab_order=sample_lab_order,
+            issued_by=test_user,
+            status=DiagnosticReport.Status.FINAL,
+            issued_at=timezone.now(),
+        )
+
+        response = authenticated_client.get("/api/lab/standalone/reports/")
+
+        assert response.status_code == status.HTTP_200_OK
+        ids = [item["id"] for item in response.data.get("results", [])]
+        assert walkin_report.id in ids
+
+
+class TestStandaloneDiagnosticReportAutoCreate:
+    """Tests for auto-creating standalone diagnostic reports on completion."""
+
+    def test_workflow_settings_serializer_exposes_auto_create_toggle(self):
+        """Lab workflow settings serializer includes standalone report auto-create toggle."""
+        from hmis.apps.laboratory.serializers import LabWorkflowSettingsSerializer
+
+        serializer = LabWorkflowSettingsSerializer()
+        assert "auto_create_standalone_diagnostic_report_draft" in serializer.fields
+
+    def _enable_standalone_mode(self, sample_facility):
+        sample_facility.has_lis_standalone = True
+        sample_facility.has_laboratory = True
+        sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB
+        sample_facility.save(
+            update_fields=["has_lis_standalone", "has_laboratory", "operating_mode"]
+        )
+
+    def _create_in_progress_walkin_order(
+        self, sample_facility, sample_organization, test_user, sample_test_catalog
+    ):
+        from hmis.apps.laboratory.models import LabOrder, LabOrderItem
+
+        order = LabOrder.objects.create(
+            ordered_by=test_user,
+            order_type="IN_HOUSE",
+            status="IN_PROGRESS",
+            priority="ROUTINE",
+            is_walkin=True,
+            walkin_patient_name="Autocreate Patient",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        LabOrderItem.objects.create(
+            lab_order=order,
+            test=sample_test_catalog,
+            unit_cost=sample_test_catalog.cost,
+            status="COMPLETED",
+        )
+        return order
+
+    def test_auto_create_draft_report_when_enabled(
+        self,
+        sample_facility,
+        sample_organization,
+        test_user,
+        sample_test_catalog,
+    ):
+        """Completed standalone orders auto-create a draft report when setting is enabled."""
+        from hmis.apps.laboratory.models import DiagnosticReport, LabWorkflowSettings
+
+        self._enable_standalone_mode(sample_facility)
+        settings, _ = LabWorkflowSettings.objects.get_or_create(
+            facility=sample_facility,
+            defaults={"organization": sample_organization},
+        )
+        settings.auto_create_standalone_diagnostic_report_draft = True
+        settings.save(update_fields=["auto_create_standalone_diagnostic_report_draft"])
+
+        order = self._create_in_progress_walkin_order(
+            sample_facility,
+            sample_organization,
+            test_user,
+            sample_test_catalog,
+        )
+        order.status = "COMPLETED"
+        order.completed_at = timezone.now()
+        order.save(update_fields=["status", "completed_at", "updated_at"])
+
+        report = DiagnosticReport.objects.filter(lab_order=order).first()
+        assert report is not None
+        assert report.status == DiagnosticReport.Status.DRAFT
+
+    def test_auto_create_draft_report_not_created_when_disabled(
+        self,
+        sample_facility,
+        sample_organization,
+        test_user,
+        sample_test_catalog,
+    ):
+        """Completed standalone orders should not auto-create report when setting is disabled."""
+        from hmis.apps.laboratory.models import DiagnosticReport, LabWorkflowSettings
+
+        self._enable_standalone_mode(sample_facility)
+        settings, _ = LabWorkflowSettings.objects.get_or_create(
+            facility=sample_facility,
+            defaults={"organization": sample_organization},
+        )
+        settings.auto_create_standalone_diagnostic_report_draft = False
+        settings.save(update_fields=["auto_create_standalone_diagnostic_report_draft"])
+
+        order = self._create_in_progress_walkin_order(
+            sample_facility,
+            sample_organization,
+            test_user,
+            sample_test_catalog,
+        )
+        order.status = "COMPLETED"
+        order.completed_at = timezone.now()
+        order.save(update_fields=["status", "completed_at", "updated_at"])
+
+        assert not DiagnosticReport.objects.filter(lab_order=order).exists()
+
+    def test_auto_create_is_idempotent_when_report_exists(
+        self,
+        sample_facility,
+        sample_organization,
+        test_user,
+        sample_test_catalog,
+    ):
+        """Signal should not create duplicate draft reports for the same standalone order."""
+        from hmis.apps.laboratory.models import DiagnosticReport, LabWorkflowSettings
+
+        self._enable_standalone_mode(sample_facility)
+        settings, _ = LabWorkflowSettings.objects.get_or_create(
+            facility=sample_facility,
+            defaults={"organization": sample_organization},
+        )
+        settings.auto_create_standalone_diagnostic_report_draft = True
+        settings.save(update_fields=["auto_create_standalone_diagnostic_report_draft"])
+
+        order = self._create_in_progress_walkin_order(
+            sample_facility,
+            sample_organization,
+            test_user,
+            sample_test_catalog,
+        )
+        DiagnosticReport.objects.create(
+            lab_order=order,
+            issued_by=test_user,
+            status=DiagnosticReport.Status.DRAFT,
+            conclusion="Existing report",
+        )
+
+        order.status = "COMPLETED"
+        order.completed_at = timezone.now()
+        order.save(update_fields=["status", "completed_at", "updated_at"])
+
+        assert DiagnosticReport.objects.filter(lab_order=order).count() == 1
+
     def test_create_standalone_order_requires_items(self, authenticated_client):
         """Order creation fails without test items."""
         data = {

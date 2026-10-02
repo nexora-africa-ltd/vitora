@@ -23,6 +23,8 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from hmis.apps.core.fhir.security import request_can_access_fhir_resource
+from hmis.apps.core.oauth.permissions import SMARTPatientAccessPermission, SMARTScopePermission
 from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
 
 logger = logging.getLogger(__name__)
@@ -86,9 +88,14 @@ class FHIRSchemaMixin:
 
 
 class PublicFHIRReadAPIView(FHIRSchemaMixin, APIView):
-    """Shared Inferno-friendly config for unauthenticated FHIR read endpoints."""
+    """Legacy shared base retained for import compatibility; clinical reads authenticate."""
 
-    permission_classes = [AllowAny]
+    permission_classes = [
+        IsAuthenticated,
+        SMARTScopePermission,
+        SMARTPatientAccessPermission,
+        ReadRequiresModelPermission,
+    ]
     renderer_classes = FHIR_RENDERER_CLASSES
 
 
@@ -304,7 +311,13 @@ class FHIRPatientSummaryView(FHIRSchemaMixin, APIView):
     - CarePlan resources (from treatment plans)
     """
 
-    permission_classes = [AllowAny]
+    smart_resource_type = "Patient"
+    permission_classes = [
+        IsAuthenticated,
+        SMARTScopePermission,
+        SMARTPatientAccessPermission,
+        ReadRequiresModelPermission,
+    ]
     renderer_classes = FHIR_RENDERER_CLASSES
 
     @extend_schema(
@@ -342,6 +355,9 @@ class FHIRPatientSummaryView(FHIRSchemaMixin, APIView):
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+        if not request_can_access_fhir_resource(request, patient):
+            return Response(status=status.HTTP_403_FORBIDDEN)
 
         # Get patient's conditions
         diagnoses = Diagnosis.objects.filter(encounter__patient=patient).select_related(
@@ -767,7 +783,7 @@ class FHIRBundleView(FHIRPatientSummaryView):
 class FHIRCompositionDocumentView(FHIRPatientSummaryView):
     """FHIR Composition $document operation endpoint."""
 
-    permission_classes = [AllowAny]
+    permission_classes = FHIRPatientSummaryView.permission_classes
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},

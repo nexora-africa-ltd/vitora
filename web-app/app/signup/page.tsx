@@ -906,7 +906,7 @@ export default function SignupPage() {
                     >
                       I agree to the{' '}
                       <a
-                        href="https://vitora.nexora.africa/legal/terms"
+                        href="https://vitora.digital/legal/terms"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary underline hover:text-primary/80"
@@ -915,7 +915,7 @@ export default function SignupPage() {
                       </a>{' '}
                       and{' '}
                       <a
-                        href="https://vitora.nexora.africa/legal/privacy"
+                        href="https://vitora.digital/legal/privacy"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary underline hover:text-primary/80"

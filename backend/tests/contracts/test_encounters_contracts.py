@@ -16,6 +16,8 @@ from hmis.apps.encounters.serializers import (
     CurrentMedicationSerializer,
     DiagnosisNestedSerializer,
     DiagnosisSerializer,
+    EmergencyEncounterCreateSerializer,
+    EmergencyEncounterDeferredCompleteSerializer,
     EncounterListSerializer,
     EncounterSerializer,
     FamilyHistoryCreateSerializer,
@@ -186,6 +188,39 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "snomed_code",
                 "snomed_display",
                 "updated_at",
+            }
+        ),
+    ),
+    (
+        EmergencyEncounterCreateSerializer,
+        frozenset(
+            {
+                "blood_pressure",
+                "chief_complaint",
+                "emergency_access_id",
+                "encounter_date",
+                "encounter_type",
+                "patient",
+                "pulse",
+                "respiratory_rate",
+                "spo2",
+                "temperature",
+            }
+        ),
+    ),
+    (
+        EmergencyEncounterDeferredCompleteSerializer,
+        frozenset(
+            {
+                "allergies",
+                "assessment",
+                "chronic_conditions",
+                "current_medications",
+                "disposition",
+                "disposition_notes",
+                "history_of_present_illness",
+                "notes",
+                "physical_examination",
             }
         ),
     ),

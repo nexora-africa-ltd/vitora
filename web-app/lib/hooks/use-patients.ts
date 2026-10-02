@@ -169,6 +169,9 @@ export function usePatient(id: number | string) {
     select: (full) => ({
       national_id: full.national_id,
       phone_number: full.phone_number,
+      email: full.email,
+      address: full.address,
+      identification_number: full.identification_number,
     }),
   });
 
@@ -210,6 +213,7 @@ export function usePatientEmergencyContacts(patientId: string | number) {
       ),
     queryKey: patientKeys.emergencyContacts(patientId),
     queryFn: () => patientsApi.getEmergencyContacts(localPatientId ?? 0),
+    forceApi: true, // Contact phone numbers are encrypted server-side and never replicated.
     enabled: localPatientId !== null,
   });
 }
@@ -279,8 +283,6 @@ export function useCreatePatient() {
       gender: data.gender,
       cr_number: data.cr_number || null,
       sha_number: data.sha_number || null,
-      email: data.email || null,
-      address: data.address || null,
       citizenship: data.citizenship || null,
       identification_type: data.identification_type || null,
       is_person_with_disability: data.is_person_with_disability ? 1 : 0,
@@ -328,8 +330,6 @@ export function useUpdatePatient() {
       if (data.title !== undefined) fields.title = data.title || null;
       if (data.date_of_birth !== undefined) fields.date_of_birth = data.date_of_birth;
       if (data.gender !== undefined) fields.gender = data.gender;
-      if (data.email !== undefined) fields.email = data.email || null;
-      if (data.address !== undefined) fields.address = data.address || null;
       if (data.county !== undefined) fields.county_id = String(data.county);
       if (data.sub_county !== undefined) fields.sub_county_id = String(data.sub_county);
       if (data.ward !== undefined) fields.ward_id = data.ward ? String(data.ward) : null;

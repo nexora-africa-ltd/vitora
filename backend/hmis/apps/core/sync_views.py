@@ -333,6 +333,32 @@ def _validate_hub_identity_fields(*, table: str, data: dict, allowed_fields: set
     return {"ok": True, "reason": "", "cleaned_data": data}
 
 
+def _augment_downward_auth_user_data(*, record_id, data: dict | None) -> dict:
+    """Inject cloud-authoritative auth.User flags for hub pulls.
+
+    `is_staff` is intentionally cloud-authoritative and should flow only from
+    cloud -> hub. Hub -> cloud payloads are validated against
+    `HUB_USER_ALLOWED_FIELDS`, which excludes `is_staff`.
+    """
+    payload = dict(data or {})
+    User = get_user_model()
+
+    user = None
+    resolved_id = _record_id_to_int(record_id)
+    if resolved_id is not None:
+        user = User.objects.filter(pk=resolved_id).first()
+    if user is None:
+        username = str(payload.get("username") or "").strip()
+        if username:
+            user = User.objects.filter(username=username).first()
+
+    if user is None:
+        return payload
+
+    payload["is_staff"] = bool(user.is_staff)
+    return payload
+
+
 def _apply_hub_identity_change(*, table: str, operation: str, record_id, data: dict, installation):
     """Apply tightly scoped hub identity changes directly on the cloud."""
     if installation is None:
@@ -575,16 +601,28 @@ def _upsert_hub_staff_profile(*, record_id, data: dict, installation):
         StaffProfile.objects.filter(employee_id=employee_id).first() if employee_id else None
     )
 
-    candidates = [item for item in (existing_by_pk, existing_by_user, existing_by_employee) if item]
-    if candidates and len({item.pk for item in candidates}) > 1:
+    natural_matches = [item for item in (existing_by_user, existing_by_employee) if item]
+    if natural_matches and len({item.pk for item in natural_matches}) > 1:
         return _reject_identity("Hub staff profile sync would collide with an existing profile.")
 
-    profile = candidates[0] if candidates else None
+    # Hub-local PKs do not identify cloud records. A cloud row at the same PK
+    # may be unrelated, so username/user and employee ID are authoritative.
+    profile = natural_matches[0] if natural_matches else None
     if profile and getattr(profile, "organization_id", None) != installation.organization_id:
         return _reject_identity("Hub staff profile belongs to a different organization.")
 
     if profile is None:
-        profile = StaffProfile(pk=record_pk, user=user)
+        # Preserve the hub PK only when it is unoccupied. A colliding cloud PK
+        # must not prevent a new installation-scoped identity from being made.
+        if existing_by_pk is not None and (
+            existing_by_pk.user_id == user.pk
+            or (employee_id and existing_by_pk.employee_id == employee_id)
+        ):
+            profile = existing_by_pk
+        elif existing_by_pk is None:
+            profile = StaffProfile(pk=record_pk, user=user)
+        else:
+            profile = StaffProfile(user=user)
 
     object.__setattr__(profile, "_from_sync_materializer", True)
     profile.employee_id = employee_id
@@ -801,7 +839,29 @@ def _upsert_hub_org_membership(*, record_id, data: dict, installation):
 
     from hmis.apps.core.models import OrgMembership, StaffProfile
 
-    staff_profile = StaffProfile.objects.filter(pk=staff_profile_id).first()
+    raw_staff_profile = StaffProfile.objects.filter(pk=staff_profile_id).first()
+    staff_username = str(
+        data.get("staff_username") or data.get("staff_profile_username") or ""
+    ).strip()
+    staff_employee_id = str(data.get("staff_profile_employee_id") or "").strip()
+    hinted_profiles = []
+    if staff_username:
+        profile = StaffProfile.objects.filter(user__username=staff_username).first()
+        if profile is not None:
+            hinted_profiles.append(profile)
+    if staff_employee_id:
+        profile = StaffProfile.objects.filter(employee_id=staff_employee_id).first()
+        if profile is not None:
+            hinted_profiles.append(profile)
+
+    if hinted_profiles and len({profile.pk for profile in hinted_profiles}) > 1:
+        return _reject_identity(
+            "Hub membership staff identity hints resolve to different profiles."
+        )
+
+    # The hub's staff_profile ID can collide with another cloud profile. Prefer
+    # explicit username/employee-ID hints whenever they resolve a canonical row.
+    staff_profile = hinted_profiles[0] if hinted_profiles else raw_staff_profile
     if staff_profile is None:
         # Soft failure so the hub retries after the StaffProfile push lands.
         return _reject_identity(
@@ -831,15 +891,22 @@ def _upsert_hub_org_membership(*, record_id, data: dict, installation):
     existing_by_unique = OrgMembership.objects.filter(
         staff_profile=staff_profile, organization=installation.organization
     ).first()
-    candidates = [item for item in (existing_by_pk, existing_by_unique) if item]
-    if candidates and len({item.pk for item in candidates}) > 1:
-        return _reject_identity(
-            "Hub membership sync would collide with two different existing memberships."
-        )
-
-    membership = candidates[0] if candidates else None
+    # Membership's (staff_profile, organization) identity is authoritative. A
+    # hub-local PK can point at a different cloud membership and must never
+    # cause that row to be overwritten or block the natural-key update.
+    membership = existing_by_unique
+    if (
+        membership is None
+        and existing_by_pk is not None
+        and existing_by_pk.organization_id == installation.organization_id
+        and existing_by_pk.staff_profile_id == staff_profile.pk
+    ):
+        membership = existing_by_pk
     if membership is None:
-        membership = OrgMembership(pk=record_pk, staff_profile=staff_profile)
+        membership_kwargs = {"staff_profile": staff_profile}
+        if existing_by_pk is None:
+            membership_kwargs["pk"] = record_pk
+        membership = OrgMembership(**membership_kwargs)
 
     object.__setattr__(membership, "_from_sync_materializer", True)
     membership.staff_profile = staff_profile
@@ -1169,6 +1236,8 @@ def _build_downward_snapshot_changes(
 
             try:
                 data = serialize_instance_for_sync(instance, exclude_fields=entry.exclude_fields)
+                if model_label == "auth.User":
+                    data = _augment_downward_auth_user_data(record_id=instance.pk, data=data)
                 data = add_sync_meta(data, direction=entry.direction, priority=entry.priority)
             except (TypeError, ValueError, AttributeError):
                 logger.exception(
@@ -1518,12 +1587,15 @@ def sync_pull(request):
     changes = []
     for entry in entries:
         record_id = entry.record_id if direction == "down" else str(entry.record_id)
+        data = entry.data
+        if direction == "down" and entry.model_name == "auth.User":
+            data = _augment_downward_auth_user_data(record_id=entry.record_id, data=entry.data)
         changes.append(
             {
                 "table": entry.model_name,
                 "operation": entry.operation,
                 "record_id": record_id if entry.record_id else None,
-                "data": entry.data,
+                "data": data,
                 "timestamp": entry.synced_at or entry.created_at,
                 "server_sequence": entry.pk,
             }

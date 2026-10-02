@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { clearAllDrafts } from '@/lib/hooks/use-draft-save';
+import { tokenStorage, waitForAuthCleanup } from '@/lib/auth/storage';
 import { API_BASE_URL } from '@/lib/utils/constants';
 import type { OrgMembership } from '@/lib/types/membership';
 
@@ -394,6 +395,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Login function — uses cookie-based auth endpoint
   const login = useCallback(async (username: string, password: string): Promise<LoginResult> => {
     setState((prev) => ({ ...prev, isLoading: true }));
+    try {
+      await waitForAuthCleanup();
+    } catch {
+      setState((prev) => ({ ...prev, isLoading: false }));
+      return { success: false, error: 'Session cleanup failed. Reload before signing in.' };
+    }
 
     try {
       const { isDesktop } = await import('@/lib/desktop');
@@ -693,7 +700,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Logout function — clears httpOnly cookies via backend + local state
   const logout = useCallback(() => {
     // Clear httpOnly cookies server-side (fire-and-forget)
-    getAuthApiUrl()
+    const serverLogout = getAuthApiUrl()
       .then((apiUrl) =>
         fetch(`${apiUrl}/api/auth/logout/`, {
           method: 'POST',
@@ -705,8 +712,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
     // Clear local data
-    localStorage.removeItem(USER_KEY);
-    localStorage.removeItem(MFA_GRACE_KEY);
+    tokenStorage.clearAll(serverLogout);
     localStorage.removeItem(MUST_CHANGE_PW_KEY);
 
     // Clear clinical form drafts to prevent data leaking on shared workstations
@@ -724,6 +730,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resetToken: null,
     });
   }, []);
+
+  // A logout in another tab also closes this tab's offline session.
+  useEffect(() => {
+    const onCleared = () => setState({
+      user: null, tokens: null, isAuthenticated: false, isLoading: false,
+      mustChangePassword: false, resetToken: null,
+    });
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === USER_KEY && event.newValue === null) logout();
+    };
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('vitora:auth-cleared', onCleared);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('vitora:auth-cleared', onCleared);
+    };
+  }, [logout]);
 
   // Refresh token function — uses cookie-based refresh
   const refreshToken = useCallback(async () => {

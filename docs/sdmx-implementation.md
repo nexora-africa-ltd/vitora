@@ -81,15 +81,15 @@ class SDMXExportService:
 
 The service maps Vitora aggregate data to SDMX concepts:
 
-| Vitora Field | SDMX Concept | Dimension |
-|-------------|-------------|-----------|
-| `total_visits` | `TOTAL_VISITS` | `INDICATOR` |
-| `new_visits` | `NEW_VISITS` | `INDICATOR` |
-| `priority_red` | `PRIORITY_RED` | `TRIAGE_PRIORITY` |
-| `under_5_visits` | `UNDER_5_VISITS` | `AGE_GROUP` |
-| `anc_first_visits` | `ANC_FIRST_VISITS` | `MCH_SERVICE` |
-| IDSR `total_cases` | `TOTAL_CASES` | `SURVEILLANCE` |
-| IDSR `total_deaths` | `TOTAL_DEATHS` | `SURVEILLANCE` |
+| Vitora Field         | SDMX Concept         | Dimension           |
+| -------------------- | -------------------- | ------------------- |
+| `total_visits`     | `TOTAL_VISITS`     | `INDICATOR`       |
+| `new_visits`       | `NEW_VISITS`       | `INDICATOR`       |
+| `priority_red`     | `PRIORITY_RED`     | `TRIAGE_PRIORITY` |
+| `under_5_visits`   | `UNDER_5_VISITS`   | `AGE_GROUP`       |
+| `anc_first_visits` | `ANC_FIRST_VISITS` | `MCH_SERVICE`     |
+| IDSR`total_cases`  | `TOTAL_CASES`      | `SURVEILLANCE`    |
+| IDSR`total_deaths` | `TOTAL_DEATHS`     | `SURVEILLANCE`    |
 
 ### SDMX-ML Format
 
@@ -107,7 +107,7 @@ Output follows SDMX 2.1 Generic Data format:
     <mes:Sender id="VITORA_HMIS"/>
     <mes:Structure>
       <com:Structure>
-        <Ref agencyID="VITORA" id="HEALTH_STATS" version="1.0"/>
+        <Ref cagencyID="VITORA" id="HEALTH_STATS" version="1.0"/>
       </com:Structure>
     </mes:Structure>
   </mes:Header>
@@ -187,10 +187,10 @@ SDMX-ML output can be validated against the SDMX 2.1 XSD schema available at:
 **File**: `tests/core/test_sdmx.py`
 **Count**: 17 tests
 
-| Test Class | Tests | Covers |
-|------------|:-----:|--------|
-| `TestSDMXExportService` | 9 | Quarterly/annual/IDSR XML generation, structure, indicators |
-| `TestSDMXEndpoints` | 8 | API auth, response format, content-type, content-disposition |
+| Test Class                | Tests | Covers                                                       |
+| ------------------------- | :---: | ------------------------------------------------------------ |
+| `TestSDMXExportService` |   9   | Quarterly/annual/IDSR XML generation, structure, indicators  |
+| `TestSDMXEndpoints`     |   8   | API auth, response format, content-type, content-disposition |
 
 ---
 

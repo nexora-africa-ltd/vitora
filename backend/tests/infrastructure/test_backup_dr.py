@@ -11,6 +11,7 @@ Tests the backup monitoring functionality to ensure:
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -601,6 +602,89 @@ class TestBackupMonitorRunAllChecks:
 
 class TestBackupScriptValidation:
     """Tests to validate backup.sh script syntax."""
+
+    @pytest.mark.skipif(not shutil.which("gpg"), reason="GPG required for encryption round trip")
+    def test_database_backups_are_encrypted_without_plaintext_artifacts(self, tmp_path):
+        bin_dir = tmp_path / "bin"
+        bin_dir.mkdir()
+        stub = bin_dir / "pg_dump"
+        stub.write_text("#!/bin/sh\nprintf 'synthetic clinical backup\\n'\n")
+        stub.chmod(0o700)
+        key_home = tmp_path / "gnupg"
+        key_home.mkdir(mode=0o700)
+        destination = tmp_path / "backups"
+        env = {
+            **os.environ,
+            "PATH": f"{bin_dir}:{os.environ['PATH']}",
+            "GNUPGHOME": str(key_home),
+            "DATABASE_URL": "postgresql://test:test@localhost/test",
+            "BACKUP_ENCRYPTION_KEY": "synthetic-backup-test-passphrase",
+            "SLACK_WEBHOOK_URL": "",
+            "ALERT_EMAIL": "",
+        }
+        result = subprocess.run(
+            ["bash", str(SCRIPTS_DIR / "backup.sh"), "--skip-s3", "--backup-dir", str(destination)],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        assert result.returncode == 0, result.stderr
+        assert not list(destination.glob("*.dump"))
+        assert not list(destination.glob("*.sql*")) or all(
+            file.name.endswith((".gpg", ".sha256")) for file in destination.glob("*.sql*")
+        )
+        encrypted_dump = next(destination.glob("*.dump.gpg"))
+        restored = subprocess.run(
+            [
+                "gpg",
+                "--batch",
+                "--pinentry-mode",
+                "loopback",
+                "--passphrase-fd",
+                "0",
+                "--decrypt",
+                str(encrypted_dump),
+            ],
+            input=env["BACKUP_ENCRYPTION_KEY"],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        assert restored.returncode == 0, restored.stderr
+        assert restored.stdout == "synthetic clinical backup\n"
+        assert encrypted_dump.stat().st_mode & 0o077 == 0
+
+    def test_missing_encryption_key_stops_before_dump(self, tmp_path):
+        """Missing key must fail before invoking a database dump or creating backups."""
+        bin_dir = tmp_path / "bin"
+        bin_dir.mkdir()
+        marker = tmp_path / "dump-called"
+        for executable in ("pg_dump", "gpg"):
+            stub = bin_dir / executable
+            stub.write_text(f'#!/bin/sh\ntouch "{marker}"\nexit 99\n')
+            stub.chmod(0o700)
+        env = {
+            **os.environ,
+            "PATH": f"{bin_dir}:{os.environ['PATH']}",
+            "DATABASE_URL": "postgresql://test:test@localhost/test",
+            "BACKUP_ENCRYPTION_KEY": "",
+            "SLACK_WEBHOOK_URL": "",
+            "ALERT_EMAIL": "",
+        }
+        destination = tmp_path / "backups"
+        result = subprocess.run(
+            ["bash", str(SCRIPTS_DIR / "backup.sh"), "--skip-s3", "--backup-dir", str(destination)],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        assert result.returncode != 0
+        assert "BACKUP_ENCRYPTION_KEY" in result.stdout + result.stderr
+        assert not marker.exists(), "A dump was attempted without an encryption key"
+        assert not destination.exists()
 
     def test_backup_script_exists(self):
         """Should have backup.sh script."""
