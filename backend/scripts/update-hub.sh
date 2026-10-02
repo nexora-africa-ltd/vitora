@@ -176,6 +176,19 @@ if [[ -f "$HUB_SECRETS_FILE" ]]; then
     source "$HUB_SECRETS_FILE"
     set +a
 fi
+
+if [[ -z "${CLOUD_API_BASE_URL:-}" && -n "${SYNC_SERVER_URL:-}" ]]; then
+    CLOUD_API_BASE_URL="${SYNC_SERVER_URL%/api/sync}"
+    if [[ "$CLOUD_API_BASE_URL" == "$SYNC_SERVER_URL" ]]; then
+        CLOUD_API_BASE_URL="${SYNC_SERVER_URL%/}"
+    fi
+    if grep -q '^CLOUD_API_BASE_URL=' "$APP_DIR/.env"; then
+        sed -i "s|^CLOUD_API_BASE_URL=.*|CLOUD_API_BASE_URL=${CLOUD_API_BASE_URL}|" "$APP_DIR/.env"
+    else
+        printf '\nCLOUD_API_BASE_URL=%s\n' "$CLOUD_API_BASE_URL" >> "$APP_DIR/.env"
+    fi
+    export CLOUD_API_BASE_URL
+fi
 export DJANGO_ENV=hub
 export DJANGO_SETTINGS_MODULE=hmis.settings
 

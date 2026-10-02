@@ -528,6 +528,16 @@ jobs:
             --content-cache-control "max-age=300"
 
           # --- Installer scripts ---
+          # Linux bootstrap updater. Existing hubs can replace their legacy updater
+          # with this script before an update that requires new pre-migration logic.
+          az storage blob upload \
+            --container-name "$BLOB_CONTAINER" \
+            --name "hub-update" \
+            --file backend/scripts/update-hub.sh \
+            --overwrite \
+            --content-type "text/x-shellscript" \
+            --content-cache-control "max-age=600"
+
           az storage blob upload \
             --container-name "$BLOB_CONTAINER" \
             --name "hub" \

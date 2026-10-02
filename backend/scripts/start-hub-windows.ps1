@@ -36,6 +36,9 @@ $ErrorActionPreference = "Stop"
 $InstallDir = Split-Path -Parent $PSCommandPath
 $LogDir = Join-Path $InstallDir "logs"
 $StartupLog = Join-Path $LogDir "start-hub.log"
+$script:DpapiTypeInitialized = $false
+$script:DpapiProtectedDataType = $null
+$script:DpapiLocalMachineScope = $null
 
 if (-not (Test-Path $LogDir)) {
     New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
@@ -91,30 +94,13 @@ function Initialize-DpapiType {
         return
     }
 
-    $protectedDataType = [Type]::GetType("System.Security.Cryptography.ProtectedData, System.Security", $false)
-    if (-not $protectedDataType) {
-        try { Add-Type -AssemblyName "System.Security" -ErrorAction Stop } catch {}
-        try { Add-Type -AssemblyName "System.Security.Cryptography.ProtectedData" -ErrorAction Stop } catch {}
-        $protectedDataType = [Type]::GetType("System.Security.Cryptography.ProtectedData, System.Security", $false)
-        if (-not $protectedDataType) {
-            $protectedDataType = [Type]::GetType("System.Security.Cryptography.ProtectedData, System.Security.Cryptography.ProtectedData", $false)
-        }
-    }
-
-    if (-not $protectedDataType) {
+    try {
+        Add-Type -AssemblyName "System.Security" -ErrorAction Stop
+        $script:DpapiProtectedDataType = [System.Security.Cryptography.ProtectedData]
+        $script:DpapiLocalMachineScope = [System.Security.Cryptography.DataProtectionScope]::LocalMachine
+    } catch {
         throw "DPAPI is unavailable on this host. Run start-hub.ps1 from Windows PowerShell on Windows."
     }
-
-    $scopeType = [Type]::GetType("System.Security.Cryptography.DataProtectionScope, System.Security", $false)
-    if (-not $scopeType) {
-        $scopeType = [Type]::GetType("System.Security.Cryptography.DataProtectionScope, System.Security.Cryptography.ProtectedData", $false)
-    }
-    if (-not $scopeType) {
-        throw "DPAPI DataProtectionScope type is unavailable on this host."
-    }
-
-    $script:DpapiProtectedDataType = $protectedDataType
-    $script:DpapiLocalMachineScope = [Enum]::Parse($scopeType, "LocalMachine")
     $script:DpapiTypeInitialized = $true
 }
 

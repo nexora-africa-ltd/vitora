@@ -13,7 +13,8 @@
 
 #Requires -RunAsAdministrator
 param(
-    [string]$Version = ""
+    [string]$Version = "",
+    [switch]$Force
 )
 
 $ErrorActionPreference = "Stop"
@@ -49,34 +50,20 @@ function Initialize-DpapiType {
         return $script:DpapiAvailable
     }
 
-    $protectedDataType = [Type]::GetType("System.Security.Cryptography.ProtectedData, System.Security", $false)
-    if (-not $protectedDataType) {
-        try { Add-Type -AssemblyName "System.Security" -ErrorAction Stop } catch {}
-        try { Add-Type -AssemblyName "System.Security.Cryptography.ProtectedData" -ErrorAction Stop } catch {}
-        $protectedDataType = [Type]::GetType("System.Security.Cryptography.ProtectedData, System.Security", $false)
-        if (-not $protectedDataType) {
-            $protectedDataType = [Type]::GetType("System.Security.Cryptography.ProtectedData, System.Security.Cryptography.ProtectedData", $false)
-        }
-    }
-
-    if (-not $protectedDataType) {
+    try {
+        Add-Type -AssemblyName "System.Security" -ErrorAction Stop
+        $script:DpapiProtectedDataType = [System.Security.Cryptography.ProtectedData]
+        $script:DpapiLocalMachineScope = [System.Security.Cryptography.DataProtectionScope]::LocalMachine
+        $null = $script:DpapiProtectedDataType::Protect(
+            [Text.Encoding]::UTF8.GetBytes("vitora-dpapi-probe"),
+            $null,
+            $script:DpapiLocalMachineScope
+        )
+    } catch {
         $script:DpapiTypeInitialized = $true
         $script:DpapiAvailable = $false
         return $false
     }
-
-    $scopeType = [Type]::GetType("System.Security.Cryptography.DataProtectionScope, System.Security", $false)
-    if (-not $scopeType) {
-        $scopeType = [Type]::GetType("System.Security.Cryptography.DataProtectionScope, System.Security.Cryptography.ProtectedData", $false)
-    }
-    if (-not $scopeType) {
-        $script:DpapiTypeInitialized = $true
-        $script:DpapiAvailable = $false
-        return $false
-    }
-
-    $script:DpapiProtectedDataType = $protectedDataType
-    $script:DpapiLocalMachineScope = [Enum]::Parse($scopeType, "LocalMachine")
     $script:DpapiTypeInitialized = $true
     $script:DpapiAvailable = $true
     return $true
@@ -204,6 +191,8 @@ function Invoke-HubDeviceReenrollment {
     }
 
     Write-Info "Re-enrolling existing hub device key with the cloud..."
+    $previousPythonPath = $env:PYTHONPATH
+    $env:PYTHONPATH = if ($previousPythonPath) { "$InstallDir;$previousPythonPath" } else { $InstallDir }
     $tempPrivateKey = Join-Path $env:TEMP "vitora-reenroll-device-x25519.pem"
     $responseFile = Join-Path $env:TEMP "vitora-reenroll-response.json"
     try {
@@ -213,6 +202,9 @@ function Invoke-HubDeviceReenrollment {
         $response = Invoke-RestMethod -Uri "$($env:CLOUD_API_BASE_URL.TrimEnd('/'))/api/licensing/re-enroll/" -Method POST -Headers $headers -Body $body -ContentType "application/json" -UseBasicParsing
         $response | ConvertTo-Json -Depth 10 | Set-Content -Path $responseFile
         $decrypted = & $PythonExe -c "import json,sys; from cryptography.hazmat.primitives.serialization import load_pem_private_key; from hmis.apps.licensing.activation_secrets import decrypt_activation_secrets; r=json.load(open(sys.argv[1])); k=load_pem_private_key(open(sys.argv[2],'rb').read(),password=None); print(json.dumps(decrypt_activation_secrets(r['secrets_envelope'],k,installation_id=sys.argv[3],organization_id=int(sys.argv[4]),facility_id=int(sys.argv[5]))))" $responseFile $tempPrivateKey $env:HUB_ID $env:HUB_ORGANIZATION_ID $env:HUB_FACILITY_ID | ConvertFrom-Json
+        if ($LASTEXITCODE -ne 0 -or -not $decrypted) {
+            throw "Hub re-enrollment envelope decryption failed; no DPAPI secret bundle was written."
+        }
         [Environment]::SetEnvironmentVariable("ENCRYPTION_KEY", [string]$decrypted.encryption_key, "Process")
         [Environment]::SetEnvironmentVariable("PII_HMAC_KEY", [string]$decrypted.pii_hmac_key, "Process")
         [Environment]::SetEnvironmentVariable("LICENSE_TOKEN", [string]$response.license_token, "Process")
@@ -220,6 +212,7 @@ function Invoke-HubDeviceReenrollment {
         $script:ReenrollmentResponseFile = $responseFile
         return $response.license_token
     } finally {
+        $env:PYTHONPATH = $previousPythonPath
         Remove-Item -Path $tempPrivateKey -Force -ErrorAction SilentlyContinue
     }
 }
@@ -457,9 +450,13 @@ if ($Version) {
     Write-Info "Latest version: $Version"
 }
 
-if ($Version -eq $CurrentVersion) {
+if ($Version -eq $CurrentVersion -and -not $Force) {
     Write-Ok "Already running version $Version. Nothing to update."
     exit 0
+}
+
+if ($Version -eq $CurrentVersion -and $Force) {
+    Write-Info "Forcing update to current version $Version to apply protected re-enrollment."
 }
 
 Write-Info "Updating: $CurrentVersion -> $Version"
@@ -676,6 +673,19 @@ if (Test-Path $envFile) {
         if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$') {
             [System.Environment]::SetEnvironmentVariable($Matches[1], $Matches[2].Trim('"').Trim("'"))
         }
+    }
+}
+if (-not $env:CLOUD_API_BASE_URL -and $env:SYNC_SERVER_URL) {
+    $env:CLOUD_API_BASE_URL = $env:SYNC_SERVER_URL -replace '/api/sync/?$',''
+    if (-not $env:CLOUD_API_BASE_URL) {
+        $env:CLOUD_API_BASE_URL = $env:SYNC_SERVER_URL.TrimEnd('/')
+    }
+    if (Select-String -Path $envFile -Pattern '^CLOUD_API_BASE_URL=' -Quiet) {
+        (Get-Content $envFile) `
+            -replace '^CLOUD_API_BASE_URL=.*$', "CLOUD_API_BASE_URL=$($env:CLOUD_API_BASE_URL)" |
+            Set-Content $envFile
+    } else {
+        Add-Content $envFile "CLOUD_API_BASE_URL=$($env:CLOUD_API_BASE_URL)"
     }
 }
 # Default to hub settings (uses hub.sqlite3, not vitora.db)
