@@ -23,8 +23,9 @@ import React, {
 import { PowerSyncDatabase } from '@powersync/web';
 import { powersyncSchema } from '@/lib/powersync/schema';
 import { VitoraPowerSyncConnector, onSyncUploadEvent } from '@/lib/powersync/connector';
-import { tokenStorage } from '@/lib/auth/storage';
-import { onFacilityChange } from '@/lib/api/client';
+import { registerAuthCleanup, waitForAuthCleanup } from '@/lib/auth/storage';
+import { useAuth } from '@/lib/auth/context';
+import { getActiveFacilityId, onFacilityChange } from '@/lib/api/client';
 
 export interface SyncStatus {
   /** Timestamp of last successful sync */
@@ -78,20 +79,54 @@ interface SyncContextValue extends SyncStatus {
 
 const SyncContext = createContext<SyncContextValue | null>(null);
 
-/** Singleton PowerSync database instance (shared across re-renders). */
+/** Serialize ownership changes so an old connection cannot race a new session. */
 let _dbInstance: PowerSyncDatabase | null = null;
+let lifecycle: Promise<unknown> = Promise.resolve();
+let generation = 0;
+let legacyChecked = false;
 
-function getOrCreateDatabase(): PowerSyncDatabase {
-  if (!_dbInstance) {
-    _dbInstance = new PowerSyncDatabase({
-      schema: powersyncSchema,
-      database: { dbFilename: 'vitora.db' },
-    });
-  }
-  return _dbInstance;
+function serializeLifecycle<T>(operation: () => Promise<T>): Promise<T> {
+  const next = lifecycle.then(operation);
+  lifecycle = next.catch(() => undefined);
+  return next;
 }
 
+/** Erase downloaded data; quarantine unsent work in its owner-specific database. */
+export async function clearPowerSyncDatabase(database: PowerSyncDatabase): Promise<number> {
+  try {
+    await database.disconnect();
+    const rows = await database.getAll<{ cnt: number }>('SELECT COUNT(*) as cnt FROM ps_crud');
+    const pending = rows[0]?.cnt ?? 0;
+    if (pending === 0) await database.disconnectAndClear({ clearLocal: true });
+    return pending;
+  } finally {
+    await database.close();
+  }
+}
+
+function clearPowerSyncSession(): Promise<void> {
+  generation += 1;
+  return serializeLifecycle(async () => {
+    const database = _dbInstance;
+    _dbInstance = null;
+    if (database) {
+      const pending = await clearPowerSyncDatabase(database);
+      if (pending) console.warn('Unsynced work retained in the signed-out user’s isolated database.');
+    }
+  });
+}
+
+registerAuthCleanup(clearPowerSyncSession);
+
 export function SyncProvider({ children }: { children: React.ReactNode }) {
+  const { user, isAuthenticated, logout } = useAuth();
+  const [activeFacility, setActiveFacility] = useState(() => getActiveFacilityId());
+  const owner = isAuthenticated && user
+    ? `user-${user.id}-facility-${activeFacility ?? user.facility?.id ?? 'none'}`
+    : null;
+  const [dbOwner, setDbOwner] = useState<string | null>(null);
+  const [credentialExpiry, setCredentialExpiry] = useState<number | null>(null);
+  const verifiedAfter = useRef(0);
   const [db, setDb] = useState<PowerSyncDatabase | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [hasSynced, setHasSynced] = useState(false);
@@ -109,137 +144,82 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   }));
   const connectedRef = useRef(false);
 
-  // Initialize PowerSync when the provider mounts
+  useEffect(() => onFacilityChange(() => setActiveFacility(getActiveFacilityId())), []);
+
+  // A cached profile is not sufficient to reopen persisted health records.
   useEffect(() => {
-    const powersyncUrl = process.env.NEXT_PUBLIC_POWERSYNC_URL;
-
-    // If no PowerSync URL is configured, run in pure API-only mode.
-    // Don't initialize any local database — leave db=null, isReady=false.
-    // useOfflineQuery checks isReady and falls through to React Query API.
-    // usePowerSyncQuery handles db=null by returning isLoading=true (harmless).
-    if (!powersyncUrl) {
-      return;
-    }
-
-    const database = getOrCreateDatabase();
-    const connector = new VitoraPowerSyncConnector();
-
+    setDb(null);
+    setDbOwner(null);
+    setIsReady(false);
+    setHasSynced(false);
+    setCredentialExpiry(null);
+    connectedRef.current = false;
+    if (!process.env.NEXT_PUBLIC_POWERSYNC_URL || !owner) return;
+    const sessionGeneration = ++generation;
     let disposed = false;
-
-    async function connect() {
-      // Step 1: Initialize the WASM/SQLite database.
-      // If this fails (SharedArrayBuffer unavailable, WASM load error),
-      // leave db=null so the app stays in pure API-only mode.
-      try {
-        await database.init();
-      } catch (initError) {
-        console.error(
-          '[PowerSync] Database init failed — falling back to API-only mode:',
-          initError
-        );
-        if (!disposed) {
-          setPsHealth((prev) => ({ ...prev, connected: false }));
-          setStatus((prev) => ({
-            ...prev,
-            lastError: initError instanceof Error ? initError.message : 'DB init failed',
-          }));
+    const current = () => !disposed && sessionGeneration === generation;
+    void waitForAuthCleanup().then(() => serializeLifecycle(async () => {
+      if (!current()) return;
+      // Do not adopt unowned legacy data. Preserve unsent legacy work for
+      // explicit owner-verified recovery; it is never exposed to a new session.
+      if (!legacyChecked) {
+        const legacy = new PowerSyncDatabase({ schema: powersyncSchema, database: { dbFilename: 'vitora.db' } });
+        await legacy.init();
+        const pending = await clearPowerSyncDatabase(legacy);
+        legacyChecked = true;
+        if (pending) console.warn('Legacy offline work requires owner-verified recovery.');
+      }
+      const connector = new VitoraPowerSyncConnector((expiry) => {
+        if (current()) {
+          verifiedAfter.current = Date.now();
+          setHasSynced(false);
+          setCredentialExpiry(expiry.getTime());
         }
-        return; // db stays null, isReady stays false → pure API mode
-      }
-
-      // Init succeeded — expose the db so local queries are possible,
-      // and mark ready so useOfflineQuery can proceed (it also checks hasSynced).
-      if (!disposed) {
-        setDb(database);
-        setIsReady(true);
-      }
-
-      // Step 2: Connect to PowerSync Cloud for streaming sync.
-      // If this fails (bad JWT, cloud unreachable), the db is still usable
-      // but hasSynced stays false → useOfflineQuery falls back to API.
-      // Note: With cookie auth, tokens are in httpOnly cookies (not in JS).
-      // Use isAuthenticated() (checks localStorage user profile) instead of
-      // getAccessToken() which always returns null with cookie auth.
-      if (!tokenStorage.isAuthenticated()) {
-        // No authenticated user yet — db is ready for local use.
-        // PowerSync will connect once the user logs in.
-        return;
-      }
-
-      try {
-        await database.connect(connector);
-        connectedRef.current = true;
-
-        if (!disposed) {
-          setStatus((prev) => ({
-            ...prev,
-            isSyncing: false,
-            lastSyncTime: new Date(),
-            lastError: null,
-          }));
-        }
-      } catch (error) {
-        console.error('[PowerSync] Connection error:', error);
-        if (!disposed) {
-          setPsHealth((prev) => ({ ...prev, connected: false }));
-          setStatus((prev) => ({
-            ...prev,
-            isSyncing: false,
-            lastError: error instanceof Error ? error.message : 'Connection failed',
-          }));
-        }
-      }
-    }
-
-    connect();
+      });
+      const credentials = await connector.fetchCredentials();
+      if (!current()) return;
+      verifiedAfter.current = Date.now();
+      const database = new PowerSyncDatabase({
+        schema: powersyncSchema,
+        database: { dbFilename: `vitora-policy2-user-${credentials.userId}-facility-${credentials.facilityId ?? 'none'}.db` },
+      });
+      _dbInstance = database;
+      await database.init();
+      await database.connect(connector);
+      if (!current()) return;
+      connectedRef.current = true;
+      setDb(database);
+      setDbOwner(owner);
+      setIsReady(true);
+    })).catch(() => {
+      if (current()) setStatus((prev) => ({ ...prev, lastError: 'Offline storage could not be authorized. Using API mode.' }));
+    });
 
     return () => {
       disposed = true;
-      // Don't disconnect the singleton — it persists across layout re-mounts
+      if (sessionGeneration === generation) {
+        void clearPowerSyncSession().catch(() => console.error('Offline storage cleanup failed.'));
+      }
     };
-  }, []);
+  }, [owner]);
 
-  // Reconnect PowerSync when the active facility changes so that
-  // fetchCredentials() returns a JWT scoped to the new facility/org.
-  // FacilityProvider calls setActiveFacilityId() which fires the event.
+  // Bound offline access to credential validity, including suspended tabs.
   useEffect(() => {
-    if (!db) return;
-
-    const unsubscribe = onFacilityChange(() => {
-      if (!connectedRef.current) return;
-
-      // Reconnect with a fresh connector so fetchCredentials() picks up
-      // the new X-Facility-Id header.
-      (async () => {
-        try {
-          await db.disconnect();
-          connectedRef.current = false;
-          setHasSynced(false);
-          setPsHealth((prev) => ({ ...prev, connected: false, hasSynced: false }));
-          await db.connect(new VitoraPowerSyncConnector());
-          connectedRef.current = true;
-        } catch (error) {
-          console.error('[PowerSync] Reconnect on facility switch failed:', error);
-          setPsHealth((prev) => ({ ...prev, connected: false }));
-          setStatus((prev) => ({
-            ...prev,
-            isSyncing: false,
-            lastError: error instanceof Error ? error.message : 'Reconnect failed',
-          }));
-        }
-      })();
-    });
-
-    return unsubscribe;
-  }, [db]);
+    if (!credentialExpiry) return;
+    const expire = () => { if (Date.now() >= credentialExpiry) logout(); };
+    const timer = setTimeout(expire, Math.max(0, credentialExpiry - Date.now()));
+    document.addEventListener('visibilitychange', expire);
+    return () => { clearTimeout(timer); document.removeEventListener('visibilitychange', expire); };
+  }, [credentialExpiry, logout]);
 
   // Track sync status changes from the PowerSync database
   useEffect(() => {
     if (!db) return;
 
-    const unsubscribe = db.registerListener({
+    const listener: Parameters<typeof db.registerListener>[0] = {
       statusChanged: (newStatus) => {
-        const synced = newStatus.hasSynced === true;
+        const synced = newStatus.hasSynced === true &&
+          (newStatus.lastSyncedAt?.getTime() ?? 0) >= verifiedAfter.current;
         const connected = newStatus.connected === true;
         const syncedAt = newStatus.lastSyncedAt ? new Date(newStatus.lastSyncedAt) : null;
 
@@ -273,7 +253,9 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
           lastSyncedAt: syncedAt ?? prev.lastSyncedAt,
         }));
       },
-    });
+    };
+    const unsubscribe = db.registerListener(listener);
+    listener.statusChanged?.(db.currentStatus);
 
     return () => {
       unsubscribe?.();
@@ -338,11 +320,17 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const triggerSync = useCallback(async () => {
-    if (!db || status.isSyncing) return;
+    if (!db || db !== _dbInstance || status.isSyncing) return;
     try {
       setStatus((prev) => ({ ...prev, isSyncing: true, lastError: null }));
       // Trigger an immediate sync cycle
-      await db.connect(new VitoraPowerSyncConnector());
+      await db.connect(new VitoraPowerSyncConnector((expiry) => {
+        if (db === _dbInstance) {
+          verifiedAfter.current = Date.now();
+          setHasSynced(false);
+          setCredentialExpiry(expiry.getTime());
+        }
+      }));
       setStatus((prev) => ({ ...prev, isSyncing: false, lastSyncTime: new Date() }));
     } catch (error) {
       setStatus((prev) => ({
@@ -385,9 +373,9 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<SyncContextValue>(
     () => ({
       ...status,
-      db,
-      isReady,
-      hasSynced,
+      db: owner && dbOwner === owner && hasSynced ? db : null,
+      isReady: !!owner && dbOwner === owner && isReady && hasSynced,
+      hasSynced: !!owner && dbOwner === owner && hasSynced,
       powerSyncHealth: psHealth,
       reportSync,
       reportSyncStart,
@@ -400,6 +388,8 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       status,
+      owner,
+      dbOwner,
       db,
       isReady,
       hasSynced,

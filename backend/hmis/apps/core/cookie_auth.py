@@ -20,10 +20,12 @@ import logging
 
 from django.conf import settings
 from rest_framework import status
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from hmis.apps.core.openapi import SchemaFallbackSerializer
@@ -217,9 +219,10 @@ class CookieRefreshView(CookieAuthSchemaMixin, APIView):
             )
 
         try:
-            refresh = RefreshToken(raw_refresh)
-            new_access = str(refresh.access_token)
-        except TokenError:
+            serializer = TokenRefreshSerializer(data={"refresh": raw_refresh})
+            serializer.is_valid(raise_exception=True)
+            tokens = serializer.validated_data
+        except (TokenError, AuthenticationFailed):
             response = Response(
                 {"error": "Refresh token expired or invalid"},
                 status=status.HTTP_401_UNAUTHORIZED,
@@ -228,11 +231,14 @@ class CookieRefreshView(CookieAuthSchemaMixin, APIView):
 
         response = Response({"refreshed": True}, status=status.HTTP_200_OK)
 
-        # Set new access cookie
+        if "refresh" in tokens:
+            return _set_auth_cookies(response, tokens["access"], tokens["refresh"])
+
+        # Preserve the existing cookie expiry when rotation is explicitly disabled.
         access_lifetime = settings.SIMPLE_JWT.get("ACCESS_TOKEN_LIFETIME")
         response.set_cookie(
             ACCESS_COOKIE,
-            new_access,
+            tokens["access"],
             **_get_cookie_kwargs(int(access_lifetime.total_seconds())),
         )
 

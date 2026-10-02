@@ -26,7 +26,7 @@ from django.db import DatabaseError
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from .sanitizer import sanitize_clinical_text
+from .sanitizer import safe_upload_filename, sanitize_ai_payload, sanitize_clinical_text
 from .tokens import mint_tibabot_jwt
 
 logger = logging.getLogger(__name__)
@@ -35,11 +35,6 @@ logger = logging.getLogger(__name__)
 def _facility_key_resolution_exceptions() -> tuple[type[Exception], ...]:
     """Exceptions tolerated while resolving optional per-facility API keys."""
     return (ObjectDoesNotExist, DatabaseError, AttributeError, TypeError, ValueError, RuntimeError)
-
-
-def _response_body_extract_exceptions() -> tuple[type[Exception], ...]:
-    """Exceptions tolerated while best-effort reading HTTP response text."""
-    return (AttributeError, TypeError, ValueError, RuntimeError)
 
 
 # Thread-local storage for per-request user identity
@@ -282,8 +277,8 @@ class TibaBotClient:
             response = self.session.request(
                 method=method,
                 url=url,
-                json=data,
-                params=params,
+                json=sanitize_ai_payload(data),
+                params=sanitize_ai_payload(params),
                 timeout=self.timeout,
                 headers=headers,
             )
@@ -304,30 +299,16 @@ class TibaBotClient:
 
         except requests.exceptions.HTTPError as e:
             status = e.response.status_code if e.response is not None else None
-            response_body = ""
-            if e.response is not None:
-                try:
-                    response_body = e.response.text[:500]
-                except _response_body_extract_exceptions():
-                    pass
+            # Upstream errors may echo a full clinical prompt. Log status only.
             if status and status >= 500:
-                logger.warning(
-                    "TibaBot server error: status=%s body=%s",
-                    status,
-                    response_body,
-                )
+                logger.warning("TibaBot server error: status=%s", status)
                 raise TibaBotUnavailableError(
-                    f"TibaBot server error (HTTP {status}): {response_body or 'no response body'}",
+                    f"TibaBot server error (HTTP {status})",
                     status_code=status,
                 ) from e
-            logger.error(
-                "TibaBot API error: %s %s — response: %s",
-                status,
-                e,
-                response_body,
-            )
+            logger.error("TibaBot API error: status=%s", status)
             raise TibaBotError(
-                f"TibaBot API error: {e}",
+                f"TibaBot API error (HTTP {status})",
                 status_code=status,
             ) from e
 
@@ -356,8 +337,8 @@ class TibaBotClient:
             with self.session.request(
                 method=method,
                 url=url,
-                json=data,
-                params=params,
+                json=sanitize_ai_payload(data),
+                params=sanitize_ai_payload(params),
                 timeout=self.timeout,
                 headers=headers,
                 stream=True,
@@ -414,30 +395,16 @@ class TibaBotClient:
 
         except requests.exceptions.HTTPError as e:
             status = e.response.status_code if e.response is not None else None
-            response_body = ""
-            if e.response is not None:
-                try:
-                    response_body = e.response.text[:500]
-                except _response_body_extract_exceptions():
-                    pass
+            # Do not expose provider error bodies through logs or SSE errors.
             if status and status >= 500:
-                logger.warning(
-                    "TibaBot SSE server error: status=%s body=%s",
-                    status,
-                    response_body,
-                )
+                logger.warning("TibaBot SSE server error: status=%s", status)
                 raise TibaBotUnavailableError(
-                    f"TibaBot server error (HTTP {status}): {response_body or 'no response body'}",
+                    f"TibaBot server error (HTTP {status})",
                     status_code=status,
                 ) from e
-            logger.error(
-                "TibaBot SSE API error: %s %s — response: %s",
-                status,
-                e,
-                response_body,
-            )
+            logger.error("TibaBot SSE API error: status=%s", status)
             raise TibaBotError(
-                f"TibaBot API error: {e}",
+                f"TibaBot API error (HTTP {status})",
                 status_code=status,
             ) from e
 
@@ -1324,7 +1291,7 @@ class TibaBotClient:
                 headers["X-API-Key"] = facility_key
 
         try:
-            files = {"file": (filename, io.BytesIO(file_data), content_type)}
+            files = {"file": (safe_upload_filename(filename), io.BytesIO(file_data), content_type)}
             # Override session's default Content-Type (application/json) with None
             # so requests can set the correct multipart/form-data boundary.
             # Also override Accept so TibaBot sees the request as multipart.
@@ -1341,23 +1308,15 @@ class TibaBotClient:
             raise TibaBotUnavailableError("TibaBot AI service request timed out.") from e
         except requests.exceptions.HTTPError as e:
             status_code = e.response.status_code if e.response is not None else None
-            response_body = ""
-            if e.response is not None:
-                try:
-                    response_body = e.response.text[:500]
-                except _response_body_extract_exceptions():
-                    pass
             if status_code and status_code >= 500:
-                logger.warning(
-                    "TibaBot facility KB upload server error: %s — %s", status_code, response_body
-                )
+                logger.warning("TibaBot ECG upload server error: %s", status_code)
                 raise TibaBotUnavailableError(
-                    f"TibaBot server error (HTTP {status_code}): {response_body or 'no response body'}",
+                    f"TibaBot server error (HTTP {status_code})",
                     status_code=status_code,
                 ) from e
-            logger.error("TibaBot ECG upload error: %s — response: %s", status_code, response_body)
+            logger.error("TibaBot ECG upload error: %s", status_code)
             raise TibaBotError(
-                f"TibaBot ECG upload error (HTTP {status_code}): {response_body or e}",
+                f"TibaBot ECG upload error (HTTP {status_code})",
                 status_code=status_code,
             ) from e
 
@@ -1379,7 +1338,9 @@ class TibaBotClient:
                 headers["X-API-Key"] = facility_key
 
         try:
-            response = self.session.post(url, json=payload, timeout=self.timeout, headers=headers)
+            response = self.session.post(
+                url, json=sanitize_ai_payload(payload), timeout=self.timeout, headers=headers
+            )
             response.raise_for_status()
             return response.content
         except requests.exceptions.ConnectionError as e:
@@ -1476,7 +1437,7 @@ class TibaBotClient:
                 headers["X-API-Key"] = facility_key
 
         try:
-            files = {"file": (filename, io.BytesIO(file_data), content_type)}
+            files = {"file": (safe_upload_filename(filename), io.BytesIO(file_data), content_type)}
             upload_headers = dict(headers)
             upload_headers["Content-Type"] = None  # type: ignore[assignment]
             upload_headers["Accept"] = "application/json"
@@ -1491,18 +1452,12 @@ class TibaBotClient:
             raise TibaBotUnavailableError("TibaBot AI service request timed out.") from e
         except requests.exceptions.HTTPError as e:
             status_code = e.response.status_code if e.response is not None else None
-            response_body = ""
-            if e.response is not None:
-                try:
-                    response_body = e.response.text[:500]
-                except _response_body_extract_exceptions():
-                    pass
             if status_code and status_code >= 500:
                 raise TibaBotUnavailableError(
                     "TibaBot AI service returned a server error.", status_code=status_code
                 ) from e
             raise TibaBotError(
-                f"TibaBot facility KB error (HTTP {status_code}): {response_body or e}",
+                f"TibaBot facility KB error (HTTP {status_code})",
                 status_code=status_code,
             ) from e
 

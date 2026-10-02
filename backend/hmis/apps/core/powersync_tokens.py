@@ -32,6 +32,45 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from hmis.apps.core.permissions import ReadRequiresModelPermission
 
+# Only these tenant tables may be replicated. Keep in sync with sync-streams.yaml.
+SYNC_READ_TABLES = (
+    "patients_patient",
+    "patients_emergencycontact",
+    "encounters_encounter",
+    "triage_triageassessment",
+    "encounters_diagnosis",
+    "encounters_treatmentplan",
+    "encounters_medication",
+    "pharmacy_prescription",
+    "pharmacy_prescriptionitem",
+    "laboratory_laborder",
+    "laboratory_laborderitem",
+    "laboratory_labresult",
+    "billing_invoice",
+    "laboratory_qcmaterial",
+    "laboratory_qclot",
+    "laboratory_qctarget",
+    "laboratory_qcresult",
+    "laboratory_cultureresult",
+    "laboratory_antibioticsensitivity",
+)
+
+
+def get_sync_read_claims(user) -> dict[str, int]:
+    """Sign server-derived entitlements; never trust client-supplied permissions.
+
+    Temporary break-glass access stays API-only. Offline copies must not outlive
+    a temporary patient-specific grant or turn it into organization-wide access.
+    """
+    claims = {"sync_policy_version": 2}
+    for table in SYNC_READ_TABLES:
+        app, model = table.split("_", 1)
+        claims[f"read_{table}"] = int(user.is_active and user.has_perm(f"{app}.view_{model}"))
+    claims["can_view_sensitive"] = int(
+        user.is_active and user.has_perm("patients.view_sensitive_patient")
+    )
+    return claims
+
 
 class PowerSyncTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
@@ -120,6 +159,9 @@ class PowerSyncCredentialsView(APIView):
                     "token": serializers.CharField(),
                     "powersync_url": serializers.URLField(),
                     "expires_at": serializers.IntegerField(),
+                    "sync_policy_version": serializers.IntegerField(),
+                    "user_id": serializers.CharField(),
+                    "facility_id": serializers.IntegerField(allow_null=True),
                 },
             ),
             503: inline_serializer(
@@ -168,6 +210,7 @@ class PowerSyncCredentialsView(APIView):
             # Tenant context for sync stream WHERE clauses
             "facility_id": facility_id,
             "organization_id": organization_id,
+            **get_sync_read_claims(request.user),
         }
 
         token = pyjwt.encode(
@@ -182,5 +225,8 @@ class PowerSyncCredentialsView(APIView):
                 "token": token,
                 "powersync_url": ps["url"],
                 "expires_at": now + ps["expiry_seconds"],
+                "sync_policy_version": 2,
+                "user_id": str(request.user.pk),
+                "facility_id": facility_id,
             }
         )

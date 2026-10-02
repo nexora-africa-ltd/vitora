@@ -7,9 +7,12 @@
 # SECURITY NOTES:
 # - Encrypted fields (national_id, phone_number) are EXCLUDED from sync.
 #   They remain API-only to comply with Kenya DPA 2019.
-# - Sensitive patients (is_sensitive=true) require view_sensitive_patient
-#   permission — handled at the API layer, not here.
-# - Facility scoping ensures tenant isolation.
+# - Signed read/sensitive permission claims are enforced before replication.
+# - All clinical descendants inherit patient scope; missing claims fail closed.
+# - Deploy together with the credentials endpoint and client cache cleanup.
+# - CTEs must be independent physical-table queries; PowerSync does not resolve
+#   references to other configured CTEs inside a CTE. Use literal YAML scalars,
+#   not aliases. Validated with @powersync/service-sync-rules 0.43.0.
 #
 # Documentation: https://docs.powersync.com/sync/streams/overview
 # =============================================================================
@@ -78,11 +81,10 @@ streams:
         is_system,
         is_active,
         usage_count,
-        created_by_id,
         created_at,
         updated_at
       FROM clinical_templates_clinicaltemplate
-      WHERE is_active = true
+      WHERE is_active = true AND is_system = true
 
   # ───────────────────────────────────────────────────────────────────────────
   # Organization-scoped data — synced to users in the same organization
@@ -101,6 +103,9 @@ streams:
       org_pids: >
         SELECT id FROM patients_patient
         WHERE organization_id = auth.parameter('organization_id')
+          AND auth.parameter('read_patients_patient') = 1
+          AND auth.parameter('sync_policy_version') = 2
+          AND (is_sensitive = false OR auth.parameter('can_view_sensitive') = 1)
     queries:
       - >
         SELECT
@@ -116,8 +121,6 @@ streams:
           gender,
           cr_number,
           sha_number,
-          email,
-          address,
           citizenship,
           identification_type,
           is_person_with_disability,
@@ -142,12 +145,11 @@ streams:
           patient_id,
           full_name,
           relationship,
-          phone_number,
-          alternative_phone,
           created_at,
           updated_at
         FROM patients_emergencycontact
         WHERE patient_id IN org_pids
+          AND auth.parameter('read_patients_emergencycontact') = 1
 
   # ───────────────────────────────────────────────────────────────────────────
   # Facility-scoped: encounters + triage (direct facility_id filter)
@@ -157,6 +159,13 @@ streams:
   facility_encounters:
     auto_subscribe: true
     priority: 1
+    with:
+      allowed_patients: >
+        SELECT id FROM patients_patient
+        WHERE organization_id = auth.parameter('organization_id')
+          AND auth.parameter('read_patients_patient') = 1
+          AND auth.parameter('sync_policy_version') = 2
+          AND (is_sensitive = false OR auth.parameter('can_view_sensitive') = 1)
     query: >
       SELECT
         id,
@@ -184,10 +193,24 @@ streams:
         updated_at
       FROM encounters_encounter
       WHERE facility_id = auth.parameter('facility_id')
+        AND patient_id IN allowed_patients
+        AND auth.parameter('read_encounters_encounter') = 1
 
   facility_triage:
     auto_subscribe: true
     priority: 1
+    with:
+      allowed_encounters: >
+        SELECT id FROM encounters_encounter
+        WHERE facility_id = auth.parameter('facility_id')
+          AND patient_id IN (
+            SELECT id FROM patients_patient
+            WHERE organization_id = auth.parameter('organization_id')
+              AND auth.parameter('read_patients_patient') = 1
+              AND auth.parameter('sync_policy_version') = 2
+              AND (is_sensitive = false OR auth.parameter('can_view_sensitive') = 1)
+          )
+          AND auth.parameter('read_encounters_encounter') = 1
     query: >
       SELECT
         id,
@@ -229,6 +252,8 @@ streams:
         updated_at
       FROM triage_triageassessment
       WHERE facility_id = auth.parameter('facility_id')
+        AND encounter_id IN allowed_encounters
+        AND auth.parameter('read_triage_triageassessment') = 1
 
   # ───────────────────────────────────────────────────────────────────────────
   # Facility clinical: diagnoses + treatment plans + medications
@@ -244,12 +269,29 @@ streams:
       fac_enc_ids: >
         SELECT id FROM encounters_encounter
         WHERE facility_id = auth.parameter('facility_id')
+          AND patient_id IN (
+            SELECT id FROM patients_patient
+            WHERE organization_id = auth.parameter('organization_id')
+              AND auth.parameter('read_patients_patient') = 1
+              AND auth.parameter('sync_policy_version') = 2
+              AND (is_sensitive = false OR auth.parameter('can_view_sensitive') = 1)
+          )
+          AND auth.parameter('read_encounters_encounter') = 1
       fac_tp_ids: >
         SELECT tp.id FROM encounters_treatmentplan tp
         WHERE tp.encounter_id IN (
           SELECT id FROM encounters_encounter
           WHERE facility_id = auth.parameter('facility_id')
+            AND auth.parameter('read_encounters_encounter') = 1
+            AND patient_id IN (
+              SELECT id FROM patients_patient
+              WHERE organization_id = auth.parameter('organization_id')
+                AND auth.parameter('read_patients_patient') = 1
+                AND auth.parameter('sync_policy_version') = 2
+                AND (is_sensitive = false OR auth.parameter('can_view_sensitive') = 1)
+            )
         )
+          AND auth.parameter('read_encounters_treatmentplan') = 1
     queries:
       # Diagnoses — keyed by encounter (shares fac_enc_ids)
       - >
@@ -272,6 +314,7 @@ streams:
           updated_at
         FROM encounters_diagnosis
         WHERE encounter_id IN fac_enc_ids
+          AND auth.parameter('read_encounters_diagnosis') = 1
       # Treatment plans — keyed by encounter (shares fac_enc_ids)
       - >
         SELECT
@@ -295,6 +338,7 @@ streams:
           updated_at
         FROM encounters_treatmentplan
         WHERE encounter_id IN fac_enc_ids
+          AND auth.parameter('read_encounters_treatmentplan') = 1
       # Medications — keyed by treatment plan (separate CTE)
       - >
         SELECT
@@ -313,6 +357,7 @@ streams:
           updated_at
         FROM encounters_medication
         WHERE treatment_plan_id IN fac_tp_ids
+          AND auth.parameter('read_encounters_medication') = 1
 
   # ───────────────────────────────────────────────────────────────────────────
   # Facility pharmacy: prescriptions + line items
@@ -326,6 +371,14 @@ streams:
       fac_rx_ids: >
         SELECT id FROM pharmacy_prescription
         WHERE facility_id = auth.parameter('facility_id')
+          AND patient_id IN (
+            SELECT id FROM patients_patient
+            WHERE organization_id = auth.parameter('organization_id')
+              AND auth.parameter('read_patients_patient') = 1
+              AND auth.parameter('sync_policy_version') = 2
+              AND (is_sensitive = false OR auth.parameter('can_view_sensitive') = 1)
+          )
+          AND auth.parameter('read_pharmacy_prescription') = 1
     queries:
       - >
         SELECT
@@ -366,6 +419,7 @@ streams:
           updated_at
         FROM pharmacy_prescriptionitem
         WHERE prescription_id IN fac_rx_ids
+          AND auth.parameter('read_pharmacy_prescriptionitem') = 1
 
   # ───────────────────────────────────────────────────────────────────────────
   # Facility laboratory: orders + items + results
@@ -379,12 +433,29 @@ streams:
       fac_lo_ids: >
         SELECT id FROM laboratory_laborder
         WHERE facility_id = auth.parameter('facility_id')
+          AND patient_id IN (
+            SELECT id FROM patients_patient
+            WHERE organization_id = auth.parameter('organization_id')
+              AND auth.parameter('read_patients_patient') = 1
+              AND auth.parameter('sync_policy_version') = 2
+              AND (is_sensitive = false OR auth.parameter('can_view_sensitive') = 1)
+          )
+          AND auth.parameter('read_laboratory_laborder') = 1
       fac_loi_ids: >
         SELECT li.id FROM laboratory_laborderitem li
         WHERE li.lab_order_id IN (
           SELECT id FROM laboratory_laborder
           WHERE facility_id = auth.parameter('facility_id')
+            AND auth.parameter('read_laboratory_laborder') = 1
+            AND patient_id IN (
+              SELECT id FROM patients_patient
+              WHERE organization_id = auth.parameter('organization_id')
+                AND auth.parameter('read_patients_patient') = 1
+                AND auth.parameter('sync_policy_version') = 2
+                AND (is_sensitive = false OR auth.parameter('can_view_sensitive') = 1)
+            )
         )
+          AND auth.parameter('read_laboratory_laborderitem') = 1
     queries:
       - >
         SELECT
@@ -426,6 +497,7 @@ streams:
           updated_at
         FROM laboratory_laborderitem
         WHERE lab_order_id IN fac_lo_ids
+          AND auth.parameter('read_laboratory_laborderitem') = 1
       - >
         SELECT
           id,
@@ -459,6 +531,7 @@ streams:
           updated_at
         FROM laboratory_labresult
         WHERE order_item_id IN fac_loi_ids
+          AND auth.parameter('read_laboratory_labresult') = 1
 
   # ───────────────────────────────────────────────────────────────────────────
   # Facility billing: invoices (direct facility_id filter → 1 bucket)
@@ -467,6 +540,13 @@ streams:
   facility_invoices:
     auto_subscribe: true
     priority: 1
+    with:
+      allowed_patients: >
+        SELECT id FROM patients_patient
+        WHERE organization_id = auth.parameter('organization_id')
+          AND auth.parameter('read_patients_patient') = 1
+          AND auth.parameter('sync_policy_version') = 2
+          AND (is_sensitive = false OR auth.parameter('can_view_sensitive') = 1)
     query: >
       SELECT
         id,
@@ -500,6 +580,8 @@ streams:
         updated_at
       FROM billing_invoice
       WHERE facility_id = auth.parameter('facility_id')
+        AND patient_id IN allowed_patients
+        AND auth.parameter('read_billing_invoice') = 1
 
   # ───────────────────────────────────────────────────────────────────────────
   # Facility QC: materials, lots, targets, results (facility-scoped)
@@ -514,6 +596,8 @@ streams:
              created_at, updated_at
       FROM laboratory_qcmaterial
       WHERE facility_id = auth.parameter('facility_id')
+        AND auth.parameter('read_laboratory_qcmaterial') = 1
+        AND auth.parameter('sync_policy_version') = 2
 
   facility_qc_lots:
     auto_subscribe: true
@@ -524,6 +608,8 @@ streams:
              created_at, updated_at
       FROM laboratory_qclot
       WHERE facility_id = auth.parameter('facility_id')
+        AND auth.parameter('read_laboratory_qclot') = 1
+        AND auth.parameter('sync_policy_version') = 2
 
   facility_qc_targets:
     auto_subscribe: true
@@ -534,6 +620,8 @@ streams:
              created_at, updated_at
       FROM laboratory_qctarget
       WHERE facility_id = auth.parameter('facility_id')
+        AND auth.parameter('read_laboratory_qctarget') = 1
+        AND auth.parameter('sync_policy_version') = 2
 
   facility_qc_results:
     auto_subscribe: true
@@ -544,6 +632,8 @@ streams:
              facility_id, organization_id, created_at, updated_at
       FROM laboratory_qcresult
       WHERE facility_id = auth.parameter('facility_id')
+        AND auth.parameter('read_laboratory_qcresult') = 1
+        AND auth.parameter('sync_policy_version') = 2
 
   # ───────────────────────────────────────────────────────────────────────────
   # Facility Microbiology: cultures, AST results (facility-scoped)
@@ -570,6 +660,26 @@ streams:
   facility_culture_results:
     auto_subscribe: true
     priority: 1
+    with:
+      allowed_labresults: >
+        SELECT id FROM laboratory_labresult
+        WHERE order_item_id IN (
+          SELECT id FROM laboratory_laborderitem
+          WHERE auth.parameter('read_laboratory_laborderitem') = 1
+            AND lab_order_id IN (
+              SELECT id FROM laboratory_laborder
+              WHERE facility_id = auth.parameter('facility_id')
+                AND auth.parameter('read_laboratory_laborder') = 1
+                AND patient_id IN (
+                  SELECT id FROM patients_patient
+                  WHERE organization_id = auth.parameter('organization_id')
+                    AND auth.parameter('read_patients_patient') = 1
+                    AND auth.parameter('sync_policy_version') = 2
+                    AND (is_sensitive = false OR auth.parameter('can_view_sensitive') = 1)
+                )
+            )
+        )
+          AND auth.parameter('read_laboratory_labresult') = 1
     query: >
       SELECT id, lab_result_id, specimen_id, status, culture_medium,
              incubation_temperature, incubation_atmosphere, incubation_hours,
@@ -581,14 +691,43 @@ streams:
              facility_id, organization_id, created_at, updated_at
       FROM laboratory_cultureresult
       WHERE facility_id = auth.parameter('facility_id')
+        AND lab_result_id IN allowed_labresults
+        AND auth.parameter('read_laboratory_cultureresult') = 1
 
   facility_antibiotic_sensitivities:
     auto_subscribe: true
     priority: 1
+    with:
+      allowed_cultures: >
+        SELECT id FROM laboratory_cultureresult
+        WHERE facility_id = auth.parameter('facility_id')
+          AND lab_result_id IN (
+            SELECT id FROM laboratory_labresult
+            WHERE auth.parameter('read_laboratory_labresult') = 1
+              AND order_item_id IN (
+                SELECT id FROM laboratory_laborderitem
+                WHERE auth.parameter('read_laboratory_laborderitem') = 1
+                  AND lab_order_id IN (
+                    SELECT id FROM laboratory_laborder
+                    WHERE facility_id = auth.parameter('facility_id')
+                      AND auth.parameter('read_laboratory_laborder') = 1
+                      AND patient_id IN (
+                        SELECT id FROM patients_patient
+                        WHERE organization_id = auth.parameter('organization_id')
+                          AND auth.parameter('read_patients_patient') = 1
+                          AND auth.parameter('sync_policy_version') = 2
+                          AND (is_sensitive = false OR auth.parameter('can_view_sensitive') = 1)
+                      )
+                  )
+              )
+          )
+          AND auth.parameter('read_laboratory_cultureresult') = 1
     query: >
       SELECT id, culture_id, antibiotic_id, zone_diameter, mic,
              interpretation, test_method, breakpoint_standard,
              tested_by_id, tested_at, notes,
-             facility_id, organization_id, created_at, updated_at
+              facility_id, organization_id, created_at
       FROM laboratory_antibioticsensitivity
       WHERE facility_id = auth.parameter('facility_id')
+        AND culture_id IN allowed_cultures
+        AND auth.parameter('read_laboratory_antibioticsensitivity') = 1

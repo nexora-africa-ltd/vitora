@@ -29,6 +29,7 @@
 # =============================================================================
 
 set -euo pipefail
+umask 077
 
 # -----------------------------------------------------------------------------
 # Configuration
@@ -190,7 +191,8 @@ check_prerequisites() {
 
     # Check encryption key
     if [[ -z "${BACKUP_ENCRYPTION_KEY:-}" ]]; then
-        log "Warning: BACKUP_ENCRYPTION_KEY not set. Backups will NOT be encrypted."
+        alert_failure "BACKUP_ENCRYPTION_KEY must be set. Refusing to create an unencrypted backup."
+        exit 1
     fi
 
     # Create backup directory
@@ -249,40 +251,27 @@ backup_database() {
     log_verbose "Running pg_dump..."
     pg_dump -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
         --no-password \
-        --verbose \
         --clean \
         --if-exists \
         --create \
-        --format=custom \
-        --file="$BACKUP_DIR/${BACKUP_NAME}_db.dump" 2>&1 | while read -r line; do
-            log_verbose "pg_dump: $line"
-        done
+        --format=custom | gpg --batch --yes --pinentry-mode loopback \
+            --passphrase-fd 3 3<<<"$BACKUP_ENCRYPTION_KEY" \
+            --symmetric --cipher-algo AES256 \
+            -o "$BACKUP_DIR/${BACKUP_NAME}_db.dump.gpg"
 
     # Also create a plain SQL backup for portability
     pg_dump -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
         --no-password \
         --clean \
         --if-exists \
-        --create \
-        > "$backup_file" 2>&1
+        --create | gzip | gpg --batch --yes --pinentry-mode loopback \
+            --passphrase-fd 3 3<<<"$BACKUP_ENCRYPTION_KEY" \
+            --symmetric --cipher-algo AES256 -o "$encrypted_file"
 
     unset PGPASSWORD
 
-    # Compress
-    log_verbose "Compressing backup..."
-    gzip -f "$backup_file"
-
-    # Encrypt if key provided
-    if [[ -n "${BACKUP_ENCRYPTION_KEY:-}" ]]; then
-        log_verbose "Encrypting backup..."
-        echo "$BACKUP_ENCRYPTION_KEY" | gpg --batch --yes --passphrase-fd 0 \
-            --symmetric --cipher-algo AES256 \
-            -o "$encrypted_file" "$compressed_file"
-        rm "$compressed_file"
-        FINAL_BACKUP_FILE="$encrypted_file"
-    else
-        FINAL_BACKUP_FILE="$compressed_file"
-    fi
+    # Stream through encryption: no plaintext dump or compressed file is persisted.
+    FINAL_BACKUP_FILE="$encrypted_file"
 
     # Calculate size and checksum
     local backup_size=$(du -h "$FINAL_BACKUP_FILE" | cut -f1)
@@ -294,13 +283,6 @@ backup_database() {
     # Save checksum
     echo "$checksum  $(basename "$FINAL_BACKUP_FILE")" > "${FINAL_BACKUP_FILE}.sha256"
 
-    # Also keep the custom format dump (compressed automatically)
-    if [[ -n "${BACKUP_ENCRYPTION_KEY:-}" ]]; then
-        echo "$BACKUP_ENCRYPTION_KEY" | gpg --batch --yes --passphrase-fd 0 \
-            --symmetric --cipher-algo AES256 \
-            -o "$BACKUP_DIR/${BACKUP_NAME}_db.dump.gpg" "$BACKUP_DIR/${BACKUP_NAME}_db.dump"
-        rm "$BACKUP_DIR/${BACKUP_NAME}_db.dump"
-    fi
 }
 
 # -----------------------------------------------------------------------------
@@ -322,17 +304,10 @@ backup_media() {
         return
     fi
 
-    # Create tarball
-    tar -czf "$media_backup" -C "$BACKEND_DIR" media
-
-    # Encrypt if key provided
-    if [[ -n "${BACKUP_ENCRYPTION_KEY:-}" ]]; then
-        echo "$BACKUP_ENCRYPTION_KEY" | gpg --batch --yes --passphrase-fd 0 \
-            --symmetric --cipher-algo AES256 \
-            -o "${media_backup}.gpg" "$media_backup"
-        rm "$media_backup"
-        media_backup="${media_backup}.gpg"
-    fi
+    tar -czf - -C "$BACKEND_DIR" media | gpg --batch --yes --pinentry-mode loopback \
+        --passphrase-fd 3 3<<<"$BACKUP_ENCRYPTION_KEY" \
+        --symmetric --cipher-algo AES256 -o "${media_backup}.gpg"
+    media_backup="${media_backup}.gpg"
 
     local backup_size=$(du -h "$media_backup" | cut -f1)
     log "Media backup complete: $media_backup ($backup_size)"

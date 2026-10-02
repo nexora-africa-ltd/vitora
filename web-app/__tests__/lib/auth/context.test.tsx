@@ -6,6 +6,16 @@ import React, { useState } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AuthProvider, useAuth } from '@/lib/auth/context';
+import { clearPowerSyncDatabase, SyncProvider, useSyncStatus } from '@/lib/context/sync-context';
+import { PowerSyncDatabase } from '@powersync/web';
+import { apiClient } from '@/lib/api/client';
+
+jest.mock('@powersync/web', () => ({
+  PowerSyncDatabase: jest.fn(),
+  Schema: jest.fn(),
+  Table: jest.fn(),
+  column: { text: 'text', integer: 'integer', real: 'real' },
+}));
 
 // Auth restoration verifies the cached profile against this client. Keep this
 // unit test independent of the API client's interceptors and MSW handlers.
@@ -13,7 +23,44 @@ jest.mock('@/lib/api/client', () => ({
   apiClient: {
     get: jest.fn().mockResolvedValue({ data: {} }),
   },
+  onFacilityChange: jest.fn(() => () => {}),
+  getActiveFacilityId: jest.fn(() => 10),
 }));
+
+describe('PowerSync logout disposal', () => {
+  function database(count: number) {
+    return {
+      disconnect: jest.fn().mockResolvedValue(undefined),
+      getAll: jest.fn().mockResolvedValue([{ cnt: count }]),
+      disconnectAndClear: jest.fn().mockResolvedValue(undefined),
+      close: jest.fn().mockResolvedValue(undefined),
+    };
+  }
+
+  it('clears downloaded records and closes a fully uploaded database', async () => {
+    const db = database(0);
+    await clearPowerSyncDatabase(db as unknown as Parameters<typeof clearPowerSyncDatabase>[0]);
+    expect(db.disconnectAndClear).toHaveBeenCalledWith({ clearLocal: true });
+    expect(db.close).toHaveBeenCalled();
+  });
+
+  it('quarantines unsynced clinical work instead of silently deleting it', async () => {
+    const db = database(2);
+    const retained = await clearPowerSyncDatabase(db as unknown as Parameters<typeof clearPowerSyncDatabase>[0]);
+    expect(retained).toBe(2);
+    expect(db.disconnect).toHaveBeenCalled();
+    expect(db.disconnectAndClear).not.toHaveBeenCalled();
+    expect(db.close).toHaveBeenCalled();
+  });
+
+  it('does not destroy data if the pending-write check fails', async () => {
+    const db = database(0);
+    db.getAll.mockRejectedValue(new Error('Storage unavailable'));
+    await expect(clearPowerSyncDatabase(db as unknown as Parameters<typeof clearPowerSyncDatabase>[0])).rejects.toThrow('Storage unavailable');
+    expect(db.disconnectAndClear).not.toHaveBeenCalled();
+    expect(db.close).toHaveBeenCalled();
+  });
+});
 
 // Polyfill clearImmediate and setImmediate for JSDOM environment
 if (typeof global.clearImmediate === 'undefined') {
@@ -56,6 +103,95 @@ function TestAuthConsumer() {
     </div>
   );
 }
+
+describe('PowerSync session ownership', () => {
+  const instances: Array<{
+    filename: string;
+    disconnectAndClear: jest.Mock;
+    close: jest.Mock;
+  }> = [];
+  const credentials = () => ({ data: {
+    token: 'signed-test-token', powersync_url: 'https://sync.example.com',
+    expires_at: Math.floor(Date.now() / 1000) + 3600, sync_policy_version: 2,
+    user_id: String(JSON.parse(localStorageStore.vitora_user || '{}').id), facility_id: 10,
+  } });
+  function SyncConsumer() {
+    const { db, lastError } = useSyncStatus();
+    return <><span data-testid="local-ready">{String(!!db)}</span><span data-testid="sync-error">{lastError}</span></>;
+  }
+  beforeEach(() => {
+    jest.clearAllMocks();
+    instances.length = 0;
+    process.env.NEXT_PUBLIC_POWERSYNC_URL = 'https://sync.example.com';
+    localStorageStore = { vitora_user: JSON.stringify({ id: 1, username: 'first', permissions: [] }) };
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => Promise.resolve(
+      url === '/api/powersync/credentials/' ? credentials() : { data: {} }
+    ));
+    mockFetch = jest.spyOn(global, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ user: { id: 2, username: 'second', permissions: [] } }) } as Response);
+    (PowerSyncDatabase as unknown as jest.Mock).mockImplementation((options) => {
+      const db = {
+        filename: options.database.dbFilename,
+        init: jest.fn().mockResolvedValue(undefined),
+        connect: jest.fn().mockResolvedValue(undefined),
+        disconnect: jest.fn().mockResolvedValue(undefined),
+        disconnectAndClear: jest.fn().mockResolvedValue(undefined),
+        close: jest.fn().mockResolvedValue(undefined),
+        getAll: jest.fn().mockResolvedValue([{ cnt: 0 }]),
+        registerListener: jest.fn(() => () => {}),
+        onChange: jest.fn(() => () => {}),
+        currentStatus: { hasSynced: true, connected: true, lastSyncedAt: new Date(Date.now() + 1000) },
+      };
+      instances.push(db);
+      return db;
+    });
+  });
+  afterEach(() => {
+    delete process.env.NEXT_PUBLIC_POWERSYNC_URL;
+    mockFetch.mockRestore();
+  });
+  const renderSession = () => render(<AuthProvider><SyncProvider><TestAuthConsumer /><SyncConsumer /></SyncProvider></AuthProvider>);
+
+  it('clears the first user database and opens a distinct database for the next user', async () => {
+    const user = userEvent.setup();
+    renderSession();
+    await waitFor(() => expect(screen.getByTestId('local-ready')).toHaveTextContent('true'));
+    const first = instances.find((db) => db.filename.includes('user-1'))!;
+    await user.click(screen.getByText('Logout'));
+    expect(screen.getByTestId('local-ready')).toHaveTextContent('false');
+    await waitFor(() => expect(first.disconnectAndClear).toHaveBeenCalled());
+    await user.click(screen.getByText('Login'));
+    await waitFor(() => expect(screen.getByTestId('local-ready')).toHaveTextContent('true'));
+    expect(instances.some((db) => db.filename.includes('user-2'))).toBe(true);
+    expect(first.close).toHaveBeenCalled();
+  });
+
+  it('does not open cached records when credentials arrive after logout', async () => {
+    const user = userEvent.setup();
+    let resolve!: (value: ReturnType<typeof credentials>) => void;
+    (apiClient.get as jest.Mock).mockImplementation((url: string) =>
+      url === '/api/powersync/credentials/' ? new Promise((done) => { resolve = done; }) : Promise.resolve({ data: {} })
+    );
+    renderSession();
+    await waitFor(() => expect(resolve).toBeDefined());
+    expect(screen.getByTestId('local-ready')).toHaveTextContent('false');
+    await user.click(screen.getByText('Logout'));
+    resolve(credentials());
+    await waitFor(() => expect(screen.getByTestId('authenticated')).toHaveTextContent('false'));
+    expect(instances.filter((db) => db.filename.includes('policy2'))).toHaveLength(0);
+  });
+
+  it('rejects a cached profile that does not match the server-authenticated user', async () => {
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => Promise.resolve(
+      url === '/api/powersync/credentials/'
+        ? { data: { ...credentials().data, user_id: 'different-user' } }
+        : { data: {} }
+    ));
+    renderSession();
+    await waitFor(() => expect(screen.getByTestId('sync-error')).toHaveTextContent('could not be authorized'));
+    expect(screen.getByTestId('local-ready')).toHaveTextContent('false');
+    expect(instances.filter((db) => db.filename.includes('policy2'))).toHaveLength(0);
+  });
+});
 
 describe('AuthProvider', () => {
   beforeEach(() => {
