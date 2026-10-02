@@ -60,13 +60,12 @@ graph TB
     ASGI --> FHIR
     ASGI --> TIBABOT
 ```
-
 ---
 
 ## 2. Deployment Modes
 
 ```mermaid
-graph LR
+graph TB
     subgraph Mode1["Standalone Mode"]
         S1["Single PC<br/>(Tauri + SQLite)"]
         S1 -->|"Sync when online"| CLOUD1["Cloud API"]
@@ -265,40 +264,53 @@ graph TB
 
 ---
 
-## 6. Authentication & Security
+## 6. Authentication
 
 ```mermaid
 graph TB
-    subgraph Auth["Authentication Flow"]
-        LOGIN["POST /api/auth/login/"]
-        LOGIN -->|"Credentials"| BACKEND["Django Backend"]
-        BACKEND -->|"Validate"| DB["User DB"]
-        BACKEND -->|"Set httpOnly Cookies"| COOKIES["Access + Refresh<br/>JWT Cookies"]
-    end
+    LOGIN["POST /api/auth/login/"]
+    LOGIN -->|"Credentials"| BACKEND["Django Backend"]
+    BACKEND -->|"Validate"| DB["User DB"]
+    BACKEND -->|"Set httpOnly Cookies"| COOKIES["Access and Refresh<br/>JWT Cookies"]
+```
 
-    subgraph MFA["MFA Enforcement"]
-        MFA_CHECK{"MFA Required?<br/>(ADMIN, CLINICAL_SENIOR,<br/>MANAGEMENT)"}
-        MFA_CHECK -->|"Yes + Grace Period Active"| GRACE["72h Grace Period<br/>(Full Access + Banner)"]
-        MFA_CHECK -->|"Yes + Grace Expired"| BLOCK["403: mfa_setup_required<br/>(Only auth/MFA endpoints)"]
-        MFA_CHECK -->|"No"| PASS["Full Access"]
-        GRACE --> TOTP["TOTP Setup<br/>(Authenticator App)"]
-        TOTP --> PASS
-    end
+---
 
-    subgraph Security["Security Layers"]
-        FERNET["Fernet Encryption<br/>(Selected PII fields)"]
-        KMS_CURRENT["Current Key Management<br/>(Local Fernet key in environment)"]
-        KMS_TARGET["Target Production KMS<br/>(Azure Key Vault / HSM,<br/>managed identity and rotation)"]
-        AUDIT["Audit Log<br/>(7yr retention, DPA 2019)"]
-        RBAC["RBAC<br/>(Roles → Permissions Matrix)"]
-        SENSITIVE["Sensitive Patient Filter<br/>(HIV, GBV, Mental Health)"]
-        PKI["PKI / Digital Signatures<br/>(RSA-2048)"]
-        HASHCHAIN["Tamper-Resistant Audit<br/>(SHA-256 Hash Chain)"]
-    end
+## 6b. MFA Enforcement
 
-    COOKIES --> MFA_CHECK
-    KMS_CURRENT --> FERNET
-    KMS_CURRENT -. "planned migration" .-> KMS_TARGET
+```mermaid
+graph TB
+    CHECK{"MFA Required?"}
+    CHECK -->|"No"| PASS["Full Access"]
+    CHECK -->|"Yes"| GRACE_CHECK{"Grace Period Active?"}
+    GRACE_CHECK -->|"Yes"| GRACE["72-hour Grace Period<br/>(Access and Setup Banner)"]
+    GRACE --> TOTP["TOTP Setup"]
+    TOTP --> PASS
+    GRACE_CHECK -->|"No"| BLOCK["403 mfa_setup_required<br/>(Auth and MFA endpoints only)"]
+```
+
+---
+
+## 6c. Security Controls
+
+```mermaid
+graph TB
+    SECURITY["Vitora Security Controls"]
+
+    SECURITY --> ACCESS["Access Control"]
+    ACCESS --> RBAC["RBAC<br/>(Roles to Permissions Matrix)"]
+    ACCESS --> SENSITIVE["Sensitive Patient Filter<br/>(HIV, GBV, Mental Health)"]
+    ACCESS --> MFA["MFA and Session Controls"]
+
+    SECURITY --> DATA["Data Protection"]
+    DATA --> FERNET["Fernet Encryption<br/>(Selected PII fields)"]
+    DATA --> KMS_CURRENT["Current Key Management<br/>(Local Fernet key in environment)"]
+    KMS_CURRENT -. "planned migration" .-> KMS_TARGET["Target Production KMS<br/>(Azure Key Vault and HSM,<br/>managed identity and rotation)"]
+
+    SECURITY --> ACCOUNTABILITY["Accountability"]
+    ACCOUNTABILITY --> AUDIT["Audit Log<br/>(7-year policy)"]
+    ACCOUNTABILITY --> HASHCHAIN["Tamper-Resistant Audit<br/>(SHA-256 Hash Chain)"]
+    ACCOUNTABILITY --> PKI["PKI and Digital Signatures<br/>(RSA-2048)"]
 ```
 
 ---
@@ -389,7 +401,7 @@ graph TB
 
 ## 9. SHA / DHA HIE Integration
 
-### 9a. Claims Lifecycle
+### 9a. Eligibility and Consent
 
 ```mermaid
 sequenceDiagram
@@ -413,14 +425,30 @@ sequenceDiagram
     V->>DHA: POST /consent/start-visit
     DHA-->>V: Visit Started
 
-    Note over V,SHA_SYS: Claims Submission
+```
+
+### 9b. Claim Submission and Adjudication
+
+```mermaid
+sequenceDiagram
+    participant V as Vitora HMIS
+    participant DHA as DHA HIE Gateway
+    participant SHA_SYS as SHA Systems
+
     V->>V: Generate FHIR R4 Bundle
     V->>DHA: POST /claims/submit
     DHA->>SHA_SYS: Route to SHA
     SHA_SYS-->>DHA: Adjudication Result
     DHA-->>V: Claim Status
+```
 
-    Note over V,SHA_SYS: ILM Intervention Lifecycle
+### 9c. ILM and Remittance
+
+```mermaid
+sequenceDiagram
+    participant V as Vitora HMIS
+    participant DHA as DHA HIE Gateway
+
     V->>DHA: POST /claims/{id}/ilm/interventions/retire
     DHA-->>V: Intervention Retired
     V->>DHA: POST /claims/{id}/ilm/interventions/restore
@@ -428,13 +456,12 @@ sequenceDiagram
     V->>DHA: POST /claims/{id}/ilm/preview-payer
     DHA-->>V: Payer Adjudication View (14 states)
 
-    Note over V,SHA_SYS: Remittance Reconciliation
     V->>DHA: GET /remittances/fetch
     DHA-->>V: Payment Details
     V->>V: Auto-reconcile to Local Claims
 ```
 
-### 9b. Preauthorization Workflow
+### 9d. Preauthorization Workflow
 
 ```mermaid
 sequenceDiagram
@@ -518,7 +545,7 @@ graph LR
 
 ---
 
-## 11. Frontend Architecture (Web App)
+## 11. Frontend Application Shell and Providers
 
 ```mermaid
 graph TB
@@ -537,24 +564,40 @@ graph TB
         QUERY["QueryClientProvider<br/>(React Query)"]
     end
 
+    LAYOUT --> Providers
+    Providers --> DASH
+```
+
+---
+
+## 11b. Frontend Data and UI Layers
+
+```mermaid
+graph TB
+    DASH["Dashboard Routes"]
+
     subgraph DataLayer["Data Layer"]
-        API_CLIENT["API Client<br/>(Axios + Interceptors)"]
-        ZOD["Zod Schemas<br/>(66 files, runtime validation)"]
-        HOOKS["Custom Hooks<br/>(usePowerSyncQuery,<br/>usePermissions, etc.)"]
-        POWERSYNC_SDK["PowerSync SDK<br/>(Offline reads)"]
+        API_CLIENT["API Client<br/>(Axios and Interceptors)"]
+        ZOD["Zod Schemas<br/>(Runtime Validation)"]
+        HOOKS["Custom Hooks<br/>(PowerSync Query, Permissions)"]
+        POWERSYNC_SDK["PowerSync SDK<br/>(Offline Reads)"]
+        QUERY["React Query<br/>(Server-state Cache)"]
     end
 
     subgraph UI["UI Components"]
         SHADCN["shadcn/ui<br/>(Base Components)"]
         SHARED["Shared Components<br/>(PageHeader, ResponsiveTable,<br/>PullToRefresh, StatusBadge)"]
-        FORMS["Form Components<br/>(Zod + React Hook Form)"]
+        FORMS["Form Components<br/>(Zod and React Hook Form)"]
     end
 
-    LAYOUT --> Providers
-    Providers --> DASH
-    DASH --> DataLayer
-    DataLayer --> UI
+    DASH --> API_CLIENT
+    DASH --> HOOKS
+    HOOKS --> POWERSYNC_SDK
     API_CLIENT --> ZOD
+    API_CLIENT --> QUERY
+    DASH --> SHADCN
+    DASH --> SHARED
+    DASH --> FORMS
 ```
 
 ---
@@ -613,9 +656,9 @@ mindmap
       Python 3.12
       Django 5.x
       Django REST Framework
-      Celery + Redis (optional async mode)
-      Django Channels (WebSocket)
-      Azure PostgreSQL 16 / SQLite WAL (hub)
+      Celery and Redis optional async mode
+      Django Channels WebSocket
+      Azure PostgreSQL 16 and SQLite WAL hub
     Frontend
       Next.js 16
       React 19
@@ -636,29 +679,31 @@ mindmap
       better-sqlite3
       Local SQLite
     Integrations
-      SHA / DHA HIE (15 APIs)
+      SHA and DHA HIE 15 APIs
       FHIR R4
       HL7v2
-      KHIS / DHIS2
+      KHIS and DHIS2
       M-Pesa
       SNOMED CT
-      ICD-10 / ICD-11
+      ICD 10 and ICD 11
     Infrastructure
       Azure Container Apps
+      Azure Front Door Standard shared profile isolated app endpoint
       PostgreSQL
       PowerSync Cloud
-      Vercel (web frontend)
-      Azure PostgreSQL (South Africa North)
-      GitHub Actions (multiple workflows)
+      Vercel web frontend
+      Azure PostgreSQL South Africa North
+      GitHub Actions multiple workflows
       Docker
     Security
-      Fernet Encryption (selected PII)
-      Local KMS (current) / Azure Key Vault + HSM (target)
-      JWT + httpOnly Cookies
-      MFA (TOTP)
-      RBAC (Role Matrix)
-      PKI (RSA-2048)
-      Audit Hash Chain (SHA-256)
+      Fernet encryption selected PII
+      Local KMS current
+      Azure Key Vault and HSM target
+      JWT and httpOnly cookies
+      MFA TOTP
+      RBAC role matrix
+      PKI RSA 2048
+      Audit hash chain SHA 256
       Kenya DPA 2019 controls in progress
 ```
 
@@ -674,15 +719,22 @@ graph TB
         MOBILE_APP["Mobile (React Native)"]
     end
 
-    subgraph Vercel["Vercel"]
-        VERCEL["Next.js Frontend<br/>(Static + SSR)"]
+    subgraph CurrentWeb["Current Web Delivery"]
+        VERCEL["Vercel<br/>(Next.js Frontend, current app.vitora.digital origin)"]
+    end
+
+    subgraph FrontDoor["Azure Front Door Standard - vitora-cdn"]
+        AFD_APP["vitoraappsa<br/>(Application endpoint; DNS cutover pending)"]
+        AFD_RELEASES["vitorareleases<br/>(Release endpoint; get.vitora.digital)"]
     end
 
     subgraph Azure["Azure Cloud - South Africa North"]
         ACA["Azure Container App<br/>(Django API + Daphne)"]
+        WEB_ACA["Azure Container App<br/>(Next.js SSR web origin)"]
         AZURE_PG["Azure PostgreSQL 16<br/>(Primary Database)"]
         STORAGE["Azure Blob Storage<br/>(Media / Documents)"]
         BACKUPS["Azure Blob Storage<br/>(Encrypted Daily Backups,<br/>30-Day Retention)"]
+        RELEASES["Azure Blob Storage<br/>(Signed Desktop / Hub Releases)"]
     end
 
     subgraph PowerSyncCloud["PowerSync Cloud"]
@@ -700,9 +752,14 @@ graph TB
 
     BROWSER --> VERCEL
     VERCEL --> ACA
+    BROWSER -. "after app.vitora.digital DNS cutover" .-> AFD_APP
+    AFD_APP --> WEB_ACA
+    WEB_ACA --> ACA
     BROWSER <--> PS_INSTANCE
     TAURI --> ACA
     MOBILE_APP --> ACA
+    TAURI -->|"Updater downloads"| AFD_RELEASES
+    AFD_RELEASES --> RELEASES
 
     ACA --> AZURE_PG
     ACA -. "when async workers are enabled" .-> REDIS_INST
@@ -712,13 +769,3 @@ graph TB
     BACKUPS -->|"Validate restore"| RESTORE
     DHA_TARGET -. "target architecture; not yet evidenced" .-> RESTORE
 ```
-
----
-
-## Notes
-
-- All diagrams use Mermaid syntax and render on GitHub and in VS Code (with bierner.markdown-mermaid extension).
-- For the module list and descriptions, see `docs/modules-reference.md`.
-- For API endpoint details, see `docs/api-reference.md`.
-- For domain event catalog, see `docs/domain-events.md`.
-- For multi-tenancy details, see `docs/multitenancy.md`.
