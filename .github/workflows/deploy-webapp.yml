@@ -2,8 +2,6 @@ name: Deploy Production Web App to Azure Container Apps
 
 on:
   push:
-    tags:
-      - 'webapp-*'
   workflow_dispatch:
 
 env:

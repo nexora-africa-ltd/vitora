@@ -105,9 +105,11 @@ def encrypted_pii_property(field_name: str):
                     model_label=self._meta.label_lower,
                     field_name=field_name,
                 )
-            from hmis.apps.core.kms import get_kms_provider
+            from django.conf import settings
 
-            return get_kms_provider().decrypt_string(raw)
+            from hmis.apps.core.kms.local import LocalKMSProvider
+
+            return LocalKMSProvider(settings.ENCRYPTION_KEY).decrypt_string(raw)
         except (
             AttributeError,
             TypeError,
@@ -157,18 +159,29 @@ def encrypted_pii_property(field_name: str):
                 ),
             )
         else:
-            from hmis.apps.core.kms import get_kms_provider
+            from hmis.apps.core.kms.local import LocalKMSProvider
 
-            kms = get_kms_provider()
+            kms = LocalKMSProvider(settings.ENCRYPTION_KEY)
             setattr(self, encrypted_attr, kms.encrypt_string(value))
         # Also set HMAC if the column exists
         hmac_attr = f"{field_name}_hmac"
         if hasattr(self, hmac_attr):
-            # Preserve global blind indexes until their query path is migrated to v2 keys.
-            from hmis.apps.core.kms import get_kms_provider
+            if organization is not None and settings.ORGANIZATION_PII_ENCRYPTION_ENABLED:
+                setattr(
+                    self,
+                    hmac_attr,
+                    OrganizationPIIEncryptionService().compute_hmac(organization, value),
+                )
+            elif settings.ORGANIZATION_PII_ENCRYPTION_ENABLED:
+                # Feature-gated records without a tenant must not create global indexes.
+                setattr(self, hmac_attr, "")
+            else:
+                from hmis.apps.core.kms import get_kms_provider
 
-            setattr(self, hmac_attr, get_kms_provider().compute_hmac(value))
+                setattr(self, hmac_attr, get_kms_provider().compute_hmac(value))
 
+    # Allows maintenance commands to discover only descriptors created by this factory.
+    _getter.fget._encrypted_pii_field_name = field_name
     _getter.fget.__doc__ = f"Decrypt and return the {field_name} value."
     return _getter
 

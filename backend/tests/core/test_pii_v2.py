@@ -147,6 +147,24 @@ class TestOrganizationPIIEncryptionService:
             == "cloud-value"
         )
 
+    def test_hmac_candidates_include_active_and_retired_key_versions(self, sample_organization):
+        """Lookup candidates must retain retired key indexes during key rotation."""
+        provider = LocalKMSProvider(LocalKMSProvider.generate_key())
+        service = OrganizationPIIEncryptionService(provider)
+        old_hmac = service.compute_hmac(sample_organization, "12345678")
+        package = service.export_active_key_package(sample_organization)
+        package["version"] = 2
+        package["hmac_key"] = service._encode(b"x" * 32)
+
+        from hmis.apps.core.pii_v2 import import_organization_pii_key_package
+
+        import_organization_pii_key_package(sample_organization, package, provider)
+        candidates = service.hmac_candidates(sample_organization, "12345678")
+
+        assert service.compute_hmac(sample_organization, "12345678") in candidates
+        assert old_hmac in candidates
+        assert len(candidates) == 2
+
 
 @pytest.mark.django_db
 class TestEncryptedPIIPropertyV2:
@@ -188,3 +206,23 @@ class TestEncryptedPIIPropertyV2:
 
         patient.refresh_from_db()
         assert patient.national_id == "legacy-id"
+
+    @override_settings(ORGANIZATION_PII_ENCRYPTION_ENABLED=True)
+    def test_feature_gate_writes_organization_hmac_not_global_hmac(self, sample_organization):
+        """New tenant PII indexes must not be derived from the global HMAC key."""
+        from hmis.apps.core.kms import get_kms_provider
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="Scoped",
+            last_name="Index",
+            date_of_birth=date(1990, 1, 1),
+            gender="F",
+            organization=sample_organization,
+            national_id="12345678",
+        )
+
+        assert patient.national_id_hmac == OrganizationPIIEncryptionService().compute_hmac(
+            sample_organization, "12345678"
+        )
+        assert patient.national_id_hmac != get_kms_provider().compute_hmac("12345678")

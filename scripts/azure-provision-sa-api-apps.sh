@@ -20,7 +20,7 @@ SOURCE_ACR_NAME="${SOURCE_ACR_NAME:-vitoraacr}"
 IMAGE_NAME="${IMAGE_NAME:-vitora-api}"
 
 STAGING_APP_NAME="${STAGING_APP_NAME:-vitora-api-private-sa}"
-PROD_APP_NAME="${PROD_APP_NAME:-vitora-api-private-prod-sa}"
+PROD_APP_NAME="${PROD_APP_NAME:-vitora-api-prod-private-sa}"
 STAGING_WORKER_APP_NAME="${STAGING_WORKER_APP_NAME:-vitora-worker-private-sa}"
 PROD_WORKER_APP_NAME="${PROD_WORKER_APP_NAME:-vitora-worker-private-prod-sa}"
 STAGING_BEAT_APP_NAME="${STAGING_BEAT_APP_NAME:-vitora-beat-private-sa}"

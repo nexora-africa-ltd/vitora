@@ -38,7 +38,7 @@ WORKDIR /app
 COPY pyproject.toml poetry.lock ./
 RUN pip install --no-cache-dir poetry \
     && poetry config virtualenvs.create false \
-    && poetry install --only main --no-root --no-interaction --no-ansi \
+    && poetry install --only main --extras azure --no-root --no-interaction --no-ansi \
     && pip uninstall -y poetry \
     && apt-get purge -y build-essential \
     && apt-get autoremove -y \

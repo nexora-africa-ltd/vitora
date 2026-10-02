@@ -30,7 +30,7 @@ jobs:
       contents: read
 
     env:
-      CONTAINER_APP_NAME: ${{ (github.event.inputs.environment == 'staging') && 'vitora-api-private-sa' || 'vitora-api-private-prod-sa' }}
+      CONTAINER_APP_NAME: ${{ (github.event.inputs.environment == 'staging') && 'vitora-api-private-sa' || 'vitora-api-prod-private-sa' }}
 
     steps:
       - name: Log in to Azure (OIDC)

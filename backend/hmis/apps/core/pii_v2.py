@@ -8,6 +8,7 @@ stored as ``v2.<key-version>.<nonce-base64url>.<ciphertext-base64url>``.
 from __future__ import annotations
 
 import base64
+import hmac
 import os
 from typing import Any
 
@@ -92,6 +93,27 @@ class OrganizationPIIEncryptionService:
 
     def _unwrap_dek(self, key_version: OrganizationPIIKeyVersion) -> bytes:
         return self.provider.unwrap_key(self._decode(key_version.wrapped_dek))
+
+    def compute_hmac(self, organization: Organization, plaintext: str) -> str:
+        """Return the active organization-scoped HMAC blind index for plaintext."""
+        key_version = self._active_key_version(organization)
+        return self._compute_hmac(key_version, plaintext)
+
+    def hmac_candidates(self, organization: Organization, plaintext: str) -> list[str]:
+        """Return active and retired blind indexes so key rotation does not break lookup."""
+        self._active_key_version(organization)
+        key_versions = OrganizationPIIKeyVersion.objects.filter(organization=organization).order_by(
+            "-is_active", "-version"
+        )
+        return list(
+            dict.fromkeys(
+                self._compute_hmac(key_version, plaintext) for key_version in key_versions
+            )
+        )
+
+    def _compute_hmac(self, key_version: OrganizationPIIKeyVersion, plaintext: str) -> str:
+        key = self.provider.unwrap_key(self._decode(key_version.wrapped_hmac_key))
+        return hmac.new(key, plaintext.encode("utf-8"), "sha256").hexdigest()
 
     def export_active_key_package(self, organization: Organization) -> dict[str, int | str]:
         """Return active raw key material for transport inside an authenticated envelope only."""

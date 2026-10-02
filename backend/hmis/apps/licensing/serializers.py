@@ -268,6 +268,30 @@ class RevokeSerializer(serializers.Serializer):
     )
 
 
+class DeviceReenrollmentSerializer(serializers.Serializer):
+    """Request a v2 activation-secret envelope for an active installation."""
+
+    protocol_version = serializers.IntegerField(required=True)
+    device_public_key = serializers.CharField(required=True, max_length=128)
+
+    def validate(self, attrs):
+        if attrs["protocol_version"] != 2:
+            raise serializers.ValidationError(
+                {"protocol_version": "Existing installations support protocol version 2 only."}
+            )
+        try:
+            attrs["device_public_key"] = validate_device_public_key(attrs["device_public_key"])
+        except ValueError as exc:
+            raise serializers.ValidationError({"device_public_key": str(exc)}) from exc
+        return attrs
+
+
+class InstallationReenrollmentSerializer(DeviceReenrollmentSerializer):
+    """Device re-enrollment request addressed by stable installation identifier."""
+
+    installation_id = serializers.CharField(max_length=200)
+
+
 class LicenseStatusSerializer(serializers.Serializer):
     """Response for /api/licensing/status/ (local verification)."""
 

@@ -7,7 +7,7 @@
 ## 1. Azure Infrastructure
 
 - [ ] **Process topology** provisioned in the active Container Apps environment:
-  - API: `vitora-api-private-prod-sa` with min 1, max 6 and HTTP concurrency scaling
+  - API: `vitora-api-prod-private-sa` with min 1, max 6 and HTTP concurrency scaling
   - Worker: `vitora-worker-private-prod-sa` with min 1, max 4
   - Beat: `vitora-beat-private-prod-sa` with min 1, max 1
   - Provision all three with `bash scripts/azure-provision-sa-api-apps.sh` before the first deploy

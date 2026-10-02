@@ -264,11 +264,10 @@ class PatientViewSet(
                 )
 
         with transaction.atomic():
+            # Tenant context is also needed by serializer duplicate detection and v2 PII indexing.
+            self._resolve_tenant_context()
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-            # Resolve tenant context after DRF authentication has populated request.user.
-            # This is required for token-auth flows where middleware cannot infer tenant.
-            self._resolve_tenant_context()
             active_facility = getattr(request, "facility", None)
             tenant_kwargs = self.get_tenant_save_kwargs()
             # Set registered_by to current user + tenant context
@@ -808,15 +807,11 @@ class PatientViewSet(
 
         # Priority 1: Exact identification match (via HMAC blind index)
         if identification_number:
-            from hmis.apps.core.kms import get_kms_provider
-
-            kms = get_kms_provider()
-            id_hmac = kms.compute_hmac(identification_number)
             exact_match = (
                 self.get_queryset()
                 .filter(
                     identification_type=identification_type,
-                    identification_number_hmac=id_hmac,
+                    identification_number=identification_number,
                 )
                 .first()
             )

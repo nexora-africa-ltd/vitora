@@ -3,6 +3,7 @@
 
 import base64
 import uuid
+from datetime import date
 
 import pytest  # type: ignore
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
@@ -10,6 +11,7 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from django.conf import settings
 from rest_framework import status
 
+from hmis.apps.licensing import views as licensing_views
 from hmis.apps.licensing.activation_secrets import decrypt_activation_secrets
 from hmis.apps.licensing.models import Installation
 
@@ -118,6 +120,31 @@ def test_v1_activation_is_explicitly_flagged_legacy_compatibility(api_client, pe
     assert response.data["protocol_version"] == 1
     assert response.data["legacy_plaintext_secrets"] is True
     assert response.data["encryption_key"] == settings.ENCRYPTION_KEY
+
+
+@pytest.mark.django_db
+def test_v1_activation_is_rejected_after_the_bounded_compatibility_window(
+    api_client, pending_installation, monkeypatch
+):
+    """The plaintext v1 path has a fixed expiry and cannot be revived by re-enrollment."""
+    monkeypatch.setattr(
+        licensing_views, "LEGACY_V1_ACTIVATION_COMPATIBILITY_UNTIL", date(2000, 1, 1)
+    )
+
+    response = api_client.post(
+        "/api/licensing/activate/",
+        {
+            "installation_id": str(uuid.uuid4()),
+            "activation_code": "TEST-ACTIVATION-CODE",
+            "protocol_version": 1,
+            "eula_accepted": True,
+            "eula_version": HUB_EULA_VERSION,
+        },
+        format="json",
+    )
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.data["code"] == "legacy_protocol_expired"
 
 
 def test_hub_installers_request_v2_and_do_not_persist_secret_keys_in_dotenv():

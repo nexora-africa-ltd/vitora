@@ -170,16 +170,7 @@ function Write-DpapiSecretsBundle {
     } | ConvertTo-Json -Compress
 
     if (-not (Initialize-DpapiType)) {
-        $payload = @{
-            version = 1
-            scope = "PlaintextFallback"
-            generated_at = (Get-Date).ToUniversalTime().ToString("o")
-            secrets = $Secrets
-        } | ConvertTo-Json
-        Set-Content -Path $Path -Value $payload
-        Write-Info "DPAPI unavailable; wrote plaintext secret bundle fallback at $Path"
-        Log "WARN: DPAPI unavailable; wrote plaintext secret bundle fallback"
-        return
+        throw "DPAPI is required for hub updates; refusing plaintext secret storage."
     }
 
     $plainBytes = [Text.Encoding]::UTF8.GetBytes($plaintext)
@@ -197,6 +188,40 @@ function Write-DpapiSecretsBundle {
     } | ConvertTo-Json
 
     Set-Content -Path $Path -Value $payload
+}
+
+function Invoke-HubDeviceReenrollment {
+    param(
+        [Parameter(Mandatory=$true)][string]$PythonExe,
+        [Parameter(Mandatory=$true)][string]$HubSecretsFile
+    )
+
+    $required = @("LICENSE_TOKEN", "HUB_ID", "HUB_ORGANIZATION_ID", "HUB_FACILITY_ID", "CLOUD_API_BASE_URL")
+    foreach ($name in $required) {
+        if (-not [Environment]::GetEnvironmentVariable($name)) {
+            throw "Cannot re-enroll this hub: $name is missing from its protected runtime configuration."
+        }
+    }
+
+    Write-Info "Re-enrolling existing hub device key with the cloud..."
+    $tempPrivateKey = Join-Path $env:TEMP "vitora-reenroll-device-x25519.pem"
+    $responseFile = Join-Path $env:TEMP "vitora-reenroll-response.json"
+    try {
+        $devicePublicKey = & $PythonExe -c "import base64,sys; from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey; from cryptography.hazmat.primitives.serialization import Encoding,NoEncryption,PrivateFormat,PublicFormat; k=X25519PrivateKey.generate(); open(sys.argv[1],'wb').write(k.private_bytes(Encoding.PEM,PrivateFormat.PKCS8,NoEncryption())); print(base64.b64encode(k.public_key().public_bytes(Encoding.Raw,PublicFormat.Raw)).decode('ascii'))" $tempPrivateKey
+        $body = @{ installation_id = $env:HUB_ID; protocol_version = 2; device_public_key = $devicePublicKey } | ConvertTo-Json
+        $headers = @{ "X-License-Token" = $env:LICENSE_TOKEN }
+        $response = Invoke-RestMethod -Uri "$($env:CLOUD_API_BASE_URL.TrimEnd('/'))/api/licensing/re-enroll/" -Method POST -Headers $headers -Body $body -ContentType "application/json" -UseBasicParsing
+        $response | ConvertTo-Json -Depth 10 | Set-Content -Path $responseFile
+        $decrypted = & $PythonExe -c "import json,sys; from cryptography.hazmat.primitives.serialization import load_pem_private_key; from hmis.apps.licensing.activation_secrets import decrypt_activation_secrets; r=json.load(open(sys.argv[1])); k=load_pem_private_key(open(sys.argv[2],'rb').read(),password=None); print(json.dumps(decrypt_activation_secrets(r['secrets_envelope'],k,installation_id=sys.argv[3],organization_id=int(sys.argv[4]),facility_id=int(sys.argv[5]))))" $responseFile $tempPrivateKey $env:HUB_ID $env:HUB_ORGANIZATION_ID $env:HUB_FACILITY_ID | ConvertFrom-Json
+        [Environment]::SetEnvironmentVariable("ENCRYPTION_KEY", [string]$decrypted.encryption_key, "Process")
+        [Environment]::SetEnvironmentVariable("PII_HMAC_KEY", [string]$decrypted.pii_hmac_key, "Process")
+        [Environment]::SetEnvironmentVariable("LICENSE_TOKEN", [string]$response.license_token, "Process")
+        $script:PiiKeyPackageJson = $decrypted.organization_pii_key_package | ConvertTo-Json -Compress
+        $script:ReenrollmentResponseFile = $responseFile
+        return $response.license_token
+    } finally {
+        Remove-Item -Path $tempPrivateKey -Force -ErrorAction SilentlyContinue
+    }
 }
 
 function Get-HubPortFromEnvFile {
@@ -665,6 +690,11 @@ $hubSecretsFile = if ($env:HUB_SECRETS_FILE) {
     Join-Path $InstallDir "secrets\hub-secrets.dpapi.json"
 }
 
+$replacementLicenseToken = Invoke-HubDeviceReenrollment -PythonExe $pythonExe -HubSecretsFile $hubSecretsFile
+$envFileContent = Get-Content $envFile
+$envFileContent = $envFileContent -replace '^LICENSE_TOKEN=.*$', "LICENSE_TOKEN=$replacementLicenseToken"
+Set-Content -Path $envFile -Value $envFileContent
+
 $dpapiSecrets = @{
     DJANGO_SECRET_KEY = (Get-HubEnvValue "DJANGO_SECRET_KEY")
     ENCRYPTION_KEY = (Get-HubEnvValue "ENCRYPTION_KEY")
@@ -812,6 +842,11 @@ if ($null -eq $appsToMigrate -or $appsToMigrate.Count -eq 0) {
     }
 }
 Write-Ok "Migrations complete."
+$PiiKeyPackageJson | & $pythonExe manage.py seed_from_activation --response-file="$script:ReenrollmentResponseFile" --skip-locations --pii-key-package-stdin
+if ($LASTEXITCODE -ne 0) {
+    throw "seed_from_activation failed after device re-enrollment."
+}
+Remove-Item -Path $script:ReenrollmentResponseFile -Force -ErrorAction SilentlyContinue
 Pop-Location
 Log "Migrations applied"
 

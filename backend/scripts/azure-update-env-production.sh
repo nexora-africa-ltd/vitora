@@ -17,7 +17,7 @@
 set -euo pipefail
 
 RG="${ACA_RG:-vitora-rg-sa}"
-APP_NAME="${ACA_NAME:-vitora-api-private-prod-sa}"
+APP_NAME="${ACA_NAME:-vitora-api-prod-private-sa}"
 
 FQDN=$(az containerapp show \
   --name "$APP_NAME" \
@@ -212,7 +212,9 @@ az containerapp update \
     "HIE_AUTO_SHR_PUSH=${HIE_AUTO_SHR_PUSH:-false}" \
     "HIE_ADX_ENABLED=${HIE_ADX_ENABLED:-false}" \
     "FHIR_BASE_URL=${FHIR_BASE_URL:-${PUBLIC_API_BASE_URL}}" \
-    "KMS_PROVIDER=${KMS_PROVIDER:-local}" \
+    "KMS_PROVIDER=${KMS_PROVIDER:-azure}" \
+    "AZURE_KEY_VAULT_URL=${AZURE_KEY_VAULT_URL:-https://vitora-kv-prod-sa.vault.azure.net/}" \
+    "AZURE_KEY_NAME=${AZURE_KEY_NAME:-vitora-prod-pii-kek}" \
     "TIBABOT_ENABLED=${TIBABOT_ENABLED:-true}" \
     "TIBABOT_API_URL=${TIBABOT_API_URL:-api.vitora.digital}" \
     "TIBABOT_API_KEY=secretref:tibabot-api-key" \

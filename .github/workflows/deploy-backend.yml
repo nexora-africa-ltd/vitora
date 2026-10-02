@@ -37,7 +37,7 @@ jobs:
 
     env:
       DEPLOY_ENV: ${{ github.event.inputs.environment || (github.ref_name == 'main' && 'production') || 'staging' }}
-      CONTAINER_APP_NAME: ${{ (github.event.inputs.environment == 'production' || github.ref_name == 'main') && 'vitora-api-private-prod-sa' || 'vitora-api-private-sa' }}
+      CONTAINER_APP_NAME: ${{ (github.event.inputs.environment == 'production' || github.ref_name == 'main') && 'vitora-api-prod-private-sa' || 'vitora-api-private-sa' }}
       WORKER_APP_NAME: ${{ (github.event.inputs.environment == 'production' || github.ref_name == 'main') && 'vitora-worker-private-prod-sa' || 'vitora-worker-private-sa' }}
       BEAT_APP_NAME: ${{ (github.event.inputs.environment == 'production' || github.ref_name == 'main') && 'vitora-beat-private-prod-sa' || 'vitora-beat-private-sa' }}
       ASYNC_WORKERS_ENABLED: ${{ vars.ASYNC_WORKERS_ENABLED || 'false' }}
@@ -197,7 +197,9 @@ jobs:
             HIE_AUTO_SHR_PUSH=false \
             HIE_ADX_ENABLED=false \
             FHIR_BASE_URL=${{ vars.FHIR_BASE_URL || vars.CLOUD_API_BASE_URL || (env.DEPLOY_ENV == 'production' && 'https://api.vitora.digital' || 'https://staging-api.vitora.digital') }} \
-            KMS_PROVIDER=local \
+            KMS_PROVIDER=azure \
+            AZURE_KEY_VAULT_URL=${{ env.DEPLOY_ENV == 'production' && 'https://vitora-kv-prod-sa.vault.azure.net/' || 'https://vitora-kv-stg-sa.vault.azure.net/' }} \
+            AZURE_KEY_NAME=${{ env.DEPLOY_ENV == 'production' && 'vitora-prod-pii-kek' || 'vitora-stg-pii-kek' }} \
             AT_API_KEY=secretref:at-api-key \
             AT_USERNAME=sandbox \
             TIBABOT_ENABLED=true \

@@ -169,8 +169,86 @@ fi
 # Run migrations
 info "Running database migrations..."
 source "$APP_DIR/.env" 2>/dev/null || true
+HUB_SECRETS_FILE="${HUB_SECRETS_FILE:-/var/lib/vitora/secrets/hub-secrets.env}"
+if [[ -f "$HUB_SECRETS_FILE" ]]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "$HUB_SECRETS_FILE"
+    set +a
+fi
 export DJANGO_ENV=hub
 export DJANGO_SETTINGS_MODULE=hmis.settings
+
+# Protocol-v2 migration for existing hubs. The current license JWT authorizes
+# only its own Installation, so no admin password or activation code is kept
+# on disk. Generate to a temporary file and replace the key only after the
+# cloud has returned an envelope that decrypts successfully.
+if [[ -z "${LICENSE_TOKEN:-}" || -z "${HUB_ID:-}" || -z "${HUB_ORGANIZATION_ID:-}" || -z "${HUB_FACILITY_ID:-}" ]]; then
+    error "Cannot re-enroll this hub: LICENSE_TOKEN, HUB_ID, HUB_ORGANIZATION_ID, and HUB_FACILITY_ID are required."
+    exit 1
+fi
+info "Re-enrolling existing hub device key with the cloud..."
+DEVICE_KEY_DIR="/var/lib/vitora/secrets"
+DEVICE_PRIVATE_KEY="${DEVICE_KEY_DIR}/device-x25519.pem"
+mkdir -p "$DEVICE_KEY_DIR"
+chmod 700 "$DEVICE_KEY_DIR"
+TEMP_DEVICE_PRIVATE_KEY=$(mktemp "${DEVICE_KEY_DIR}/device-x25519.XXXXXX.pem")
+REENROLL_RESPONSE=$(mktemp)
+trap 'rm -f "$TEMP_DEVICE_PRIVATE_KEY" "$REENROLL_RESPONSE"' EXIT
+DEVICE_PUBLIC_KEY=$("$VENV_DIR/bin/python" - "$TEMP_DEVICE_PRIVATE_KEY" <<'PY'
+import base64
+import sys
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
+from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat, PublicFormat
+
+key = X25519PrivateKey.generate()
+with open(sys.argv[1], "wb") as output:
+    output.write(key.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption()))
+print(base64.b64encode(key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)).decode("ascii"))
+PY
+)
+REENROLL_PAYLOAD=$("$VENV_DIR/bin/python" - "$DEVICE_PUBLIC_KEY" "$HUB_ID" <<'PY'
+import json
+import sys
+print(json.dumps({"protocol_version": 2, "device_public_key": sys.argv[1], "installation_id": sys.argv[2]}))
+PY
+)
+curl -fsS -o "$REENROLL_RESPONSE" -X POST "${CLOUD_API_BASE_URL%/}/api/licensing/re-enroll/" \
+    -H "Content-Type: application/json" -H "X-License-Token: ${LICENSE_TOKEN}" -d "$REENROLL_PAYLOAD"
+PII_KEY_PACKAGE_B64=$("$VENV_DIR/bin/python" - "$REENROLL_RESPONSE" "$TEMP_DEVICE_PRIVATE_KEY" "$HUB_SECRETS_FILE" "$HUB_ID" "$HUB_ORGANIZATION_ID" "$HUB_FACILITY_ID" <<'PY'
+import base64
+import json
+import os
+import sys
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
+from hmis.apps.licensing.activation_secrets import decrypt_activation_secrets
+
+response, private_path, output, installation_id, organization_id, facility_id = sys.argv[1:]
+with open(private_path, "rb") as key_file, open(response, encoding="utf-8") as response_file:
+    secrets = decrypt_activation_secrets(json.load(response_file)["secrets_envelope"], load_pem_private_key(key_file.read(), password=None), installation_id=installation_id, organization_id=int(organization_id), facility_id=int(facility_id))
+package = secrets.pop("organization_pii_key_package")
+temporary = f"{output}.new"
+with open(temporary, "w", encoding="utf-8") as secret_file:
+    for name, value in secrets.items():
+        secret_file.write(f"{name.upper()}={value}\n")
+os.chmod(temporary, 0o600)
+os.replace(temporary, output)
+print(base64.b64encode(json.dumps(package, separators=(",", ":")).encode("utf-8")).decode("ascii"))
+PY
+)
+mv -f "$TEMP_DEVICE_PRIVATE_KEY" "$DEVICE_PRIVATE_KEY"
+chmod 600 "$DEVICE_PRIVATE_KEY" "$HUB_SECRETS_FILE"
+chown vitora:vitora "$DEVICE_PRIVATE_KEY" "$HUB_SECRETS_FILE"
+LICENSE_TOKEN=$("$VENV_DIR/bin/python" - "$REENROLL_RESPONSE" <<'PY'
+import json
+import sys
+print(json.load(open(sys.argv[1], encoding="utf-8"))["license_token"])
+PY
+)
+sed -i "s|^LICENSE_TOKEN=.*|LICENSE_TOKEN=${LICENSE_TOKEN}|" "$APP_DIR/.env"
+printf '%s' "$PII_KEY_PACKAGE_B64" | base64 --decode | "$VENV_DIR/bin/python" manage.py seed_from_activation --response-file="$REENROLL_RESPONSE" --skip-locations --pii-key-package-stdin
+rm -f "$REENROLL_RESPONSE"
+trap - EXIT
 "$VENV_DIR/bin/python" manage.py migrate --no-input
 "$VENV_DIR/bin/python" manage.py collectstatic --no-input 2>/dev/null || true
 

@@ -16,6 +16,7 @@ import os
 import platform
 import secrets
 import uuid
+from datetime import date
 from pathlib import Path
 
 import jwt
@@ -40,9 +41,11 @@ from .models import Installation
 from .serializers import (
     ActivationRequestSerializer,
     CheckInRequestSerializer,
+    DeviceReenrollmentSerializer,
     GenerateActivationCodeSerializer,
     InstallationDetailSerializer,
     InstallationListSerializer,
+    InstallationReenrollmentSerializer,
     RevokeSerializer,
 )
 from .throttles import LicenseActivationThrottle, LicenseCheckInThrottle
@@ -54,6 +57,9 @@ from .tokens import (
 )
 
 HUB_EULA_VERSION = "2026-07-31"
+# Released v1 installers receive plaintext bootstrap keys. Keep their migration
+# window finite; all new and re-enrollment flows use the encrypted v2 envelope.
+LEGACY_V1_ACTIVATION_COMPATIBILITY_UNTIL = date(2026, 12, 31)
 logger = logging.getLogger(__name__)
 
 LicenseGenericResponseSerializer = inline_serializer(
@@ -218,6 +224,15 @@ def activate_installation(request: Request) -> Response:
             {
                 "error": "EULA version mismatch. Please review and accept the current EULA.",
                 "required_eula_version": HUB_EULA_VERSION,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if data["protocol_version"] == 1 and date.today() > LEGACY_V1_ACTIVATION_COMPATIBILITY_UNTIL:
+        return Response(
+            {
+                "error": "Protocol version 1 activation support has expired. Upgrade the installer to protocol version 2.",
+                "code": "legacy_protocol_expired",
             },
             status=status.HTTP_400_BAD_REQUEST,
         )
@@ -801,6 +816,24 @@ class InstallationViewSet(viewsets.ModelViewSet):
         """Installations are created via generate-code, not direct POST."""
         return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="re-enroll",
+        permission_classes=[permissions.AllowAny],
+    )
+    def re_enroll(self, request, pk=None):
+        """Rotate an active hub's device key and return an authenticated v2 envelope.
+
+        An administrator can recover a hub manually. An existing hub may instead
+        authenticate with its current license JWT in ``X-License-Token``; that
+        credential is accepted only for the installation encoded in the token.
+        """
+        installation = self.get_object()
+        serializer = DeviceReenrollmentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return _reenroll_installation(request, installation, serializer.validated_data)
+
     @action(detail=True, methods=["post"])
     def revoke(self, request, pk=None):
         """Revoke an installation's license."""
@@ -922,6 +955,68 @@ class InstallationViewSet(viewsets.ModelViewSet):
             {"error": "Failed to send email. Please try again."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+@extend_schema(
+    request=InstallationReenrollmentSerializer,
+    responses={
+        200: LicenseGenericResponseSerializer,
+        400: LicenseErrorResponseSerializer,
+        403: LicenseErrorResponseSerializer,
+    },
+)
+@api_view(["POST"])
+@permission_classes([permissions.AllowAny])
+def re_enroll_installation(request: Request) -> Response:
+    """Re-enroll an existing active hub by its stable installation identifier."""
+    serializer = InstallationReenrollmentSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    try:
+        installation = InstallationViewSet.queryset.get(
+            installation_id=serializer.validated_data["installation_id"]
+        )
+    except Installation.DoesNotExist:
+        return Response({"error": "Installation not found."}, status=status.HTTP_404_NOT_FOUND)
+    return _reenroll_installation(request, installation, serializer.validated_data)
+
+
+def _reenroll_installation(request: Request, installation: Installation, data: dict) -> Response:
+    """Authorize and perform an active installation's v2 device-key rotation."""
+    is_admin = bool(getattr(request.user, "is_staff", False))
+    if not is_admin:
+        token = _extract_license_token(request)
+        try:
+            token_payload = verify_license_token(token) if token else {}
+        except jwt.PyJWTError:
+            token_payload = {}
+        if token_payload.get("installation_id") != str(installation.installation_id):
+            return Response(
+                {"detail": "Administrator or matching installation license required."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+    if installation.status != Installation.Status.ACTIVE:
+        return Response(
+            {"error": "Only active installations can be re-enrolled."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    installation.device_public_key = data["device_public_key"]
+    payload = build_license_payload(installation)
+    token = sign_license_token(payload)
+    installation.license_jwt = token
+    installation.last_check_in = timezone.now()
+    installation.save(
+        update_fields=["device_public_key", "license_jwt", "last_check_in", "updated_at"]
+    )
+
+    decoded = jwt.decode(token, options={"verify_signature": False})
+    return Response(
+        build_activation_bootstrap_payload(
+            installation, token, decoded, request=request, protocol_version=2
+        ),
+        status=status.HTTP_200_OK,
+    )
 
 
 def _get_client_ip(request: Request) -> str:
