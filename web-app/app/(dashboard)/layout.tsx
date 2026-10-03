@@ -11,6 +11,7 @@ import { PermissionDebugPanel } from '@/components/shared/permission-debug-panel
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { DesktopTitlebar } from '@/components/desktop/desktop-titlebar';
+import { DesktopBackButton } from '@/components/desktop/desktop-back-button';
 import { CommandMenu } from '@/components/layout/command-menu';
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
 import { MFAGraceBanner } from '@/components/auth/mfa-grace-banner';
@@ -131,6 +132,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <GlobalPeekPanel />
                 {/* TibaBot AI floating widget */}
                 <AIChatWidget />
+                <DesktopBackButton sidebarCollapsed={sidebarCollapsed} />
                 {/* Global command menu (⌘K / Ctrl+K) */}
                 <CommandMenu />
                 {/* Permission debug panel (dev only) */}

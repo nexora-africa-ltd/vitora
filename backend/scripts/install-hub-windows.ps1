@@ -743,14 +743,32 @@ $decryptedSecrets = $decryptedSecretsJson | ConvertFrom-Json
 $EncryptionKey = $decryptedSecrets.encryption_key
 $PiiHmacKey = $decryptedSecrets.pii_hmac_key
 $PiiKeyPackageJson = $decryptedSecrets.organization_pii_key_package | ConvertTo-Json -Compress
+$ShaEnabled = $decryptedSecrets.sha_enabled
+$ShaAuthMode = $decryptedSecrets.sha_auth_mode
+$ShaAuthBaseUrl = $decryptedSecrets.sha_auth_base_url
+$IlmBaseUrl = $decryptedSecrets.ilm_base_url
+$ShaClientId = $decryptedSecrets.sha_client_id
+$ShaClientSecret = $decryptedSecrets.sha_client_secret
 Remove-Item -Path $devicePrivateKeyFile -Force
+
+# Management commands run during installation need the same protected values
+# that the service launcher will load after installation completes.
+foreach ($entry in @{
+    DJANGO_SECRET_KEY = $secretKey
+    ENCRYPTION_KEY = $EncryptionKey
+    PII_HMAC_KEY = $PiiHmacKey
+    LICENSE_TOKEN = $LicenseToken
+    SHA_CLIENT_ID = $ShaClientId
+    SHA_CLIENT_SECRET = $ShaClientSecret
+}.GetEnumerator()) {
+    [Environment]::SetEnvironmentVariable($entry.Key, [string]$entry.Value, "Process")
+}
 
 # --- Write Environment File ---
 Write-Step 5 "Writing configuration..."
 $HubSecretsFile = "$InstallDir\secrets\hub-secrets.dpapi.json"
 $envContent = @"
 DJANGO_ENV=hub
-DJANGO_SECRET_KEY=$secretKey
 HUB_ID=$HubId
 HUB_FACILITY_ID=$FacilityId
 HUB_ORGANIZATION_ID=$OrgId
@@ -760,7 +778,6 @@ HUB_DATA_DIR=$DataDir
 HUB_LOG_FILE=$LogDir\hub.log
 SYNC_SERVER_URL=$SyncUrl
 CLOUD_API_BASE_URL=$CloudApiBaseUrl
-LICENSE_TOKEN=$LicenseToken
 HUB_SECRETS_FILE=$HubSecretsFile
 ALLOWED_HOSTS=*
 HUB_VERSION=$Version
@@ -771,15 +788,15 @@ HUB_AUTO_UPDATE_DAY=$AutoUpdateDay
 HUB_AUTO_UPDATE_TIME=$AutoUpdateTime
 TIBABOT_ENABLED=$TibaBotEnabled
 TIBABOT_API_URL=$TibaBotApiUrl
-TIBABOT_API_KEY=$TibaBotApiKey
 TIBABOT_TIMEOUT=$TibaBotTimeout
-TIBABOT_JWT_PRIVATE_KEY=$TibaBotJwtPrivateKey
-TIBABOT_JWT_SECRET=$TibaBotJwtSecret
 TIBABOT_JWT_ISSUER=$TibaBotJwtIssuer
 TIBABOT_JWT_AUDIENCE=$TibaBotJwtAudience
 TIBABOT_JWT_EXPIRY_SECONDS=$TibaBotJwtExpirySeconds
 TIBABOT_JWKS_URL=$TibaBotJwksUrl
-TIBABOT_ADMIN_KEY=$TibaBotAdminKey
+SHA_ENABLED=$ShaEnabled
+SHA_AUTH_MODE=$ShaAuthMode
+SHA_AUTH_BASE_URL=$ShaAuthBaseUrl
+ILM_BASE_URL=$IlmBaseUrl
 WEBAUTHN_RP_ID=$WebauthnRpId
 WEBAUTHN_ORIGIN=$WebauthnOrigin
 "@
@@ -795,6 +812,8 @@ $dpapiSecrets = @{
     TIBABOT_JWT_PRIVATE_KEY = $TibaBotJwtPrivateKey
     TIBABOT_JWT_SECRET = $TibaBotJwtSecret
     TIBABOT_ADMIN_KEY = $TibaBotAdminKey
+    SHA_CLIENT_ID = $ShaClientId
+    SHA_CLIENT_SECRET = $ShaClientSecret
 }
 Write-DpapiSecretsBundle -Secrets $dpapiSecrets -Path $HubSecretsFile
 # Write version file
@@ -841,6 +860,20 @@ if (Test-Path $envFile) {
     }
 } else {
     Write-Warning "No .env file at $envFile -- hub may not start correctly."
+}
+
+$secretsFile = if ($env:HUB_SECRETS_FILE) { $env:HUB_SECRETS_FILE } else { Join-Path $InstallDir "secrets\hub-secrets.dpapi.json" }
+if (-not (Test-Path $secretsFile)) { throw "Protected hub secret bundle is missing: $secretsFile" }
+Add-Type -AssemblyName "System.Security"
+$payload = Get-Content -Path $secretsFile -Raw | ConvertFrom-Json
+if (-not $payload.ciphertext_b64) { throw "Protected hub secret bundle has no DPAPI ciphertext." }
+$plainBytes = [System.Security.Cryptography.ProtectedData]::Unprotect(
+    [Convert]::FromBase64String([string]$payload.ciphertext_b64),
+    $null,
+    [System.Security.Cryptography.DataProtectionScope]::LocalMachine
+)
+([Text.Encoding]::UTF8.GetString($plainBytes) | ConvertFrom-Json).secrets.PSObject.Properties | ForEach-Object {
+    [Environment]::SetEnvironmentVariable($_.Name, [string]$_.Value, 'Process')
 }
 
 # Splat $CommandArgs directly. Assigning to an intermediate variable would

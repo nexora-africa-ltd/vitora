@@ -9,6 +9,7 @@ import pytest  # type: ignore
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from django.conf import settings
+from django.test import override_settings
 from rest_framework import status
 
 from hmis.apps.licensing import views as licensing_views
@@ -99,6 +100,71 @@ def test_v2_activation_encrypts_secrets_and_binds_them_to_tenant(api_client, pen
             organization_id=pending_installation.organization_id + 1,
             facility_id=pending_installation.facility_id,
         )
+
+
+@pytest.mark.django_db
+@override_settings(
+    SHA_ENABLED=True,
+    SHA_AUTH_MODE="ilm",
+    SHA_AUTH_BASE_URL="https://ilm.example.test/oauth",
+    ILM_BASE_URL="https://ilm.example.test/api",
+    SHA_CLIENT_ID="vitora",
+    SHA_CLIENT_SECRET="shared-ilm-secret",
+)
+def test_v2_activation_encrypts_shared_ilm_credentials(api_client, pending_installation):
+    """Authorized hubs receive shared ILM credentials only inside the v2 envelope."""
+    private_key, device_public_key = _device_public_key()
+    installation_id = str(uuid.uuid4())
+
+    response = api_client.post(
+        "/api/licensing/activate/",
+        {
+            "installation_id": installation_id,
+            "activation_code": "TEST-ACTIVATION-CODE",
+            "device_public_key": device_public_key,
+            "protocol_version": 2,
+            "eula_accepted": True,
+            "eula_version": HUB_EULA_VERSION,
+        },
+        format="json",
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert "shared-ilm-secret" not in str(response.data)
+    secrets = decrypt_activation_secrets(
+        response.data["secrets_envelope"],
+        private_key,
+        installation_id=installation_id,
+        organization_id=pending_installation.organization_id,
+        facility_id=pending_installation.facility_id,
+    )
+    assert secrets["sha_auth_mode"] == "ilm"
+    assert secrets["sha_auth_base_url"] == "https://ilm.example.test/oauth"
+    assert secrets["ilm_base_url"] == "https://ilm.example.test/api"
+    assert secrets["sha_client_id"] == "vitora"
+    assert secrets["sha_client_secret"] == "shared-ilm-secret"
+
+
+def test_windows_installer_keeps_hub_and_ilm_secrets_out_of_dotenv():
+    """The Windows runtime must receive sensitive values only from DPAPI."""
+    from pathlib import Path
+
+    installer = (
+        Path(__file__).resolve().parents[2] / "scripts" / "install-hub-windows.ps1"
+    ).read_text()
+    updater = (
+        Path(__file__).resolve().parents[2] / "scripts" / "update-hub-windows.ps1"
+    ).read_text()
+
+    assert "DJANGO_SECRET_KEY=$secretKey" not in installer
+    assert "LICENSE_TOKEN=$LicenseToken" not in installer
+    assert "SHA_CLIENT_ID=$ShaClientId" not in installer
+    assert "SHA_CLIENT_SECRET=$ShaClientSecret" not in installer
+    assert "SHA_CLIENT_ID = $ShaClientId" in installer
+    assert "SHA_CLIENT_SECRET = $ShaClientSecret" in installer
+    assert "Load-DpapiSecretsBundle -Path $hubSecretsFile" in updater
+    assert "DJANGO_SECRET_KEY|ENCRYPTION_KEY|PII_HMAC_KEY|LICENSE_TOKEN" in updater
+    assert 'SHA_CLIENT_SECRET = (Get-HubEnvValue "SHA_CLIENT_SECRET")' in updater
 
 
 @pytest.mark.django_db

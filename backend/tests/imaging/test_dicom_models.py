@@ -294,11 +294,14 @@ class TestDICOMStudyModel:
         from hmis.apps.imaging.models import DICOMStudy
 
         meta = DICOMStudy._meta
+        study_uid_field = meta.get_field("study_instance_uid")
         index_fields = [tuple(idx.fields) for idx in meta.indexes]
-        # Should have indexes on frequently queried fields
-        assert ("study_instance_uid",) in index_fields or any(
-            "study_instance_uid" in f for idx in meta.indexes for f in idx.fields
-        )
+
+        # Study UID is indexed by the unique constraint.
+        assert study_uid_field.unique is True
+        # Operational list filters keep explicit model indexes.
+        assert ("modality",) in index_fields
+        assert ("study_date",) in index_fields
 
     def test_study_related_name_on_patient(self, sample_dicom_study, sample_patient):
         """Should be accessible via patient.dicom_studies."""

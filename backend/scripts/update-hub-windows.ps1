@@ -86,15 +86,11 @@ function Build-HubServiceEnvironment {
         "HUB_SECRETS_FILE=$(Get-HubEnvValue 'HUB_SECRETS_FILE' (Join-Path $InstallDir 'secrets\hub-secrets.dpapi.json'))",
         "TIBABOT_ENABLED=$(Get-HubEnvValue 'TIBABOT_ENABLED' 'true')",
         "TIBABOT_API_URL=$(Get-HubEnvValue 'TIBABOT_API_URL')",
-        "TIBABOT_API_KEY=$(Get-HubEnvValue 'TIBABOT_API_KEY')",
         "TIBABOT_TIMEOUT=$(Get-HubEnvValue 'TIBABOT_TIMEOUT' '30')",
-        "TIBABOT_JWT_PRIVATE_KEY=$(Get-HubEnvValue 'TIBABOT_JWT_PRIVATE_KEY')",
-        "TIBABOT_JWT_SECRET=$(Get-HubEnvValue 'TIBABOT_JWT_SECRET')",
         "TIBABOT_JWT_ISSUER=$(Get-HubEnvValue 'TIBABOT_JWT_ISSUER' 'vitora-hmis')",
         "TIBABOT_JWT_AUDIENCE=$(Get-HubEnvValue 'TIBABOT_JWT_AUDIENCE' 'tibabot')",
         "TIBABOT_JWT_EXPIRY_SECONDS=$(Get-HubEnvValue 'TIBABOT_JWT_EXPIRY_SECONDS' '300')",
         "TIBABOT_JWKS_URL=$(Get-HubEnvValue 'TIBABOT_JWKS_URL')",
-        "TIBABOT_ADMIN_KEY=$(Get-HubEnvValue 'TIBABOT_ADMIN_KEY')",
         "HUB_CLOUD_AUTH_ENABLED=$(Get-HubEnvValue 'HUB_CLOUD_AUTH_ENABLED' 'true')",
         "HUB_CLOUD_AUTH_URL=$(Get-HubEnvValue 'HUB_CLOUD_AUTH_URL')"
     ) -join "`n"
@@ -177,6 +173,31 @@ function Write-DpapiSecretsBundle {
     Set-Content -Path $Path -Value $payload
 }
 
+function Load-DpapiSecretsBundle {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    if (-not (Test-Path $Path)) {
+        throw "Protected hub secret bundle is missing: $Path"
+    }
+    if (-not (Initialize-DpapiType)) {
+        throw "DPAPI is required to read hub secrets; refusing plaintext fallback."
+    }
+
+    $payload = Get-Content -Path $Path -Raw | ConvertFrom-Json
+    if (-not $payload.ciphertext_b64) {
+        throw "Protected hub secret bundle has no DPAPI ciphertext."
+    }
+    $plainBytes = $script:DpapiProtectedDataType::Unprotect(
+        [Convert]::FromBase64String([string]$payload.ciphertext_b64),
+        $null,
+        $script:DpapiLocalMachineScope
+    )
+    $secrets = ([Text.Encoding]::UTF8.GetString($plainBytes) | ConvertFrom-Json).secrets
+    $secrets.PSObject.Properties | ForEach-Object {
+        [Environment]::SetEnvironmentVariable($_.Name, [string]$_.Value, "Process")
+    }
+}
+
 function Invoke-HubDeviceReenrollment {
     param(
         [Parameter(Mandatory=$true)][string]$PythonExe,
@@ -208,6 +229,12 @@ function Invoke-HubDeviceReenrollment {
         [Environment]::SetEnvironmentVariable("ENCRYPTION_KEY", [string]$decrypted.encryption_key, "Process")
         [Environment]::SetEnvironmentVariable("PII_HMAC_KEY", [string]$decrypted.pii_hmac_key, "Process")
         [Environment]::SetEnvironmentVariable("LICENSE_TOKEN", [string]$response.license_token, "Process")
+        [Environment]::SetEnvironmentVariable("SHA_CLIENT_ID", [string]$decrypted.sha_client_id, "Process")
+        [Environment]::SetEnvironmentVariable("SHA_CLIENT_SECRET", [string]$decrypted.sha_client_secret, "Process")
+        [Environment]::SetEnvironmentVariable("SHA_ENABLED", [string]$decrypted.sha_enabled, "Process")
+        [Environment]::SetEnvironmentVariable("SHA_AUTH_MODE", [string]$decrypted.sha_auth_mode, "Process")
+        [Environment]::SetEnvironmentVariable("SHA_AUTH_BASE_URL", [string]$decrypted.sha_auth_base_url, "Process")
+        [Environment]::SetEnvironmentVariable("ILM_BASE_URL", [string]$decrypted.ilm_base_url, "Process")
         $script:PiiKeyPackageJson = $decrypted.organization_pii_key_package | ConvertTo-Json -Compress
         $script:ReenrollmentResponseFile = $responseFile
         return $response.license_token
@@ -700,9 +727,21 @@ $hubSecretsFile = if ($env:HUB_SECRETS_FILE) {
     Join-Path $InstallDir "secrets\hub-secrets.dpapi.json"
 }
 
+Load-DpapiSecretsBundle -Path $hubSecretsFile
+
 $replacementLicenseToken = Invoke-HubDeviceReenrollment -PythonExe $pythonExe -HubSecretsFile $hubSecretsFile
-$envFileContent = Get-Content $envFile
-$envFileContent = $envFileContent -replace '^LICENSE_TOKEN=.*$', "LICENSE_TOKEN=$replacementLicenseToken"
+$envFileContent = Get-Content $envFile | Where-Object {
+    $_ -notmatch '^(DJANGO_SECRET_KEY|ENCRYPTION_KEY|PII_HMAC_KEY|LICENSE_TOKEN)='
+}
+foreach ($entry in @{
+    SHA_ENABLED = $env:SHA_ENABLED
+    SHA_AUTH_MODE = $env:SHA_AUTH_MODE
+    SHA_AUTH_BASE_URL = $env:SHA_AUTH_BASE_URL
+    ILM_BASE_URL = $env:ILM_BASE_URL
+}.GetEnumerator()) {
+    $envFileContent = $envFileContent | Where-Object { $_ -notmatch "^$($entry.Key)=" }
+    $envFileContent += "$($entry.Key)=$($entry.Value)"
+}
 Set-Content -Path $envFile -Value $envFileContent
 
 $dpapiSecrets = @{
@@ -714,6 +753,8 @@ $dpapiSecrets = @{
     TIBABOT_JWT_PRIVATE_KEY = (Get-HubEnvValue "TIBABOT_JWT_PRIVATE_KEY")
     TIBABOT_JWT_SECRET = (Get-HubEnvValue "TIBABOT_JWT_SECRET")
     TIBABOT_ADMIN_KEY = (Get-HubEnvValue "TIBABOT_ADMIN_KEY")
+    SHA_CLIENT_ID = (Get-HubEnvValue "SHA_CLIENT_ID")
+    SHA_CLIENT_SECRET = (Get-HubEnvValue "SHA_CLIENT_SECRET")
 }
 Write-DpapiSecretsBundle -Secrets $dpapiSecrets -Path $hubSecretsFile
 Write-Info "Refreshed DPAPI secret bundle."
@@ -906,6 +947,20 @@ if (Test-Path $envFile) {
     }
 } else {
     Write-Warning "No .env file at $envFile -- hub may not start correctly."
+}
+
+$secretsFile = if ($env:HUB_SECRETS_FILE) { $env:HUB_SECRETS_FILE } else { Join-Path $InstallDir "secrets\hub-secrets.dpapi.json" }
+if (-not (Test-Path $secretsFile)) { throw "Protected hub secret bundle is missing: $secretsFile" }
+Add-Type -AssemblyName "System.Security"
+$payload = Get-Content -Path $secretsFile -Raw | ConvertFrom-Json
+if (-not $payload.ciphertext_b64) { throw "Protected hub secret bundle has no DPAPI ciphertext." }
+$plainBytes = [System.Security.Cryptography.ProtectedData]::Unprotect(
+    [Convert]::FromBase64String([string]$payload.ciphertext_b64),
+    $null,
+    [System.Security.Cryptography.DataProtectionScope]::LocalMachine
+)
+([Text.Encoding]::UTF8.GetString($plainBytes) | ConvertFrom-Json).secrets.PSObject.Properties | ForEach-Object {
+    [Environment]::SetEnvironmentVariable($_.Name, [string]$_.Value, 'Process')
 }
 
 # Splat $CommandArgs directly. Assigning to an intermediate variable would

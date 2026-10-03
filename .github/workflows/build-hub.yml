@@ -144,6 +144,7 @@ jobs:
           cp backend/scripts/install-hub-windows.ps1 "dist/${ARTIFACT}/scripts/"
           cp backend/scripts/update-hub-windows.ps1 "dist/${ARTIFACT}/scripts/"
           cp backend/scripts/start-hub-windows.ps1 "dist/${ARTIFACT}/scripts/"
+          cp backend/scripts/start-hub-linux.sh "dist/${ARTIFACT}/scripts/"
           cp backend/scripts/pi-setup.sh "dist/${ARTIFACT}/scripts/"
 
           mkdir -p "dist/${ARTIFACT}/keys"
@@ -180,6 +181,7 @@ jobs:
           Copy-Item "backend\scripts\install-hub-windows.ps1" "dist\${ARTIFACT}\scripts\"
           Copy-Item "backend\scripts\update-hub-windows.ps1" "dist\${ARTIFACT}\scripts\"
           Copy-Item "backend\scripts\start-hub-windows.ps1" "dist\${ARTIFACT}\scripts\"
+          Copy-Item "backend\scripts\start-hub-linux.sh" "dist\${ARTIFACT}\scripts\"
           Copy-Item "backend\scripts\install-hub.sh" "dist\${ARTIFACT}\scripts\"
           Copy-Item "backend\scripts\update-hub.sh" "dist\${ARTIFACT}\scripts\"
           Copy-Item "backend\scripts\pi-setup.sh" "dist\${ARTIFACT}\scripts\"

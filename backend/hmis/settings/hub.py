@@ -89,35 +89,16 @@ DATABASES = {
 
 def _get_or_generate_secret_key() -> str:
     """
-    Return SECRET_KEY from env, or generate-and-persist one in the hub data
-    directory on first run.  Never falls back to a hardcoded string.
+    Return SECRET_KEY supplied by the protected hub secret store.
+
+    Hub launchers inject this only into the service process after decrypting
+    the OS-protected credential. Persisting a fallback in the data directory
+    would silently recreate plaintext secret storage after a misconfiguration.
     """
     key = os.getenv("DJANGO_SECRET_KEY", "")
     if key:
         return key
-
-    import secrets as _secrets  # stdlib — always available
-
-    key_file = os.path.join(
-        HUB_DATA_DIR,
-        ".hub_secret_key",
-    )
-    if os.path.exists(key_file):
-        with open(key_file) as f:
-            stored = f.read().strip()
-        if stored:
-            return stored
-
-    # Generate a new 50-char URL-safe secret key (Django convention)
-    new_key = _secrets.token_urlsafe(50)
-    # Write with owner-read-only permissions (0600)
-    old_umask = os.umask(0o177)
-    try:
-        with open(key_file, "w") as f:
-            f.write(new_key)
-    finally:
-        os.umask(old_umask)
-    return new_key
+    raise RuntimeError("DJANGO_SECRET_KEY is missing from the protected hub secret store.")
 
 
 SECRET_KEY = _get_or_generate_secret_key()

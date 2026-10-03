@@ -169,11 +169,18 @@ fi
 # Run migrations
 info "Running database migrations..."
 source "$APP_DIR/.env" 2>/dev/null || true
-HUB_SECRETS_FILE="${HUB_SECRETS_FILE:-/var/lib/vitora/secrets/hub-secrets.env}"
+HUB_SECRETS_FILE="${HUB_SECRETS_FILE:-/var/lib/vitora/secrets/hub-secrets.cred}"
+LEGACY_HUB_SECRETS_FILE="/var/lib/vitora/secrets/hub-secrets.env"
 if [[ -f "$HUB_SECRETS_FILE" ]]; then
     set -a
     # shellcheck disable=SC1090
-    source "$HUB_SECRETS_FILE"
+    source <(systemd-creds decrypt "$HUB_SECRETS_FILE" -)
+    set +a
+elif [[ -f "$LEGACY_HUB_SECRETS_FILE" ]]; then
+    # One-time migration path for hubs released before protected credentials.
+    set -a
+    # shellcheck disable=SC1090
+    source "$LEGACY_HUB_SECRETS_FILE"
     set +a
 fi
 
@@ -228,7 +235,8 @@ PY
 )
 curl -fsS -o "$REENROLL_RESPONSE" -X POST "${CLOUD_API_BASE_URL%/}/api/licensing/re-enroll/" \
     -H "Content-Type: application/json" -H "X-License-Token: ${LICENSE_TOKEN}" -d "$REENROLL_PAYLOAD"
-PII_KEY_PACKAGE_B64=$("$VENV_DIR/bin/python" - "$REENROLL_RESPONSE" "$TEMP_DEVICE_PRIVATE_KEY" "$HUB_SECRETS_FILE" "$HUB_ID" "$HUB_ORGANIZATION_ID" "$HUB_FACILITY_ID" <<'PY'
+HUB_SECRETS_PLAINTEXT=$(mktemp "${DEVICE_KEY_DIR}/hub-secrets.XXXXXX.env")
+PII_KEY_PACKAGE_B64=$("$VENV_DIR/bin/python" - "$REENROLL_RESPONSE" "$TEMP_DEVICE_PRIVATE_KEY" "$HUB_SECRETS_PLAINTEXT" "$HUB_ID" "$HUB_ORGANIZATION_ID" "$HUB_FACILITY_ID" <<'PY'
 import base64
 import json
 import os
@@ -250,15 +258,44 @@ print(base64.b64encode(json.dumps(package, separators=(",", ":")).encode("utf-8"
 PY
 )
 mv -f "$TEMP_DEVICE_PRIVATE_KEY" "$DEVICE_PRIVATE_KEY"
-chmod 600 "$DEVICE_PRIVATE_KEY" "$HUB_SECRETS_FILE"
-chown vitora:vitora "$DEVICE_PRIVATE_KEY" "$HUB_SECRETS_FILE"
+chmod 600 "$DEVICE_PRIVATE_KEY" "$HUB_SECRETS_PLAINTEXT"
 LICENSE_TOKEN=$("$VENV_DIR/bin/python" - "$REENROLL_RESPONSE" <<'PY'
 import json
 import sys
 print(json.load(open(sys.argv[1], encoding="utf-8"))["license_token"])
 PY
 )
-sed -i "s|^LICENSE_TOKEN=.*|LICENSE_TOKEN=${LICENSE_TOKEN}|" "$APP_DIR/.env"
+printf 'LICENSE_TOKEN=%s\n' "$LICENSE_TOKEN" >> "$HUB_SECRETS_PLAINTEXT"
+printf 'DJANGO_SECRET_KEY=%s\n' "$DJANGO_SECRET_KEY" >> "$HUB_SECRETS_PLAINTEXT"
+if ! command -v systemd-creds &>/dev/null; then
+    error "systemd-creds is required for protected hub secret storage."
+    exit 1
+fi
+systemd-creds encrypt --with-key=host "$HUB_SECRETS_PLAINTEXT" "$HUB_SECRETS_FILE"
+rm -f "$HUB_SECRETS_PLAINTEXT"
+rm -f "$LEGACY_HUB_SECRETS_FILE"
+chmod 600 "$DEVICE_PRIVATE_KEY" "$HUB_SECRETS_FILE"
+chown vitora:vitora "$DEVICE_PRIVATE_KEY" "$HUB_SECRETS_FILE"
+sed -i '/^\(DJANGO_SECRET_KEY\|ENCRYPTION_KEY\|PII_HMAC_KEY\|LICENSE_TOKEN\)=/d' "$APP_DIR/.env"
+chmod 750 "$APP_DIR/scripts/start-hub-linux.sh"
+chown root:vitora "$APP_DIR/scripts/start-hub-linux.sh"
+HUB_PORT="${HUB_PORT:-9088}"
+mkdir -p "/etc/systemd/system/${SERVICE_NAME}.service.d" "/etc/systemd/system/${SYNC_SERVICE_NAME}.service.d"
+cat > "/etc/systemd/system/${SERVICE_NAME}.service.d/credentials.conf" <<EOF
+[Service]
+EnvironmentFile=${APP_DIR}/.env
+LoadCredentialEncrypted=hub-secrets:${HUB_SECRETS_FILE}
+ExecStart=
+ExecStart=${APP_DIR}/scripts/start-hub-linux.sh api
+EOF
+cat > "/etc/systemd/system/${SYNC_SERVICE_NAME}.service.d/credentials.conf" <<EOF
+[Service]
+EnvironmentFile=${APP_DIR}/.env
+LoadCredentialEncrypted=hub-secrets:${HUB_SECRETS_FILE}
+ExecStart=
+ExecStart=${APP_DIR}/scripts/start-hub-linux.sh sync
+EOF
+systemctl daemon-reload
 printf '%s' "$PII_KEY_PACKAGE_B64" | base64 --decode | "$VENV_DIR/bin/python" manage.py seed_from_activation --response-file="$REENROLL_RESPONSE" --skip-locations --pii-key-package-stdin
 rm -f "$REENROLL_RESPONSE"
 trap - EXIT

@@ -182,16 +182,10 @@ function Load-DpapiSecrets {
         $plainJson = ""
 
         $ciphertextB64 = Get-JsonPropertyValue -Object $payload -Name "ciphertext_b64"
-        $payloadSecrets = Get-JsonPropertyValue -Object $payload -Name "secrets"
-
         if ($null -ne $payload -and $null -ne $ciphertextB64 -and "$ciphertextB64" -ne "") {
             $plainJson = ConvertFrom-DpapiCiphertext -CiphertextB64 $ciphertextB64
-        } elseif ($null -ne $payload -and $null -ne $payloadSecrets) {
-            # Backward-compatible plain JSON fallback (not recommended)
-            $plainJson = $raw
         } else {
-            # Backward-compatible raw base64 payload fallback
-            $plainJson = ConvertFrom-DpapiCiphertext -CiphertextB64 $raw
+            throw "DPAPI secret bundle has no protected ciphertext."
         }
 
         $secretDoc = $plainJson | ConvertFrom-Json

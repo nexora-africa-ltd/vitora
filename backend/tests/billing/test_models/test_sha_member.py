@@ -573,15 +573,19 @@ class TestSHAMemberModelMeta:
         assert SHAMember._meta.ordering == ["-created_at"]
 
     def test_sha_member_indexes_defined(self):
-        """Test that database indexes are defined."""
+        """Test that key lookup fields stay indexed via canonical definitions."""
         from hmis.apps.billing.models import SHAMember
 
-        index_fields = [str(idx.fields) for idx in SHAMember._meta.indexes]
+        index_fields = [tuple(idx.fields) for idx in SHAMember._meta.indexes]
+        sha_number_field = SHAMember._meta.get_field("sha_number")
+        national_id_hmac_field = SHAMember._meta.get_field("national_id_hmac")
 
-        # Check expected indexes exist (as strings or tuples)
-        assert any("sha_number" in str(idx) for idx in index_fields)
-        assert any("national_id" in str(idx) for idx in index_fields)
-        assert any("status" in str(idx) for idx in index_fields)
+        # SHA member number uses the unique constraint index.
+        assert sha_number_field.unique is True
+        # National ID lookups use the field-level db_index.
+        assert national_id_hmac_field.db_index is True
+        # State filters keep explicit model indexes.
+        assert ("status",) in index_fields
 
 
 @pytest.mark.django_db

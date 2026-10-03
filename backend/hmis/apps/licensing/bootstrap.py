@@ -144,6 +144,14 @@ def build_activation_bootstrap_payload(
                 "organization_pii_key_package": OrganizationPIIEncryptionService().export_active_key_package(
                     organization
                 ),
+                # Shared DHA ILM tenant credentials are provisioned to each
+                # authorized hub only through this device-encrypted envelope.
+                "sha_enabled": "true" if getattr(settings, "SHA_ENABLED", False) else "false",
+                "sha_auth_mode": getattr(settings, "SHA_AUTH_MODE", "legacy"),
+                "sha_auth_base_url": getattr(settings, "SHA_AUTH_BASE_URL", ""),
+                "ilm_base_url": getattr(settings, "ILM_BASE_URL", ""),
+                "sha_client_id": getattr(settings, "SHA_CLIENT_ID", ""),
+                "sha_client_secret": getattr(settings, "SHA_CLIENT_SECRET", ""),
             },
             installation.device_public_key,
             installation_id=str(installation.installation_id),

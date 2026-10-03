@@ -3,7 +3,7 @@
  * Staff invitations, password reset, credential flows
  */
 
-import { apiClient } from './client';
+import { apiClient, getApiBaseUrl, initDesktopApiUrl } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
 import { z } from 'zod';
 import {
@@ -263,7 +263,8 @@ export const orgSignupApi = {
 
 export const setupApi = {
   check: async (): Promise<SetupCheckResponse> => {
-    const response = await fetch(`${API_BASE_URL}/api/core/setup/check/`, {
+    await initDesktopApiUrl();
+    const response = await fetch(`${getApiBaseUrl()}/api/core/setup/check/`, {
       headers: { 'Content-Type': 'application/json' },
     });
     if (!response.ok) throw new Error('Failed to check setup status');
@@ -272,7 +273,8 @@ export const setupApi = {
   },
 
   initialize: async (data: SetupInitializeData): Promise<SetupInitializeResponse> => {
-    const response = await fetch(`${API_BASE_URL}/api/core/setup/initialize/`, {
+    await initDesktopApiUrl();
+    const response = await fetch(`${getApiBaseUrl()}/api/core/setup/initialize/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
