@@ -135,6 +135,27 @@ function Register-HubAutoUpdateTask {
     Register-ScheduledTask -TaskName $TaskName -Action $taskAction -Trigger $taskTrigger -Principal $taskPrincipal -Settings $taskSettings -Force | Out-Null
 }
 
+function Register-HubBackupTasks {
+    param(
+        [Parameter(Mandatory=$true)][string]$LauncherPath,
+        [Parameter(Mandatory=$true)][string]$LogDirectory
+    )
+
+    $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -RunLevel Highest -LogonType ServiceAccount
+    $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew
+    $dailyAction = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$LauncherPath`" -Mode backup >> `"$LogDirectory\hub-backup.log`" 2>&1"
+    $dailyTrigger = New-ScheduledTaskTrigger -Daily -At "1:00AM"
+    Register-ScheduledTask -TaskName "VitoraHubDailyBackup" -Action $dailyAction -Trigger $dailyTrigger -Principal $principal -Settings $settings -Force | Out-Null
+
+    $uploadAction = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$LauncherPath`" -Mode backup-upload >> `"$LogDirectory\hub-backup-upload.log`" 2>&1"
+    $uploadTrigger = New-ScheduledTaskTrigger -Once -At "12:00AM" -RepetitionInterval (New-TimeSpan -Minutes 30) -RepetitionDuration (New-TimeSpan -Days 1)
+    Register-ScheduledTask -TaskName "VitoraHubBackupUpload" -Action $uploadAction -Trigger $uploadTrigger -Principal $principal -Settings $settings -Force | Out-Null
+
+    $verifyAction = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$LauncherPath`" -Mode backup-verify >> `"$LogDirectory\hub-backup-verify.log`" 2>&1"
+    $verifyTrigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At "3:00AM"
+    Register-ScheduledTask -TaskName "VitoraHubWeeklyBackupVerify" -Action $verifyAction -Trigger $verifyTrigger -Principal $principal -Settings $settings -Force | Out-Null
+}
+
 function Write-DpapiSecretsBundle {
     param(
         [Parameter(Mandatory = $true)][hashtable]$Secrets,
@@ -235,6 +256,16 @@ function Invoke-HubDeviceReenrollment {
         [Environment]::SetEnvironmentVariable("SHA_AUTH_MODE", [string]$decrypted.sha_auth_mode, "Process")
         [Environment]::SetEnvironmentVariable("SHA_AUTH_BASE_URL", [string]$decrypted.sha_auth_base_url, "Process")
         [Environment]::SetEnvironmentVariable("ILM_BASE_URL", [string]$decrypted.ilm_base_url, "Process")
+        # Re-enrollment replaces cloud-issued secrets but never silently rotates
+        # the local SQLCipher key. Older bundles receive a fresh key once.
+        $databaseEncryptionKey = Get-HubEnvValue "HUB_DATABASE_ENCRYPTION_KEY"
+        if (-not $databaseEncryptionKey) {
+            $databaseEncryptionKey = & $PythonExe -c "import secrets; print(secrets.token_urlsafe(64))"
+        }
+        # Do not persist the required flag until an existing plaintext database
+        # has been converted and the local SQLCipher key has been verified.
+        [Environment]::SetEnvironmentVariable("HUB_DATABASE_ENCRYPTION_REQUIRED", "false", "Process")
+        [Environment]::SetEnvironmentVariable("HUB_DATABASE_ENCRYPTION_KEY", $databaseEncryptionKey, "Process")
         $script:PiiKeyPackageJson = $decrypted.organization_pii_key_package | ConvertTo-Json -Compress
         $script:ReenrollmentResponseFile = $responseFile
         return $response.license_token
@@ -730,6 +761,36 @@ $hubSecretsFile = if ($env:HUB_SECRETS_FILE) {
 Load-DpapiSecretsBundle -Path $hubSecretsFile
 
 $replacementLicenseToken = Invoke-HubDeviceReenrollment -PythonExe $pythonExe -HubSecretsFile $hubSecretsFile
+$databasePath = if ($env:HUB_DB_PATH) { $env:HUB_DB_PATH } else { "$InstallDir\data\hub.sqlite3" }
+if (Test-Path $databasePath) {
+    # Existing hubs can still have a plaintext database. The API and sync
+    # services were stopped before this point, so conversion is safe.
+    Write-Info "Verifying hub database encryption..."
+    $env:HUB_DATABASE_ENCRYPTION_REQUIRED = "false"
+    $keyStatusOutput = & $pythonExe "$InstallDir\manage.py" hub_database_key_status --database $databasePath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to check the hub database encryption key."
+    }
+    $keyStatus = $keyStatusOutput | ConvertFrom-Json
+    if ($keyStatus.status -ne "valid") {
+        Write-Info "Converting plaintext hub database to SQLCipher..."
+        & $pythonExe "$InstallDir\manage.py" hub_encrypt_database --database $databasePath
+        if ($LASTEXITCODE -ne 0) {
+            throw "Hub database encryption conversion failed."
+        }
+        $keyStatusOutput = & $pythonExe "$InstallDir\manage.py" hub_database_key_status --database $databasePath
+        if ($LASTEXITCODE -ne 0) {
+            throw "Unable to verify the converted hub database encryption key."
+        }
+        $keyStatus = $keyStatusOutput | ConvertFrom-Json
+        if ($keyStatus.status -ne "valid") {
+            throw "SQLCipher key verification failed after database conversion."
+        }
+    }
+} else {
+    Write-Info "No existing hub database found; a new encrypted database will be created by migrations."
+}
+$env:HUB_DATABASE_ENCRYPTION_REQUIRED = "true"
 $envFileContent = Get-Content $envFile | Where-Object {
     $_ -notmatch '^(DJANGO_SECRET_KEY|ENCRYPTION_KEY|PII_HMAC_KEY|LICENSE_TOKEN)='
 }
@@ -755,6 +816,8 @@ $dpapiSecrets = @{
     TIBABOT_ADMIN_KEY = (Get-HubEnvValue "TIBABOT_ADMIN_KEY")
     SHA_CLIENT_ID = (Get-HubEnvValue "SHA_CLIENT_ID")
     SHA_CLIENT_SECRET = (Get-HubEnvValue "SHA_CLIENT_SECRET")
+    HUB_DATABASE_ENCRYPTION_REQUIRED = (Get-HubEnvValue "HUB_DATABASE_ENCRYPTION_REQUIRED" "true")
+    HUB_DATABASE_ENCRYPTION_KEY = (Get-HubEnvValue "HUB_DATABASE_ENCRYPTION_KEY")
 }
 Write-DpapiSecretsBundle -Secrets $dpapiSecrets -Path $hubSecretsFile
 Write-Info "Refreshed DPAPI secret bundle."
@@ -769,7 +832,7 @@ Push-Location $InstallDir
 # startup cost (3-5s Python + 5-15s graph build) dominates per-app loops.
 # Output is streamed live with --verbosity 2 so the user can see "Applying
 # foo.0001_initial... OK" rather than staring at a blank prompt for 20 min.
-$dbPath = if ($env:HUB_DB_PATH) { $env:HUB_DB_PATH } else { "$InstallDir\data\hub.sqlite3" }
+$dbPath = $databasePath
 $appsToMigrate = @()
 if (Test-Path $dbPath) {
     $prevEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
@@ -1056,6 +1119,18 @@ try {
 } catch {
     Write-Info "Unable to refresh scheduled task '$AutoUpdateTaskName': $_"
     Log "Scheduled task refresh failed"
+}
+
+# Re-register with -Force on every update so task actions point at the refreshed
+# launcher while retaining DPAPI-only secret loading.
+Write-Step "8d" "Refreshing encrypted hub backup tasks..."
+try {
+    Register-HubBackupTasks -LauncherPath $launcherPath -LogDirectory $LogDir
+    Write-Ok "Scheduled backup tasks refreshed."
+    Log "Backup tasks refreshed"
+} catch {
+    Write-Info "Unable to refresh scheduled backup tasks: $_"
+    Log "Backup task refresh failed"
 }
 
 # --- Step 9: Start service ---

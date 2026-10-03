@@ -27,6 +27,7 @@ from cryptography.fernet import Fernet, InvalidToken
 from django.conf import settings
 from django.db import connections
 
+from hmis.apps.core.hub_database import HubDatabaseError, snapshot_encrypted_database
 from hmis.apps.core.hub_sync import SYNC_STATE_FILENAME
 
 BUNDLE_SUFFIX = ".hubbackup"
@@ -72,6 +73,13 @@ def _snapshot_database(database_path: Path) -> bytes:
     """Return a consistent snapshot using SQLite's WAL-aware backup API."""
     if not database_path.is_file():
         raise BackupError(f"Hub database does not exist: {database_path}")
+    if getattr(settings, "HUB_DATABASE_ENCRYPTION_REQUIRED", False):
+        try:
+            return snapshot_encrypted_database(
+                database_path, str(getattr(settings, "HUB_DATABASE_ENCRYPTION_KEY", ""))
+            )
+        except HubDatabaseError as exc:
+            raise BackupError(str(exc)) from exc
     with tempfile.NamedTemporaryFile(suffix=".sqlite3", delete=False) as temporary:
         snapshot_path = Path(temporary.name)
     try:
@@ -258,15 +266,32 @@ def _upload_bundle(bundle_path: Path, target_kind: str, target: str) -> None:
     token = str(getattr(settings, "HUB_BACKUP_S3_TOKEN", "") or "").strip()
     if not token:
         raise BackupError("HUB_BACKUP_S3_TOKEN is required for S3-compatible uploads.")
+    expires_at = str(getattr(settings, "HUB_BACKUP_S3_TOKEN_EXPIRES_AT", "") or "").strip()
+    if expires_at:
+        try:
+            expiry = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise BackupError("HUB_BACKUP_S3_TOKEN_EXPIRES_AT is invalid.") from exc
+        if expiry.tzinfo is None or expiry <= datetime.now(UTC):
+            raise BackupError(
+                "HUB_BACKUP_S3_TOKEN has expired; retaining queued backups for renewal."
+            )
     url = urllib.parse.urljoin(f"{target.rstrip('/')}/", urllib.parse.quote(bundle_path.name))
     parsed_url = urllib.parse.urlparse(url)
     if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
         raise BackupError("HUB_BACKUP_S3_URL must be an absolute HTTP(S) endpoint.")
+    headers = {"Content-Type": "application/octet-stream"}
+    if "sig=" in token:
+        separator = "&" if parsed_url.query else "?"
+        url = f"{url}{separator}{token.lstrip('?')}"
+        headers["x-ms-blob-type"] = "BlockBlob"
+    else:
+        headers["Authorization"] = f"Bearer {token}"
     request = urllib.request.Request(  # noqa: S310 - validated operator-configured endpoint
         url,
         data=bundle_path.read_bytes(),
         method="PUT",
-        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/octet-stream"},
+        headers=headers,
     )
     try:
         with urllib.request.urlopen(request, timeout=60) as response:  # noqa: S310  # nosec B310 - validated HTTPS operator endpoint

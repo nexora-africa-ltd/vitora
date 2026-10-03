@@ -26,7 +26,7 @@
 #>
 
 param(
-    [ValidateSet("api", "sync")]
+    [ValidateSet("api", "sync", "backup", "backup-upload", "backup-verify")]
     [string]$Mode = "api"
 )
 
@@ -84,7 +84,11 @@ function Set-ProcessEnv {
     )
 
     [Environment]::SetEnvironmentVariable($Name, $Value, "Process")
-    if (Is-SensitiveName -Name $Name) {
+    if ($Name -eq "HUB_DATABASE_ENCRYPTION_KEY") {
+        # SQLCipher key material must never appear in service startup logs,
+        # including a masked prefix/suffix.
+        Write-StartupLog -Level "INFO" -Message "Loaded $Name from ${Source}"
+    } elseif (Is-SensitiveName -Name $Name) {
         Write-StartupLog -Level "INFO" -Message "Loaded $Name from ${Source}: $(Mask-SecretValue -Value $Value)"
     } else {
         Write-StartupLog -Level "INFO" -Message "Loaded $Name from ${Source}: $Value"
@@ -228,13 +232,29 @@ try {
         Set-ProcessEnv -Name "DJANGO_SETTINGS_MODULE" -Value "hmis.settings.hub" -Source "default"
     }
 
-    if ($Mode -eq "sync") {
+    if ($Mode -in @("sync", "backup", "backup-upload", "backup-verify")) {
         $pythonExe = Join-Path $InstallDir "venv\Scripts\python.exe"
         if (-not (Test-Path $pythonExe)) {
             throw "Python executable not found at $pythonExe"
         }
-        Write-StartupLog -Level "INFO" -Message "Starting dedicated hub sync watcher"
-        & $pythonExe manage.py hub_sync --watch
+        switch ($Mode) {
+            "sync" {
+                Write-StartupLog -Level "INFO" -Message "Starting dedicated hub sync watcher"
+                & $pythonExe manage.py hub_sync --watch
+            }
+            "backup" {
+                Write-StartupLog -Level "INFO" -Message "Creating encrypted hub backup"
+                & $pythonExe manage.py hub_backup
+            }
+            "backup-upload" {
+                Write-StartupLog -Level "INFO" -Message "Uploading queued hub backups"
+                & $pythonExe manage.py hub_backup_upload
+            }
+            "backup-verify" {
+                Write-StartupLog -Level "INFO" -Message "Creating and verifying encrypted hub backup"
+                & $pythonExe manage.py hub_backup --verify
+            }
+        }
     } else {
         $port = if ($env:HUB_PORT) { $env:HUB_PORT } else { "9088" }
         $daphneExe = Join-Path $InstallDir "venv\Scripts\daphne.exe"

@@ -7,7 +7,12 @@ configuration without writing a snapshot, or ``--upload`` to process its queue.
 
 from django.core.management.base import BaseCommand, CommandError
 
-from hmis.apps.core.hub_backup import BackupError, create_backup, upload_pending_backups
+from hmis.apps.core.hub_backup import (
+    BackupError,
+    create_backup,
+    upload_pending_backups,
+    verify_backup,
+)
 
 
 class Command(BaseCommand):
@@ -22,6 +27,11 @@ class Command(BaseCommand):
         parser.add_argument(
             "--upload", action="store_true", help="Upload pending bundles after backup creation."
         )
+        parser.add_argument(
+            "--verify",
+            action="store_true",
+            help="Verify the newly created encrypted bundle before exiting.",
+        )
 
     def handle(self, *args, **options):
         try:
@@ -35,6 +45,9 @@ class Command(BaseCommand):
                 return
             bundle = create_backup()
             self.stdout.write(self.style.SUCCESS(f"Created encrypted hub backup: {bundle}"))
+            if options["verify"]:
+                verify_backup(bundle)
+                self.stdout.write(self.style.SUCCESS(f"Verified encrypted hub backup: {bundle}"))
             if options["upload"]:
                 result = upload_pending_backups()
                 self.stdout.write(self.style.SUCCESS(f"Upload queue: {result}"))

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-# Hub systemd launcher: loads non-secret config plus a systemd decrypted credential, then starts API or sync mode.
-# Usage: start-hub-linux.sh api|sync. Inputs: /opt/vitora/.env and $CREDENTIALS_DIRECTORY/hub-secrets.
+# Hub systemd launcher: loads non-secret config plus a systemd decrypted credential, then starts hub jobs.
+# Usage: start-hub-linux.sh api|sync|backup|backup-upload|backup-verify. Inputs: /opt/vitora/.env and $CREDENTIALS_DIRECTORY/hub-secrets.
 
 set -euo pipefail
 
@@ -31,5 +31,8 @@ cd "$APP_DIR"
 case "$MODE" in
     api) exec "$APP_DIR/venv/bin/daphne" -b 0.0.0.0 -p "${HUB_PORT:-9088}" hmis.asgi:application ;;
     sync) exec "$APP_DIR/venv/bin/python" manage.py hub_sync --watch ;;
-    *) echo "Usage: $0 api|sync" >&2; exit 2 ;;
+    backup) exec "$APP_DIR/venv/bin/python" manage.py hub_backup ;;
+    backup-upload) exec "$APP_DIR/venv/bin/python" manage.py hub_backup_upload ;;
+    backup-verify) exec "$APP_DIR/venv/bin/python" manage.py hub_backup --verify ;;
+    *) echo "Usage: $0 api|sync|backup|backup-upload|backup-verify" >&2; exit 2 ;;
 esac

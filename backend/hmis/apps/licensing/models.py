@@ -8,6 +8,9 @@ License tokens (JWT, RS256-signed) are issued on activation and refreshed
 on periodic check-ins.
 """
 
+from urllib.parse import quote
+
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from hmis.apps.core.models import TimeStampedModel
@@ -343,6 +346,121 @@ class Installation(TimeStampedModel):
 
         self.tamper_resolved_at = timezone.now()
         self.save(update_fields=["tamper_resolved_at", "updated_at"])
+
+
+class HubBackupDestination(TimeStampedModel):
+    """Tenant-owned in-country destination policy for encrypted hub backups."""
+
+    class TargetType(models.TextChoices):
+        S3_COMPATIBLE = "S3_COMPATIBLE", "S3-compatible object storage"
+
+    organization = models.ForeignKey(
+        "core.Organization", on_delete=models.CASCADE, related_name="hub_backup_destinations"
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="hub_backup_destinations",
+        null=True,
+        blank=True,
+        help_text="Optional facility override; blank applies across the organization.",
+    )
+    enabled = models.BooleanField(default=False)
+    target_type = models.CharField(max_length=32, choices=TargetType.choices)
+    endpoint_url = models.URLField(max_length=500)
+    object_prefix = models.CharField(max_length=500, blank=True, default="")
+    residency_country = models.CharField(max_length=2, help_text="ISO 3166-1 alpha-2 country code.")
+    retention_days = models.PositiveIntegerField(default=30)
+    last_credential_issued_at = models.DateTimeField(null=True, blank=True)
+    last_credential_expires_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "facility"], name="licensing_unique_hub_backup_destination"
+            )
+        ]
+        indexes = [models.Index(fields=["organization", "facility", "enabled"])]
+
+    def clean(self) -> None:
+        super().clean()
+        self.residency_country = self.residency_country.upper()
+        if self.facility_id and self.facility.organization_id != self.organization_id:
+            raise ValidationError(
+                {"facility": "Facility must belong to the selected organization."}
+            )
+
+    def get_installation_object_prefix(self, installation: Installation) -> str:
+        """Return an encoded object prefix isolated to one hub installation."""
+        if installation.organization_id != self.organization_id:
+            raise ValidationError("Installation must belong to the destination organization.")
+
+        facility_id = installation.facility_id or self.facility_id
+        segments = [
+            segment
+            for segment in self.object_prefix.strip("/").split("/")
+            if segment and segment not in {".", ".."}
+        ]
+        segments.extend(
+            [
+                "organizations",
+                str(self.organization_id),
+                "facilities",
+                str(facility_id) if facility_id else "unassigned",
+                "installations",
+                installation.installation_id,
+            ]
+        )
+        return "/".join(quote(segment, safe="") for segment in segments)
+
+    def __str__(self) -> str:
+        scope = self.facility.name if self.facility_id else "organization default"
+        return f"Hub backup destination for {self.organization} ({scope})"
+
+
+class HubDatabaseKeyEscrow(TimeStampedModel):
+    """Key Vault-wrapped SQLCipher key escrow for one active hub installation.
+
+    The database contains only the Azure Key Vault ciphertext and non-secret
+    key metadata. Plaintext SQLCipher material is transient within the escrow
+    service while it is being wrapped or re-enveloped to a device key.
+    """
+
+    installation = models.OneToOneField(
+        Installation,
+        on_delete=models.CASCADE,
+        related_name="database_key_escrow",
+    )
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="hub_database_key_escrows",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="hub_database_key_escrows",
+    )
+    wrapped_ciphertext = models.BinaryField(
+        help_text="SQLCipher key material wrapped by Azure Key Vault; never plaintext.",
+    )
+    vault_url = models.URLField(max_length=500)
+    key_name = models.CharField(max_length=200)
+    key_version = models.CharField(max_length=200)
+    algorithm = models.CharField(max_length=100, default="RSA-OAEP-256")
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    last_recovered_at = models.DateTimeField(null=True, blank=True)
+    recovery_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["organization", "facility"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"Hub database key escrow for {self.installation_id}"
 
 
 class ReleaseManifest(TimeStampedModel):

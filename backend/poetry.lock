@@ -6088,6 +6088,23 @@ standalone = ["Sphinx (>=5)"]
 test = ["pytest"]
 
 [[package]]
+name = "sqlcipher3-binary"
+version = "0.6.0"
+description = "DB-API 2.0 interface for SQLCipher 3.x"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "sqlcipher3_binary-0.6.0-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:9886d2d30b5bb4e3ddc3a9e2b9e5b65261fa0c748eaf8a584781082312d37cee"},
+    {file = "sqlcipher3_binary-0.6.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:421abf7a81e134bd808a7933d296f408aaf75475d6561d4a21e1f285b75445aa"},
+    {file = "sqlcipher3_binary-0.6.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:c8a7076a18b4f6fc9b580b0f24aa526d6a47605b1e3e6491ee3e9f2977940d8e"},
+    {file = "sqlcipher3_binary-0.6.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:8a6afbdef7cbbb33b1228ce96edc1bfe7f15bdf2a5e8bdab87261ab52e4111e6"},
+    {file = "sqlcipher3_binary-0.6.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:f9bccb9e942a04bbf920714940c8f9e00134cd655b11ba4c6f1306bcc3504d6c"},
+    {file = "sqlcipher3_binary-0.6.0-cp38-cp38-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:04dc5ac3f748c4cec5fb53e5f0f6474e9d702239372cc9d3d94cd27d06e3ebd3"},
+    {file = "sqlcipher3_binary-0.6.0-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:1a616747d6244918259d9dc8a668b58ddf9fd751c56eaddf8733566a412f2bae"},
+]
+
+[[package]]
 name = "sqlparse"
 version = "0.6.0"
 description = "A non-validating SQL parser."
@@ -6839,4 +6856,4 @@ azure = ["azure-identity", "azure-keyvault-keys"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "7e2d9e24d6fa96b6dadb4412e77eeb8686eeeac00a481f79bbfecc317153d403"
+content-hash = "b3742e0142e244415c91e50745356104bc119935b258abeb605ec894c53aed5b"

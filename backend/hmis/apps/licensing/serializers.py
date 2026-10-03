@@ -292,6 +292,29 @@ class InstallationReenrollmentSerializer(DeviceReenrollmentSerializer):
     installation_id = serializers.CharField(max_length=200)
 
 
+class HubDatabaseKeyEscrowSubmissionSerializer(serializers.Serializer):
+    """Accept SQLCipher material for Key Vault wrapping without echoing it."""
+
+    hub_database_encryption_key = serializers.CharField(
+        write_only=True,
+        trim_whitespace=False,
+        min_length=32,
+        max_length=512,
+    )
+
+
+class HubDatabaseKeyEscrowRecoverySerializer(serializers.Serializer):
+    """Validate the X25519 device key used for an escrow recovery envelope."""
+
+    device_public_key = serializers.CharField(max_length=128)
+
+    def validate_device_public_key(self, value: str) -> str:
+        try:
+            return validate_device_public_key(value)
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc)) from exc
+
+
 class LicenseStatusSerializer(serializers.Serializer):
     """Response for /api/licensing/status/ (local verification)."""
 

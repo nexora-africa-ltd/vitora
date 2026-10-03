@@ -16,9 +16,12 @@ urlpatterns = [
     path("re-enroll/", views.re_enroll_installation, name="licensing-re-enroll"),
     path("eula/", views.hub_eula, name="licensing-eula"),
     path("check-in/", views.check_in, name="licensing-check-in"),
+    path("backup-credentials/", views.backup_credentials, name="licensing-backup-credentials"),
     path("status/", views.license_status, name="licensing-status"),
     path("generate-code/", views.generate_activation_code, name="licensing-generate-code"),
     path("registry-token/", views.registry_token, name="licensing-registry-token"),
+    path("escrow/submit/", views.submit_hub_database_key_escrow, name="licensing-escrow-submit"),
+    path("escrow/recover/", views.recover_hub_database_key_escrow, name="licensing-escrow-recover"),
     # Cloud relay endpoints (hubs forward requests here)
     path("cloud/sha/submit/", cloud_relay_views.cloud_sha_submit, name="cloud-sha-submit"),
     path("cloud/sha/preauth/", cloud_relay_views.cloud_sha_preauth, name="cloud-sha-preauth"),

@@ -158,6 +158,32 @@ function Write-DpapiSecretsBundle {
     Set-Content -Path $Path -Value $payload
 }
 
+function Get-DpapiSecretValue {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+
+    if (-not (Test-Path $Path)) { return "" }
+    if (-not (Initialize-DpapiType)) {
+        throw "DPAPI is required to preserve the existing protected hub secrets."
+    }
+
+    $payload = Get-Content -Path $Path -Raw | ConvertFrom-Json
+    if (-not $payload.ciphertext_b64) {
+        throw "Protected hub secret bundle has no DPAPI ciphertext."
+    }
+    $plainBytes = $script:DpapiProtectedDataType::Unprotect(
+        [Convert]::FromBase64String([string]$payload.ciphertext_b64),
+        $null,
+        $script:DpapiLocalMachineScope
+    )
+    $secrets = ([Text.Encoding]::UTF8.GetString($plainBytes) | ConvertFrom-Json).secrets
+    $property = $secrets.PSObject.Properties[$Name]
+    if ($null -eq $property) { return "" }
+    return [string]$property.Value
+}
+
 function Register-HubAutoUpdateTask {
     param(
         [Parameter(Mandatory=$true)][string]$TaskName,
@@ -173,6 +199,27 @@ function Register-HubAutoUpdateTask {
     $taskSettings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew
 
     Register-ScheduledTask -TaskName $TaskName -Action $taskAction -Trigger $taskTrigger -Principal $taskPrincipal -Settings $taskSettings -Force | Out-Null
+}
+
+function Register-HubBackupTasks {
+    param(
+        [Parameter(Mandatory=$true)][string]$LauncherPath,
+        [Parameter(Mandatory=$true)][string]$LogDirectory
+    )
+
+    $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -RunLevel Highest -LogonType ServiceAccount
+    $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew
+    $dailyAction = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$LauncherPath`" -Mode backup >> `"$LogDirectory\hub-backup.log`" 2>&1"
+    $dailyTrigger = New-ScheduledTaskTrigger -Daily -At "1:00AM"
+    Register-ScheduledTask -TaskName "VitoraHubDailyBackup" -Action $dailyAction -Trigger $dailyTrigger -Principal $principal -Settings $settings -Force | Out-Null
+
+    $uploadAction = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$LauncherPath`" -Mode backup-upload >> `"$LogDirectory\hub-backup-upload.log`" 2>&1"
+    $uploadTrigger = New-ScheduledTaskTrigger -Once -At "12:00AM" -RepetitionInterval (New-TimeSpan -Minutes 30) -RepetitionDuration (New-TimeSpan -Days 1)
+    Register-ScheduledTask -TaskName "VitoraHubBackupUpload" -Action $uploadAction -Trigger $uploadTrigger -Principal $principal -Settings $settings -Force | Out-Null
+
+    $verifyAction = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$LauncherPath`" -Mode backup-verify >> `"$LogDirectory\hub-backup-verify.log`" 2>&1"
+    $verifyTrigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At "3:00AM"
+    Register-ScheduledTask -TaskName "VitoraHubWeeklyBackupVerify" -Action $verifyAction -Trigger $verifyTrigger -Principal $principal -Settings $settings -Force | Out-Null
 }
 
 function Test-PythonVersion {
@@ -751,6 +798,16 @@ $ShaClientId = $decryptedSecrets.sha_client_id
 $ShaClientSecret = $decryptedSecrets.sha_client_secret
 Remove-Item -Path $devicePrivateKeyFile -Force
 
+$HubSecretsFile = "$InstallDir\secrets\hub-secrets.dpapi.json"
+# Preserve the existing per-hub SQLCipher key on re-install. Key rotation is a
+# separate, explicit maintenance operation and must never occur during setup.
+$DatabaseEncryptionKey = Get-DpapiSecretValue -Path $HubSecretsFile -Name "HUB_DATABASE_ENCRYPTION_KEY"
+if (-not $DatabaseEncryptionKey) {
+    # token_urlsafe(64) is derived from 64 random bytes (512 bits) and avoids
+    # shell-sensitive characters while remaining suitable for SQLCipher.
+    $DatabaseEncryptionKey = & $python -c "import secrets; print(secrets.token_urlsafe(64))"
+}
+
 # Management commands run during installation need the same protected values
 # that the service launcher will load after installation completes.
 foreach ($entry in @{
@@ -760,13 +817,14 @@ foreach ($entry in @{
     LICENSE_TOKEN = $LicenseToken
     SHA_CLIENT_ID = $ShaClientId
     SHA_CLIENT_SECRET = $ShaClientSecret
+    HUB_DATABASE_ENCRYPTION_REQUIRED = "true"
+    HUB_DATABASE_ENCRYPTION_KEY = $DatabaseEncryptionKey
 }.GetEnumerator()) {
     [Environment]::SetEnvironmentVariable($entry.Key, [string]$entry.Value, "Process")
 }
 
 # --- Write Environment File ---
 Write-Step 5 "Writing configuration..."
-$HubSecretsFile = "$InstallDir\secrets\hub-secrets.dpapi.json"
 $envContent = @"
 DJANGO_ENV=hub
 HUB_ID=$HubId
@@ -814,6 +872,8 @@ $dpapiSecrets = @{
     TIBABOT_ADMIN_KEY = $TibaBotAdminKey
     SHA_CLIENT_ID = $ShaClientId
     SHA_CLIENT_SECRET = $ShaClientSecret
+    HUB_DATABASE_ENCRYPTION_REQUIRED = "true"
+    HUB_DATABASE_ENCRYPTION_KEY = $DatabaseEncryptionKey
 }
 Write-DpapiSecretsBundle -Secrets $dpapiSecrets -Path $HubSecretsFile
 # Write version file
@@ -1208,6 +1268,16 @@ try {
     Write-Warn "Failed to register scheduled auto-update task: $_"
 }
 
+# Scheduled backup tasks deliberately call the launcher, which loads .env and
+# the DPAPI bundle at runtime. No backup keys are persisted in task arguments.
+Write-Info "Registering encrypted hub backup tasks..."
+try {
+    Register-HubBackupTasks -LauncherPath $launcherPath -LogDirectory $LogDir
+    Write-Info "Scheduled backup tasks registered."
+} catch {
+    Write-Warn "Failed to register scheduled backup tasks: $_"
+}
+
 # --- Verify ---
 Start-Sleep -Seconds 3
 $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
@@ -1251,6 +1321,7 @@ Write-Host "    Restart-Service $ServiceName"
 Write-Host "    Stop-Service $ServiceName"
 Write-Host "    powershell -ExecutionPolicy Bypass -File $InstallDir\scripts\update-hub-windows.ps1"
 Write-Host "    Scheduled task: $AutoUpdateTaskName ($AutoUpdateDay $AutoUpdateTime)"
+Write-Host "    Backup tasks: VitoraHubDailyBackup, VitoraHubBackupUpload, VitoraHubWeeklyBackupVerify"
 Write-Host "    Auto-update log: $AutoUpdateLogFile"
 Write-Host "    # Updater keeps one rolling pre-update snapshot at $InstallDir\backup\pre-update-current"
 Write-Host "    $nssmExe edit $ServiceName"

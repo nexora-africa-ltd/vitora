@@ -634,8 +634,21 @@ pip install --quiet daphne whitenoise
 # Decrypt the v2 envelope only after the hub virtualenv is available. Secrets
 # are stored separately from public runtime configuration and never in .env.
 HUB_SECRETS_FILE="${DEVICE_KEY_DIR}/hub-secrets.cred"
+EXISTING_HUB_SECRETS_PLAINTEXT=""
+if [[ -f "$HUB_SECRETS_FILE" ]]; then
+    # Re-installs must keep the SQLCipher key that already protects this hub's
+    # database. Never generate a replacement here; rotation is an explicit
+    # maintenance operation.
+    if ! command -v systemd-creds &>/dev/null; then
+        error "systemd-creds is required to preserve the existing protected hub secrets."
+        exit 1
+    fi
+    EXISTING_HUB_SECRETS_PLAINTEXT=$(mktemp "${DEVICE_KEY_DIR}/existing-hub-secrets.XXXXXX.env")
+    systemd-creds decrypt "$HUB_SECRETS_FILE" - > "$EXISTING_HUB_SECRETS_PLAINTEXT"
+    chmod 600 "$EXISTING_HUB_SECRETS_PLAINTEXT"
+fi
 HUB_SECRETS_PLAINTEXT=$(mktemp "${DEVICE_KEY_DIR}/hub-secrets.XXXXXX.env")
-PII_KEY_PACKAGE_B64=$("$VENV_DIR/bin/python" - "$ACTIVATION_RESPONSE" "$DEVICE_PRIVATE_KEY" "$HUB_SECRETS_PLAINTEXT" "$INSTALLATION_ID" "$HUB_ORGANIZATION_ID" "$HUB_FACILITY_ID" <<'PY'
+PII_KEY_PACKAGE_B64=$("$VENV_DIR/bin/python" - "$ACTIVATION_RESPONSE" "$DEVICE_PRIVATE_KEY" "$HUB_SECRETS_PLAINTEXT" "$INSTALLATION_ID" "$HUB_ORGANIZATION_ID" "$HUB_FACILITY_ID" "$EXISTING_HUB_SECRETS_PLAINTEXT" <<'PY'
 import base64
 import json
 import secrets as stdlib_secrets
@@ -643,13 +656,26 @@ import sys
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from hmis.apps.licensing.activation_secrets import decrypt_activation_secrets
 
-response, private_path, output, installation_id, organization_id, facility_id = sys.argv[1:]
+response, private_path, output, installation_id, organization_id, facility_id, existing_secrets_path = sys.argv[1:]
 with open(private_path, "rb") as key_file:
     private_key = load_pem_private_key(key_file.read(), password=None)
 with open(response, encoding="utf-8") as response_file:
     envelope = json.load(response_file)["secrets_envelope"]
 secrets = decrypt_activation_secrets(envelope, private_key, installation_id=installation_id, organization_id=int(organization_id), facility_id=int(facility_id))
 secrets["django_secret_key"] = stdlib_secrets.token_urlsafe(50)
+existing_secrets = {}
+if existing_secrets_path:
+    with open(existing_secrets_path, encoding="utf-8") as secret_file:
+        for line in secret_file:
+            name, separator, value = line.rstrip("\n").partition("=")
+            if separator:
+                existing_secrets[name] = value
+# A fresh hub receives 512 bits of OS-backed key material. Re-installs retain
+# the key so an existing SQLCipher database remains readable.
+secrets["hub_database_encryption_required"] = "true"
+secrets["hub_database_encryption_key"] = (
+    existing_secrets.get("HUB_DATABASE_ENCRYPTION_KEY") or stdlib_secrets.token_urlsafe(64)
+)
 pii_key_package = secrets.pop("organization_pii_key_package")
 with open(output, "w", encoding="utf-8") as secret_file:
     for name, value in secrets.items():
@@ -664,6 +690,7 @@ fi
 systemd-creds encrypt --with-key=host "$HUB_SECRETS_PLAINTEXT" "$HUB_SECRETS_FILE"
 chmod 600 "$HUB_SECRETS_FILE"
 rm -f "$HUB_SECRETS_PLAINTEXT"
+rm -f "$EXISTING_HUB_SECRETS_PLAINTEXT"
 chown "$APP_USER:$APP_USER" "$HUB_SECRETS_FILE" "$DEVICE_PRIVATE_KEY"
 
 # --- Environment File ---
@@ -821,6 +848,53 @@ fi
 step "6/7 Installing system service..."
 chmod 750 "$APP_DIR/scripts/start-hub-linux.sh"
 chown "root:$APP_USER" "$APP_DIR/scripts/start-hub-linux.sh"
+
+install_backup_schedule() {
+    local unit_name="$1"
+    local launcher_mode="$2"
+    local timer_config="$3"
+    cat > "/etc/systemd/system/${unit_name}.service" <<EOF
+[Unit]
+Description=Vitora HMIS Hub ${unit_name#vitora-hub-}
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=${APP_USER}
+Group=${APP_USER}
+WorkingDirectory=${APP_DIR}
+EnvironmentFile=${APP_DIR}/.env
+LoadCredentialEncrypted=hub-secrets:${HUB_SECRETS_FILE}
+ExecStart=${APP_DIR}/scripts/start-hub-linux.sh ${launcher_mode}
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=${DB_DIR} ${LOG_DIR}
+PrivateTmp=true
+StandardOutput=append:${LOG_DIR}/${unit_name}.log
+StandardError=append:${LOG_DIR}/${unit_name}-error.log
+EOF
+
+    cat > "/etc/systemd/system/${unit_name}.timer" <<EOF
+[Unit]
+Description=Schedule ${unit_name}
+
+[Timer]
+${timer_config}
+Persistent=true
+Unit=${unit_name}.service
+
+[Install]
+WantedBy=timers.target
+EOF
+}
+
+# All backup jobs use the same encrypted credential bundle as the API service.
+install_backup_schedule "vitora-hub-backup" "backup" "OnCalendar=daily"
+install_backup_schedule "vitora-hub-backup-upload" "backup-upload" "OnUnitActiveSec=30min"
+install_backup_schedule "vitora-hub-backup-verify" "backup-verify" "OnCalendar=weekly"
+
 cat > "/etc/systemd/system/${SERVICE_NAME}.service" <<EOF
 [Unit]
 Description=Vitora HMIS Facility Hub
@@ -886,6 +960,9 @@ EOF
 systemctl daemon-reload
 systemctl enable "$SERVICE_NAME"
 systemctl enable "$SYNC_SERVICE_NAME"
+systemctl enable --now vitora-hub-backup.timer
+systemctl enable --now vitora-hub-backup-upload.timer
+systemctl enable --now vitora-hub-backup-verify.timer
 systemctl start "$SERVICE_NAME"
 systemctl start "$SYNC_SERVICE_NAME"
 

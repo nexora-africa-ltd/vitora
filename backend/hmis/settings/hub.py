@@ -64,6 +64,23 @@ MIDDLEWARE.insert(  # noqa: F405
 HUB_DATA_DIR = os.getenv("HUB_DATA_DIR", os.path.join(str(BASE_DIR), "data"))  # noqa: F405
 HUB_DB_PATH = os.getenv("HUB_DB_PATH", os.path.join(HUB_DATA_DIR, "hub.sqlite3"))
 os.makedirs(HUB_DATA_DIR, exist_ok=True)
+HUB_DATABASE_ENCRYPTION_REQUIRED = os.getenv(
+    "HUB_DATABASE_ENCRYPTION_REQUIRED", "true"
+).lower() in (
+    "true",
+    "1",
+    "yes",
+)
+HUB_DATABASE_ENCRYPTION_KEY = os.getenv("HUB_DATABASE_ENCRYPTION_KEY", "")
+HUB_DATABASE_ENGINE = (
+    "hmis.db_backends.sqlcipher"
+    if HUB_DATABASE_ENCRYPTION_REQUIRED
+    else "django.db.backends.sqlite3"
+)
+if HUB_DATABASE_ENCRYPTION_REQUIRED and not HUB_DATABASE_ENCRYPTION_KEY:
+    raise RuntimeError(
+        "HUB_DATABASE_ENCRYPTION_KEY is required when hub database encryption is enabled."
+    )
 
 # Backups are encrypted independently from the database and remain local until
 # the upload queue can reach the configured in-country NAS or object endpoint.
@@ -73,21 +90,26 @@ HUB_BACKUP_RETENTION_COUNT = int(os.getenv("HUB_BACKUP_RETENTION_COUNT", "14"))
 HUB_BACKUP_NAS_PATH = os.getenv("HUB_BACKUP_NAS_PATH", "")
 HUB_BACKUP_S3_URL = os.getenv("HUB_BACKUP_S3_URL", "")
 HUB_BACKUP_S3_TOKEN = os.getenv("HUB_BACKUP_S3_TOKEN", "")
+HUB_BACKUP_S3_TOKEN_EXPIRES_AT = os.getenv("HUB_BACKUP_S3_TOKEN_EXPIRES_AT", "")
+
+HUB_DATABASE_OPTIONS = {
+    "timeout": 30,  # Wait up to 30s for locks
+    "init_command": (
+        "PRAGMA journal_mode=WAL;"
+        "PRAGMA synchronous=NORMAL;"
+        "PRAGMA foreign_keys=ON;"
+        "PRAGMA busy_timeout=30000;"
+        "PRAGMA cache_size=-64000;"  # 64MB cache
+    ),
+}
+if HUB_DATABASE_ENCRYPTION_REQUIRED:
+    HUB_DATABASE_OPTIONS["cipher_key"] = HUB_DATABASE_ENCRYPTION_KEY
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
+        "ENGINE": HUB_DATABASE_ENGINE,
         "NAME": HUB_DB_PATH,
-        "OPTIONS": {
-            "timeout": 30,  # Wait up to 30s for locks
-            "init_command": (
-                "PRAGMA journal_mode=WAL;"
-                "PRAGMA synchronous=NORMAL;"
-                "PRAGMA foreign_keys=ON;"
-                "PRAGMA busy_timeout=30000;"
-                "PRAGMA cache_size=-64000;"  # 64MB cache
-            ),
-        },
+        "OPTIONS": HUB_DATABASE_OPTIONS,
     }
 }
 
