@@ -76,7 +76,11 @@ pub async fn check_and_install(app: AppHandle, silent_when_uptodate: bool) {
         Ok(u) => u,
         Err(e) => {
             log::error!("Updater unavailable: {}", e);
-            show_error(&app, "Update check failed", &format!("Updater unavailable: {e}"));
+            show_error(
+                &app,
+                "Update check failed",
+                &format!("Updater unavailable: {e}"),
+            );
             return;
         }
     };

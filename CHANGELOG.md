@@ -15,6 +15,12 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Desktop 1.0.23] - 2026-10-03
+
+### Desktop
+
+- Apply the repository Rust formatting baseline to desktop configuration, updater, and printer command source files.
+
 ## [Desktop 1.0.22] - 2026-10-03
 
 ### Desktop
