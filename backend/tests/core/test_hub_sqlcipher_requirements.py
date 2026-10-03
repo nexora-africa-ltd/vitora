@@ -31,3 +31,8 @@ def test_hub_artifact_build_disables_runtime_database_encryption_only_for_compil
     ).read_text(encoding="utf-8")
 
     assert 'HUB_DATABASE_ENCRYPTION_REQUIRED: "false"' in workflow
+
+    compiler = (Path(__file__).resolve().parents[2] / "scripts" / "compile-hub.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'os.environ["HUB_DATABASE_ENCRYPTION_REQUIRED"] = "false"' in compiler
