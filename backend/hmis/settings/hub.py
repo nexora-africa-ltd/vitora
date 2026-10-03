@@ -65,6 +65,15 @@ HUB_DATA_DIR = os.getenv("HUB_DATA_DIR", os.path.join(str(BASE_DIR), "data"))  #
 HUB_DB_PATH = os.getenv("HUB_DB_PATH", os.path.join(HUB_DATA_DIR, "hub.sqlite3"))
 os.makedirs(HUB_DATA_DIR, exist_ok=True)
 
+# Backups are encrypted independently from the database and remain local until
+# the upload queue can reach the configured in-country NAS or object endpoint.
+HUB_BACKUP_DIR = os.getenv("HUB_BACKUP_DIR", os.path.join(HUB_DATA_DIR, "backups"))
+HUB_BACKUP_ENCRYPTION_KEY = os.getenv("HUB_BACKUP_ENCRYPTION_KEY", "")
+HUB_BACKUP_RETENTION_COUNT = int(os.getenv("HUB_BACKUP_RETENTION_COUNT", "14"))
+HUB_BACKUP_NAS_PATH = os.getenv("HUB_BACKUP_NAS_PATH", "")
+HUB_BACKUP_S3_URL = os.getenv("HUB_BACKUP_S3_URL", "")
+HUB_BACKUP_S3_TOKEN = os.getenv("HUB_BACKUP_S3_TOKEN", "")
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
