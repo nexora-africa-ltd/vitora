@@ -100,6 +100,11 @@ jobs:
       - name: Compile with Cython
         working-directory: backend
         shell: bash
+        env:
+          # Artifact compilation imports Django modules but never opens a hub
+          # database or protected credential bundle. Runtime hubs still default
+          # to fail-closed SQLCipher encryption.
+          HUB_DATABASE_ENCRYPTION_REQUIRED: "false"
         run: |
           python scripts/compile-hub.py \
             --output-dir build/compiled \

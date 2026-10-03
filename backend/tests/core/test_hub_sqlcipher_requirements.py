@@ -22,3 +22,12 @@ def test_hub_requirements_select_sqlcipher_wheels_per_release_platform():
         'sqlcipher3==0.6.2 ; python_version >= "3.12" and python_version < "4.0" and sys_platform == "win32"'
         in requirements
     )
+
+
+def test_hub_artifact_build_disables_runtime_database_encryption_only_for_compilation():
+    """Cython builds must not require an unavailable protected hub runtime key."""
+    workflow = (
+        Path(__file__).resolve().parents[3] / ".github" / "workflows" / "build-hub.yml"
+    ).read_text(encoding="utf-8")
+
+    assert 'HUB_DATABASE_ENCRYPTION_REQUIRED: "false"' in workflow
