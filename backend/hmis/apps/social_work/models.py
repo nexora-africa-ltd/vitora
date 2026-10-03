@@ -277,12 +277,9 @@ class SocialWorkReferral(HistoryMixin, FacilityScopedModel):
         verbose_name_plural = "Social Work Referrals"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["referral_number"]),
-            models.Index(fields=["patient"]),
             models.Index(fields=["status"]),
             models.Index(fields=["urgency"]),
             models.Index(fields=["reason"]),
-            models.Index(fields=["assigned_worker"]),
             models.Index(fields=["is_sensitive"]),
             models.Index(fields=["created_at"]),
         ]
@@ -595,12 +592,9 @@ class SocialWorkCase(HistoryMixin, models.Model):
         verbose_name_plural = "Social Work Cases"
         ordering = ["-opened_at"]
         indexes = [
-            models.Index(fields=["case_number"]),
-            models.Index(fields=["patient"]),
             models.Index(fields=["status"]),
             models.Index(fields=["case_type"]),
             models.Index(fields=["risk_level"]),
-            models.Index(fields=["assigned_worker"]),
             models.Index(fields=["is_sensitive"]),
             models.Index(fields=["opened_at"]),
             models.Index(fields=["next_review_date"]),
@@ -788,10 +782,8 @@ class CaseNote(models.Model):
         verbose_name_plural = "Case Notes"
         ordering = ["-contact_date", "-created_at"]
         indexes = [
-            models.Index(fields=["case"]),
             models.Index(fields=["note_type"]),
             models.Index(fields=["contact_date"]),
-            models.Index(fields=["author"]),
         ]
 
     def __str__(self):
@@ -937,7 +929,6 @@ class SocialWorkIntervention(models.Model):
         verbose_name_plural = "Social Work Interventions"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["case"]),
             models.Index(fields=["intervention_type"]),
             models.Index(fields=["status"]),
             models.Index(fields=["planned_date"]),

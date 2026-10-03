@@ -535,7 +535,6 @@ class DocumentShare(models.Model):
         indexes = [
             models.Index(fields=["document_type", "document_id"]),
             models.Index(fields=["shared_with", "permission"]),
-            models.Index(fields=["shared_by"]),
         ]
         constraints = [
             models.UniqueConstraint(
@@ -701,8 +700,6 @@ class StaffInvitation(models.Model):
         verbose_name_plural = "Staff Invitations"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["token"]),
-            models.Index(fields=["email_hmac"]),
             models.Index(fields=["status"]),
         ]
 
@@ -778,7 +775,6 @@ class PasswordResetToken(models.Model):
         verbose_name_plural = "Password Reset Tokens"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["token"]),
             models.Index(fields=["user", "used"]),
         ]
 
@@ -845,7 +841,6 @@ class EmailVerificationToken(models.Model):
         verbose_name_plural = "Email Verification Tokens"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["token"]),
             models.Index(fields=["user", "used"]),
         ]
 

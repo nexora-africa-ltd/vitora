@@ -230,7 +230,6 @@ class ProcedureCatalog(FacilityScopedModel, TimeStampedModel):
         verbose_name = "Procedure Catalog Entry"
         verbose_name_plural = "Procedure Catalog"
         indexes = [
-            models.Index(fields=["code"]),
             models.Index(fields=["ichi_code"]),
             models.Index(fields=["category"]),
             models.Index(fields=["facility", "is_active"]),
@@ -483,7 +482,6 @@ class ProcedureOrder(FacilityScopedModel, TimeStampedModel):
         verbose_name = "Procedure Order"
         verbose_name_plural = "Procedure Orders"
         indexes = [
-            models.Index(fields=["order_number"]),
             models.Index(fields=["patient", "status"]),
             models.Index(fields=["scheduled_date"]),
             models.Index(fields=["facility", "status"]),
@@ -746,7 +744,6 @@ class ExternalProcedureOrderRequest(FacilityScopedModel, TimeStampedModel):
     class Meta:
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["request_number"]),
             models.Index(fields=["facility", "status"]),
             models.Index(fields=["encounter", "status"]),
             models.Index(fields=["patient", "status"]),

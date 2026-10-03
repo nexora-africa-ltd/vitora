@@ -92,10 +92,7 @@ class WalkInPatient(FacilityScopedModel, TimeStampedModel):
         verbose_name_plural = "Walk-in Patients"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["registration_number"]),
-            models.Index(fields=["national_id_hmac"]),
             models.Index(fields=["last_name", "first_name"]),
-            models.Index(fields=["phone_number_hmac"]),
         ]
 
     def __str__(self):
@@ -264,10 +261,6 @@ class ExternalOrderRequest(FacilityScopedModel, TimeStampedModel):
         verbose_name_plural = "External Order Requests"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["trace_id"]),
-            models.Index(fields=["idempotency_key"]),
-            models.Index(fields=["message_control_id"]),
-            models.Index(fields=["placer_order_number"]),
             models.Index(fields=["status"]),
         ]
 
@@ -378,9 +371,6 @@ class InboundIngestionEvent(FacilityScopedModel, TimeStampedModel):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["status", "created_at"]),
-            models.Index(fields=["idempotency_key"]),
-            models.Index(fields=["source_system"]),
-            models.Index(fields=["trace_id"]),
         ]
 
     def __str__(self):
@@ -442,7 +432,6 @@ class ResultDeliveryLog(FacilityScopedModel, TimeStampedModel):
         indexes = [
             models.Index(fields=["status", "created_at"]),
             models.Index(fields=["channel"]),
-            models.Index(fields=["trace_id"]),
         ]
 
     def __str__(self):

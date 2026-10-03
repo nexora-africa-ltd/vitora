@@ -157,8 +157,6 @@ class SHAMember(models.Model):
         verbose_name_plural = "SHA Members"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["sha_number"]),
-            models.Index(fields=["national_id_hmac"]),
             models.Index(fields=["status"]),
             models.Index(fields=["is_pfms_eligible"]),
         ]
@@ -379,7 +377,6 @@ class SHATariff(models.Model):
         verbose_name_plural = "SHA Tariffs"
         ordering = ["category", "code"]
         indexes = [
-            models.Index(fields=["code"]),
             models.Index(fields=["category", "is_active"]),
             models.Index(fields=["facility_level"]),
         ]

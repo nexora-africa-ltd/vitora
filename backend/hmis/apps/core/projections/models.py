@@ -35,9 +35,7 @@ class ClinicQueueStats(models.Model):
 
     class Meta:
         unique_together = [("facility_id", "clinic_id")]
-        indexes = [
-            models.Index(fields=["facility_id"], name="idx_cqs_facility"),
-        ]
+        indexes = []
         verbose_name = "Clinic Queue Stats"
         verbose_name_plural = "Clinic Queue Stats"
 
@@ -69,9 +67,7 @@ class WardOccupancyStats(models.Model):
 
     class Meta:
         unique_together = [("facility_id", "ward_id")]
-        indexes = [
-            models.Index(fields=["facility_id"], name="idx_wos_facility"),
-        ]
+        indexes = []
         verbose_name = "Ward Occupancy Stats"
         verbose_name_plural = "Ward Occupancy Stats"
 
@@ -100,9 +96,7 @@ class PharmacyQueueStats(models.Model):
     last_updated = models.DateTimeField(default=timezone.now)
 
     class Meta:
-        indexes = [
-            models.Index(fields=["facility_id"], name="idx_pqs_facility"),
-        ]
+        indexes = []
         verbose_name = "Pharmacy Queue Stats"
         verbose_name_plural = "Pharmacy Queue Stats"
 

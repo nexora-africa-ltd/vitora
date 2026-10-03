@@ -872,7 +872,6 @@ class IDSRWeeklyReport(models.Model):
         indexes = [
             models.Index(fields=["epi_year", "epi_week"]),
             models.Index(fields=["status"]),
-            models.Index(fields=["county"]),
         ]
 
     def __str__(self) -> str:

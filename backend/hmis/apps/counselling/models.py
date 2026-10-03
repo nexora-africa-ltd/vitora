@@ -207,7 +207,6 @@ class CounsellingType(models.Model):
         verbose_name_plural = "Counselling Types"
         ordering = ["category", "name"]
         indexes = [
-            models.Index(fields=["code"]),
             models.Index(fields=["category"]),
             models.Index(fields=["is_active"]),
         ]
@@ -432,7 +431,6 @@ class CounsellingReferral(HistoryMixin, FacilityScopedModel):
         verbose_name_plural = "Counselling Referrals"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["referral_number"]),
             models.Index(fields=["patient", "status"]),
             models.Index(fields=["assigned_counsellor", "status"]),
             models.Index(fields=["status"]),
@@ -775,7 +773,6 @@ class CounsellingSession(HistoryMixin, models.Model):
         verbose_name_plural = "Counselling Sessions"
         ordering = ["referral", "session_sequence"]
         indexes = [
-            models.Index(fields=["session_number"]),
             models.Index(fields=["referral", "session_sequence"]),
             models.Index(fields=["counsellor", "scheduled_date"]),
             models.Index(fields=["status"]),

@@ -192,7 +192,6 @@ class AuditLog(models.Model):
             models.Index(fields=["action", "timestamp"]),
             models.Index(fields=["resource_type", "resource_id"]),
             models.Index(fields=["patient_id", "timestamp"]),
-            models.Index(fields=["sequence_number"]),
         ]
         verbose_name = "Audit Log"
         verbose_name_plural = "Audit Logs"

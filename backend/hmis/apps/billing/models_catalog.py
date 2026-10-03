@@ -74,7 +74,6 @@ class ICD11CodeReference(models.Model):
         verbose_name = "ICD-11 Code Reference"
         verbose_name_plural = "ICD-11 Code References"
         indexes = [
-            models.Index(fields=["code"]),
             models.Index(fields=["chapter_no"]),
             models.Index(fields=["title"]),
         ]

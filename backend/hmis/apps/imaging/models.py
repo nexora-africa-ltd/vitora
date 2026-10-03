@@ -138,7 +138,6 @@ class ImagingProcedure(FacilityScopedModel):
             models.Index(fields=["modality"]),
             models.Index(fields=["body_region"]),
             models.Index(fields=["is_active"]),
-            models.Index(fields=["facility"]),
         ]
 
     def __str__(self):
@@ -298,8 +297,6 @@ class ImagingOrder(models.Model):
         verbose_name_plural = "Imaging Orders"
         ordering = ["-ordered_at"]
         indexes = [
-            models.Index(fields=["order_number"]),
-            models.Index(fields=["patient"]),
             models.Index(fields=["status"]),
             models.Index(fields=["ordered_at"]),
             models.Index(fields=["priority"]),
@@ -605,9 +602,6 @@ class DICOMStudy(models.Model):
         verbose_name_plural = "DICOM Studies"
         ordering = ["-study_date", "-created_at"]
         indexes = [
-            models.Index(fields=["study_instance_uid"]),
-            models.Index(fields=["patient"]),
-            models.Index(fields=["accession_number"]),
             models.Index(fields=["modality"]),
             models.Index(fields=["study_date"]),
         ]
@@ -715,8 +709,6 @@ class DICOMSeries(models.Model):
         verbose_name_plural = "DICOM Series"
         ordering = ["series_number"]
         indexes = [
-            models.Index(fields=["series_instance_uid"]),
-            models.Index(fields=["study"]),
             models.Index(fields=["modality"]),
         ]
 
@@ -840,10 +832,7 @@ class DICOMInstance(models.Model):
         verbose_name = "DICOM Instance"
         verbose_name_plural = "DICOM Instances"
         ordering = ["instance_number"]
-        indexes = [
-            models.Index(fields=["sop_instance_uid"]),
-            models.Index(fields=["series"]),
-        ]
+        indexes = []
 
     def __str__(self):
         num = self.instance_number or "?"
@@ -1055,12 +1044,8 @@ class RadiologyReport(models.Model):
         verbose_name_plural = "Radiology Reports"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["report_number"]),
-            models.Index(fields=["imaging_order"]),
             models.Index(fields=["status"]),
             models.Index(fields=["is_critical"]),
-            models.Index(fields=["reported_by"]),
-            models.Index(fields=["supersedes"]),
         ]
 
     def __str__(self):
@@ -1318,8 +1303,6 @@ class ImagingEquipment(FacilityScopedModel):
         ordering = ["modality", "name"]
         indexes = [
             models.Index(fields=["modality", "is_active"]),
-            models.Index(fields=["ae_title"]),
-            models.Index(fields=["serial_number"]),
         ]
 
     def __str__(self):
@@ -1471,10 +1454,7 @@ class StudyShareLink(models.Model):
         verbose_name = "Study Share Link"
         verbose_name_plural = "Study Share Links"
         ordering = ["-created_at"]
-        indexes = [
-            models.Index(fields=["token"]),
-            models.Index(fields=["expires_at"]),
-        ]
+        indexes = []
 
     def __str__(self):
         return f"Share {self.token[:8]}… → {self.study.study_instance_uid[:20]}…"

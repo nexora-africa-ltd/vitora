@@ -494,8 +494,6 @@ class Patient(HistoryMixin, models.Model):
 
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["mrn"]),
-            models.Index(fields=["cr_number"]),
             models.Index(fields=["household_number"]),
             models.Index(fields=["last_name", "first_name"]),
             models.Index(fields=["date_of_birth"]),

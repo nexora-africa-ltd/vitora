@@ -119,7 +119,6 @@ class ICD10Code(models.Model):
         verbose_name = "ICD-10 Code"
         verbose_name_plural = "ICD-10 Codes"
         indexes = [
-            models.Index(fields=["code"]),
             models.Index(fields=["chapter"]),
             models.Index(fields=["short_description"]),
         ]

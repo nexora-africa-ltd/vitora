@@ -210,7 +210,6 @@ class SupplierBill(FacilityScopedModel):
         indexes = [
             models.Index(fields=["status"]),
             models.Index(fields=["due_date"]),
-            models.Index(fields=["supplier"]),
         ]
         permissions = [
             ("approve_supplierbill", "Can approve supplier bills for payment"),
@@ -498,7 +497,6 @@ class SupplierPayment(FacilityScopedModel):
         indexes = [
             models.Index(fields=["status"]),
             models.Index(fields=["payment_date"]),
-            models.Index(fields=["bill"]),
         ]
 
     def __str__(self):

@@ -150,7 +150,6 @@ class LabQueue(models.Model):
         verbose_name_plural = "Lab Queue"
         ordering = ["priority_order", "created_at"]
         indexes = [
-            models.Index(fields=["queue_number"]),
             models.Index(fields=["queue_status", "priority_order"]),
             models.Index(fields=["assigned_technician", "queue_status"]),
         ]

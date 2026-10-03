@@ -463,7 +463,6 @@ class LabOrder(FacilityScopedModel):
         ]
         indexes = [
             models.Index(fields=["order_number"]),
-            models.Index(fields=["patient"]),
             models.Index(fields=["status"]),
             models.Index(fields=["ordered_at"]),
         ]
@@ -882,7 +881,6 @@ class Specimen(models.Model):
     class Meta:
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["barcode"]),
             models.Index(fields=["status"]),
             models.Index(fields=["collected_at"]),
         ]

@@ -19,6 +19,15 @@ from django.utils import timezone
 User = get_user_model()
 
 
+def test_dicom_study_patient_uses_the_foreign_key_index_only():
+    """Django's automatic ForeignKey index must be the only patient lookup index."""
+    from hmis.apps.imaging.models import DICOMStudy
+
+    patient_indexes = [index for index in DICOMStudy._meta.indexes if index.fields == ["patient"]]
+
+    assert patient_indexes == []
+
+
 # ============================================================================
 # ImagingProcedure Model Tests (15 tests)
 # ============================================================================

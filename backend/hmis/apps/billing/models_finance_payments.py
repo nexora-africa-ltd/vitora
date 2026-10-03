@@ -93,7 +93,6 @@ class Payment(models.Model):
     class Meta:
         ordering = ["-payment_date"]
         indexes = [
-            models.Index(fields=["payment_reference"]),
             models.Index(fields=["mpesa_receipt_number"]),
             models.Index(fields=["invoice", "status"]),
         ]
@@ -349,9 +348,7 @@ class Receipt(models.Model):
 
     class Meta:
         ordering = ["-receipt_date"]
-        indexes = [
-            models.Index(fields=["receipt_number"]),
-        ]
+        indexes = []
 
     def __str__(self):
         return f"{self.receipt_number} - {self.amount}"
