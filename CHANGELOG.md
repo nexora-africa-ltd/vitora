@@ -15,6 +15,13 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Desktop 1.0.24] - 2026-10-03
+
+### Desktop
+
+- Health-check the configured facility hub before attempting LAN discovery, so healthy cached hubs do not broadcast on every launch.
+- Add frameless desktop window controls to login and organization onboarding routes.
+
 ## [Desktop 1.0.23] - 2026-10-03
 
 ### Desktop

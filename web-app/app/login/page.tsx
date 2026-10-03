@@ -17,6 +17,7 @@ import { setupApi } from '@/lib/api/onboarding';
 import { standaloneLisApi } from '@/lib/api/standalone-lis';
 import { setActiveFacilityId, setDesktopApiUrl } from '@/lib/api/client';
 import { VitoraLogo } from '@/components/ui/vitora-logo';
+import { DesktopWindowToolbar } from '@/components/desktop/desktop-window-toolbar';
 import {
   isDesktop,
   isFirstRun,
@@ -115,35 +116,40 @@ export default function LoginPage() {
       }
 
       if (config?.deployment_mode === 'lan_client') {
-        setIsRecoveringHub(true);
-        try {
-          // Broadcast can be blocked by guest Wi-Fi; HTTP fallback remains available.
-          const candidates = await discoverNativeHubs().catch(() => []);
-          let discovered: HubInfo | null = null;
+        const cachedHub = await probeHub(config.hub_url || config.api_url, 2_000);
 
-          for (const candidate of candidates) {
-            const hub = await probeHub(candidate.url, 2_000);
-            if (hub && matchesSavedHub(hub, config.facility_id, config.organization_id)) {
-              discovered = hub;
-              break;
+        // A healthy cached hub does not need a broadcast on every app launch.
+        if (!cachedHub || !matchesSavedHub(cachedHub, config.facility_id, config.organization_id)) {
+          setIsRecoveringHub(true);
+          try {
+            // Broadcast can be blocked by guest Wi-Fi; HTTP fallback remains available.
+            const candidates = await discoverNativeHubs().catch(() => []);
+            let discovered: HubInfo | null = null;
+
+            for (const candidate of candidates) {
+              const hub = await probeHub(candidate.url, 2_000);
+              if (hub && matchesSavedHub(hub, config.facility_id, config.organization_id)) {
+                discovered = hub;
+                break;
+              }
             }
-          }
 
-          // Older hubs may not run the UDP responder yet. The existing HTTP
-          // subnet scan keeps those workstations recoverable during rollout.
-          if (!discovered) {
-            const hub = await discoverHub(config.hub_url);
-            if (hub && matchesSavedHub(hub, config.facility_id, config.organization_id)) {
-              discovered = hub;
+            // Older hubs may not run the UDP responder yet. The existing HTTP
+            // subnet scan keeps those workstations recoverable during rollout.
+            if (!discovered) {
+              const hub = await discoverHub(config.hub_url || config.api_url);
+              if (hub && matchesSavedHub(hub, config.facility_id, config.organization_id)) {
+                discovered = hub;
+              }
             }
-          }
 
-          if (!cancelled && discovered && normalizeApiUrl(discovered.url) !== normalizedApiUrl) {
-            await saveHubConfig(discovered.url, discovered.facilityId, discovered.organizationId);
-            setDesktopApiUrl(discovered.url);
+            if (!cancelled && discovered && normalizeApiUrl(discovered.url) !== normalizedApiUrl) {
+              await saveHubConfig(discovered.url, discovered.facilityId, discovered.organizationId);
+              setDesktopApiUrl(discovered.url);
+            }
+          } finally {
+            if (!cancelled) setIsRecoveringHub(false);
           }
-        } finally {
-          if (!cancelled) setIsRecoveringHub(false);
         }
       }
 
@@ -351,12 +357,15 @@ export default function LoginPage() {
 
   return (
     <div className="relative min-h-screen">
+      <DesktopWindowToolbar />
       {/* Full-bleed background: branding gradient fading into background color */}
       <div className="absolute inset-0 bg-background" />
       <div className="absolute inset-0 bg-gradient-to-br from-brand-teal-900 via-brand-teal-800 to-brand-teal-600 lg:[mask-image:linear-gradient(to_right,black_35%,transparent_65%)]" />
 
       {/* Theme toggle */}
-      <AnimatedThemeToggle className="absolute right-4 top-4 z-50" />
+      <AnimatedThemeToggle
+        className={`absolute top-4 z-50 ${isDesktopMode ? 'right-36' : 'right-4'}`}
+      />
 
       <div className="relative flex min-h-screen">
         {/* Left side - Branding */}
