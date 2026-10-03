@@ -35,7 +35,9 @@ $ErrorActionPreference = "Stop"
 
 $InstallDir = Split-Path -Parent $PSCommandPath
 $LogDir = Join-Path $InstallDir "logs"
-$StartupLog = Join-Path $LogDir "start-hub.log"
+# API and sync launch as separate NSSM services. Separate logs avoid a startup
+# file-handle race when both services initialize at the same time.
+$StartupLog = Join-Path $LogDir "start-hub-$Mode.log"
 $script:DpapiTypeInitialized = $false
 $script:DpapiProtectedDataType = $null
 $script:DpapiLocalMachineScope = $null

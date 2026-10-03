@@ -127,3 +127,10 @@ def test_hub_installers_use_protected_secret_stores():
     assert "systemd-creds decrypt" in linux_updater
     assert "CREDENTIALS_DIRECTORY" in linux_launcher
     assert "hub-secrets" in linux_launcher
+
+
+def test_windows_launcher_uses_independent_logs_for_api_and_sync_services():
+    """Concurrent NSSM services must not contend for one startup log file."""
+    launcher = (REPO_ROOT / "backend" / "scripts" / "start-hub-windows.ps1").read_text()
+
+    assert '$StartupLog = Join-Path $LogDir "start-hub-$Mode.log"' in launcher
