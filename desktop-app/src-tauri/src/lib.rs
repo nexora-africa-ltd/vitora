@@ -33,7 +33,7 @@ use config::{
     set_fernet_key, set_hub_url, set_organization_id, set_sync_interval, store_credentials,
     store_license_token, AppConfig,
 };
-use hub_discovery::discover_hubs;
+use hub_discovery::DiscoveredHub;
 use updater::{check_for_updates, get_update_status, install_available_update};
 
 const SIDECAR_READY_TIMEOUT: Duration = Duration::from_secs(10 * 60);
@@ -826,6 +826,11 @@ impl Drop for SidecarState {
 #[tauri::command]
 fn get_sidecar_port(state: State<SidecarState>) -> u16 {
     state.port()
+}
+
+#[tauri::command]
+async fn discover_hubs(timeout_ms: Option<u64>) -> Result<Vec<DiscoveredHub>, String> {
+    hub_discovery::discover_hubs(timeout_ms).await
 }
 
 /// Tauri command: get the app version from tauri.conf.json (embedded at build time).

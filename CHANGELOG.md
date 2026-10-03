@@ -15,6 +15,13 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Desktop 1.0.22] - 2026-10-03
+
+### Desktop
+
+- Grant the packaged Tauri webview permission to invoke native `discover_hubs`, completing the LAN discovery release path.
+- Regenerate Tauri capability schemas for the discovery command.
+
 ## [Hub 1.0.24] - 2026-10-03
 
 ### Hub

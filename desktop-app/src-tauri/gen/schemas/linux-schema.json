@@ -2211,10 +2211,10 @@
       "description": "Permission identifier",
       "oneOf": [
         {
-          "description": "Default permissions for Vitora desktop app commands.\n#### This permission set includes:\n\n- `allow-get-sidecar-port`\n- `allow-get-app-version`\n- `allow-print-receipt`\n- `allow-list-printers`\n- `allow-get-api-url`\n- `allow-set-api-url`\n- `allow-is-first-run`\n- `allow-get-app-config`\n- `allow-set-deployment-mode`\n- `allow-set-sync-interval`\n- `allow-set-backup-interval`\n- `allow-set-hub-url`\n- `allow-set-facility-id`\n- `allow-set-organization-id`\n- `allow-save-hub-config`\n- `allow-get-db-encryption-key`\n- `allow-set-fernet-key`\n- `allow-get-fernet-key`\n- `allow-get-installation-id`\n- `allow-store-license-token`\n- `allow-get-license-token`\n- `allow-clear-license-token`\n- `allow-store-credentials`\n- `allow-get-credentials`\n- `allow-clear-credentials`\n- `allow-check-for-updates`\n- `allow-drag-window`\n- `allow-minimize-window`\n- `allow-toggle-maximize-window`\n- `allow-close-window`",
+          "description": "Default permissions for Vitora desktop app commands.\n#### This permission set includes:\n\n- `allow-get-sidecar-port`\n- `allow-discover-hubs`\n- `allow-get-app-version`\n- `allow-print-receipt`\n- `allow-list-printers`\n- `allow-get-api-url`\n- `allow-set-api-url`\n- `allow-is-first-run`\n- `allow-get-app-config`\n- `allow-set-deployment-mode`\n- `allow-set-sync-interval`\n- `allow-set-backup-interval`\n- `allow-set-hub-url`\n- `allow-set-facility-id`\n- `allow-set-organization-id`\n- `allow-save-hub-config`\n- `allow-get-db-encryption-key`\n- `allow-set-fernet-key`\n- `allow-get-fernet-key`\n- `allow-get-installation-id`\n- `allow-store-license-token`\n- `allow-get-license-token`\n- `allow-clear-license-token`\n- `allow-store-credentials`\n- `allow-get-credentials`\n- `allow-clear-credentials`\n- `allow-check-for-updates`\n- `allow-drag-window`\n- `allow-minimize-window`\n- `allow-toggle-maximize-window`\n- `allow-close-window`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for Vitora desktop app commands.\n#### This permission set includes:\n\n- `allow-get-sidecar-port`\n- `allow-get-app-version`\n- `allow-print-receipt`\n- `allow-list-printers`\n- `allow-get-api-url`\n- `allow-set-api-url`\n- `allow-is-first-run`\n- `allow-get-app-config`\n- `allow-set-deployment-mode`\n- `allow-set-sync-interval`\n- `allow-set-backup-interval`\n- `allow-set-hub-url`\n- `allow-set-facility-id`\n- `allow-set-organization-id`\n- `allow-save-hub-config`\n- `allow-get-db-encryption-key`\n- `allow-set-fernet-key`\n- `allow-get-fernet-key`\n- `allow-get-installation-id`\n- `allow-store-license-token`\n- `allow-get-license-token`\n- `allow-clear-license-token`\n- `allow-store-credentials`\n- `allow-get-credentials`\n- `allow-clear-credentials`\n- `allow-check-for-updates`\n- `allow-drag-window`\n- `allow-minimize-window`\n- `allow-toggle-maximize-window`\n- `allow-close-window`"
+          "markdownDescription": "Default permissions for Vitora desktop app commands.\n#### This permission set includes:\n\n- `allow-get-sidecar-port`\n- `allow-discover-hubs`\n- `allow-get-app-version`\n- `allow-print-receipt`\n- `allow-list-printers`\n- `allow-get-api-url`\n- `allow-set-api-url`\n- `allow-is-first-run`\n- `allow-get-app-config`\n- `allow-set-deployment-mode`\n- `allow-set-sync-interval`\n- `allow-set-backup-interval`\n- `allow-set-hub-url`\n- `allow-set-facility-id`\n- `allow-set-organization-id`\n- `allow-save-hub-config`\n- `allow-get-db-encryption-key`\n- `allow-set-fernet-key`\n- `allow-get-fernet-key`\n- `allow-get-installation-id`\n- `allow-store-license-token`\n- `allow-get-license-token`\n- `allow-clear-license-token`\n- `allow-store-credentials`\n- `allow-get-credentials`\n- `allow-clear-credentials`\n- `allow-check-for-updates`\n- `allow-drag-window`\n- `allow-minimize-window`\n- `allow-toggle-maximize-window`\n- `allow-close-window`"
         },
         {
           "type": "string",
@@ -2231,6 +2231,10 @@
         {
           "type": "string",
           "const": "allow-close-window"
+        },
+        {
+          "type": "string",
+          "const": "allow-discover-hubs"
         },
         {
           "type": "string",

@@ -80,7 +80,6 @@ fn discover_hubs_blocking(timeout: Duration) -> Result<Vec<DiscoveredHub>, Strin
     Ok(hubs)
 }
 
-#[tauri::command]
 pub async fn discover_hubs(timeout_ms: Option<u64>) -> Result<Vec<DiscoveredHub>, String> {
     let timeout = Duration::from_millis(
         timeout_ms
