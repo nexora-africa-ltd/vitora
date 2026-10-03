@@ -942,9 +942,7 @@ class TestMCHSignalEvents:
         instance.facility_id = 1
         instance.organization_id = 2
 
-        with patch(
-            "hmis.apps.mch.services.immunization.generate_immunization_schedule"
-        ) as mock_gen:
+        with patch("hmis.apps.immunizations.services.schedule.generate_kepi_schedule") as mock_gen:
             mock_gen.return_value = [MagicMock(), MagicMock(), MagicMock()]
             auto_generate_immunization_schedule(sender=None, instance=instance, created=True)
 

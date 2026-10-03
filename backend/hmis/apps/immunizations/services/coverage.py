@@ -9,6 +9,7 @@ from hmis.apps.immunizations.models import ImmunizationRecord
 
 
 def calculate_coverage(
+    facility_id: int,
     vaccine_code: str,
     start_date: date | None = None,
     end_date: date | None = None,
@@ -19,6 +20,7 @@ def calculate_coverage(
     Returns the total scheduled/administered count and coverage percentage.
 
     Args:
+        facility_id: Active facility ID to calculate coverage for.
         vaccine_code: VaccineDefinition.code to calculate coverage for.
         start_date: Optional start date filter (on scheduled_date).
         end_date: Optional end date filter (on scheduled_date).
@@ -27,7 +29,7 @@ def calculate_coverage(
         Dict with keys: vaccine_code, total, administered, missed,
         scheduled, coverage_pct
     """
-    qs = ImmunizationRecord.objects.filter(vaccine__code=vaccine_code)
+    qs = ImmunizationRecord.objects.filter(facility_id=facility_id, vaccine__code=vaccine_code)
 
     if start_date:
         qs = qs.filter(scheduled_date__gte=start_date)

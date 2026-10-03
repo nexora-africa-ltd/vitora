@@ -119,10 +119,11 @@ export default function AEFICreatePage() {
   const [recordComboOpen, setRecordComboOpen] = useState(false);
 
   const { data: recordsData, isLoading: recordsLoading } = useQuery({
-    queryKey: ['immunization-records-search', recordSearch],
+    queryKey: ['immunization-records-search', 'ADMINISTERED', recordSearch],
     queryFn: () =>
       immunizationRecordsApi.list({
         page_size: 20,
+        status: 'ADMINISTERED',
         ...(recordSearch ? { search: recordSearch } : {}),
       }),
     enabled: recordComboOpen,

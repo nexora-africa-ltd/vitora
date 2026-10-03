@@ -507,7 +507,9 @@ class TestScheduleGeneration:
 class TestCoverageCalculation:
     """Tests for immunization coverage statistics."""
 
-    def test_coverage_calculation(self, child_patient, adult_patient, bcg_vaccine, test_user):
+    def test_coverage_calculation(
+        self, child_patient, adult_patient, bcg_vaccine, test_user, sample_facility
+    ):
         """Should calculate coverage percentage for a vaccine."""
         # Create 2 records: 1 administered for child, 1 scheduled for adult
         ImmunizationRecord.objects.create(
@@ -527,14 +529,14 @@ class TestCoverageCalculation:
             status="SCHEDULED",
         )
 
-        result = calculate_coverage(vaccine_code="BCG")
+        result = calculate_coverage(facility_id=sample_facility.id, vaccine_code="BCG")
         assert result["total"] == 2
         assert result["administered"] == 1
         assert result["coverage_pct"] == 50.0
 
-    def test_coverage_empty_returns_zero(self, bcg_vaccine):
+    def test_coverage_empty_returns_zero(self, bcg_vaccine, sample_facility):
         """Coverage with no records should return 0."""
-        result = calculate_coverage(vaccine_code="BCG")
+        result = calculate_coverage(facility_id=sample_facility.id, vaccine_code="BCG")
         assert result["total"] == 0
         assert result["coverage_pct"] == 0.0
 
@@ -713,6 +715,29 @@ class TestAEFIAPI:
         response = authenticated_client.get("/api/immunizations/aefi/")
         assert response.status_code == status.HTTP_200_OK
 
+    def test_create_aefi_rejects_scheduled_immunization(
+        self, authenticated_client, sample_immunization
+    ):
+        """An adverse event can only be reported after administration."""
+        sample_immunization.status = "SCHEDULED"
+        sample_immunization.administered_date = None
+        sample_immunization.save(update_fields=["status", "administered_date"])
+
+        response = authenticated_client.post(
+            "/api/immunizations/aefi/",
+            {
+                "immunization_record": sample_immunization.id,
+                "event_date": str(date.today()),
+                "event_types": ["HIGH_FEVER"],
+                "severity": "MILD",
+                "description": "Fever reported before vaccine administration.",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "immunization_record" in response.data
+
 
 @pytest.mark.django_db
 class TestCoverageAPI:
@@ -734,3 +759,51 @@ class TestCoverageAPI:
             f"/api/immunizations/coverage/?vaccine_code=BCG&start_date={start}&end_date={end}"
         )
         assert response.status_code == status.HTTP_200_OK
+
+    def test_coverage_excludes_records_from_another_facility(
+        self,
+        authenticated_client,
+        sample_immunization,
+        bcg_vaccine,
+        child_patient,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
+    ):
+        """Coverage must describe the active facility, not the whole organization."""
+        from hmis.apps.core.models import Facility
+
+        other_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Other Health Centre",
+            mfl_code="99998",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        ImmunizationRecord.objects.create(
+            patient=child_patient,
+            vaccine=bcg_vaccine,
+            dose_number=2,
+            scheduled_date=date.today(),
+            status="SCHEDULED",
+            facility=other_facility,
+            organization=sample_organization,
+        )
+
+        response = authenticated_client.get("/api/immunizations/coverage/?vaccine_code=BCG")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["total"] == 1
+        assert response.data["administered"] == 1
+
+    def test_coverage_rejects_inverted_date_range(self, authenticated_client, bcg_vaccine):
+        """Reporting periods must run from an earlier to a later date."""
+        response = authenticated_client.get(
+            "/api/immunizations/coverage/?vaccine_code=BCG"
+            "&start_date=2026-12-31&end_date=2026-01-01"
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "start_date" in response.data["detail"]
