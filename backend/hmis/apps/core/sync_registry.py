@@ -74,6 +74,10 @@ SYNC_REGISTRY: dict[str, SyncRegistryEntry] = {
         conflict_policy="LAST_WRITE_WINS",
         exclude_fields=("last_login",),
     ),
+    # Global reference hierarchy and facility masters required by clinical FK graphs.
+    "core.County": SyncRegistryEntry(direction=SyncDirection.DOWN, priority=1),
+    "core.SubCounty": SyncRegistryEntry(direction=SyncDirection.DOWN, priority=2),
+    "core.Ward": SyncRegistryEntry(direction=SyncDirection.DOWN, priority=2),
     # Clinical data
     "patients.Patient": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=3),
     "patients.EmergencyContact": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=4),
@@ -91,13 +95,24 @@ SYNC_REGISTRY: dict[str, SyncRegistryEntry] = {
     "clinics.ClinicEnrollment": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=5),
     "pharmacy.Prescription": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=4),
     "pharmacy.PrescriptionItem": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=5),
+    "pharmacy.StockBatch": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=4),
+    "pharmacy.Dispensing": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=5),
     "laboratory.LabOrder": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=4),
     "laboratory.LabOrderItem": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=5),
     "laboratory.LabResult": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=5),
+    "laboratory.TestCatalog": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=3),
+    "laboratory.Specimen": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=4),
     "laboratory.DiagnosticReport": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=5),
     "billing.Invoice": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=4),
     "billing.InvoiceItem": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=5),
     "billing.Payment": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=5),
+    "billing.PaymentPoint": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=3),
+    "billing.SHAMember": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=4),
+    "inventory.StoreLocation": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=3),
+    "inventory.Supplier": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=3),
+    "inventory.PaymentTerm": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=3),
+    "inventory.PurchaseOrder": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=4),
+    "inventory.GoodsReceiptNote": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=5),
     "billing.Receipt": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=5),
     "billing.CreditNote": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=5),
     "billing.SHAClaim": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=5),
@@ -113,6 +128,9 @@ SYNC_REGISTRY: dict[str, SyncRegistryEntry] = {
     "inpatient.Ward": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=4),
     "inpatient.Bed": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=5),
     "inpatient.Admission": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=4),
+    "inpatient.AdmissionRecommendation": SyncRegistryEntry(
+        direction=SyncDirection.BOTH, priority=4
+    ),
     "inpatient.Discharge": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=5),
     "referrals.ClinicalReferral": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=5),
     "sick_notes.SickNote": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=5),
@@ -120,6 +138,22 @@ SYNC_REGISTRY: dict[str, SyncRegistryEntry] = {
         direction=SyncDirection.BOTH,
         priority=4,
     ),
+    "immunizations.VaccineDefinition": SyncRegistryEntry(direction=SyncDirection.DOWN, priority=3),
+    "immunizations.FacilityCustomVaccine": SyncRegistryEntry(
+        direction=SyncDirection.BOTH, priority=3
+    ),
+    "immunizations.OrganizationVaccineConfig": SyncRegistryEntry(
+        direction=SyncDirection.BOTH, priority=3
+    ),
+    "immunizations.FacilityVaccineConfig": SyncRegistryEntry(
+        direction=SyncDirection.BOTH, priority=4
+    ),
+    "immunizations.VaccineCampaign": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=4),
+    "mch.MCHRegistration": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=4),
+    "blood_bank.BloodDonor": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=3),
+    "blood_bank.BloodUnit": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=4),
+    "theatre.TheatreEquipmentType": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=3),
+    "encounters.TreatmentPlanTemplate": SyncRegistryEntry(direction=SyncDirection.DOWN, priority=3),
     "imaging.ImagingOrder": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=4),
     "imaging.RadiologyReport": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=5),
     # Reference data (downward only in this phase, not auto-queued from hub)

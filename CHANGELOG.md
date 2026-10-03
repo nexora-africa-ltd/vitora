@@ -15,6 +15,19 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Hub 1.0.25] - 2026-10-03
+
+### Hub
+
+- Move hub runtime secrets to protected Windows DPAPI and Linux systemd credential stores, including shared DHA ILM credentials delivered through the device-encrypted activation envelope.
+- Expand cloud-to-hub sync coverage for Document Hub records and their P0 clinical, laboratory, billing, inventory, immunization, inpatient, MCH, blood bank, and theatre dependencies.
+
+## [Desktop 1.0.25] - 2026-10-03
+
+### Desktop
+
+- Align the desktop release with the expanded hub sync coverage for offline Document Hub workflows.
+
 ## [Desktop 1.0.24] - 2026-10-03
 
 ### Desktop
