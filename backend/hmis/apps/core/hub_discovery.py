@@ -32,6 +32,27 @@ logger = logging.getLogger(__name__)
 DISCOVERY_UDP_PORT = 19088
 DISCOVERY_MAGIC = b"VITORA_DISCOVER"
 
+_active_hub_discovery_service: "HubDiscoveryService | None" = None
+
+
+def set_active_hub_discovery_service(service: "HubDiscoveryService | None") -> None:
+    """Expose the ASGI-owned discovery responder to the health endpoint."""
+    global _active_hub_discovery_service
+    _active_hub_discovery_service = service
+
+
+def get_hub_discovery_health() -> dict[str, str | int | None]:
+    """Return non-sensitive responder status for LAN diagnostics."""
+    service = _active_hub_discovery_service
+    if service is None:
+        return {
+            "udp": "inactive",
+            "udp_port": DISCOVERY_UDP_PORT,
+            "advertised_url": None,
+            "error": None,
+        }
+    return service.health_snapshot()
+
 
 class HubDiscoveryService:
     """Advertises the hub on the local network via mDNS and UDP."""
@@ -53,6 +74,7 @@ class HubDiscoveryService:
         self._zeroconf = None
         self._udp_thread: threading.Thread | None = None
         self._udp_stop = threading.Event()
+        self._udp_error: str | None = None
 
     def start(self):
         """Start both mDNS and UDP discovery (non-blocking)."""
@@ -63,6 +85,22 @@ class HubDiscoveryService:
         """Stop all discovery services."""
         self._stop_udp_responder()
         self._stop_mdns()
+
+    def health_snapshot(self) -> dict[str, str | int | None]:
+        """Return the current UDP responder state without exposing credentials."""
+        local_ip = self._get_local_ip()
+        if self._udp_error:
+            udp_status = "unavailable"
+        elif self._udp_thread and self._udp_thread.is_alive():
+            udp_status = "active"
+        else:
+            udp_status = "inactive"
+        return {
+            "udp": udp_status,
+            "udp_port": DISCOVERY_UDP_PORT,
+            "advertised_url": f"http://{local_ip}:{self.hub_port}" if local_ip else None,
+            "error": self._udp_error,
+        }
 
     # -----------------------------------------------------------------------
     # mDNS (zeroconf)
@@ -164,8 +202,9 @@ class HubDiscoveryService:
         try:
             sock.bind((self.discovery_bind_host, DISCOVERY_UDP_PORT))
         except OSError as e:
+            self._udp_error = str(e)
             logger.error(
-                "Cannot bind UDP %s:%d: %s",
+                "Cannot bind UDP %s:%d; HTTP hub remains available but native discovery is disabled: %s",
                 self.discovery_bind_host,
                 DISCOVERY_UDP_PORT,
                 e,

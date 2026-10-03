@@ -15,6 +15,23 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Hub 1.0.24] - 2026-10-03
+
+### Hub
+
+- Start the UDP LAN discovery responder with the hub ASGI lifecycle and stop it cleanly on Daphne shutdown.
+- Expose discovery health through `/api/hub/health/`, including a non-fatal degraded state when UDP port `19088` is unavailable.
+- Open UDP `19088` during Windows and Linux installs and updates, and publish it in Linux container deployments.
+- Keep TCP `9088` for all hub API, authentication, sync, and WebSocket traffic; UDP is used only to discover a candidate hub address.
+
+## [Desktop 1.0.21] - 2026-10-03
+
+### Desktop
+
+- Add native Tauri UDP broadcast discovery for facility hubs and verify discovered candidates through `/api/hub/health/` before use.
+- Use native discovery during first workstation setup and automatically recover a stale saved hub URL before login, with verified HTTP subnet scanning as a fallback for older hubs.
+- Bump desktop app version metadata to `1.0.21` across package, Tauri, and Cargo manifests and lockfiles.
+
 ## [Hub 1.0.23] - 2026-10-02
 
 ### Hub

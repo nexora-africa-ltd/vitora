@@ -267,6 +267,9 @@ trap - EXIT
 
 # Restart service
 info "Starting hub service..."
+if command -v ufw &>/dev/null; then
+    ufw allow 19088/udp comment "Vitora Hub Discovery" 2>/dev/null || true
+fi
 systemctl start "$SERVICE_NAME"
 if systemctl list-unit-files "${SYNC_SERVICE_NAME}.service" --no-legend 2>/dev/null | grep -q "${SYNC_SERVICE_NAME}"; then
     systemctl start "$SYNC_SERVICE_NAME"

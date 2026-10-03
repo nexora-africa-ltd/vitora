@@ -1155,6 +1155,17 @@ if (-not $existing) {
     Write-Info "Firewall rule already exists."
 }
 
+$discoveryRuleName = "Vitora Hub Discovery (UDP 19088)"
+$existingDiscoveryRule = Get-NetFirewallRule -DisplayName $discoveryRuleName -ErrorAction SilentlyContinue
+if (-not $existingDiscoveryRule) {
+    New-NetFirewallRule -DisplayName $discoveryRuleName `
+        -Direction Inbound -Protocol UDP -LocalPort 19088 `
+        -Action Allow -Profile Private | Out-Null
+    Write-Info "UDP discovery firewall rule added."
+} else {
+    Write-Info "UDP discovery firewall rule already exists."
+}
+
 # --- Weekly Auto-Update Task ---
 Write-Info "Registering weekly auto-update task ($AutoUpdateDay at $AutoUpdateTime)..."
 try {

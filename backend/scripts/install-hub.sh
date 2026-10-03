@@ -515,13 +515,14 @@ services:
     restart: unless-stopped
     ports:
       - "${HUB_PORT}:9088"
+      - "19088:19088/udp"
     volumes:
       - vitora-data:/data
       - ${APP_DIR}/.env:/opt/vitora-hub/.env:ro
     env_file:
       - ${APP_DIR}/.env
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9088/api/health/"]
+      test: ["CMD", "curl", "-f", "http://localhost:9088/api/hub/health/"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -536,7 +537,7 @@ COMPOSE
 
     step "6/7 Verifying health..."
     sleep 10
-    if curl -sf "http://127.0.0.1:${HUB_PORT}/api/health/" >/dev/null 2>&1; then
+    if curl -sf "http://127.0.0.1:${HUB_PORT}/api/hub/health/" >/dev/null 2>&1; then
         info "Health check passed."
     else
         warn "Health check did not pass immediately — container may still be starting."
@@ -874,6 +875,7 @@ systemctl start "$SYNC_SERVICE_NAME"
 step "7/7 Configuring network..."
 if command -v ufw &>/dev/null; then
     ufw allow "$HUB_PORT"/tcp comment "Vitora Hub" 2>/dev/null || true
+    ufw allow 19088/udp comment "Vitora Hub Discovery" 2>/dev/null || true
 fi
 
 # --- Verify ---

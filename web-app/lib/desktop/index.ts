@@ -295,6 +295,14 @@ export interface AppConfig {
   setup_completed: boolean;
 }
 
+export interface NativeDiscoveredHub {
+  url: string;
+  facility_id: string;
+  facility_name: string;
+  hub_id: string;
+  version: string;
+}
+
 /**
  * Get the full app configuration.
  * Returns null in browser mode.
@@ -376,6 +384,13 @@ export async function saveHubConfig(
   const invoke = getInvoke();
   if (!invoke) return;
   await invoke('save_hub_config', { hubUrl, facilityId, organizationId });
+}
+
+/** Discover facility hubs by native UDP broadcast. Desktop-only. */
+export async function discoverNativeHubs(timeoutMs = 3500): Promise<NativeDiscoveredHub[]> {
+  const invoke = getInvoke();
+  if (!invoke) return [];
+  return invoke<NativeDiscoveredHub[]>('discover_hubs', { timeoutMs });
 }
 
 // ---------------------------------------------------------------------------

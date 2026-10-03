@@ -80,3 +80,26 @@ def test_windows_hub_service_env_includes_tibabot_and_cloud_auth_flags():
         assert "AppEnvironmentExtra" in script
         for var in required_vars:
             assert var in script
+
+
+def test_windows_hub_installer_opens_udp_discovery_port():
+    """LAN discovery needs a private-profile inbound UDP rule in addition to HTTP."""
+    script = (REPO_ROOT / "backend" / "scripts" / "install-hub-windows.ps1").read_text()
+
+    assert '"Vitora Hub Discovery (UDP 19088)"' in script
+    assert "-Protocol UDP -LocalPort 19088" in script
+    assert "-Direction Inbound" in script
+    assert "-Action Allow -Profile Private" in script
+
+
+def test_hub_updates_and_linux_installers_preserve_udp_discovery_access():
+    """Existing hubs and Linux container deployments must expose UDP discovery too."""
+    windows_updater = (REPO_ROOT / "backend" / "scripts" / "update-hub-windows.ps1").read_text()
+    linux_installer = (REPO_ROOT / "backend" / "scripts" / "install-hub.sh").read_text()
+    linux_updater = (REPO_ROOT / "backend" / "scripts" / "update-hub.sh").read_text()
+
+    assert '"Vitora Hub Discovery (UDP 19088)"' in windows_updater
+    assert "-Protocol UDP -LocalPort 19088" in windows_updater
+    assert '"19088:19088/udp"' in linux_installer
+    assert 'ufw allow 19088/udp comment "Vitora Hub Discovery"' in linux_installer
+    assert 'ufw allow 19088/udp comment "Vitora Hub Discovery"' in linux_updater

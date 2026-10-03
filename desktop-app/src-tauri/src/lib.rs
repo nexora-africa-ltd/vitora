@@ -22,6 +22,7 @@ use tauri_plugin_deep_link::DeepLinkExt;
 
 pub mod commands;
 pub mod config;
+pub mod hub_discovery;
 pub mod updater;
 
 use commands::{list_printers, print_receipt};
@@ -32,6 +33,7 @@ use config::{
     set_fernet_key, set_hub_url, set_organization_id, set_sync_interval, store_credentials,
     store_license_token, AppConfig,
 };
+use hub_discovery::discover_hubs;
 use updater::{check_for_updates, get_update_status, install_available_update};
 
 const SIDECAR_READY_TIMEOUT: Duration = Duration::from_secs(10 * 60);
@@ -951,6 +953,7 @@ pub fn run() {
         .manage(sidecar)
         .invoke_handler(tauri::generate_handler![
             get_sidecar_port,
+            discover_hubs,
             get_app_version,
             print_receipt,
             list_printers,

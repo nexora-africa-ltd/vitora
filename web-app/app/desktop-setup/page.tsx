@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   isDesktop,
+  discoverNativeHubs,
   setApiUrl,
   setDeploymentMode,
   saveHubConfig,
@@ -101,7 +102,17 @@ export default function DesktopSetupPage() {
     setHubInfo(null);
 
     try {
-      const hub = await discoverHub(url || undefined);
+      let hub: HubInfo | null = null;
+      const nativeHubs = await discoverNativeHubs().catch(() => []);
+      for (const candidate of nativeHubs) {
+        hub = await probeHub(candidate.url, 2_000);
+        if (hub) break;
+      }
+
+      // Supports hubs released before the UDP responder lifecycle wiring.
+      if (!hub) {
+        hub = await discoverHub(url || undefined);
+      }
       if (hub) {
         setHubInfo(hub);
         setUrl(hub.url);
@@ -253,7 +264,7 @@ export default function DesktopSetupPage() {
             <h2 className="text-lg font-semibold text-white">Server Configuration</h2>
             <p className="mt-1 text-sm text-slate-400">
               {mode === 'lan_client'
-                ? 'Enter the LAN IP address of your facility server.'
+                ? 'Scan for your facility server, or enter its address if discovery is unavailable.'
                 : mode === 'lan_hub'
                   ? 'This machine will serve other workstations. Enter the cloud sync URL.'
                   : 'Enter the URL of your Vitora HMIS API server.'}
@@ -275,7 +286,7 @@ export default function DesktopSetupPage() {
               }}
               placeholder={
                 mode === 'lan_client' || mode === 'lan_hub'
-                  ? 'http://192.168.100.87:9099'
+                  ? 'http://192.168.100.88:9088'
                   : DEFAULT_API_URL
               }
               className="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-white placeholder-slate-400 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"

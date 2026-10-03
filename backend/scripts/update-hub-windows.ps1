@@ -981,6 +981,17 @@ if (Test-Path $nssmExe) {
     Log "NSSM not found; service environment not refreshed"
 }
 
+# Existing hubs installed before UDP discovery need the firewall rule on update.
+$discoveryRuleName = "Vitora Hub Discovery (UDP 19088)"
+$existingDiscoveryRule = Get-NetFirewallRule -DisplayName $discoveryRuleName -ErrorAction SilentlyContinue
+if (-not $existingDiscoveryRule) {
+    New-NetFirewallRule -DisplayName $discoveryRuleName `
+        -Direction Inbound -Protocol UDP -LocalPort 19088 `
+        -Action Allow -Profile Private | Out-Null
+    Write-Ok "UDP discovery firewall rule added."
+    Log "UDP discovery firewall rule added"
+}
+
 # --- Step 8c: Refresh weekly auto-update task ---
 Write-Step "8c" "Refreshing weekly auto-update task..."
 try {

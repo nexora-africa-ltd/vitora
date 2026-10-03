@@ -89,7 +89,26 @@ class TestHubHealthEndpoint:
         assert "database" in data
         assert "sync" in data
         assert "rbac" in data
+        assert "discovery" in data
         assert "version" in data
+
+    @override_settings(ENVIRONMENT="hub")
+    @patch("hmis.apps.core.hub_views.get_hub_discovery_health")
+    def test_health_reports_degraded_udp_discovery(self, mock_discovery, api_client, db):
+        """Hub health should expose a non-fatal UDP discovery bind failure."""
+        mock_discovery.return_value = {
+            "udp": "unavailable",
+            "udp_port": 19088,
+            "advertised_url": None,
+            "error": "Address already in use",
+        }
+
+        response = api_client.get(self.URL)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["status"] == "degraded"
+        assert response.data["discovery"]["udp"] == "unavailable"
+        assert "udp_discovery_unavailable" in response.data["degraded_reasons"]
 
     def test_health_database_ok(self, api_client, db):
         """Database check should report OK when DB is accessible."""

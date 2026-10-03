@@ -155,7 +155,7 @@ The desktop app supports four operating modes configured during first-run:
 | Mode | API Target | Use Case |
 |------|-----------|----------|
 | **Standalone** | `https://api.vitora.digital` | Single user, direct cloud access |
-| **LAN Client** | `http://<hub-ip>:9088` | Multi-user facility, connects to local hub |
+| **LAN Client** | Discovered hub URL, normally `http://<hub-ip>:9088` | Multi-user facility, connects to local hub |
 | **LAN Hub** | `http://127.0.0.1:9088` | This machine IS the hub (runs Django locally) |
 | **Web Only** | Cloud + PowerSync | Unusual for desktop; browser-like mode |
 
@@ -168,7 +168,10 @@ The desktop app supports four operating modes configured during first-run:
 ### LAN Client Mode
 
 - Best for: Multi-user facilities with a dedicated hub machine
-- Hub URL is the facility server's LAN IP (e.g., `http://192.168.1.100:9088`)
+- First setup uses **Scan Network** to send a native UDP discovery probe on port `19088`.
+- The desktop app verifies every discovery response with `GET /api/hub/health/` before saving its HTTP hub URL.
+- If the hub IP changes later, the login screen automatically rediscovers and verifies the same facility before replacing its stale saved URL.
+- Manual URL entry remains available for segmented or guest networks that block UDP broadcasts.
 - Works entirely offline from internet (hub handles sync to cloud)
 - Cookie auth over HTTP (SameSite=Lax)
 
@@ -186,6 +189,7 @@ In the Tauri desktop app, Settings includes a **Desktop** tab only for admin rol
 For LAN Client and LAN Hub modes, the tab includes **Hub Operations**:
 
 - Hub health status, queue counts, last sync time, license-token presence, hub ID, facility ID, and uptime
+- LAN discovery state, including whether UDP `19088` is active or unavailable
 - **Refresh** to re-check `/api/hub/health/`
 - **Sync Now** to run one admin-gated `POST /api/hub/sync-now/` cycle
 

@@ -1488,6 +1488,10 @@ Services:
 - PostgreSQL (port 5432)
 - Redis (port 6379)
 
+#### Facility Hub LAN Ports
+
+Facility hubs use two LAN ports: TCP `9088` for API, login, sync, and WebSocket traffic; UDP `19088` only for workstation discovery. Desktop clients verify every discovered candidate through `/api/hub/health/` before connecting.
+
 ### 13.2 Production Checklist
 
 - [ ] Set \`DEBUG=false\`
