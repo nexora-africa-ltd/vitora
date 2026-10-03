@@ -20,11 +20,34 @@ from django.apps import apps
 from django.db import transaction
 from django.utils.dateparse import parse_date, parse_datetime, parse_time
 
-from hmis.apps.core.models import AuditLog, SyncConflict, SyncQueue
+from hmis.apps.core.models import AuditLog, SyncConflict, SyncIdentityMap, SyncQueue
 from hmis.apps.core.sync_context import sync_materialization_context
 from hmis.apps.core.sync_registry import SYNC_REGISTRY, SyncDirection, SyncRegistryEntry
 
 SYNC_META_KEY = "sync_meta"
+
+
+def source_node_from_sync_data(raw_data: dict[str, Any]) -> str:
+    """Return the protocol source namespace carried by an inbound payload."""
+    sync_meta = raw_data.get(SYNC_META_KEY)
+    if not isinstance(sync_meta, dict):
+        return ""
+    return str(sync_meta.get("source_node") or "").strip()
+
+
+def resolve_mapped_remote_id(
+    *, related_label: str, remote_record_id: Any, raw_data: dict[str, Any]
+) -> int | None:
+    """Resolve an inbound FK/M2M source ID through the persistent identity map."""
+    source_node = source_node_from_sync_data(raw_data)
+    if not source_node or remote_record_id in (None, ""):
+        return None
+    mapping = SyncIdentityMap.objects.filter(
+        source_node=source_node,
+        model_label=related_label,
+        remote_record_id=str(remote_record_id),
+    ).first()
+    return mapping.local_record_id if mapping else None
 
 
 def parse_date_value(value: Any):
@@ -294,13 +317,44 @@ def resolve_facility_ids_from_sync_data(raw_data: dict[str, Any]) -> list[int]:
 
 
 def apply_materialized_m2m(model, instance, raw_data: dict[str, Any]) -> None:
-    """Apply supported M2M fields after materializing a concrete model row."""
-    if model._meta.label != "core.OrgMembership":
+    """Apply M2M fields using source-node identity maps instead of raw PKs."""
+    if model._meta.label == "core.OrgMembership":
+        facility_ids = resolve_facility_ids_from_sync_data(raw_data)
+        if facility_ids:
+            instance.facilities.set(facility_ids)
+
+    # Schema v1 payloads did not identify their source node and cannot safely
+    # remap raw remote M2M primary keys. Preserve their prior no-op behavior.
+    if not source_node_from_sync_data(raw_data):
         return
 
-    facility_ids = resolve_facility_ids_from_sync_data(raw_data)
-    if facility_ids:
-        instance.facilities.set(facility_ids)
+    for field in model._meta.many_to_many:
+        if field.name not in raw_data:
+            continue
+        remote_ids = raw_data.get(field.name)
+        if not isinstance(remote_ids, list):
+            continue
+        related_label = field.remote_field.model._meta.label
+        local_ids: list[int] = []
+        unresolved_ids: list[Any] = []
+        for remote_id in remote_ids:
+            local_id = resolve_mapped_remote_id(
+                related_label=related_label,
+                remote_record_id=remote_id,
+                raw_data=raw_data,
+            )
+            if local_id is None:
+                unresolved_ids.append(remote_id)
+            else:
+                local_ids.append(local_id)
+        if unresolved_ids:
+            from django.core.exceptions import ObjectDoesNotExist
+
+            raise ObjectDoesNotExist(
+                f"Missing mapped {related_label} record(s) for {model._meta.label}.{field.name}: "
+                f"{unresolved_ids}"
+            )
+        getattr(instance, field.name).set(local_ids)
 
 
 def find_pending_local_change(model_label: str, record_id: Any) -> SyncQueue | None:

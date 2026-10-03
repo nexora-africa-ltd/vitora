@@ -1086,6 +1086,86 @@ class TestSyncMaterializer:
         assert result["success"] is False
         assert result.get("code") == "DEPENDENCY_MISSING"
 
+    def test_deferred_child_resolves_after_parent_identity_mapping(
+        self, sample_patient, sample_encounter, sample_facility
+    ):
+        """A child received before its parent should persist, then resolve through the parent map."""
+        from hmis.apps.core.models import SyncDeferredMaterialization, SyncIdentityMap
+        from hmis.apps.core.sync_materializer import (
+            materialize_entry,
+            retry_deferred_materializations,
+        )
+        from hmis.apps.encounters.models import Diagnosis, ICD10Code
+
+        local_code = ICD10Code.objects.create(
+            code="SYNC-CHILD-PARENT",
+            description="Deferred materialization test code",
+            category="Test category",
+            chapter=1,
+        )
+        source_node = "cloud-phase2-test"
+        remote_code_id = local_code.pk + 10000
+        child_entry = {
+            "table": "encounters.Diagnosis",
+            "operation": "CREATE",
+            "record_id": 57010,
+            "data": {
+                "id": 57010,
+                "encounter_id": sample_encounter.pk,
+                "encounter_patient_mrn": sample_patient.mrn,
+                "encounter_facility_mfl_code": sample_facility.mfl_code,
+                "encounter_date": sample_encounter.encounter_date.isoformat(),
+                "encounter_type": sample_encounter.encounter_type,
+                "encounter_chief_complaint": sample_encounter.chief_complaint,
+                "icd10_code_id": remote_code_id,
+                "diagnosis_type": "PRIMARY",
+                "certainty": "confirmed",
+                "sync_meta": {"source_node": source_node},
+            },
+        }
+
+        child_result = materialize_entry(child_entry)
+
+        assert child_result["success"] is False
+        assert child_result["code"] == "DEPENDENCY_MISSING"
+        deferred = SyncDeferredMaterialization.objects.get(
+            source_node=source_node,
+            model_label="encounters.Diagnosis",
+            remote_record_id="57010",
+        )
+        assert deferred.status == SyncDeferredMaterialization.STATUS_PENDING
+
+        parent_result = materialize_entry(
+            {
+                "table": "encounters.ICD10Code",
+                "operation": "CREATE",
+                "record_id": remote_code_id,
+                "data": {
+                    "id": remote_code_id,
+                    "code": local_code.code,
+                    "description": local_code.description,
+                    "category": local_code.category,
+                    "chapter": local_code.chapter,
+                    "sync_meta": {"source_node": source_node},
+                },
+            }
+        )
+
+        assert parent_result == {"success": True}
+        assert SyncIdentityMap.objects.filter(
+            source_node=source_node,
+            model_label="encounters.ICD10Code",
+            remote_record_id=str(remote_code_id),
+            local_record_id=local_code.pk,
+        ).exists()
+        assert retry_deferred_materializations() == 1
+
+        deferred.refresh_from_db()
+        assert deferred.status == SyncDeferredMaterialization.STATUS_RESOLVED
+        assert deferred.retry_count == 1
+        diagnosis = Diagnosis.objects.get(pk=57010)
+        assert diagnosis.icd10_code_id == local_code.pk
+
     def test_materialize_clinic_visit_remaps_session_encounter_and_staff(
         self, sample_patient, sample_encounter, sample_facility, test_user
     ):

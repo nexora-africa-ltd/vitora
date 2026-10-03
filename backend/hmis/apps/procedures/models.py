@@ -1152,13 +1152,15 @@ class ProcedureConsumable(models.Model):
         return f"{self.drug.generic_name} x{self.quantity} for {self.log.order}"
 
     def save(self, *args, **kwargs):  # type: ignore[override]
+        from hmis.apps.core.sync_context import is_sync_materialization_active
+
         if self.unit_cost and self.quantity:
             self.total_cost = self.unit_cost * self.quantity
         is_new = self.pk is None
         super().save(*args, **kwargs)
 
         # Deduct from inventory on first save only
-        if is_new:
+        if is_new and not is_sync_materialization_active():
             self._deduct_stock()
 
     def _deduct_stock(self) -> None:

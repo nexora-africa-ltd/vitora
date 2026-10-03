@@ -738,6 +738,62 @@ class SyncQueue(models.Model):
         self.save(update_fields=["status"])
 
 
+class SyncIdentityMap(TimeStampedModel):
+    """Map a source-node record identity to the receiving database primary key.
+
+    The mapping is internal sync state. It makes replay of append-only records
+    idempotent when cloud and hub primary keys differ, without treating mutable
+    clinical fields as unsafe pseudo-identities.
+    """
+
+    source_node = models.CharField(max_length=160)
+    model_label = models.CharField(max_length=100)
+    remote_record_id = models.CharField(max_length=128)
+    local_record_id = models.BigIntegerField(db_index=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["source_node", "model_label", "remote_record_id"],
+                name="unique_sync_identity_source_record",
+            )
+        ]
+        indexes = [models.Index(fields=["model_label", "local_record_id"])]
+        verbose_name = "Sync Identity Map"
+        verbose_name_plural = "Sync Identity Maps"
+
+    def __str__(self) -> str:
+        """Return a concise source-to-local identity description."""
+        return f"{self.source_node}:{self.model_label}:{self.remote_record_id} -> {self.local_record_id}"
+
+
+class SyncDeferredMaterialization(TimeStampedModel):
+    """Persist inbound rows whose mapped parents have not arrived yet."""
+
+    STATUS_PENDING = "PENDING"
+    STATUS_RESOLVED = "RESOLVED"
+    status = models.CharField(max_length=12, default=STATUS_PENDING, db_index=True)
+    source_node = models.CharField(max_length=160)
+    model_label = models.CharField(max_length=100)
+    remote_record_id = models.CharField(max_length=128)
+    payload = models.JSONField(default=dict)
+    error_message = models.TextField(blank=True, default="")
+    retry_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["source_node", "model_label", "remote_record_id"],
+                name="unique_deferred_sync_source_record",
+            )
+        ]
+        indexes = [models.Index(fields=["status", "created_at"])]
+
+    def __str__(self) -> str:
+        """Return a concise deferred inbound identity."""
+        return f"{self.source_node}:{self.model_label}:{self.remote_record_id} [{self.status}]"
+
+
 class SyncConflict(models.Model):
     """
     Record of sync conflicts for audit and resolution.

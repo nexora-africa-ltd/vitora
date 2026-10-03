@@ -195,7 +195,8 @@ class TestHubSyncSignals:
         assert entry.data["registered_at_facility"] == sample_facility.id
         assert entry.data["sync_meta"]["priority"] == 3
         assert entry.data["sync_meta"]["direction"] == "both"
-        assert entry.data["sync_meta"]["schema_version"] == 1
+        assert entry.data["sync_meta"]["schema_version"] == 2
+        assert entry.data["sync_meta"]["source_node"] == "cloud"
 
     @override_settings(ENVIRONMENT="test", SYNC_ENABLED=False)
     def test_patient_create_is_not_queued_outside_hub_mode(
@@ -240,7 +241,12 @@ class TestHubSyncSignals:
         assert entries[0].data["last_name"] == "Updated"
         assert entries[1].data == {
             "id": patient_id,
-            "sync_meta": {"priority": 3, "direction": "both", "schema_version": 1},
+            "sync_meta": {
+                "priority": 3,
+                "direction": "both",
+                "schema_version": 2,
+                "source_node": "cloud",
+            },
         }
 
     @override_settings(ENVIRONMENT="hub", SYNC_ENABLED=True)

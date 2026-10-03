@@ -79,9 +79,8 @@ SEED_STEPS: tuple[SeedStep, ...] = (
     SeedStep("seed_analyzer_templates", "Lab analyzer templates"),
     SeedStep("seed_autoverify_defaults", "Lab auto-verification defaults"),
     SeedStep("seed_worksheet_templates", "Lab worksheet templates"),
-    # --- Immunizations & MCH ---
+    # --- Immunizations ---
     SeedStep("seed_vaccines", "Vaccine catalogue"),
-    SeedStep("seed_kepi_schedule", "KEPI immunization schedule"),
     # --- Public health surveillance ---
     SeedStep("seed_notifiable_diseases", "Notifiable diseases (IDSR)"),
     SeedStep("seed_outbreak_thresholds", "Outbreak detection thresholds"),

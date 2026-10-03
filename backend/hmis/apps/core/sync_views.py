@@ -990,6 +990,61 @@ def _model_label_to_model(model_label: str):
     return apps.get_model(app_label, model_name)
 
 
+def _derive_tenant_scope_path(model_label: str, *, target_field: str) -> str | None:
+    """Find a forward-FK path from a nested model to a tenant field.
+
+    Most workflow children deliberately avoid duplicating tenant columns. This
+    keeps full-pull scoping correct as new clinical child models are registered
+    without requiring a fragile, ever-growing manual path map.
+    """
+    try:
+        model = _model_label_to_model(model_label)
+    except LookupError:
+        return None
+
+    queue: list[tuple[object, tuple[str, ...]]] = [(model, ())]
+    visited: set[tuple[str, tuple[str, ...]]] = set()
+    max_depth = 6
+
+    while queue:
+        current_model, path = queue.pop(0)
+        model_key = (current_model._meta.label, path)
+        if model_key in visited or len(path) > max_depth:
+            continue
+        visited.add(model_key)
+
+        if target_field in {field.name for field in current_model._meta.concrete_fields}:
+            return "__".join((*path, target_field))
+
+        for field in current_model._meta.concrete_fields:
+            if not (getattr(field, "many_to_one", False) or getattr(field, "one_to_one", False)):
+                continue
+            related_model = field.remote_field.model
+            if not hasattr(related_model, "_meta"):
+                continue
+            queue.append((related_model, (*path, field.name)))
+
+    return None
+
+
+def _model_sync_dependencies(model_label: str) -> set[str]:
+    """Return explicit and direct-FK sync dependencies for a registry model."""
+    dependencies = set(FULL_PULL_DEPENDENCIES.get(model_label, set()))
+    try:
+        model = _model_label_to_model(model_label)
+    except LookupError:
+        return dependencies
+
+    for field in model._meta.concrete_fields:
+        if not (getattr(field, "many_to_one", False) or getattr(field, "one_to_one", False)):
+            continue
+        related_model = field.remote_field.model
+        related_label = getattr(getattr(related_model, "_meta", None), "label", None)
+        if related_label and related_label in downward_sync_models():
+            dependencies.add(related_label)
+    return dependencies
+
+
 def _scope_snapshot_queryset(model_label: str, qs, *, facility, organization):
     """Scope a full cloud-to-hub snapshot query to the hub tenant."""
     if model_label == "core.Organization":
@@ -1067,6 +1122,22 @@ def _scope_snapshot_queryset(model_label: str, qs, *, facility, organization):
         return qs.filter(facility=facility)
     if hasattr(model, "registered_at_facility") and organization:
         return qs.filter(organization=organization)
+
+    # Nested workflow rows inherit their tenant through forward parent links.
+    # Prefer facility scope, then organization scope when no facility path exists.
+    if facility:
+        facility_path = _derive_tenant_scope_path(model_label, target_field="facility")
+        if facility_path:
+            return qs.filter(**{facility_path: facility})
+        registered_path = _derive_tenant_scope_path(
+            model_label, target_field="registered_at_facility"
+        )
+        if registered_path:
+            return qs.filter(**{registered_path: facility})
+    if organization:
+        organization_path = _derive_tenant_scope_path(model_label, target_field="organization")
+        if organization_path:
+            return qs.filter(**{organization_path: organization})
     return qs.none()
 
 
@@ -1086,7 +1157,7 @@ def _ordered_snapshot_tables(tables: set[str]) -> list[str]:
         for model_label in ordered:
             if model_label not in remaining:
                 continue
-            dependencies = FULL_PULL_DEPENDENCIES.get(model_label, set())
+            dependencies = _model_sync_dependencies(model_label)
             unmet = dependencies & remaining
             if unmet:
                 continue

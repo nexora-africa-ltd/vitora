@@ -1908,6 +1908,73 @@ class TestHubCloudSyncWorker:
         HUB_ID="hub-test",
         HUB_FACILITY_ID="1",
     )
+    def test_multi_page_full_pull_preserves_watermark_for_next_incremental_pull(self, db, tmp_path):
+        """A completed full pull clears its cursor and becomes the next incremental watermark."""
+        from datetime import datetime
+
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+
+        full_pull_timestamp = "2026-06-01T10:00:00+00:00"
+        incremental_timestamp = "2026-06-01T10:05:00+00:00"
+        worker = HubCloudSyncWorker()
+        worker._state_file = tmp_path / "hub-sync-state.json"
+        first_response = MagicMock()
+        first_response.status_code = 200
+        first_response.json.return_value = {
+            "changes": [],
+            "server_timestamp": full_pull_timestamp,
+            "has_more": True,
+            "next_cursor": "42",
+        }
+        second_response = MagicMock()
+        second_response.status_code = 200
+        second_response.json.return_value = {
+            "changes": [],
+            "server_timestamp": full_pull_timestamp,
+            "has_more": False,
+        }
+        incremental_response = MagicMock()
+        incremental_response.status_code = 200
+        incremental_response.json.return_value = {
+            "changes": [],
+            "server_timestamp": incremental_timestamp,
+            "has_more": False,
+        }
+
+        with (
+            patch.dict("os.environ", {"LICENSE_TOKEN": "license-token-xyz"}),
+            patch(
+                "hmis.apps.core.hub_sync.requests.get",
+                side_effect=[first_response, second_response, incremental_response],
+            ) as get,
+        ):
+            assert worker._pull_changes(force_full=True) == 0
+            assert worker._pull_changes() == 0
+
+        assert get.call_args_list[0].kwargs["params"] == {
+            "limit": "100",
+            "direction": "down",
+            "full": "true",
+        }
+        assert get.call_args_list[1].kwargs["params"] == {
+            "limit": "100",
+            "direction": "down",
+            "full": "true",
+            "cursor": "42",
+        }
+        assert get.call_args_list[2].kwargs["params"] == {
+            "limit": "100",
+            "direction": "down",
+            "since": full_pull_timestamp,
+        }
+        assert worker._full_pull_cursor is None
+        assert worker._last_pull_timestamp == datetime.fromisoformat(incremental_timestamp)
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+    )
     def test_get_license_token_from_env(self, db):
         """Worker should read the activation/license token from LICENSE_TOKEN."""
         from hmis.apps.core.hub_sync import HubCloudSyncWorker

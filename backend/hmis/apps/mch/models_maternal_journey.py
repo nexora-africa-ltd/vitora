@@ -32,6 +32,7 @@ from simple_history.models import HistoricalRecords
 from hmis.apps.core.history import HistoryMixin
 from hmis.apps.core.mixins import FacilityScopedModel
 from hmis.apps.core.models import TimeStampedModel
+from hmis.apps.core.sync_context import is_sync_materialization_active
 from hmis.apps.core.upload_validators import validate_image_upload as _validate_image_upload
 from hmis.apps.mch.models_shared import generate_mch_number
 
@@ -850,7 +851,12 @@ class Delivery(HistoryMixin, TimeStampedModel):
 
     def save(self, *args, **kwargs):
         """Keep delivery admission aligned with the linked labour record when possible."""
-        if self.partograph_id and not self.admission_id and self.partograph.admission_id:
+        if (
+            not is_sync_materialization_active()
+            and self.partograph_id
+            and not self.admission_id
+            and self.partograph.admission_id
+        ):
             self.admission_id = self.partograph.admission_id
         super().save(*args, **kwargs)
 

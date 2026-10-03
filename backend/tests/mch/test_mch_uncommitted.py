@@ -406,14 +406,19 @@ class TestMCHSignals:
         sample_county,
         sample_sub_county,
         sample_organization,
+        sample_facility,
     ):
         """Should auto-generate immunization schedule for newborn patients."""
-        from hmis.apps.mch.models import ImmunizationRecord, Vaccine
+        from hmis.apps.immunizations.models import ImmunizationRecord, VaccineDefinition
         from hmis.apps.patients.models import Patient
 
         # Create vaccines first
-        Vaccine.objects.create(code="BCG", name="BCG", standard_age_days=0)
-        Vaccine.objects.create(code="PENTA1", name="Penta 1", standard_age_days=42)
+        VaccineDefinition.objects.create(
+            code="BCG", name="BCG", standard_age_days=0, program="KEPI"
+        )
+        VaccineDefinition.objects.create(
+            code="PENTA1", name="Penta 1", standard_age_days=42, program="KEPI"
+        )
 
         # Create patient (triggers signal)
         patient = Patient.objects.create(
@@ -424,6 +429,7 @@ class TestMCHSignals:
             county=sample_county,
             sub_county=sample_sub_county,
             organization=sample_organization,
+            registered_at_facility=sample_facility,
         )
 
         # Check immunization records were created
@@ -436,12 +442,15 @@ class TestMCHSignals:
         sample_county,
         sample_sub_county,
         sample_organization,
+        sample_facility,
     ):
         """Should not generate schedule for children over 5 years."""
-        from hmis.apps.mch.models import ImmunizationRecord, Vaccine
+        from hmis.apps.immunizations.models import ImmunizationRecord, VaccineDefinition
         from hmis.apps.patients.models import Patient
 
-        Vaccine.objects.create(code="BCG", name="BCG", standard_age_days=0)
+        VaccineDefinition.objects.create(
+            code="BCG", name="BCG", standard_age_days=0, program="KEPI"
+        )
 
         # Create a 6-year-old patient
         patient = Patient.objects.create(
@@ -452,6 +461,7 @@ class TestMCHSignals:
             county=sample_county,
             sub_county=sample_sub_county,
             organization=sample_organization,
+            registered_at_facility=sample_facility,
         )
 
         records = ImmunizationRecord.objects.filter(patient=patient)

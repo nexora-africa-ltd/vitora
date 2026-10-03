@@ -22,7 +22,13 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
 from django.utils.dateparse import parse_date, parse_datetime, parse_time
 
-from hmis.apps.core.models import AuditLog, SyncConflict, SyncQueue
+from hmis.apps.core.models import (
+    AuditLog,
+    SyncConflict,
+    SyncDeferredMaterialization,
+    SyncIdentityMap,
+    SyncQueue,
+)
 from hmis.apps.core.sync_context import sync_materialization_context
 from hmis.apps.core.sync_registry import SYNC_REGISTRY, SyncDirection, SyncRegistryEntry
 
@@ -83,9 +89,52 @@ def materialize_entry(entry: dict[str, Any]) -> dict[str, Any]:
         if result.get("success"):
             conflict.resolve(data, strategy=strategy)
             return {"success": True, "conflict": True, "strategy": strategy}
-        return result
+        return _persist_deferred_materialization(entry, result)
 
-    return apply_entry(model, operation, record_id, data, registry_entry=registry_entry)
+    result = apply_entry(model, operation, record_id, data, registry_entry=registry_entry)
+    return _persist_deferred_materialization(entry, result)
+
+
+def _persist_deferred_materialization(
+    entry: dict[str, Any], result: dict[str, Any]
+) -> dict[str, Any]:
+    """Store dependency-blocked inbound rows for retry after parent arrival."""
+    if result.get("code") != DEFERRED_MATERIALIZATION_CODE:
+        return result
+    data = entry.get("data") or {}
+    sync_meta = data.get(SYNC_META_KEY)
+    source_node = str(sync_meta.get("source_node") or "") if isinstance(sync_meta, dict) else ""
+    record_id = entry.get("record_id")
+    table = str(entry.get("table") or "")
+    if not source_node or record_id in (None, "") or not table:
+        return result
+    SyncDeferredMaterialization.objects.update_or_create(
+        source_node=source_node,
+        model_label=table,
+        remote_record_id=str(record_id),
+        defaults={
+            "payload": entry,
+            "error_message": str(result.get("error") or ""),
+            "status": SyncDeferredMaterialization.STATUS_PENDING,
+        },
+    )
+    return result
+
+
+def retry_deferred_materializations(*, limit: int = 100) -> int:
+    """Retry pending inbound rows after parent maps have been materialized."""
+    resolved = 0
+    pending = SyncDeferredMaterialization.objects.filter(
+        status=SyncDeferredMaterialization.STATUS_PENDING
+    ).order_by("created_at")[:limit]
+    for deferred in pending:
+        deferred.retry_count += 1
+        result = materialize_entry(deferred.payload)
+        if result.get("success"):
+            deferred.status = SyncDeferredMaterialization.STATUS_RESOLVED
+            resolved += 1
+        deferred.save(update_fields=["status", "retry_count", "updated_at"])
+    return resolved
 
 
 def apply_entry(
@@ -131,26 +180,34 @@ def apply_entry(
                 elif record_id is not None:
                     cleaned_data.pop(model._meta.pk.name, None)
                     instance, _created = update_or_create_from_materializer(
-                        model, record_id, cleaned_data
+                        model, record_id, cleaned_data, raw_data=data
                     )
                     created_instance = _created
                 else:
                     instance = create_from_materializer(model, **cleaned_data)
                     created_instance = True
             elif operation == "UPDATE":
-                instance = update_existing_from_materializer(model, record_id, cleaned_data)
+                instance = update_existing_from_materializer(
+                    model, record_id, cleaned_data, raw_data=data
+                )
                 if instance is None:
                     cleaned_data.pop(model._meta.pk.name, None)
                     instance, _created = update_or_create_from_materializer(
-                        model, record_id, cleaned_data
+                        model, record_id, cleaned_data, raw_data=data
                     )
                     created_instance = _created
             elif operation == "DELETE":
-                model.objects.filter(pk=record_id).delete()
+                instance = resolve_materialization_target(
+                    model, record_id, cleaned_data, raw_data=data
+                )
+                if instance is not None:
+                    instance.delete()
+                _delete_sync_identity_map(model._meta.label, record_id, data)
             else:
                 return {"success": False, "error": f"Unsupported operation: {operation}"}
             if instance is not None:
                 apply_materialized_m2m(model, instance, data)
+                _record_sync_identity_map(model._meta.label, record_id, instance.pk, data)
                 if created_instance and model._meta.label == "patients.Patient":
                     _log_patient_create_from_sync_materializer(instance)
                 _sync_materialized_rbac_side_effects(instance)
@@ -478,10 +535,12 @@ def create_from_materializer(model, **cleaned_data):
     return instance
 
 
-def update_or_create_from_materializer(model, record_id: Any, cleaned_data: dict[str, Any]):
+def update_or_create_from_materializer(
+    model, record_id: Any, cleaned_data: dict[str, Any], *, raw_data: dict[str, Any]
+):
     """Update/create by PK while marking the save as materializer-originated."""
     pk_name = model._meta.pk.name
-    instance = resolve_materialization_target(model, record_id, cleaned_data)
+    instance = resolve_materialization_target(model, record_id, cleaned_data, raw_data=raw_data)
     if instance is not None:
         for field_name, value in cleaned_data.items():
             setattr(instance, field_name, value)
@@ -499,9 +558,11 @@ def update_or_create_from_materializer(model, record_id: Any, cleaned_data: dict
     return instance, True
 
 
-def update_existing_from_materializer(model, record_id: Any, cleaned_data: dict[str, Any]):
+def update_existing_from_materializer(
+    model, record_id: Any, cleaned_data: dict[str, Any], *, raw_data: dict[str, Any]
+):
     """Update an existing row, preferring natural-key matches over colliding PKs."""
-    instance = resolve_materialization_target(model, record_id, cleaned_data)
+    instance = resolve_materialization_target(model, record_id, cleaned_data, raw_data=raw_data)
     if instance is None:
         return None
 
@@ -516,14 +577,70 @@ def update_existing_from_materializer(model, record_id: Any, cleaned_data: dict[
     return instance
 
 
-def resolve_materialization_target(model, record_id: Any, cleaned_data: dict[str, Any]):
+def resolve_materialization_target(
+    model, record_id: Any, cleaned_data: dict[str, Any], *, raw_data: dict[str, Any] | None = None
+):
     """Resolve the local row to update without violating natural unique keys."""
+    mapped_match = _resolve_sync_identity_map(model, record_id, raw_data or {})
+    if mapped_match is not None:
+        return mapped_match
     natural_match = find_existing_for_materialized_create(model, cleaned_data)
     pk_match = model.objects.filter(pk=record_id).first() if record_id is not None else None
 
     if natural_match is not None:
         return natural_match
     return pk_match
+
+
+def _source_node(raw_data: dict[str, Any]) -> str:
+    """Return a validated source node from protocol metadata, if present."""
+    sync_meta = raw_data.get(SYNC_META_KEY)
+    if not isinstance(sync_meta, dict):
+        return ""
+    return str(sync_meta.get("source_node") or "").strip()
+
+
+def _resolve_sync_identity_map(model, record_id: Any, raw_data: dict[str, Any]):
+    """Resolve a remote identity through the persistent source-node map."""
+    source_node = _source_node(raw_data)
+    if not source_node or record_id in (None, ""):
+        return None
+    mapping = SyncIdentityMap.objects.filter(
+        source_node=source_node,
+        model_label=model._meta.label,
+        remote_record_id=str(record_id),
+    ).first()
+    if mapping is None:
+        return None
+    return model.objects.filter(pk=mapping.local_record_id).first()
+
+
+def _record_sync_identity_map(
+    model_label: str, remote_record_id: Any, local_record_id: Any, raw_data: dict[str, Any]
+) -> None:
+    """Persist remote-to-local identity after a successful materialized write."""
+    source_node = _source_node(raw_data)
+    if not source_node or remote_record_id in (None, ""):
+        return
+    SyncIdentityMap.objects.update_or_create(
+        source_node=source_node,
+        model_label=model_label,
+        remote_record_id=str(remote_record_id),
+        defaults={"local_record_id": local_record_id},
+    )
+
+
+def _delete_sync_identity_map(
+    model_label: str, remote_record_id: Any, raw_data: dict[str, Any]
+) -> None:
+    """Remove the map when its source record has been deleted."""
+    source_node = _source_node(raw_data)
+    if source_node and remote_record_id not in (None, ""):
+        SyncIdentityMap.objects.filter(
+            source_node=source_node,
+            model_label=model_label,
+            remote_record_id=str(remote_record_id),
+        ).delete()
 
 
 def find_existing_for_materialized_create(model, cleaned_data: dict[str, Any]):

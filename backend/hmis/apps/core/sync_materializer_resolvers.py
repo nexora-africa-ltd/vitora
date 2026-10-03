@@ -32,8 +32,14 @@ from hmis.apps.core.sync_materializer_helpers import (
     remap_resource_foreign_keys,
     remap_role_foreign_keys,
     remap_staff_profile_foreign_keys,
+    resolve_mapped_remote_id,
 )
-from hmis.apps.core.sync_registry import SYNC_REGISTRY, SyncDirection, SyncRegistryEntry
+from hmis.apps.core.sync_registry import (
+    SYNC_NATURAL_IDENTITY_FIELDS,
+    SYNC_REGISTRY,
+    SyncDirection,
+    SyncRegistryEntry,
+)
 
 SYNC_META_KEY = "sync_meta"
 
@@ -70,6 +76,16 @@ def remap_generic_natural_foreign_keys(
         if field.attname not in cleaned:
             continue
 
+        remote_id = cleaned[field.attname]
+        mapped_id = resolve_mapped_remote_id(
+            related_label=field.remote_field.model._meta.label,
+            remote_record_id=remote_id,
+            raw_data=raw_data,
+        )
+        if mapped_id is not None:
+            cleaned[field.attname] = mapped_id
+            continue
+
         local_id = resolve_related_id_from_sync_data(field, raw_data)
         if local_id is not None:
             cleaned[field.attname] = local_id
@@ -81,6 +97,17 @@ def resolve_related_id_from_sync_data(field, raw_data: dict[str, Any]) -> int | 
     """Resolve a single FK field using its relation-specific natural-key hint."""
     related_label = field.remote_field.model._meta.label
     prefix = field.name
+
+    identity_fields = SYNC_NATURAL_IDENTITY_FIELDS.get(related_label, ())
+    if identity_fields:
+        identity_filter = {
+            identity_field: raw_data.get(f"{prefix}_identity_{identity_field}")
+            for identity_field in identity_fields
+        }
+        if all(value not in (None, "") for value in identity_filter.values()):
+            related = field.remote_field.model.objects.filter(**identity_filter).first()
+            if related:
+                return related.pk
 
     if related_label == "auth.User":
         return resolve_user_id_from_sync_data(raw_data, f"{prefix}_username")
