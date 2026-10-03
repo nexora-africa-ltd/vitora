@@ -919,7 +919,19 @@ class Migration(migrations.Migration):
 
 For other backend-specific operations, implement an explicit vendor branch with a portable SQLite path. Before committing any migration, run `poetry run python manage.py migrate` against SQLite, `poetry run python manage.py makemigrations --check --dry-run`, and the relevant tests.
 
-### 2. Authentication Required on ALL Endpoints
+### 2. Avoid Duplicate Django Indexes
+
+Never define a one-column `Meta.indexes` entry when Django already creates an equivalent index through a `ForeignKey`/`OneToOneField`, `unique=True`, or `db_index=True`. The duplicate increases write, vacuum, and replication work without improving query planning.
+
+Use `Meta.indexes` for composite, partial, functional, descending, or otherwise non-default access paths only. Before committing model-index changes, run:
+
+```bash
+cd backend && poetry run pytest tests/core/test_redundant_indexes.py --no-cov
+```
+
+The regression test rejects duplicate single-column model indexes. If an exceptional duplicate is genuinely required, document the query-plan evidence and update the test deliberately.
+
+### 3. Authentication Required on ALL Endpoints
 
 ```python
 # ❌ WRONG - Will get 401 Unauthorized
