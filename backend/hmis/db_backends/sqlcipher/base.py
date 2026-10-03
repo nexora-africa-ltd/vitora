@@ -13,7 +13,7 @@ try:
     from sqlcipher3 import dbapi2 as Database
 except ImportError as exc:  # pragma: no cover - exercised in packaging checks
     raise RuntimeError(
-        "SQLCipher support requires sqlcipher3-binary. Install the hub SQLCipher dependency."
+        "SQLCipher support requires the platform-specific sqlcipher3 hub dependency."
     ) from exc
 
 
