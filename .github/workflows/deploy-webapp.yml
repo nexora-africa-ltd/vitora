@@ -73,6 +73,9 @@ jobs:
             --build-arg NEXT_PUBLIC_ENABLE_AI=true \
             --build-arg NEXT_PUBLIC_POWERSYNC_URL="${{ vars.POWERSYNC_URL || '' }}" \
             --build-arg NEXT_PUBLIC_SENTRY_DSN="${{ vars.SENTRY_DSN || '' }}" \
+            --build-arg NEXT_PUBLIC_UMAMI_URL="${{ vars.UMAMI_URL || '' }}" \
+            --build-arg NEXT_PUBLIC_UMAMI_WEBSITE_ID="${{ vars.UMAMI_WEBSITE_ID || '' }}" \
+            --build-arg NEXT_PUBLIC_UMAMI_SCRIPT_INTEGRITY="${{ vars.UMAMI_SCRIPT_INTEGRITY || '' }}" \
             -t "$IMAGE_TAG" \
             -t "$IMAGE_LATEST" \
             .
