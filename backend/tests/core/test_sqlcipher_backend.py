@@ -73,6 +73,6 @@ def test_django_sqlcipher_backend_returns_a_compatible_cursor(tmp_path):
 
     with wrapper.cursor() as cursor:
         cursor.execute("CREATE TABLE smoke_records (value TEXT)")
-        cursor.execute("INSERT INTO smoke_records VALUES ('protected')")
-        cursor.execute("SELECT value FROM smoke_records")
+        cursor.execute("INSERT INTO smoke_records VALUES (%s)", ["protected"])
+        cursor.execute("SELECT value FROM smoke_records WHERE value = %s", ["protected"])
         assert cursor.fetchone()[0] == "protected"
