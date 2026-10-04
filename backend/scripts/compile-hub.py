@@ -92,7 +92,7 @@ def discover_python_files(root: Path) -> list[Path]:
             continue
         if (
             sys.platform == "win32"
-            and path.relative_to(BACKEND_DIR).as_posix() in WINDOWS_KEEP_PLAIN_FILES
+            and path.relative_to(root.parent).as_posix() in WINDOWS_KEEP_PLAIN_FILES
         ):
             continue
         files.append(path)

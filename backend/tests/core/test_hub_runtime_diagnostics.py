@@ -126,3 +126,22 @@ def test_windows_keep_plain_exclusions_are_narrow_and_evidence_backed():
     assert "WINDOWS_KEEP_PLAIN_FILES" in compiler
     assert '"hmis/apps/core/upload_validators.py"' in compiler
     assert "python-magic/libmagic import crashes compiled startup" in compiler
+
+
+def test_windows_keep_plain_exclusion_uses_staged_payload_relative_path(tmp_path, monkeypatch):
+    """The Windows compiler must not compare staged build paths to source paths."""
+    compiler_path = BACKEND / "scripts" / "compile-hub.py"
+    spec = importlib.util.spec_from_file_location("compile_hub", compiler_path)
+    compiler = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(compiler)
+    payload = tmp_path / "build" / "compiled" / "payload"
+    target = payload / "hmis" / "apps" / "core"
+    target.mkdir(parents=True)
+    (target / "upload_validators.py").write_text("pass\n")
+    (target / "safe.py").write_text("pass\n")
+    monkeypatch.setattr(compiler.sys, "platform", "win32")
+
+    files = compiler.discover_python_files(payload / "hmis")
+
+    assert (target / "upload_validators.py") not in files
+    assert (target / "safe.py") in files
