@@ -438,6 +438,29 @@ jobs:
             exit $LASTEXITCODE
           }
 
+      - name: Diagnose compiled Django startup crash
+        if: failure()
+        shell: pwsh
+        working-directory: hub
+        run: |
+          # The SQLCipher runtime smoke may terminate the interpreter with a
+          # native access violation before Python can emit a traceback. Capture
+          # verbose import output so the next release investigation names the
+          # final compiled module loaded before the crash.
+          $env:DJANGO_SETTINGS_MODULE = "hmis.settings.hub"
+          $env:HUB_DATA_DIR = Join-Path $env:RUNNER_TEMP "vitora-hub-diagnose"
+          New-Item -ItemType Directory -Force -Path $env:HUB_DATA_DIR | Out-Null
+          $env:HUB_DB_PATH = Join-Path $env:HUB_DATA_DIR "hub.sqlite3"
+          $env:HUB_DATABASE_ENCRYPTION_REQUIRED = "true"
+          $env:HUB_DATABASE_ENCRYPTION_KEY = python -c "import secrets; print(secrets.token_urlsafe(64))"
+          $env:DJANGO_SECRET_KEY = python -c "import secrets; print(secrets.token_urlsafe(50))"
+          $env:ENCRYPTION_KEY = python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+          $env:PYTHONVERBOSE = "1"
+          python -X faulthandler -c "import django; django.setup()" *> django-import-trace.log
+          Write-Host "--- final 250 import trace lines ---"
+          Get-Content django-import-trace.log -Tail 250
+          exit 1
+
   publish:
     name: Publish Hub Artifacts
     needs: [smoke-test, smoke-test-windows]

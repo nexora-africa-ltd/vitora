@@ -7,6 +7,7 @@ import os
 def test_hub_settings_default_database_lives_under_data(monkeypatch):
     """Hub settings should not fall back to a root-level hub.sqlite3."""
     monkeypatch.setenv("DJANGO_SECRET_KEY", "test-secret")
+    monkeypatch.setenv("HUB_DATABASE_ENCRYPTION_REQUIRED", "true")
     monkeypatch.setenv("HUB_DATABASE_ENCRYPTION_KEY", "test-sqlcipher-key")
     monkeypatch.delenv("HUB_DATA_DIR", raising=False)
     monkeypatch.delenv("HUB_DB_PATH", raising=False)
@@ -27,6 +28,7 @@ def test_hub_settings_honor_explicit_data_dir(monkeypatch, tmp_path):
     """HUB_DATA_DIR alone is enough to derive the canonical hub DB path."""
     data_dir = tmp_path / "hub-data"
     monkeypatch.setenv("DJANGO_SECRET_KEY", "test-secret")
+    monkeypatch.setenv("HUB_DATABASE_ENCRYPTION_REQUIRED", "true")
     monkeypatch.setenv("HUB_DATABASE_ENCRYPTION_KEY", "test-sqlcipher-key")
     monkeypatch.setenv("HUB_DATA_DIR", str(data_dir))
     monkeypatch.delenv("HUB_DB_PATH", raising=False)
@@ -45,6 +47,7 @@ def test_hub_settings_honor_explicit_db_path(monkeypatch, tmp_path):
     data_dir = tmp_path / "hub-data"
     db_path = tmp_path / "custom.sqlite3"
     monkeypatch.setenv("DJANGO_SECRET_KEY", "test-secret")
+    monkeypatch.setenv("HUB_DATABASE_ENCRYPTION_REQUIRED", "true")
     monkeypatch.setenv("HUB_DATABASE_ENCRYPTION_KEY", "test-sqlcipher-key")
     monkeypatch.setenv("HUB_DATA_DIR", str(data_dir))
     monkeypatch.setenv("HUB_DB_PATH", str(db_path))
