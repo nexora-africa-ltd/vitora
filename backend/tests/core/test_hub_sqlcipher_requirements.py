@@ -5,7 +5,11 @@ Run with: poetry run pytest tests/core/test_hub_sqlcipher_requirements.py --no-c
 Inputs: backend/requirements-hub.txt generated from the Poetry lock.
 """
 
+import subprocess
+import sys
 from pathlib import Path
+
+import yaml
 
 
 def test_hub_requirements_select_sqlcipher_wheels_per_release_platform():
@@ -38,16 +42,30 @@ def test_hub_artifact_build_disables_runtime_database_encryption_only_for_compil
     assert 'os.environ["HUB_DATABASE_ENCRYPTION_REQUIRED"] = "false"' in compiler
 
 
-def test_hub_smoke_tests_supply_disposable_sqlcipher_keys_and_reject_plaintext_reads():
-    """Artifact smoke jobs must exercise encrypted runtime startup on both platforms."""
+def test_hub_smoke_jobs_execute_the_shared_django_migration_probe():
+    """Both artifact jobs must run the real Django probe, not a raw-driver substitute."""
     workflow = (
         Path(__file__).resolve().parents[3] / ".github" / "workflows" / "build-hub.yml"
     ).read_text(encoding="utf-8")
 
-    assert "export HUB_DATABASE_ENCRYPTION_REQUIRED=true" in workflow
-    assert '$env:HUB_DATABASE_ENCRYPTION_REQUIRED = "true"' in workflow
-    assert (
-        'HUB_DATABASE_ENCRYPTION_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(64))")'
-        in workflow
+    jobs = yaml.safe_load(workflow)["jobs"]
+    for job in ("smoke-test", "smoke-test-windows"):
+        assert any(
+            "scripts/smoke-hub-sqlcipher.py --compiled --full-migrations" in step.get("run", "")
+            for step in jobs[job]["steps"]
+        )
+
+
+def test_shared_smoke_executes_encrypted_django_migrations_and_orm():
+    """Execute the CI entry point locally in an isolated subprocess with generated keys."""
+    backend = Path(__file__).resolve().parents[2]
+    result = subprocess.run(
+        [sys.executable, "scripts/smoke-hub-sqlcipher.py"],
+        cwd=backend,
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
     )
-    assert "Standard SQLite unexpectedly read SQLCipher hub database" in workflow
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "SQLCIPHER SMOKE: PASS" in result.stdout

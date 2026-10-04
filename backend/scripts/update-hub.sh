@@ -134,6 +134,11 @@ info "Downloading ${URL}..."
 
 # Stop services before migrating SQLite schema.
 info "Stopping hub API and sync services..."
+for job in vitora-hub-backup vitora-hub-backup-upload vitora-hub-backup-verify; do
+    if systemctl list-unit-files "${job}.timer" --no-legend 2>/dev/null | grep -q "$job"; then
+        systemctl stop "${job}.timer" "${job}.service"
+    fi
+done
 if systemctl list-unit-files "${SYNC_SERVICE_NAME}.service" --no-legend 2>/dev/null | grep -q "${SYNC_SERVICE_NAME}"; then
     systemctl stop "$SYNC_SERVICE_NAME" || true
 fi
@@ -198,6 +203,33 @@ if [[ -z "${CLOUD_API_BASE_URL:-}" && -n "${SYNC_SERVER_URL:-}" ]]; then
 fi
 export DJANGO_ENV=hub
 export DJANGO_SETTINGS_MODULE=hmis.settings
+
+# Snapshot the current database encryption epoch and its protected key bundle
+# together, before re-enrollment or conversion can change either one.
+HUB_DATABASE_PATH="${HUB_DB_PATH:-${APP_DIR}/data/hub.sqlite3}"
+RUNTIME_SNAPSHOT="$BACKUP_PATH/runtime-state"
+RUNTIME_HELPER="$BACKUP_PATH/hub-update-state.py"
+cp "$APP_DIR/scripts/hub-update-state.py" "$RUNTIME_HELPER"
+"$VENV_DIR/bin/python" "$RUNTIME_HELPER" capture --snapshot "$RUNTIME_SNAPSHOT" \
+    --database "$HUB_DATABASE_PATH" \
+    --sync-state "${HUB_DATA_DIR:-$(dirname "$HUB_DATABASE_PATH")}/.hub_sync_state.json" \
+    --secrets "$HUB_SECRETS_FILE" --env "$APP_DIR/.env" \
+    --device-key "/var/lib/vitora/secrets/device-x25519.pem"
+
+rollback_update() {
+    trap - ERR
+    systemctl stop "$SERVICE_NAME" "$SYNC_SERVICE_NAME" || true
+    for item in "${BACKUP_ITEMS[@]}"; do
+        rm -rf "$APP_DIR/$item"
+        if [[ -e "$BACKUP_PATH/$item" ]]; then
+            cp -a "$BACKUP_PATH/$item" "$APP_DIR/$item"
+        fi
+    done
+    "$VENV_DIR/bin/python" "$RUNTIME_HELPER" restore --snapshot "$RUNTIME_SNAPSHOT"
+    error "Previous database and protected credentials restored; services remain stopped for verification."
+    exit 1
+}
+trap rollback_update ERR
 
 # Protocol-v2 migration for existing hubs. The current license JWT authorizes
 # only its own Installation, so no admin password or activation code is kept
@@ -296,6 +328,15 @@ import sys
 sys.exit(0 if json.loads(sys.argv[1]).get("status") == "valid" else 1)
 PY
     then
+        if ! "$VENV_DIR/bin/python" - "$HUB_DATABASE_KEY_STATUS" <<'PY'
+import json
+import sys
+sys.exit(0 if json.loads(sys.argv[1]).get("status") == "plaintext" else 1)
+PY
+        then
+            error "Database is not verified plaintext and the key is invalid; refusing conversion."
+            rollback_update
+        fi
         info "Converting plaintext hub database to SQLCipher..."
         "$VENV_DIR/bin/python" "$APP_DIR/manage.py" hub_encrypt_database --database "$HUB_DATABASE_PATH"
         HUB_DATABASE_KEY_STATUS=$("$VENV_DIR/bin/python" "$APP_DIR/manage.py" hub_database_key_status --database "$HUB_DATABASE_PATH")
@@ -306,7 +347,7 @@ sys.exit(0 if json.loads(sys.argv[1]).get("status") == "valid" else 1)
 PY
         then
             error "SQLCipher key verification failed after database conversion."
-            exit 1
+            rollback_update
         fi
     fi
 else
@@ -317,7 +358,7 @@ HUB_DATABASE_ENCRYPTION_REQUIRED=true
 export HUB_DATABASE_ENCRYPTION_REQUIRED
 if ! command -v systemd-creds &>/dev/null; then
     error "systemd-creds is required for protected hub secret storage."
-    exit 1
+    rollback_update
 fi
 systemd-creds encrypt --with-key=host "$HUB_SECRETS_PLAINTEXT" "$HUB_SECRETS_FILE"
 rm -f "$HUB_SECRETS_PLAINTEXT"
@@ -391,13 +432,10 @@ ExecStart=
 ExecStart=${APP_DIR}/scripts/start-hub-linux.sh sync
 EOF
 systemctl daemon-reload
-systemctl enable --now vitora-hub-backup.timer
-systemctl enable --now vitora-hub-backup-upload.timer
-systemctl enable --now vitora-hub-backup-verify.timer
-printf '%s' "$PII_KEY_PACKAGE_B64" | base64 --decode | "$VENV_DIR/bin/python" manage.py seed_from_activation --response-file="$REENROLL_RESPONSE" --skip-locations --pii-key-package-stdin
+"$VENV_DIR/bin/python" "$APP_DIR/manage.py" migrate --no-input
+printf '%s' "$PII_KEY_PACKAGE_B64" | base64 --decode | "$VENV_DIR/bin/python" "$APP_DIR/manage.py" seed_from_activation --response-file="$REENROLL_RESPONSE" --skip-locations --pii-key-package-stdin
 rm -f "$REENROLL_RESPONSE"
 trap - EXIT
-"$VENV_DIR/bin/python" manage.py migrate --no-input
 "$VENV_DIR/bin/python" manage.py collectstatic --no-input 2>/dev/null || true
 
 # Restart service
@@ -413,19 +451,12 @@ fi
 # Verify
 sleep 2
 if systemctl is-active --quiet "$SERVICE_NAME"; then
+    trap - ERR
+    systemctl enable --now vitora-hub-backup.timer
+    systemctl enable --now vitora-hub-backup-upload.timer
+    systemctl enable --now vitora-hub-backup-verify.timer
     info "Update complete! Now running version $VERSION"
 else
     error "Service failed to start after update."
-    warn "Restoring previous version..."
-    if [[ -d "$BACKUP_PATH" ]]; then
-        for item in "${BACKUP_ITEMS[@]}"; do
-            rm -rf "$APP_DIR/$item"
-            if [[ -e "$BACKUP_PATH/$item" ]]; then
-                mv "$BACKUP_PATH/$item" "$APP_DIR/$item"
-            fi
-        done
-        systemctl start "$SERVICE_NAME" || true
-        warn "Rolled back from $BACKUP_PATH. Check logs: journalctl -u $SERVICE_NAME -n 50"
-    fi
-    exit 1
+    rollback_update
 fi

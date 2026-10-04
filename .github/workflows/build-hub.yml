@@ -150,6 +150,8 @@ jobs:
           cp backend/scripts/update-hub-windows.ps1 "dist/${ARTIFACT}/scripts/"
           cp backend/scripts/start-hub-windows.ps1 "dist/${ARTIFACT}/scripts/"
           cp backend/scripts/start-hub-linux.sh "dist/${ARTIFACT}/scripts/"
+          cp backend/scripts/smoke-hub-sqlcipher.py "dist/${ARTIFACT}/scripts/"
+          cp backend/scripts/hub-update-state.py "dist/${ARTIFACT}/scripts/"
           cp backend/scripts/pi-setup.sh "dist/${ARTIFACT}/scripts/"
 
           mkdir -p "dist/${ARTIFACT}/keys"
@@ -187,6 +189,8 @@ jobs:
           Copy-Item "backend\scripts\update-hub-windows.ps1" "dist\${ARTIFACT}\scripts\"
           Copy-Item "backend\scripts\start-hub-windows.ps1" "dist\${ARTIFACT}\scripts\"
           Copy-Item "backend\scripts\start-hub-linux.sh" "dist\${ARTIFACT}\scripts\"
+          Copy-Item "backend\scripts\smoke-hub-sqlcipher.py" "dist\${ARTIFACT}\scripts\"
+          Copy-Item "backend\scripts\hub-update-state.py" "dist\${ARTIFACT}\scripts\"
           Copy-Item "backend\scripts\install-hub.sh" "dist\${ARTIFACT}\scripts\"
           Copy-Item "backend\scripts\update-hub.sh" "dist\${ARTIFACT}\scripts\"
           Copy-Item "backend\scripts\pi-setup.sh" "dist\${ARTIFACT}\scripts\"
@@ -299,49 +303,13 @@ jobs:
 
       - name: Import test (Django boots with compiled modules)
         working-directory: hub
+        timeout-minutes: 30
         run: |
           # Install runtime deps and try to bring up Django.
           # This catches Cython binary-incompatibility issues that the simple
           # file-count check above would miss.
-          pip install -r requirements-hub.txt
-          export DJANGO_SETTINGS_MODULE=hmis.settings.hub
-          export HUB_DATA_DIR=$(mktemp -d)
-          export HUB_DB_PATH="$HUB_DATA_DIR/hub.sqlite3"
-          export HUB_DATABASE_ENCRYPTION_REQUIRED=true
-          export HUB_DATABASE_ENCRYPTION_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(64))")
-          export DJANGO_SECRET_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(50))")
-          export ENCRYPTION_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
-          python - <<'PY'
-          import os
-          import sqlite3
-          import django
-          django.setup()
-          from django.db import connection
-          from hmis.apps.encounters import signals
-          from hmis.apps.patients import models
-
-          with connection.cursor() as cursor:
-              cursor.execute('CREATE TABLE smoke_sqlcipher (value TEXT)')
-              cursor.execute("INSERT INTO smoke_sqlcipher VALUES ('protected')")
-              cursor.execute('SELECT value FROM smoke_sqlcipher')
-              assert cursor.fetchone()[0] == 'protected'
-
-          try:
-              plaintext = sqlite3.connect(os.environ['HUB_DB_PATH'])
-              try:
-                  plaintext.execute('SELECT value FROM smoke_sqlcipher').fetchone()
-              finally:
-                  plaintext.close()
-          except sqlite3.DatabaseError:
-              pass
-          else:
-              raise AssertionError('Standard SQLite unexpectedly read SQLCipher hub database')
-
-          assert signals.__file__.endswith('.so'), f'signals not compiled: {signals.__file__}'
-          print('IMPORT OK:', signals.__file__)
-          print('IMPORT OK:', models.Patient)
-          print('SQLCIPHER DJANGO SMOKE OK')
-          PY
+          pip install --require-hashes -r requirements-hub.txt
+          python -u -X faulthandler scripts/smoke-hub-sqlcipher.py --compiled --full-migrations
 
   smoke-test-windows:
     name: Smoke Test Compiled Hub (Windows)
@@ -460,44 +428,11 @@ jobs:
       - name: SQLCipher Django runtime smoke test
         shell: pwsh
         working-directory: hub
+        timeout-minutes: 30
         run: |
-          pip install -r requirements-hub.txt
-          $env:HUB_DATA_DIR = Join-Path $env:RUNNER_TEMP "vitora-hub-sqlcipher"
-          New-Item -ItemType Directory -Force -Path $env:HUB_DATA_DIR | Out-Null
-          $env:HUB_DB_PATH = Join-Path $env:HUB_DATA_DIR "hub.sqlite3"
-          $env:HUB_DATABASE_ENCRYPTION_REQUIRED = "true"
-          $env:HUB_DATABASE_ENCRYPTION_KEY = python -c "import secrets; print(secrets.token_urlsafe(64))"
-          $env:DJANGO_SECRET_KEY = python -c "import secrets; print(secrets.token_urlsafe(50))"
-          $env:ENCRYPTION_KEY = python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-          @'
-          import os
-          import sqlite3
-          from sqlcipher3 import dbapi2 as sqlcipher
-
-          database_path = os.environ['HUB_DB_PATH']
-          key = os.environ['HUB_DATABASE_ENCRYPTION_KEY'].replace("'", "''")
-          connection = sqlcipher.connect(database_path)
-          connection.execute(f"PRAGMA key = '{key}'")
-          connection.execute('CREATE TABLE smoke_sqlcipher (value TEXT)')
-          connection.execute("INSERT INTO smoke_sqlcipher VALUES ('protected')")
-          connection.commit()
-          assert connection.execute('SELECT value FROM smoke_sqlcipher').fetchone()[0] == 'protected'
-          connection.close()
-
-          try:
-              plaintext = sqlite3.connect(os.environ['HUB_DB_PATH'])
-              try:
-                  plaintext.execute('SELECT value FROM smoke_sqlcipher').fetchone()
-              finally:
-                  plaintext.close()
-          except sqlite3.DatabaseError:
-              pass
-          else:
-              raise AssertionError('Standard SQLite unexpectedly read SQLCipher hub database')
-
-          print('WINDOWS SQLCIPHER DJANGO SMOKE OK')
-          '@ | Set-Content -Path sqlcipher_smoke.py -Encoding UTF8
-          python sqlcipher_smoke.py
+          pip install --require-hashes -r requirements-hub.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -u -X faulthandler scripts/smoke-hub-sqlcipher.py --compiled --full-migrations
           if ($LASTEXITCODE -ne 0) {
             Write-Error "SQLCipher Django smoke test failed with exit $LASTEXITCODE"
             exit $LASTEXITCODE

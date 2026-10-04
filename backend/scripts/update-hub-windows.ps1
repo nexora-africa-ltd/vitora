@@ -551,6 +551,12 @@ if (-not $downloadSucceeded) {
 
 # --- Step 3: Stop services ---
 Write-Step 3 "Stopping hub API and sync services..."
+foreach ($taskName in @("VitoraHubDailyBackup", "VitoraHubBackupUpload", "VitoraHubWeeklyBackupVerify")) {
+    if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
+        Disable-ScheduledTask -TaskName $taskName | Out-Null
+        Stop-ScheduledTask -TaskName $taskName
+    }
+}
 $syncSvc = Get-Service -Name $SyncServiceName -ErrorAction SilentlyContinue
 if ($syncSvc -and $syncSvc.Status -eq 'Running') {
     Stop-Service -Name $SyncServiceName -Force
@@ -760,8 +766,45 @@ $hubSecretsFile = if ($env:HUB_SECRETS_FILE) {
 
 Load-DpapiSecretsBundle -Path $hubSecretsFile
 
-$replacementLicenseToken = Invoke-HubDeviceReenrollment -PythonExe $pythonExe -HubSecretsFile $hubSecretsFile
 $databasePath = if ($env:HUB_DB_PATH) { $env:HUB_DB_PATH } else { "$InstallDir\data\hub.sqlite3" }
+$runtimeSnapshot = Join-Path $backupPath "runtime-state"
+$runtimeHelper = Join-Path $backupPath "hub-update-state.py"
+Copy-Item "$InstallDir\scripts\hub-update-state.py" $runtimeHelper
+$syncStatePath = Join-Path $(if ($env:HUB_DATA_DIR) { $env:HUB_DATA_DIR } else { Split-Path $databasePath }) ".hub_sync_state.json"
+& $pythonExe $runtimeHelper capture --snapshot $runtimeSnapshot --database $databasePath --sync-state $syncStatePath --secrets $hubSecretsFile --env $envFile
+if ($LASTEXITCODE -ne 0) { throw "Cannot capture consistent rollback state; conversion aborted." }
+
+function Restore-HubRuntimeState {
+    # Never restore one encryption epoch's DB with another epoch's secret bundle.
+    Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+    Stop-Service -Name $SyncServiceName -Force -ErrorAction SilentlyContinue
+    & $pythonExe $runtimeHelper restore --snapshot $runtimeSnapshot
+    if ($LASTEXITCODE -ne 0) { throw "Rollback state verification failed; keep hub services stopped." }
+}
+
+trap {
+    if (-not (Get-Variable runtimeSnapshot -ErrorAction SilentlyContinue) -or
+        -not (Test-Path (Join-Path $runtimeSnapshot "manifest.json"))) {
+        Write-Err "Update stopped before rollback state was captured."
+        exit 1
+    }
+    Write-Err "Update failed; restoring code, database and protected credential state."
+    Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+    Stop-Service -Name $SyncServiceName -Force -ErrorAction SilentlyContinue
+    foreach ($item in $itemsToBackup) {
+        $src = Join-Path $backupPath $item
+        $dest = Join-Path $InstallDir $item
+        if (Test-Path $src) {
+            if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
+            Copy-Item -Path $src -Destination $dest -Recurse
+        }
+    }
+    Restore-HubRuntimeState
+    Write-Err "Rollback restored. Services remain stopped for operator verification."
+    exit 1
+}
+
+$replacementLicenseToken = Invoke-HubDeviceReenrollment -PythonExe $pythonExe -HubSecretsFile $hubSecretsFile
 if (Test-Path $databasePath) {
     # Existing hubs can still have a plaintext database. The API and sync
     # services were stopped before this point, so conversion is safe.
@@ -773,6 +816,9 @@ if (Test-Path $databasePath) {
     }
     $keyStatus = $keyStatusOutput | ConvertFrom-Json
     if ($keyStatus.status -ne "valid") {
+        if ($keyStatus.status -ne "plaintext") {
+            throw "Database is not verified plaintext and the key is invalid; refusing conversion."
+        }
         Write-Info "Converting plaintext hub database to SQLCipher..."
         & $pythonExe "$InstallDir\manage.py" hub_encrypt_database --database $databasePath
         if ($LASTEXITCODE -ne 0) {
@@ -837,10 +883,13 @@ $appsToMigrate = @()
 if (Test-Path $dbPath) {
     $prevEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
     $appsToMigrate = (& $pythonExe -c "
-import os, sqlite3, pathlib, json
+import os, pathlib, json
+import django
+django.setup()
+from django.db import connection
 db = r'$dbPath'
 apps_dir = os.path.join(r'$InstallDir', 'hmis', 'apps')
-conn = sqlite3.connect(db)
+conn = connection
 cur = conn.cursor()
 try:
     cur.execute('SELECT app, name FROM django_migrations')
@@ -899,6 +948,7 @@ if ($null -eq $appsToMigrate -or $appsToMigrate.Count -eq 0) {
                 }
             }
             Pop-Location
+            Restore-HubRuntimeState
             Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
             Write-Err "Rolled back to $CurrentVersion"
             Log "ROLLBACK: migration failed (exit $migrateExit)"
@@ -949,6 +999,7 @@ if ($null -eq $appsToMigrate -or $appsToMigrate.Count -eq 0) {
             }
         }
         Pop-Location
+        Restore-HubRuntimeState
         Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
         Write-Err "Rolled back to $CurrentVersion"
         Log "ROLLBACK: migration failed"
@@ -1151,6 +1202,7 @@ if (-not (Ensure-HubPortAvailable -Port $hubPort -InstallRoot $InstallDir)) {
             }
         }
     }
+    Restore-HubRuntimeState
     Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
     Log "ROLLBACK: port $hubPort unavailable before service start"
     exit 1
@@ -1186,6 +1238,7 @@ if (-not $startFailed -and $svc -and $svc.Status -eq 'Running') {
             }
         }
     }
+    Restore-HubRuntimeState
     Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
     Log "ROLLBACK: service failed to start"
     exit 1

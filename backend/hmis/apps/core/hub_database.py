@@ -67,6 +67,11 @@ def database_key_status(database_path: Path | str, key: str) -> dict[str, str | 
     }
     if not key:
         return result
+    if path.is_file():
+        with path.open("rb") as source:
+            if source.read(16) == b"SQLite format 3\x00":
+                result["status"] = "plaintext"
+                return result
     try:
         verify_database_key(path, key)
     except HubDatabaseError:
@@ -86,13 +91,37 @@ def convert_plaintext_database(
         raise HubDatabaseError(f"Hub database does not exist: {source_path}")
     if target_path.exists():
         raise HubDatabaseError(f"Encrypted target already exists: {target_path}")
+    with source_path.open("rb") as source:
+        if source.read(16) != b"SQLite format 3\x00":
+            raise HubDatabaseError(
+                "Source is not plaintext SQLite; do not replace an encrypted database with an unknown key."
+            )
     target_path.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlcipher.connect(source_path)
     try:
+        if connection.execute("PRAGMA integrity_check").fetchall() != [("ok",)]:
+            raise HubDatabaseError("Plaintext database integrity check failed.")
+        user_version = connection.execute("PRAGMA user_version").fetchone()[0]
+        application_id = connection.execute("PRAGMA application_id").fetchone()[0]
         connection.execute(
             f"ATTACH DATABASE {_quoted(str(target_path))} AS encrypted KEY {_quoted(key)}"
         )
         connection.execute("SELECT sqlcipher_export('encrypted')")
+        connection.execute(f"PRAGMA encrypted.user_version = {int(user_version)}")
+        connection.execute(f"PRAGMA encrypted.application_id = {int(application_id)}")
+        tables = connection.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+        ).fetchall()
+        for (table,) in tables:
+            identifier = '"' + table.replace('"', '""') + '"'
+            source_count = connection.execute(
+                f"SELECT COUNT(*) FROM main.{identifier}"  # noqa: S608  # nosec S608 - sqlite_master identifier quoted above.
+            ).fetchone()
+            target_count = connection.execute(
+                f"SELECT COUNT(*) FROM encrypted.{identifier}"  # noqa: S608  # nosec S608 - sqlite_master identifier quoted above.
+            ).fetchone()
+            if source_count != target_count:
+                raise HubDatabaseError("Encrypted export row counts do not match the source.")
         connection.execute("DETACH DATABASE encrypted")
     except sqlcipher.DatabaseError as exc:
         target_path.unlink(missing_ok=True)
@@ -107,6 +136,24 @@ def convert_plaintext_database(
 def replace_with_encrypted_database(database_path: Path | str, key: str) -> Path:
     """Atomically replace a plaintext hub database with its encrypted equivalent."""
     source_path = Path(database_path)
+    state = database_key_status(source_path, key)["status"]
+    if state == "valid":
+        return source_path
+    if state != "plaintext":
+        raise HubDatabaseError(
+            "Conversion requires a verified plaintext database and a configured key."
+        )
+    # Checkpoint while all hub writers are stopped. Refuse an incomplete
+    # checkpoint instead of replacing a DB still paired with an active WAL.
+    source = sqlcipher.connect(source_path)
+    try:
+        checkpoint = source.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()
+        if checkpoint[0] != 0:
+            raise HubDatabaseError("Database is busy; stop all hub writers before conversion.")
+        if source.execute("PRAGMA journal_mode=DELETE").fetchone()[0] != "delete":
+            raise HubDatabaseError("Could not detach the plaintext database from its WAL.")
+    finally:
+        source.close()
     with tempfile.NamedTemporaryFile(
         dir=source_path.parent, prefix=f".{source_path.name}.", suffix=".sqlcipher", delete=False
     ) as temporary:
