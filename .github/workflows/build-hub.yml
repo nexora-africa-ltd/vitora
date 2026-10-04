@@ -438,28 +438,57 @@ jobs:
             exit $LASTEXITCODE
           }
 
-      - name: Diagnose compiled Django startup crash
-        if: failure()
+  diagnose-windows-runtime:
+    name: Diagnose Windows Runtime (A/B/C)
+    needs: compile
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - name: Checkout diagnostic runner
+        uses: actions/checkout@v5
+        with:
+          path: diagnostic-tools
+          sparse-checkout: backend/scripts/diagnose-hub-runtime.py
+          sparse-checkout-cone-mode: false
+
+      - name: Download the same Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hub-windows-amd64
+          path: dist/
+
+      - name: Set up matching Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Extract artifact and install locked runtime dependencies
         shell: pwsh
-        working-directory: hub
         run: |
-          # The SQLCipher runtime smoke may terminate the interpreter with a
-          # native access violation before Python can emit a traceback. Capture
-          # verbose import output so the next release investigation names the
-          # final compiled module loaded before the crash.
-          $env:DJANGO_SETTINGS_MODULE = "hmis.settings.hub"
-          $env:HUB_DATA_DIR = Join-Path $env:RUNNER_TEMP "vitora-hub-diagnose"
-          New-Item -ItemType Directory -Force -Path $env:HUB_DATA_DIR | Out-Null
-          $env:HUB_DB_PATH = Join-Path $env:HUB_DATA_DIR "hub.sqlite3"
-          $env:HUB_DATABASE_ENCRYPTION_REQUIRED = "true"
-          $env:HUB_DATABASE_ENCRYPTION_KEY = python -c "import secrets; print(secrets.token_urlsafe(64))"
-          $env:DJANGO_SECRET_KEY = python -c "import secrets; print(secrets.token_urlsafe(50))"
-          $env:ENCRYPTION_KEY = python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-          $env:PYTHONVERBOSE = "1"
-          python -X faulthandler -c "import django; django.setup()" *> django-import-trace.log
-          Write-Host "--- final 250 import trace lines ---"
-          Get-Content django-import-trace.log -Tail 250
-          exit 1
+          New-Item -ItemType Directory -Force -Path hub, runtime-diagnostics | Out-Null
+          $zip = Get-ChildItem dist\*.zip | Select-Object -First 1
+          Expand-Archive -Path $zip.FullName -DestinationPath hub
+          $inner = Get-ChildItem hub -Directory | Select-Object -First 1
+          Get-ChildItem $inner.FullName -Force | Move-Item -Destination hub
+          Remove-Item -Recurse -Force $inner.FullName
+          python -m pip install --require-hashes -r hub/requirements-hub.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run all three isolated probes (no full migrations)
+        shell: pwsh
+        timeout-minutes: 6
+        run: |
+          python -u diagnostic-tools/backend/scripts/diagnose-hub-runtime.py --artifact hub --output runtime-diagnostics --timeout 90
+          exit $LASTEXITCODE
+
+      - name: Upload Windows runtime diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-runtime-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: runtime-diagnostics/
+          if-no-files-found: warn
+          retention-days: 14
 
   publish:
     name: Publish Hub Artifacts

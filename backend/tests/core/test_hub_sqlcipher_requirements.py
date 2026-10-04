@@ -54,12 +54,7 @@ def test_hub_smoke_jobs_execute_the_shared_django_migration_probe():
             "scripts/smoke-hub-sqlcipher.py --compiled --full-migrations" in step.get("run", "")
             for step in jobs[job]["steps"]
         )
-    assert any(
-        step.get("name") == "Diagnose compiled Django startup crash"
-        and step.get("if") == "failure()"
-        and "PYTHONVERBOSE" in step.get("run", "")
-        for step in jobs["smoke-test-windows"]["steps"]
-    )
+    assert jobs["diagnose-windows-runtime"]["needs"] == "compile"
 
 
 def test_shared_smoke_executes_encrypted_django_migrations_and_orm():
