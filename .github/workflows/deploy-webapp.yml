@@ -61,6 +61,7 @@ jobs:
 
           docker build \
             --build-arg NEXT_PUBLIC_API_URL="${{ vars.API_URL || vars.NEXT_PUBLIC_API_URL || 'https://api.vitora.digital' }}" \
+            --build-arg NEXT_PUBLIC_MEDIA_BASE_URL="${{ vars.MEDIA_BASE_URL || vars.NEXT_PUBLIC_MEDIA_BASE_URL || 'https://vitorareleasessa.blob.core.windows.net/vitora-media' }}" \
             --build-arg NEXT_PUBLIC_APP_NAME="Vitora HMIS" \
             --build-arg NEXT_PUBLIC_ENV=${{ env.DEPLOY_ENV }} \
             --build-arg NEXT_PUBLIC_DEMO_MODE=false \
