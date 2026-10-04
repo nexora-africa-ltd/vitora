@@ -36,3 +36,18 @@ def test_hub_artifact_build_disables_runtime_database_encryption_only_for_compil
         encoding="utf-8"
     )
     assert 'os.environ["HUB_DATABASE_ENCRYPTION_REQUIRED"] = "false"' in compiler
+
+
+def test_hub_smoke_tests_supply_disposable_sqlcipher_keys_and_reject_plaintext_reads():
+    """Artifact smoke jobs must exercise encrypted runtime startup on both platforms."""
+    workflow = (
+        Path(__file__).resolve().parents[3] / ".github" / "workflows" / "build-hub.yml"
+    ).read_text(encoding="utf-8")
+
+    assert "export HUB_DATABASE_ENCRYPTION_REQUIRED=true" in workflow
+    assert '$env:HUB_DATABASE_ENCRYPTION_REQUIRED = "true"' in workflow
+    assert (
+        'HUB_DATABASE_ENCRYPTION_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(64))")'
+        in workflow
+    )
+    assert "Standard SQLite unexpectedly read SQLCipher hub database" in workflow

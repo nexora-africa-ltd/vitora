@@ -305,18 +305,43 @@ jobs:
           # file-count check above would miss.
           pip install -r requirements-hub.txt
           export DJANGO_SETTINGS_MODULE=hmis.settings.hub
-          export HUB_DATA_DIR=$(pwd)
+          export HUB_DATA_DIR=$(mktemp -d)
+          export HUB_DB_PATH="$HUB_DATA_DIR/hub.sqlite3"
+          export HUB_DATABASE_ENCRYPTION_REQUIRED=true
+          export HUB_DATABASE_ENCRYPTION_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(64))")
           export DJANGO_SECRET_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(50))")
           export ENCRYPTION_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
-          python -c "
+          python - <<'PY'
+          import os
+          import sqlite3
           import django
           django.setup()
+          from django.db import connection
           from hmis.apps.encounters import signals
           from hmis.apps.patients import models
+
+          with connection.cursor() as cursor:
+              cursor.execute('CREATE TABLE smoke_sqlcipher (value TEXT)')
+              cursor.execute("INSERT INTO smoke_sqlcipher VALUES ('protected')")
+              cursor.execute('SELECT value FROM smoke_sqlcipher')
+              assert cursor.fetchone()[0] == 'protected'
+
+          try:
+              plaintext = sqlite3.connect(os.environ['HUB_DB_PATH'])
+              try:
+                  plaintext.execute('SELECT value FROM smoke_sqlcipher').fetchone()
+              finally:
+                  plaintext.close()
+          except sqlite3.DatabaseError:
+              pass
+          else:
+              raise AssertionError('Standard SQLite unexpectedly read SQLCipher hub database')
+
           assert signals.__file__.endswith('.so'), f'signals not compiled: {signals.__file__}'
           print('IMPORT OK:', signals.__file__)
           print('IMPORT OK:', models.Patient)
-          "
+          print('SQLCIPHER DJANGO SMOKE OK')
+          PY
 
   smoke-test-windows:
     name: Smoke Test Compiled Hub (Windows)
@@ -429,6 +454,52 @@ jobs:
           python import_test.py
           if ($LASTEXITCODE -ne 0) {
             Write-Error "Import test failed with exit $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
+
+      - name: SQLCipher Django runtime smoke test
+        shell: pwsh
+        working-directory: hub
+        run: |
+          pip install -r requirements-hub.txt
+          $env:DJANGO_SETTINGS_MODULE = "hmis.settings.hub"
+          $env:HUB_DATA_DIR = Join-Path $env:RUNNER_TEMP "vitora-hub-sqlcipher"
+          New-Item -ItemType Directory -Force -Path $env:HUB_DATA_DIR | Out-Null
+          $env:HUB_DB_PATH = Join-Path $env:HUB_DATA_DIR "hub.sqlite3"
+          $env:HUB_DATABASE_ENCRYPTION_REQUIRED = "true"
+          $env:HUB_DATABASE_ENCRYPTION_KEY = python -c "import secrets; print(secrets.token_urlsafe(64))"
+          $env:DJANGO_SECRET_KEY = python -c "import secrets; print(secrets.token_urlsafe(50))"
+          $env:ENCRYPTION_KEY = python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+          @'
+          import os
+          import sqlite3
+          import django
+
+          django.setup()
+          from django.db import connection
+
+          with connection.cursor() as cursor:
+              cursor.execute('CREATE TABLE smoke_sqlcipher (value TEXT)')
+              cursor.execute("INSERT INTO smoke_sqlcipher VALUES ('protected')")
+              cursor.execute('SELECT value FROM smoke_sqlcipher')
+              assert cursor.fetchone()[0] == 'protected'
+
+          try:
+              plaintext = sqlite3.connect(os.environ['HUB_DB_PATH'])
+              try:
+                  plaintext.execute('SELECT value FROM smoke_sqlcipher').fetchone()
+              finally:
+                  plaintext.close()
+          except sqlite3.DatabaseError:
+              pass
+          else:
+              raise AssertionError('Standard SQLite unexpectedly read SQLCipher hub database')
+
+          print('WINDOWS SQLCIPHER DJANGO SMOKE OK')
+          '@ | Set-Content -Path sqlcipher_smoke.py -Encoding UTF8
+          python sqlcipher_smoke.py
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "SQLCipher Django smoke test failed with exit $LASTEXITCODE"
             exit $LASTEXITCODE
           }
 
