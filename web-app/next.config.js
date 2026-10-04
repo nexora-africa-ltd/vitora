@@ -22,6 +22,8 @@ const allowedDevOrigins = [
 
 const nextConfig = {
   reactStrictMode: true,
+  // Avoid advertising the framework and its version in every response.
+  poweredByHeader: false,
   allowedDevOrigins: Array.from(new Set(allowedDevOrigins)),
   // Standalone tracing/packaging is useful for self-hosting and desktop bundles,
   // but adds build overhead on Vercel where it is not needed.
@@ -99,7 +101,7 @@ const nextConfig = {
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=0, must-revalidate',
+            value: 'no-cache, must-revalidate',
           },
           // Security headers
           {

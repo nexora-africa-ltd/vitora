@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { headers } from 'next/headers';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
@@ -88,15 +89,17 @@ const DESKTOP_SW_KILLSWITCH = `(function(){try{
   });
 }catch(e){}})();`;
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: DESKTOP_SW_KILLSWITCH }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: DESKTOP_SW_KILLSWITCH }} />
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         <PWARegister />
-        <UmamiAnalytics />
+        <UmamiAnalytics nonce={nonce} />
         <Providers>{children}</Providers>
       </body>
     </html>
