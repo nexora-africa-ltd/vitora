@@ -18,23 +18,32 @@ function externalOrigin(value: string | undefined): string | null {
   }
 }
 
-function createContentSecurityPolicy(nonce: string): string {
+export function createContentSecurityPolicy(nonce: string): string {
   const sources = new Set(["'self'"]);
   const apiOrigin = externalOrigin(process.env.NEXT_PUBLIC_API_URL);
   const powerSyncOrigin = externalOrigin(process.env.NEXT_PUBLIC_POWERSYNC_URL);
   const umamiOrigin = externalOrigin(process.env.NEXT_PUBLIC_UMAMI_URL);
+  const mediaOrigin = externalOrigin(process.env.NEXT_PUBLIC_MEDIA_BASE_URL);
 
   for (const origin of [apiOrigin, powerSyncOrigin, umamiOrigin]) {
     if (origin) sources.add(origin);
   }
 
   const connectSources = [...sources, 'https://*.ingest.de.sentry.io'];
+  const imageSources = ["'self'", 'data:', 'blob:'];
+
+  for (const origin of [apiOrigin, mediaOrigin]) {
+    if (origin) imageSources.push(origin);
+  }
 
   return [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${umamiOrigin ? ` ${umamiOrigin}` : ''}`,
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https:",
+    "style-src 'self'",
+    // Existing responsive layouts use inline style attributes. Keep those
+    // while blocking arbitrary inline <style> elements.
+    "style-src-attr 'unsafe-inline'",
+    `img-src ${imageSources.join(' ')}`,
     "font-src 'self' data:",
     `connect-src ${connectSources.join(' ')}`,
     "worker-src 'self' blob:",
@@ -91,7 +100,8 @@ const AUTH_ROUTES = ['/login'];
  * Static assets and API routes to skip
  */
 const SKIP_PATTERNS = [
-  '/_next',
+  '/_next/static',
+  '/_next/image',
   '/api',
   '/favicon.ico',
   '/manifest.webmanifest',
@@ -105,6 +115,14 @@ const SKIP_PATTERNS = [
  * Whether the setup wizard feature is enabled
  */
 const SETUP_WIZARD_ENABLED = process.env.NEXT_PUBLIC_SETUP_WIZARD_ENABLED === 'true';
+
+function continueWithSecurityHeaders(request: NextRequest, shouldNotCache = false) {
+  const nonce = crypto.randomUUID();
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-nonce', nonce);
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  return addSecurityHeaders(response, nonce, shouldNotCache);
+}
 
 /**
  * Proxy for server-side authentication routing.
@@ -134,6 +152,12 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Let Next.js return its normal 404 for an invalid bare /_next request, but
+  // still attach CSP to the HTML error page.
+  if (pathname === '/_next') {
+    return continueWithSecurityHeaders(request);
+  }
+
   // Check for auth cookie (simple presence check)
   const isAuthenticated = request.cookies.has(AUTH_COOKIE_NAME);
 
@@ -161,11 +185,7 @@ export function proxy(request: NextRequest) {
     return addSecurityHeaders(NextResponse.redirect(loginUrl), crypto.randomUUID(), true);
   }
 
-  const nonce = crypto.randomUUID();
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set('x-nonce', nonce);
-  const response = NextResponse.next({ request: { headers: requestHeaders } });
-  return addSecurityHeaders(response, nonce, isAuthenticated || AUTH_ROUTES.includes(pathname));
+  return continueWithSecurityHeaders(request, isAuthenticated || AUTH_ROUTES.includes(pathname));
 }
 
 /**

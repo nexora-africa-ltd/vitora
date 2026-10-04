@@ -36,6 +36,8 @@ from django.core.exceptions import ValidationError
 # ---------------------------------------------------------------------------
 
 try:
+    if os.getenv("VITORA_DISABLE_MAGIC_SNIFFING", "").lower() in {"1", "true", "yes"}:
+        raise ImportError("Native MIME sniffing is disabled for this runtime.")
     import magic as _magic  # python-magic (libmagic wrapper)
 
     def _detect_mime(file) -> str | None:

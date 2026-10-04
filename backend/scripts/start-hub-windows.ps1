@@ -231,6 +231,12 @@ try {
     if (-not $env:DJANGO_SETTINGS_MODULE) {
         Set-ProcessEnv -Name "DJANGO_SETTINGS_MODULE" -Value "hmis.settings.hub" -Source "default"
     }
+    if (-not $env:VITORA_DISABLE_MAGIC_SNIFFING) {
+        # python-magic/libmagic is an optional native dependency. The Windows
+        # compiled hub uses the existing extension/size validation fallback
+        # until a compatible signed libmagic distribution is bundled.
+        Set-ProcessEnv -Name "VITORA_DISABLE_MAGIC_SNIFFING" -Value "true" -Source "Windows native compatibility"
+    }
 
     if ($Mode -in @("sync", "backup", "backup-upload", "backup-verify")) {
         $pythonExe = Join-Path $InstallDir "venv\Scripts\python.exe"

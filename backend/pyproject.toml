@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "vitora-hmis"
-version = "1.0.29"
+version = "1.0.32"
 description = "Vitora HMIS - Offline-first Hospital Management Information System for Kenya"
 authors = ["Nexora Consulting Ltd <dev@nexora.africa>"]
 readme = "README.md"
