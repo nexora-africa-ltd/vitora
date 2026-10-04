@@ -118,3 +118,11 @@ def test_windows_diagnostic_job_is_independent_and_always_uploads_logs():
         "--compiled --full-migrations" in step.get("run", "")
         for step in workflow["jobs"]["smoke-test-windows"]["steps"]
     )
+
+
+def test_windows_keep_plain_exclusions_are_narrow_and_evidence_backed():
+    """Windows compatibility exclusions must not silently turn into source-only builds."""
+    compiler = (BACKEND / "scripts" / "compile-hub.py").read_text(encoding="utf-8")
+    assert "WINDOWS_KEEP_PLAIN_FILES" in compiler
+    assert '"hmis/apps/core/upload_validators.py"' in compiler
+    assert "python-magic/libmagic import crashes compiled startup" in compiler

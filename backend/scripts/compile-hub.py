@@ -72,6 +72,14 @@ KEEP_PLAIN_DIRS = {
     "locale",  # gettext .po/.mo
 }
 
+# Windows native extension import chains are more fragile than Linux. Modules
+# listed here remain audited source Python on Windows only while the rest of
+# the hub application stays Cython-compiled. Each entry needs a reproducing
+# Windows diagnostic artifact and a removal condition.
+WINDOWS_KEEP_PLAIN_FILES = {
+    "hmis/apps/core/upload_validators.py",  # python-magic/libmagic import crashes compiled startup
+}
+
 
 def discover_python_files(root: Path) -> list[Path]:
     """Recursively find .py files eligible for compilation."""
@@ -81,6 +89,11 @@ def discover_python_files(root: Path) -> list[Path]:
         if any(part in KEEP_PLAIN_DIRS for part in path.parts):
             continue
         if path.name in KEEP_PLAIN_BASENAMES:
+            continue
+        if (
+            sys.platform == "win32"
+            and path.relative_to(BACKEND_DIR).as_posix() in WINDOWS_KEEP_PLAIN_FILES
+        ):
             continue
         files.append(path)
     return files
