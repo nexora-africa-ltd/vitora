@@ -85,7 +85,9 @@ jobs:
         working-directory: ./backend
         run: |
           if [ -f "pyproject.toml" ] && [ -d "tests" ]; then
-            poetry run pytest --cov=hmis --cov-report=xml --cov-report=term --cov-fail-under=75
+            # Never combine cached or interrupted statement-only data with this branch-coverage run.
+            rm -f .coverage .coverage.* coverage.xml
+            poetry run pytest --cov=hmis --cov-branch --cov-report=xml --cov-report=term --cov-fail-under=75
           else
             echo "⏭️  Skipping: No tests yet"
           fi
