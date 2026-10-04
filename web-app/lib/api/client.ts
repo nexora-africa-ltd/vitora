@@ -42,6 +42,13 @@ export function getDesktopApiUrl(): string | null {
   return _desktopApiUrl;
 }
 
+/** Update the in-memory desktop URL after a verified hub rediscovery. */
+export function setDesktopApiUrl(url: string): void {
+  _desktopApiUrl = url;
+  _desktopApiUrlPromise = Promise.resolve(url);
+  apiClient.defaults.baseURL = url;
+}
+
 // ---------------------------------------------------------------------------
 // Facility & Organization scoping — set by providers, read by request interceptor
 // ---------------------------------------------------------------------------

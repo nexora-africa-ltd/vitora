@@ -238,6 +238,8 @@ class BloodUnit(FacilityScopedModel, TimeStampedModel):
         return f"{self.unit_number} ({self.blood_group} {self.get_component_display()})"
 
     def save(self, *args, **kwargs):
+        from hmis.apps.core.sync_context import is_sync_materialization_active
+
         creating = self._state.adding
         auto_expire_from_status: str | None = None
 
@@ -259,7 +261,8 @@ class BloodUnit(FacilityScopedModel, TimeStampedModel):
             self.expiry_date = timezone.make_aware(self.expiry_date)
 
         if (
-            self.expiry_date
+            not is_sync_materialization_active()
+            and self.expiry_date
             and self.expiry_date <= timezone.now()
             and self.status in self._AUTO_EXPIRE_ELIGIBLE_STATUSES
         ):
@@ -287,7 +290,11 @@ class BloodUnit(FacilityScopedModel, TimeStampedModel):
 
         super().save(*args, **kwargs)
 
-        if auto_expire_from_status and auto_expire_from_status != UnitStatus.EXPIRED:
+        if (
+            not is_sync_materialization_active()
+            and auto_expire_from_status
+            and auto_expire_from_status != UnitStatus.EXPIRED
+        ):
             reason = "Automatically marked expired because expiry date is in the past."
             event_exists = BloodUnitStatusEvent.objects.filter(
                 blood_unit=self,
@@ -590,9 +597,15 @@ class BloodIssue(FacilityScopedModel, TimeStampedModel):
         return f"Issue {self.blood_unit.unit_number} → {self.blood_request.patient}"
 
     def save(self, *args, **kwargs):
+        from hmis.apps.core.sync_context import is_sync_materialization_active
+
         creating = self.pk is None
         super().save(*args, **kwargs)
-        if creating and self.blood_unit.status != UnitStatus.ISSUED:
+        if (
+            creating
+            and not is_sync_materialization_active()
+            and self.blood_unit.status != UnitStatus.ISSUED
+        ):
             self.blood_unit.transition_to(
                 UnitStatus.ISSUED,
                 reason=f"Issued via blood issue #{self.pk}",

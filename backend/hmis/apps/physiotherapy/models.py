@@ -144,7 +144,6 @@ class PhysiotherapyTreatmentType(models.Model):
         verbose_name_plural = "Physiotherapy Treatment Types"
         ordering = ["category", "name"]
         indexes = [
-            models.Index(fields=["code"]),
             models.Index(fields=["category"]),
             models.Index(fields=["is_active"]),
         ]
@@ -330,12 +329,9 @@ class PhysiotherapyOrder(HistoryMixin, FacilityScopedModel):
         verbose_name_plural = "Physiotherapy Orders"
         ordering = ["-ordered_at"]
         indexes = [
-            models.Index(fields=["order_number"]),
-            models.Index(fields=["patient"]),
             models.Index(fields=["status"]),
             models.Index(fields=["ordered_at"]),
             models.Index(fields=["priority"]),
-            models.Index(fields=["assigned_therapist"]),
         ]
         permissions = [
             ("approve_physiotherapy_order", "Can approve physiotherapy orders"),
@@ -594,8 +590,6 @@ class PhysiotherapySession(models.Model):
         ordering = ["order", "session_number"]
         unique_together = [["order", "session_number"]]
         indexes = [
-            models.Index(fields=["order"]),
-            models.Index(fields=["therapist"]),
             models.Index(fields=["scheduled_date"]),
             models.Index(fields=["status"]),
         ]

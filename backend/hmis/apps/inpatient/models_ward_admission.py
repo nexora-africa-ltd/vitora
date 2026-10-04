@@ -29,6 +29,7 @@ from django.utils import timezone
 from hmis.apps.core.mixins import FacilityScopedModel
 from hmis.apps.core.models import TimeStampedModel
 from hmis.apps.core.pii import encrypted_pii_property
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 from .clearance import calculate_patient_blocking_balance
 
@@ -1048,6 +1049,8 @@ class Admission(FacilityScopedModel, TimeStampedModel):
 
     def save(self, *args, **kwargs):
         """Override save to auto-generate admission number and update bed status."""
+        from hmis.apps.core.sync_context import is_sync_materialization_active
+
         # Generate admission number if not set
         if not self.admission_number:
             self.admission_number = self.generate_admission_number()
@@ -1056,7 +1059,7 @@ class Admission(FacilityScopedModel, TimeStampedModel):
         super().save(*args, **kwargs)
 
         # Update bed status to OCCUPIED
-        if self.bed.status != "OCCUPIED":
+        if not is_sync_materialization_active() and self.bed.status != "OCCUPIED":
             self.bed.status = "OCCUPIED"
             self.bed.status_changed_by = self.admitting_officer
             self.bed.save()
@@ -1313,6 +1316,11 @@ class Discharge(TimeStampedModel):
         is_new = self._state.adding
         # Call parent save first
         super().save(*args, **kwargs)
+
+        # The cloud materializer persists source rows only; related state is
+        # materialized independently and must not be inferred from this write.
+        if is_sync_materialization_active():
+            return
 
         # Update admission status and discharge date
         if self.discharge_type == "DECEASED":

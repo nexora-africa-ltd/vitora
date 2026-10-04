@@ -151,7 +151,6 @@ class KENHDDDataElement(models.Model):
         verbose_name_plural = "KENHDD Data Elements"
         indexes = [
             models.Index(fields=["resource_type", "is_active"]),
-            models.Index(fields=["element_id"]),
         ]
 
     def __str__(self) -> str:

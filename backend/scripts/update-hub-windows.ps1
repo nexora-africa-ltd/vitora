@@ -13,7 +13,8 @@
 
 #Requires -RunAsAdministrator
 param(
-    [string]$Version = ""
+    [string]$Version = "",
+    [switch]$Force
 )
 
 $ErrorActionPreference = "Stop"
@@ -49,34 +50,20 @@ function Initialize-DpapiType {
         return $script:DpapiAvailable
     }
 
-    $protectedDataType = [Type]::GetType("System.Security.Cryptography.ProtectedData, System.Security", $false)
-    if (-not $protectedDataType) {
-        try { Add-Type -AssemblyName "System.Security" -ErrorAction Stop } catch {}
-        try { Add-Type -AssemblyName "System.Security.Cryptography.ProtectedData" -ErrorAction Stop } catch {}
-        $protectedDataType = [Type]::GetType("System.Security.Cryptography.ProtectedData, System.Security", $false)
-        if (-not $protectedDataType) {
-            $protectedDataType = [Type]::GetType("System.Security.Cryptography.ProtectedData, System.Security.Cryptography.ProtectedData", $false)
-        }
-    }
-
-    if (-not $protectedDataType) {
+    try {
+        Add-Type -AssemblyName "System.Security" -ErrorAction Stop
+        $script:DpapiProtectedDataType = [System.Security.Cryptography.ProtectedData]
+        $script:DpapiLocalMachineScope = [System.Security.Cryptography.DataProtectionScope]::LocalMachine
+        $null = $script:DpapiProtectedDataType::Protect(
+            [Text.Encoding]::UTF8.GetBytes("vitora-dpapi-probe"),
+            $null,
+            $script:DpapiLocalMachineScope
+        )
+    } catch {
         $script:DpapiTypeInitialized = $true
         $script:DpapiAvailable = $false
         return $false
     }
-
-    $scopeType = [Type]::GetType("System.Security.Cryptography.DataProtectionScope, System.Security", $false)
-    if (-not $scopeType) {
-        $scopeType = [Type]::GetType("System.Security.Cryptography.DataProtectionScope, System.Security.Cryptography.ProtectedData", $false)
-    }
-    if (-not $scopeType) {
-        $script:DpapiTypeInitialized = $true
-        $script:DpapiAvailable = $false
-        return $false
-    }
-
-    $script:DpapiProtectedDataType = $protectedDataType
-    $script:DpapiLocalMachineScope = [Enum]::Parse($scopeType, "LocalMachine")
     $script:DpapiTypeInitialized = $true
     $script:DpapiAvailable = $true
     return $true
@@ -99,15 +86,11 @@ function Build-HubServiceEnvironment {
         "HUB_SECRETS_FILE=$(Get-HubEnvValue 'HUB_SECRETS_FILE' (Join-Path $InstallDir 'secrets\hub-secrets.dpapi.json'))",
         "TIBABOT_ENABLED=$(Get-HubEnvValue 'TIBABOT_ENABLED' 'true')",
         "TIBABOT_API_URL=$(Get-HubEnvValue 'TIBABOT_API_URL')",
-        "TIBABOT_API_KEY=$(Get-HubEnvValue 'TIBABOT_API_KEY')",
         "TIBABOT_TIMEOUT=$(Get-HubEnvValue 'TIBABOT_TIMEOUT' '30')",
-        "TIBABOT_JWT_PRIVATE_KEY=$(Get-HubEnvValue 'TIBABOT_JWT_PRIVATE_KEY')",
-        "TIBABOT_JWT_SECRET=$(Get-HubEnvValue 'TIBABOT_JWT_SECRET')",
         "TIBABOT_JWT_ISSUER=$(Get-HubEnvValue 'TIBABOT_JWT_ISSUER' 'vitora-hmis')",
         "TIBABOT_JWT_AUDIENCE=$(Get-HubEnvValue 'TIBABOT_JWT_AUDIENCE' 'tibabot')",
         "TIBABOT_JWT_EXPIRY_SECONDS=$(Get-HubEnvValue 'TIBABOT_JWT_EXPIRY_SECONDS' '300')",
         "TIBABOT_JWKS_URL=$(Get-HubEnvValue 'TIBABOT_JWKS_URL')",
-        "TIBABOT_ADMIN_KEY=$(Get-HubEnvValue 'TIBABOT_ADMIN_KEY')",
         "HUB_CLOUD_AUTH_ENABLED=$(Get-HubEnvValue 'HUB_CLOUD_AUTH_ENABLED' 'true')",
         "HUB_CLOUD_AUTH_URL=$(Get-HubEnvValue 'HUB_CLOUD_AUTH_URL')"
     ) -join "`n"
@@ -152,6 +135,27 @@ function Register-HubAutoUpdateTask {
     Register-ScheduledTask -TaskName $TaskName -Action $taskAction -Trigger $taskTrigger -Principal $taskPrincipal -Settings $taskSettings -Force | Out-Null
 }
 
+function Register-HubBackupTasks {
+    param(
+        [Parameter(Mandatory=$true)][string]$LauncherPath,
+        [Parameter(Mandatory=$true)][string]$LogDirectory
+    )
+
+    $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -RunLevel Highest -LogonType ServiceAccount
+    $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew
+    $dailyAction = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$LauncherPath`" -Mode backup >> `"$LogDirectory\hub-backup.log`" 2>&1"
+    $dailyTrigger = New-ScheduledTaskTrigger -Daily -At "1:00AM"
+    Register-ScheduledTask -TaskName "VitoraHubDailyBackup" -Action $dailyAction -Trigger $dailyTrigger -Principal $principal -Settings $settings -Force | Out-Null
+
+    $uploadAction = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$LauncherPath`" -Mode backup-upload >> `"$LogDirectory\hub-backup-upload.log`" 2>&1"
+    $uploadTrigger = New-ScheduledTaskTrigger -Once -At "12:00AM" -RepetitionInterval (New-TimeSpan -Minutes 30) -RepetitionDuration (New-TimeSpan -Days 1)
+    Register-ScheduledTask -TaskName "VitoraHubBackupUpload" -Action $uploadAction -Trigger $uploadTrigger -Principal $principal -Settings $settings -Force | Out-Null
+
+    $verifyAction = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$LauncherPath`" -Mode backup-verify >> `"$LogDirectory\hub-backup-verify.log`" 2>&1"
+    $verifyTrigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At "3:00AM"
+    Register-ScheduledTask -TaskName "VitoraHubWeeklyBackupVerify" -Action $verifyAction -Trigger $verifyTrigger -Principal $principal -Settings $settings -Force | Out-Null
+}
+
 function Write-DpapiSecretsBundle {
     param(
         [Parameter(Mandatory = $true)][hashtable]$Secrets,
@@ -190,6 +194,31 @@ function Write-DpapiSecretsBundle {
     Set-Content -Path $Path -Value $payload
 }
 
+function Load-DpapiSecretsBundle {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    if (-not (Test-Path $Path)) {
+        throw "Protected hub secret bundle is missing: $Path"
+    }
+    if (-not (Initialize-DpapiType)) {
+        throw "DPAPI is required to read hub secrets; refusing plaintext fallback."
+    }
+
+    $payload = Get-Content -Path $Path -Raw | ConvertFrom-Json
+    if (-not $payload.ciphertext_b64) {
+        throw "Protected hub secret bundle has no DPAPI ciphertext."
+    }
+    $plainBytes = $script:DpapiProtectedDataType::Unprotect(
+        [Convert]::FromBase64String([string]$payload.ciphertext_b64),
+        $null,
+        $script:DpapiLocalMachineScope
+    )
+    $secrets = ([Text.Encoding]::UTF8.GetString($plainBytes) | ConvertFrom-Json).secrets
+    $secrets.PSObject.Properties | ForEach-Object {
+        [Environment]::SetEnvironmentVariable($_.Name, [string]$_.Value, "Process")
+    }
+}
+
 function Invoke-HubDeviceReenrollment {
     param(
         [Parameter(Mandatory=$true)][string]$PythonExe,
@@ -204,6 +233,8 @@ function Invoke-HubDeviceReenrollment {
     }
 
     Write-Info "Re-enrolling existing hub device key with the cloud..."
+    $previousPythonPath = $env:PYTHONPATH
+    $env:PYTHONPATH = if ($previousPythonPath) { "$InstallDir;$previousPythonPath" } else { $InstallDir }
     $tempPrivateKey = Join-Path $env:TEMP "vitora-reenroll-device-x25519.pem"
     $responseFile = Join-Path $env:TEMP "vitora-reenroll-response.json"
     try {
@@ -213,13 +244,33 @@ function Invoke-HubDeviceReenrollment {
         $response = Invoke-RestMethod -Uri "$($env:CLOUD_API_BASE_URL.TrimEnd('/'))/api/licensing/re-enroll/" -Method POST -Headers $headers -Body $body -ContentType "application/json" -UseBasicParsing
         $response | ConvertTo-Json -Depth 10 | Set-Content -Path $responseFile
         $decrypted = & $PythonExe -c "import json,sys; from cryptography.hazmat.primitives.serialization import load_pem_private_key; from hmis.apps.licensing.activation_secrets import decrypt_activation_secrets; r=json.load(open(sys.argv[1])); k=load_pem_private_key(open(sys.argv[2],'rb').read(),password=None); print(json.dumps(decrypt_activation_secrets(r['secrets_envelope'],k,installation_id=sys.argv[3],organization_id=int(sys.argv[4]),facility_id=int(sys.argv[5]))))" $responseFile $tempPrivateKey $env:HUB_ID $env:HUB_ORGANIZATION_ID $env:HUB_FACILITY_ID | ConvertFrom-Json
+        if ($LASTEXITCODE -ne 0 -or -not $decrypted) {
+            throw "Hub re-enrollment envelope decryption failed; no DPAPI secret bundle was written."
+        }
         [Environment]::SetEnvironmentVariable("ENCRYPTION_KEY", [string]$decrypted.encryption_key, "Process")
         [Environment]::SetEnvironmentVariable("PII_HMAC_KEY", [string]$decrypted.pii_hmac_key, "Process")
         [Environment]::SetEnvironmentVariable("LICENSE_TOKEN", [string]$response.license_token, "Process")
+        [Environment]::SetEnvironmentVariable("SHA_CLIENT_ID", [string]$decrypted.sha_client_id, "Process")
+        [Environment]::SetEnvironmentVariable("SHA_CLIENT_SECRET", [string]$decrypted.sha_client_secret, "Process")
+        [Environment]::SetEnvironmentVariable("SHA_ENABLED", [string]$decrypted.sha_enabled, "Process")
+        [Environment]::SetEnvironmentVariable("SHA_AUTH_MODE", [string]$decrypted.sha_auth_mode, "Process")
+        [Environment]::SetEnvironmentVariable("SHA_AUTH_BASE_URL", [string]$decrypted.sha_auth_base_url, "Process")
+        [Environment]::SetEnvironmentVariable("ILM_BASE_URL", [string]$decrypted.ilm_base_url, "Process")
+        # Re-enrollment replaces cloud-issued secrets but never silently rotates
+        # the local SQLCipher key. Older bundles receive a fresh key once.
+        $databaseEncryptionKey = Get-HubEnvValue "HUB_DATABASE_ENCRYPTION_KEY"
+        if (-not $databaseEncryptionKey) {
+            $databaseEncryptionKey = & $PythonExe -c "import secrets; print(secrets.token_urlsafe(64))"
+        }
+        # Do not persist the required flag until an existing plaintext database
+        # has been converted and the local SQLCipher key has been verified.
+        [Environment]::SetEnvironmentVariable("HUB_DATABASE_ENCRYPTION_REQUIRED", "false", "Process")
+        [Environment]::SetEnvironmentVariable("HUB_DATABASE_ENCRYPTION_KEY", $databaseEncryptionKey, "Process")
         $script:PiiKeyPackageJson = $decrypted.organization_pii_key_package | ConvertTo-Json -Compress
         $script:ReenrollmentResponseFile = $responseFile
         return $response.license_token
     } finally {
+        $env:PYTHONPATH = $previousPythonPath
         Remove-Item -Path $tempPrivateKey -Force -ErrorAction SilentlyContinue
     }
 }
@@ -457,9 +508,13 @@ if ($Version) {
     Write-Info "Latest version: $Version"
 }
 
-if ($Version -eq $CurrentVersion) {
+if ($Version -eq $CurrentVersion -and -not $Force) {
     Write-Ok "Already running version $Version. Nothing to update."
     exit 0
+}
+
+if ($Version -eq $CurrentVersion -and $Force) {
+    Write-Info "Forcing update to current version $Version to apply protected re-enrollment."
 }
 
 Write-Info "Updating: $CurrentVersion -> $Version"
@@ -496,6 +551,12 @@ if (-not $downloadSucceeded) {
 
 # --- Step 3: Stop services ---
 Write-Step 3 "Stopping hub API and sync services..."
+foreach ($taskName in @("VitoraHubDailyBackup", "VitoraHubBackupUpload", "VitoraHubWeeklyBackupVerify")) {
+    if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
+        Disable-ScheduledTask -TaskName $taskName | Out-Null
+        Stop-ScheduledTask -TaskName $taskName
+    }
+}
 $syncSvc = Get-Service -Name $SyncServiceName -ErrorAction SilentlyContinue
 if ($syncSvc -and $syncSvc.Status -eq 'Running') {
     Stop-Service -Name $SyncServiceName -Force
@@ -678,6 +739,19 @@ if (Test-Path $envFile) {
         }
     }
 }
+if (-not $env:CLOUD_API_BASE_URL -and $env:SYNC_SERVER_URL) {
+    $env:CLOUD_API_BASE_URL = $env:SYNC_SERVER_URL -replace '/api/sync/?$',''
+    if (-not $env:CLOUD_API_BASE_URL) {
+        $env:CLOUD_API_BASE_URL = $env:SYNC_SERVER_URL.TrimEnd('/')
+    }
+    if (Select-String -Path $envFile -Pattern '^CLOUD_API_BASE_URL=' -Quiet) {
+        (Get-Content $envFile) `
+            -replace '^CLOUD_API_BASE_URL=.*$', "CLOUD_API_BASE_URL=$($env:CLOUD_API_BASE_URL)" |
+            Set-Content $envFile
+    } else {
+        Add-Content $envFile "CLOUD_API_BASE_URL=$($env:CLOUD_API_BASE_URL)"
+    }
+}
 # Default to hub settings (uses hub.sqlite3, not vitora.db)
 if (-not $env:DJANGO_SETTINGS_MODULE) {
     $env:DJANGO_SETTINGS_MODULE = "hmis.settings.hub"
@@ -690,9 +764,91 @@ $hubSecretsFile = if ($env:HUB_SECRETS_FILE) {
     Join-Path $InstallDir "secrets\hub-secrets.dpapi.json"
 }
 
+Load-DpapiSecretsBundle -Path $hubSecretsFile
+
+$databasePath = if ($env:HUB_DB_PATH) { $env:HUB_DB_PATH } else { "$InstallDir\data\hub.sqlite3" }
+$runtimeSnapshot = Join-Path $backupPath "runtime-state"
+$runtimeHelper = Join-Path $backupPath "hub-update-state.py"
+Copy-Item "$InstallDir\scripts\hub-update-state.py" $runtimeHelper
+$syncStatePath = Join-Path $(if ($env:HUB_DATA_DIR) { $env:HUB_DATA_DIR } else { Split-Path $databasePath }) ".hub_sync_state.json"
+& $pythonExe $runtimeHelper capture --snapshot $runtimeSnapshot --database $databasePath --sync-state $syncStatePath --secrets $hubSecretsFile --env $envFile
+if ($LASTEXITCODE -ne 0) { throw "Cannot capture consistent rollback state; conversion aborted." }
+
+function Restore-HubRuntimeState {
+    # Never restore one encryption epoch's DB with another epoch's secret bundle.
+    Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+    Stop-Service -Name $SyncServiceName -Force -ErrorAction SilentlyContinue
+    & $pythonExe $runtimeHelper restore --snapshot $runtimeSnapshot
+    if ($LASTEXITCODE -ne 0) { throw "Rollback state verification failed; keep hub services stopped." }
+}
+
+trap {
+    if (-not (Get-Variable runtimeSnapshot -ErrorAction SilentlyContinue) -or
+        -not (Test-Path (Join-Path $runtimeSnapshot "manifest.json"))) {
+        Write-Err "Update stopped before rollback state was captured."
+        exit 1
+    }
+    Write-Err "Update failed; restoring code, database and protected credential state."
+    Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+    Stop-Service -Name $SyncServiceName -Force -ErrorAction SilentlyContinue
+    foreach ($item in $itemsToBackup) {
+        $src = Join-Path $backupPath $item
+        $dest = Join-Path $InstallDir $item
+        if (Test-Path $src) {
+            if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
+            Copy-Item -Path $src -Destination $dest -Recurse
+        }
+    }
+    Restore-HubRuntimeState
+    Write-Err "Rollback restored. Services remain stopped for operator verification."
+    exit 1
+}
+
 $replacementLicenseToken = Invoke-HubDeviceReenrollment -PythonExe $pythonExe -HubSecretsFile $hubSecretsFile
-$envFileContent = Get-Content $envFile
-$envFileContent = $envFileContent -replace '^LICENSE_TOKEN=.*$', "LICENSE_TOKEN=$replacementLicenseToken"
+if (Test-Path $databasePath) {
+    # Existing hubs can still have a plaintext database. The API and sync
+    # services were stopped before this point, so conversion is safe.
+    Write-Info "Verifying hub database encryption..."
+    $env:HUB_DATABASE_ENCRYPTION_REQUIRED = "false"
+    $keyStatusOutput = & $pythonExe "$InstallDir\manage.py" hub_database_key_status --database $databasePath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to check the hub database encryption key."
+    }
+    $keyStatus = $keyStatusOutput | ConvertFrom-Json
+    if ($keyStatus.status -ne "valid") {
+        if ($keyStatus.status -ne "plaintext") {
+            throw "Database is not verified plaintext and the key is invalid; refusing conversion."
+        }
+        Write-Info "Converting plaintext hub database to SQLCipher..."
+        & $pythonExe "$InstallDir\manage.py" hub_encrypt_database --database $databasePath
+        if ($LASTEXITCODE -ne 0) {
+            throw "Hub database encryption conversion failed."
+        }
+        $keyStatusOutput = & $pythonExe "$InstallDir\manage.py" hub_database_key_status --database $databasePath
+        if ($LASTEXITCODE -ne 0) {
+            throw "Unable to verify the converted hub database encryption key."
+        }
+        $keyStatus = $keyStatusOutput | ConvertFrom-Json
+        if ($keyStatus.status -ne "valid") {
+            throw "SQLCipher key verification failed after database conversion."
+        }
+    }
+} else {
+    Write-Info "No existing hub database found; a new encrypted database will be created by migrations."
+}
+$env:HUB_DATABASE_ENCRYPTION_REQUIRED = "true"
+$envFileContent = Get-Content $envFile | Where-Object {
+    $_ -notmatch '^(DJANGO_SECRET_KEY|ENCRYPTION_KEY|PII_HMAC_KEY|LICENSE_TOKEN)='
+}
+foreach ($entry in @{
+    SHA_ENABLED = $env:SHA_ENABLED
+    SHA_AUTH_MODE = $env:SHA_AUTH_MODE
+    SHA_AUTH_BASE_URL = $env:SHA_AUTH_BASE_URL
+    ILM_BASE_URL = $env:ILM_BASE_URL
+}.GetEnumerator()) {
+    $envFileContent = $envFileContent | Where-Object { $_ -notmatch "^$($entry.Key)=" }
+    $envFileContent += "$($entry.Key)=$($entry.Value)"
+}
 Set-Content -Path $envFile -Value $envFileContent
 
 $dpapiSecrets = @{
@@ -704,6 +860,10 @@ $dpapiSecrets = @{
     TIBABOT_JWT_PRIVATE_KEY = (Get-HubEnvValue "TIBABOT_JWT_PRIVATE_KEY")
     TIBABOT_JWT_SECRET = (Get-HubEnvValue "TIBABOT_JWT_SECRET")
     TIBABOT_ADMIN_KEY = (Get-HubEnvValue "TIBABOT_ADMIN_KEY")
+    SHA_CLIENT_ID = (Get-HubEnvValue "SHA_CLIENT_ID")
+    SHA_CLIENT_SECRET = (Get-HubEnvValue "SHA_CLIENT_SECRET")
+    HUB_DATABASE_ENCRYPTION_REQUIRED = (Get-HubEnvValue "HUB_DATABASE_ENCRYPTION_REQUIRED" "true")
+    HUB_DATABASE_ENCRYPTION_KEY = (Get-HubEnvValue "HUB_DATABASE_ENCRYPTION_KEY")
 }
 Write-DpapiSecretsBundle -Secrets $dpapiSecrets -Path $hubSecretsFile
 Write-Info "Refreshed DPAPI secret bundle."
@@ -718,15 +878,18 @@ Push-Location $InstallDir
 # startup cost (3-5s Python + 5-15s graph build) dominates per-app loops.
 # Output is streamed live with --verbosity 2 so the user can see "Applying
 # foo.0001_initial... OK" rather than staring at a blank prompt for 20 min.
-$dbPath = if ($env:HUB_DB_PATH) { $env:HUB_DB_PATH } else { "$InstallDir\data\hub.sqlite3" }
+$dbPath = $databasePath
 $appsToMigrate = @()
 if (Test-Path $dbPath) {
     $prevEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
     $appsToMigrate = (& $pythonExe -c "
-import os, sqlite3, pathlib, json
+import os, pathlib, json
+import django
+django.setup()
+from django.db import connection
 db = r'$dbPath'
 apps_dir = os.path.join(r'$InstallDir', 'hmis', 'apps')
-conn = sqlite3.connect(db)
+conn = connection
 cur = conn.cursor()
 try:
     cur.execute('SELECT app, name FROM django_migrations')
@@ -785,6 +948,7 @@ if ($null -eq $appsToMigrate -or $appsToMigrate.Count -eq 0) {
                 }
             }
             Pop-Location
+            Restore-HubRuntimeState
             Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
             Write-Err "Rolled back to $CurrentVersion"
             Log "ROLLBACK: migration failed (exit $migrateExit)"
@@ -835,6 +999,7 @@ if ($null -eq $appsToMigrate -or $appsToMigrate.Count -eq 0) {
             }
         }
         Pop-Location
+        Restore-HubRuntimeState
         Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
         Write-Err "Rolled back to $CurrentVersion"
         Log "ROLLBACK: migration failed"
@@ -896,6 +1061,20 @@ if (Test-Path $envFile) {
     }
 } else {
     Write-Warning "No .env file at $envFile -- hub may not start correctly."
+}
+
+$secretsFile = if ($env:HUB_SECRETS_FILE) { $env:HUB_SECRETS_FILE } else { Join-Path $InstallDir "secrets\hub-secrets.dpapi.json" }
+if (-not (Test-Path $secretsFile)) { throw "Protected hub secret bundle is missing: $secretsFile" }
+Add-Type -AssemblyName "System.Security"
+$payload = Get-Content -Path $secretsFile -Raw | ConvertFrom-Json
+if (-not $payload.ciphertext_b64) { throw "Protected hub secret bundle has no DPAPI ciphertext." }
+$plainBytes = [System.Security.Cryptography.ProtectedData]::Unprotect(
+    [Convert]::FromBase64String([string]$payload.ciphertext_b64),
+    $null,
+    [System.Security.Cryptography.DataProtectionScope]::LocalMachine
+)
+([Text.Encoding]::UTF8.GetString($plainBytes) | ConvertFrom-Json).secrets.PSObject.Properties | ForEach-Object {
+    [Environment]::SetEnvironmentVariable($_.Name, [string]$_.Value, 'Process')
 }
 
 # Splat $CommandArgs directly. Assigning to an intermediate variable would
@@ -971,6 +1150,17 @@ if (Test-Path $nssmExe) {
     Log "NSSM not found; service environment not refreshed"
 }
 
+# Existing hubs installed before UDP discovery need the firewall rule on update.
+$discoveryRuleName = "Vitora Hub Discovery (UDP 19088)"
+$existingDiscoveryRule = Get-NetFirewallRule -DisplayName $discoveryRuleName -ErrorAction SilentlyContinue
+if (-not $existingDiscoveryRule) {
+    New-NetFirewallRule -DisplayName $discoveryRuleName `
+        -Direction Inbound -Protocol UDP -LocalPort 19088 `
+        -Action Allow -Profile Private | Out-Null
+    Write-Ok "UDP discovery firewall rule added."
+    Log "UDP discovery firewall rule added"
+}
+
 # --- Step 8c: Refresh weekly auto-update task ---
 Write-Step "8c" "Refreshing weekly auto-update task..."
 try {
@@ -980,6 +1170,18 @@ try {
 } catch {
     Write-Info "Unable to refresh scheduled task '$AutoUpdateTaskName': $_"
     Log "Scheduled task refresh failed"
+}
+
+# Re-register with -Force on every update so task actions point at the refreshed
+# launcher while retaining DPAPI-only secret loading.
+Write-Step "8d" "Refreshing encrypted hub backup tasks..."
+try {
+    Register-HubBackupTasks -LauncherPath $launcherPath -LogDirectory $LogDir
+    Write-Ok "Scheduled backup tasks refreshed."
+    Log "Backup tasks refreshed"
+} catch {
+    Write-Info "Unable to refresh scheduled backup tasks: $_"
+    Log "Backup task refresh failed"
 }
 
 # --- Step 9: Start service ---
@@ -1000,6 +1202,7 @@ if (-not (Ensure-HubPortAvailable -Port $hubPort -InstallRoot $InstallDir)) {
             }
         }
     }
+    Restore-HubRuntimeState
     Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
     Log "ROLLBACK: port $hubPort unavailable before service start"
     exit 1
@@ -1035,6 +1238,7 @@ if (-not $startFailed -and $svc -and $svc.Status -eq 'Running') {
             }
         }
     }
+    Restore-HubRuntimeState
     Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
     Log "ROLLBACK: service failed to start"
     exit 1

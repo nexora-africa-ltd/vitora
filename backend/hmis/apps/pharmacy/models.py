@@ -202,7 +202,6 @@ class Drug(models.Model):
         indexes = [
             models.Index(fields=["generic_name"]),
             models.Index(fields=["keml_code"]),
-            models.Index(fields=["hpt_code"]),
         ]
 
     def __str__(self):
@@ -258,7 +257,6 @@ class DrugCategory(models.Model):
     class Meta:
         ordering = ["name"]
         indexes = [
-            models.Index(fields=["code"]),
             models.Index(fields=["is_active"]),
         ]
 

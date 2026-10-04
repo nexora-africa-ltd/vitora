@@ -5,7 +5,8 @@ use tauri::{AppHandle, Manager};
 
 const CONFIG_FILE: &str = "config.json";
 const DEFAULT_API_URL: &str = "https://api.vitora.digital";
-const LEGACY_API_URL: &str = "https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io";
+const LEGACY_API_URL: &str =
+    "https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io";
 
 /// Deployment mode for the Tauri client.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -130,7 +131,8 @@ impl AppConfig {
                 if path.exists() {
                     match fs::read_to_string(&path) {
                         Ok(contents) => {
-                            let mut config: AppConfig = serde_json::from_str(&contents).unwrap_or_default();
+                            let mut config: AppConfig =
+                                serde_json::from_str(&contents).unwrap_or_default();
                             if config.api_url.trim().trim_end_matches('/') == LEGACY_API_URL {
                                 config.setup_completed = false;
                             }
@@ -152,8 +154,7 @@ impl AppConfig {
         let path = Self::config_path(app)?;
         let contents = serde_json::to_string_pretty(self)
             .map_err(|e| format!("Failed to serialize config: {}", e))?;
-        fs::write(&path, contents)
-            .map_err(|e| format!("Failed to write config: {}", e))?;
+        fs::write(&path, contents).map_err(|e| format!("Failed to write config: {}", e))?;
         Ok(())
     }
 
@@ -331,12 +332,10 @@ impl KeyStore {
 
     fn load(app: &AppHandle) -> Self {
         match Self::path(app) {
-            Ok(path) if path.exists() => {
-                fs::read_to_string(&path)
-                    .ok()
-                    .and_then(|s| serde_json::from_str(&s).ok())
-                    .unwrap_or_default()
-            }
+            Ok(path) if path.exists() => fs::read_to_string(&path)
+                .ok()
+                .and_then(|s| serde_json::from_str(&s).ok())
+                .unwrap_or_default(),
             _ => Self::default(),
         }
     }
@@ -345,8 +344,7 @@ impl KeyStore {
         let path = Self::path(app)?;
         let contents = serde_json::to_string_pretty(self)
             .map_err(|e| format!("Failed to serialize keystore: {}", e))?;
-        fs::write(&path, contents)
-            .map_err(|e| format!("Failed to write keystore: {}", e))?;
+        fs::write(&path, contents).map_err(|e| format!("Failed to write keystore: {}", e))?;
 
         // Restrict file permissions on Unix
         #[cfg(unix)]

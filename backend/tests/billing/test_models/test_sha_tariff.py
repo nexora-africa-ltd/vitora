@@ -754,12 +754,13 @@ class TestSHATariffModelMeta:
         assert SHATariff._meta.ordering == ["category", "code"]
 
     def test_sha_tariff_indexes_defined(self):
-        """Should have database indexes defined."""
+        """Should expose canonical indexes for tariff lookups."""
         from hmis.apps.billing.models import SHATariff
 
         index_fields = [idx.fields for idx in SHATariff._meta.indexes]
+        code_field = SHATariff._meta.get_field("code")
 
-        # Check expected indexes exist
-        assert ["code"] in index_fields
+        # ``code`` is indexed by the unique constraint, not Meta.indexes.
+        assert code_field.unique is True
         assert ["category", "is_active"] in index_fields
         assert ["facility_level"] in index_fields

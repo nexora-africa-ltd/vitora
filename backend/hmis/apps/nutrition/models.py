@@ -511,7 +511,6 @@ class NutritionConsultation(HistoryMixin, FacilityScopedModel):
         verbose_name_plural = "Nutrition Consultations"
         ordering = ["-consultation_date"]
         indexes = [
-            models.Index(fields=["consultation_number"]),
             models.Index(fields=["patient", "status"]),
             models.Index(fields=["dietitian", "status"]),
             models.Index(fields=["consultation_date"]),
@@ -1005,7 +1004,6 @@ class DietPlan(HistoryMixin, models.Model):
         verbose_name_plural = "Diet Plans"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["plan_number"]),
             models.Index(fields=["patient", "status"]),
             models.Index(fields=["start_date", "end_date"]),
         ]

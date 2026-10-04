@@ -535,12 +535,12 @@ class SyncVersionMixin(models.Model):
 | Field Type | Synced? | Format |
 |------------|---------|--------|
 | Non-PII (names, clinical) | ✅ Yes | Plaintext |
-| Fernet-encrypted PII (national_id, phone, email) | ✅ Yes | **Encrypted blob** (transferred as-is, same key on cloud) |
+| Encrypted PII (national_id, phone, email) | ✅ Yes | Versioned ciphertext transferred as-is; authorized hubs hold the organization key package needed for decryption |
 | Password hashes | ✅ Yes | Django hash string (pbkdf2/argon2) — required for offline auth |
 | Session tokens | ❌ Never | Not in model |
 | last_login | ❌ Excluded | Ephemeral, per-device |
 
-The hub and cloud share the same `ENCRYPTION_KEY` (set during activation). Encrypted fields are synced as their ciphertext — never decrypted in transit.
+Protocol-v2 activation and re-enrollment use a device-encrypted secrets envelope. The envelope carries the authorized organization PII key package, which the hub rewraps under local protected storage. Encrypted fields are synchronized as ciphertext and are never decrypted in transit.
 
 > **Design note (password hashes)**: Password hashes MUST be synced bidirectionally so staff can authenticate on both hub (offline) and cloud. Django stores one-way hashes (PBKDF2 with 600k iterations or Argon2) that are not reversible. They are no more sensitive in transit than the clinical data already being synced over TLS. The `auth.User` registry entry uses `LAST_WRITE_WINS` conflict policy so the most recent password change (on either hub or cloud) takes precedence.
 
@@ -602,7 +602,7 @@ python manage.py migrate_to_activation --hub-id="reception-hub-1" --license-toke
 | Hub impersonation | Installation ID + license JWT together authenticate the hub |
 | Data exfiltration via rogue hub | Activation ties hub to specific org/facility; materializer validates scope |
 | Cloud compromise | Hub continues operating offline; no remote code execution capability |
-| PII in transit | Transferred as Fernet ciphertext; TLS on top; key never in URL/headers |
+| PII in transit | Transferred as versioned ciphertext over TLS; organization key packages are delivered only in device-encrypted activation/re-enrollment envelopes |
 
 ---
 
@@ -611,4 +611,4 @@ python manage.py migrate_to_activation --hub-id="reception-hub-1" --license-toke
 1. **Multi-hub facilities**: Should two hubs at the same facility share one Installation or have separate ones? (Recommendation: separate — each hub is a device)
 2. **Hub-to-hub sync**: If two hubs serve the same facility on the same LAN, should they sync directly? (Recommendation: defer to Phase 5+, use cloud as intermediary for now)
 3. **Offline activation**: What if the hub can't reach the cloud during installation? (Recommendation: require connectivity for initial activation only; all subsequent operation is offline-capable)
-4. **Key rotation**: When ENCRYPTION_KEY is rotated on the cloud, how do hubs get the new key? (Recommendation: include in check-in response, re-encrypt locally)
+4. **Key rotation**: How are new organization key versions distributed to authorized hubs? Current approach: controlled device re-enrollment/key-package refresh followed by local rewrapping and staged ciphertext migration.

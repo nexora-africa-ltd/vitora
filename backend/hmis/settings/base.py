@@ -41,6 +41,15 @@ PAYSTACK_PUBLIC_KEY = os.getenv("PAYSTACK_PUBLIC_KEY", "")
 PAYSTACK_CALLBACK_URL = os.getenv("PAYSTACK_CALLBACK_URL", "")
 PAYSTACK_WEBHOOK_URL = os.getenv("PAYSTACK_WEBHOOK_URL", "")
 
+# Cloud-only signer reference and explicitly allowed in-country residency policy
+# for short-lived hub backup upload credentials. Empty values fail closed.
+HUB_BACKUP_CREDENTIAL_SIGNER = os.getenv("HUB_BACKUP_CREDENTIAL_SIGNER", "")
+HUB_BACKUP_ALLOWED_RESIDENCY_COUNTRIES = os.getenv("HUB_BACKUP_ALLOWED_RESIDENCY_COUNTRIES", "")
+AZURE_HUB_BACKUP_STORAGE_ACCOUNT = os.getenv("AZURE_HUB_BACKUP_STORAGE_ACCOUNT", "")
+AZURE_HUB_BACKUP_STORAGE_ACCOUNT_KEY = os.getenv("AZURE_HUB_BACKUP_STORAGE_ACCOUNT_KEY", "")
+AZURE_HUB_BACKUP_STORAGE_CONTAINER = os.getenv("AZURE_HUB_BACKUP_STORAGE_CONTAINER", "")
+AZURE_HUB_BACKUP_SAS_EXPIRY_MINUTES = int(os.getenv("AZURE_HUB_BACKUP_SAS_EXPIRY_MINUTES", "60"))
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
@@ -652,6 +661,9 @@ ORGANIZATION_PII_ENCRYPTION_ENABLED = (
 # Azure Key Vault settings (when KMS_PROVIDER="azure")
 AZURE_KEY_VAULT_URL = os.getenv("AZURE_KEY_VAULT_URL", "")
 AZURE_KEY_NAME = os.getenv("AZURE_KEY_NAME", "vitora-hmis-key")
+# Hub SQLCipher key escrow uses a separate Key Vault key from PII encryption.
+HUB_DB_ESCROW_ENABLED = os.getenv("HUB_DB_ESCROW_ENABLED", "false").lower() == "true"
+AZURE_HUB_DB_ESCROW_KEY_NAME = os.getenv("AZURE_HUB_DB_ESCROW_KEY_NAME", "")
 # Authentication via Azure Managed Identity or environment variables:
 # AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET
 

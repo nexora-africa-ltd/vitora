@@ -16,7 +16,7 @@ import os
 import platform
 import secrets
 import uuid
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 import jwt
@@ -36,13 +36,18 @@ from rest_framework.decorators import (
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from .backup_credentials import BackupCredentialUnavailable, issue_configured_backup_credentials
 from .bootstrap import build_activation_bootstrap_payload
-from .models import Installation
+from .hub_auth import HubLicenseAuthenticated
+from .hub_database_key_escrow import HubDatabaseKeyEscrowService, HubDatabaseKeyEscrowUnavailable
+from .models import HubBackupDestination, Installation
 from .serializers import (
     ActivationRequestSerializer,
     CheckInRequestSerializer,
     DeviceReenrollmentSerializer,
     GenerateActivationCodeSerializer,
+    HubDatabaseKeyEscrowRecoverySerializer,
+    HubDatabaseKeyEscrowSubmissionSerializer,
     InstallationDetailSerializer,
     InstallationListSerializer,
     InstallationReenrollmentSerializer,
@@ -305,6 +310,73 @@ def hub_eula(request: Request) -> Response:
             "content": _load_hub_eula_text(),
         },
         status=status.HTTP_200_OK,
+    )
+
+
+@extend_schema(
+    responses={200: LicenseGenericResponseSerializer, 401: LicenseErrorResponseSerializer}
+)
+@api_view(["POST"])
+@authentication_classes([])
+@permission_classes([HubLicenseAuthenticated])
+def backup_credentials(request: Request) -> Response:
+    """Return a device-bound envelope with renewable offsite upload credentials."""
+    installation = request._hub_installation
+    destination = HubBackupDestination.objects.filter(
+        organization=installation.organization,
+        facility=installation.facility,
+        enabled=True,
+    ).first()
+    if destination is None:
+        destination = HubBackupDestination.objects.filter(
+            organization=installation.organization,
+            facility__isnull=True,
+            enabled=True,
+        ).first()
+    if destination is None:
+        return Response(
+            {
+                "error": "No enabled hub backup destination is configured.",
+                "code": "backup_destination_not_found",
+            },
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    if not installation.device_public_key:
+        return Response(
+            {"error": "Hub device key is not enrolled.", "code": "device_key_not_enrolled"},
+            status=status.HTTP_409_CONFLICT,
+        )
+    try:
+        credentials = issue_configured_backup_credentials(destination, installation)
+    except BackupCredentialUnavailable as exc:
+        code = (
+            "backup_residency_policy_not_configured"
+            if "residency policy" in str(exc).lower()
+            else "backup_credentials_unavailable"
+        )
+        return Response(
+            {"error": str(exc), "code": code}, status=status.HTTP_503_SERVICE_UNAVAILABLE
+        )
+
+    expires_at = datetime.fromisoformat(credentials["HUB_BACKUP_S3_TOKEN_EXPIRES_AT"])
+    destination.last_credential_issued_at = timezone.now()
+    destination.last_credential_expires_at = expires_at
+    destination.save(
+        update_fields=["last_credential_issued_at", "last_credential_expires_at", "updated_at"]
+    )
+    from .activation_secrets import encrypt_activation_secrets
+
+    return Response(
+        {
+            "credentials_envelope": encrypt_activation_secrets(
+                credentials,
+                installation.device_public_key,
+                installation_id=installation.installation_id,
+                organization_id=installation.organization_id,
+                facility_id=installation.facility_id,
+            ),
+            "expires_at": credentials["HUB_BACKUP_S3_TOKEN_EXPIRES_AT"],
+        }
     )
 
 
@@ -978,6 +1050,72 @@ def re_enroll_installation(request: Request) -> Response:
     except Installation.DoesNotExist:
         return Response({"error": "Installation not found."}, status=status.HTTP_404_NOT_FOUND)
     return _reenroll_installation(request, installation, serializer.validated_data)
+
+
+def _audit_hub_database_key_escrow(
+    request: Request, action: str, installation: Installation
+) -> None:
+    """Record escrow activity using identifiers and metadata only, never key material."""
+    from hmis.apps.core.models import AuditLog
+
+    user = request.user if getattr(request.user, "is_authenticated", False) else None
+    AuditLog.log(
+        action=action,
+        user=user,
+        resource_type="HubDatabaseKeyEscrow",
+        resource_id=installation.pk,
+        organization=installation.organization,
+        facility=installation.facility,
+        request=request,
+        details={"installation_id": str(installation.installation_id)},
+    )
+
+
+@extend_schema(
+    request=HubDatabaseKeyEscrowSubmissionSerializer,
+    responses={201: LicenseGenericResponseSerializer, 401: LicenseErrorResponseSerializer},
+)
+@api_view(["POST"])
+@authentication_classes([])
+@permission_classes([HubLicenseAuthenticated])
+def submit_hub_database_key_escrow(request: Request) -> Response:
+    """Wrap an active hub's SQLCipher key with its dedicated Key Vault key."""
+    serializer = HubDatabaseKeyEscrowSubmissionSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    installation = request._hub_installation
+    try:
+        escrow = HubDatabaseKeyEscrowService().submit(
+            installation, serializer.validated_data["hub_database_encryption_key"]
+        )
+    except HubDatabaseKeyEscrowUnavailable:
+        return Response({"error": "Hub database key escrow is unavailable."}, status=503)
+    _audit_hub_database_key_escrow(request, "hub_database_key_escrow_submitted", installation)
+    return Response(
+        {"id": escrow.pk, "key_version": escrow.key_version, "algorithm": escrow.algorithm},
+        status=status.HTTP_201_CREATED,
+    )
+
+
+@extend_schema(
+    request=HubDatabaseKeyEscrowRecoverySerializer,
+    responses={200: LicenseGenericResponseSerializer, 401: LicenseErrorResponseSerializer},
+)
+@api_view(["POST"])
+@authentication_classes([])
+@permission_classes([HubLicenseAuthenticated])
+def recover_hub_database_key_escrow(request: Request) -> Response:
+    """Issue a device-bound recovery envelope for the calling active hub only."""
+    serializer = HubDatabaseKeyEscrowRecoverySerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    installation = request._hub_installation
+    try:
+        envelope = HubDatabaseKeyEscrowService().recovery_envelope(
+            installation, serializer.validated_data["device_public_key"]
+        )
+    except HubDatabaseKeyEscrowUnavailable:
+        return Response({"error": "Hub database key escrow is unavailable."}, status=503)
+    _audit_hub_database_key_escrow(request, "hub_database_key_escrow_recovered", installation)
+    return Response({"recovery_envelope": envelope}, status=status.HTTP_200_OK)
 
 
 def _reenroll_installation(request: Request, installation: Installation, data: dict) -> Response:

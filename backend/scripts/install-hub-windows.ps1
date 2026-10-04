@@ -158,6 +158,32 @@ function Write-DpapiSecretsBundle {
     Set-Content -Path $Path -Value $payload
 }
 
+function Get-DpapiSecretValue {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+
+    if (-not (Test-Path $Path)) { return "" }
+    if (-not (Initialize-DpapiType)) {
+        throw "DPAPI is required to preserve the existing protected hub secrets."
+    }
+
+    $payload = Get-Content -Path $Path -Raw | ConvertFrom-Json
+    if (-not $payload.ciphertext_b64) {
+        throw "Protected hub secret bundle has no DPAPI ciphertext."
+    }
+    $plainBytes = $script:DpapiProtectedDataType::Unprotect(
+        [Convert]::FromBase64String([string]$payload.ciphertext_b64),
+        $null,
+        $script:DpapiLocalMachineScope
+    )
+    $secrets = ([Text.Encoding]::UTF8.GetString($plainBytes) | ConvertFrom-Json).secrets
+    $property = $secrets.PSObject.Properties[$Name]
+    if ($null -eq $property) { return "" }
+    return [string]$property.Value
+}
+
 function Register-HubAutoUpdateTask {
     param(
         [Parameter(Mandatory=$true)][string]$TaskName,
@@ -173,6 +199,27 @@ function Register-HubAutoUpdateTask {
     $taskSettings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew
 
     Register-ScheduledTask -TaskName $TaskName -Action $taskAction -Trigger $taskTrigger -Principal $taskPrincipal -Settings $taskSettings -Force | Out-Null
+}
+
+function Register-HubBackupTasks {
+    param(
+        [Parameter(Mandatory=$true)][string]$LauncherPath,
+        [Parameter(Mandatory=$true)][string]$LogDirectory
+    )
+
+    $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -RunLevel Highest -LogonType ServiceAccount
+    $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew
+    $dailyAction = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$LauncherPath`" -Mode backup >> `"$LogDirectory\hub-backup.log`" 2>&1"
+    $dailyTrigger = New-ScheduledTaskTrigger -Daily -At "1:00AM"
+    Register-ScheduledTask -TaskName "VitoraHubDailyBackup" -Action $dailyAction -Trigger $dailyTrigger -Principal $principal -Settings $settings -Force | Out-Null
+
+    $uploadAction = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$LauncherPath`" -Mode backup-upload >> `"$LogDirectory\hub-backup-upload.log`" 2>&1"
+    $uploadTrigger = New-ScheduledTaskTrigger -Once -At "12:00AM" -RepetitionInterval (New-TimeSpan -Minutes 30) -RepetitionDuration (New-TimeSpan -Days 1)
+    Register-ScheduledTask -TaskName "VitoraHubBackupUpload" -Action $uploadAction -Trigger $uploadTrigger -Principal $principal -Settings $settings -Force | Out-Null
+
+    $verifyAction = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$LauncherPath`" -Mode backup-verify >> `"$LogDirectory\hub-backup-verify.log`" 2>&1"
+    $verifyTrigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At "3:00AM"
+    Register-ScheduledTask -TaskName "VitoraHubWeeklyBackupVerify" -Action $verifyAction -Trigger $verifyTrigger -Principal $principal -Settings $settings -Force | Out-Null
 }
 
 function Test-PythonVersion {
@@ -743,14 +790,43 @@ $decryptedSecrets = $decryptedSecretsJson | ConvertFrom-Json
 $EncryptionKey = $decryptedSecrets.encryption_key
 $PiiHmacKey = $decryptedSecrets.pii_hmac_key
 $PiiKeyPackageJson = $decryptedSecrets.organization_pii_key_package | ConvertTo-Json -Compress
+$ShaEnabled = $decryptedSecrets.sha_enabled
+$ShaAuthMode = $decryptedSecrets.sha_auth_mode
+$ShaAuthBaseUrl = $decryptedSecrets.sha_auth_base_url
+$IlmBaseUrl = $decryptedSecrets.ilm_base_url
+$ShaClientId = $decryptedSecrets.sha_client_id
+$ShaClientSecret = $decryptedSecrets.sha_client_secret
 Remove-Item -Path $devicePrivateKeyFile -Force
+
+$HubSecretsFile = "$InstallDir\secrets\hub-secrets.dpapi.json"
+# Preserve the existing per-hub SQLCipher key on re-install. Key rotation is a
+# separate, explicit maintenance operation and must never occur during setup.
+$DatabaseEncryptionKey = Get-DpapiSecretValue -Path $HubSecretsFile -Name "HUB_DATABASE_ENCRYPTION_KEY"
+if (-not $DatabaseEncryptionKey) {
+    # token_urlsafe(64) is derived from 64 random bytes (512 bits) and avoids
+    # shell-sensitive characters while remaining suitable for SQLCipher.
+    $DatabaseEncryptionKey = & $python -c "import secrets; print(secrets.token_urlsafe(64))"
+}
+
+# Management commands run during installation need the same protected values
+# that the service launcher will load after installation completes.
+foreach ($entry in @{
+    DJANGO_SECRET_KEY = $secretKey
+    ENCRYPTION_KEY = $EncryptionKey
+    PII_HMAC_KEY = $PiiHmacKey
+    LICENSE_TOKEN = $LicenseToken
+    SHA_CLIENT_ID = $ShaClientId
+    SHA_CLIENT_SECRET = $ShaClientSecret
+    HUB_DATABASE_ENCRYPTION_REQUIRED = "true"
+    HUB_DATABASE_ENCRYPTION_KEY = $DatabaseEncryptionKey
+}.GetEnumerator()) {
+    [Environment]::SetEnvironmentVariable($entry.Key, [string]$entry.Value, "Process")
+}
 
 # --- Write Environment File ---
 Write-Step 5 "Writing configuration..."
-$HubSecretsFile = "$InstallDir\secrets\hub-secrets.dpapi.json"
 $envContent = @"
 DJANGO_ENV=hub
-DJANGO_SECRET_KEY=$secretKey
 HUB_ID=$HubId
 HUB_FACILITY_ID=$FacilityId
 HUB_ORGANIZATION_ID=$OrgId
@@ -760,7 +836,6 @@ HUB_DATA_DIR=$DataDir
 HUB_LOG_FILE=$LogDir\hub.log
 SYNC_SERVER_URL=$SyncUrl
 CLOUD_API_BASE_URL=$CloudApiBaseUrl
-LICENSE_TOKEN=$LicenseToken
 HUB_SECRETS_FILE=$HubSecretsFile
 ALLOWED_HOSTS=*
 HUB_VERSION=$Version
@@ -771,15 +846,15 @@ HUB_AUTO_UPDATE_DAY=$AutoUpdateDay
 HUB_AUTO_UPDATE_TIME=$AutoUpdateTime
 TIBABOT_ENABLED=$TibaBotEnabled
 TIBABOT_API_URL=$TibaBotApiUrl
-TIBABOT_API_KEY=$TibaBotApiKey
 TIBABOT_TIMEOUT=$TibaBotTimeout
-TIBABOT_JWT_PRIVATE_KEY=$TibaBotJwtPrivateKey
-TIBABOT_JWT_SECRET=$TibaBotJwtSecret
 TIBABOT_JWT_ISSUER=$TibaBotJwtIssuer
 TIBABOT_JWT_AUDIENCE=$TibaBotJwtAudience
 TIBABOT_JWT_EXPIRY_SECONDS=$TibaBotJwtExpirySeconds
 TIBABOT_JWKS_URL=$TibaBotJwksUrl
-TIBABOT_ADMIN_KEY=$TibaBotAdminKey
+SHA_ENABLED=$ShaEnabled
+SHA_AUTH_MODE=$ShaAuthMode
+SHA_AUTH_BASE_URL=$ShaAuthBaseUrl
+ILM_BASE_URL=$IlmBaseUrl
 WEBAUTHN_RP_ID=$WebauthnRpId
 WEBAUTHN_ORIGIN=$WebauthnOrigin
 "@
@@ -795,6 +870,10 @@ $dpapiSecrets = @{
     TIBABOT_JWT_PRIVATE_KEY = $TibaBotJwtPrivateKey
     TIBABOT_JWT_SECRET = $TibaBotJwtSecret
     TIBABOT_ADMIN_KEY = $TibaBotAdminKey
+    SHA_CLIENT_ID = $ShaClientId
+    SHA_CLIENT_SECRET = $ShaClientSecret
+    HUB_DATABASE_ENCRYPTION_REQUIRED = "true"
+    HUB_DATABASE_ENCRYPTION_KEY = $DatabaseEncryptionKey
 }
 Write-DpapiSecretsBundle -Secrets $dpapiSecrets -Path $HubSecretsFile
 # Write version file
@@ -841,6 +920,20 @@ if (Test-Path $envFile) {
     }
 } else {
     Write-Warning "No .env file at $envFile -- hub may not start correctly."
+}
+
+$secretsFile = if ($env:HUB_SECRETS_FILE) { $env:HUB_SECRETS_FILE } else { Join-Path $InstallDir "secrets\hub-secrets.dpapi.json" }
+if (-not (Test-Path $secretsFile)) { throw "Protected hub secret bundle is missing: $secretsFile" }
+Add-Type -AssemblyName "System.Security"
+$payload = Get-Content -Path $secretsFile -Raw | ConvertFrom-Json
+if (-not $payload.ciphertext_b64) { throw "Protected hub secret bundle has no DPAPI ciphertext." }
+$plainBytes = [System.Security.Cryptography.ProtectedData]::Unprotect(
+    [Convert]::FromBase64String([string]$payload.ciphertext_b64),
+    $null,
+    [System.Security.Cryptography.DataProtectionScope]::LocalMachine
+)
+([Text.Encoding]::UTF8.GetString($plainBytes) | ConvertFrom-Json).secrets.PSObject.Properties | ForEach-Object {
+    [Environment]::SetEnvironmentVariable($_.Name, [string]$_.Value, 'Process')
 }
 
 # Splat $CommandArgs directly. Assigning to an intermediate variable would
@@ -1155,6 +1248,17 @@ if (-not $existing) {
     Write-Info "Firewall rule already exists."
 }
 
+$discoveryRuleName = "Vitora Hub Discovery (UDP 19088)"
+$existingDiscoveryRule = Get-NetFirewallRule -DisplayName $discoveryRuleName -ErrorAction SilentlyContinue
+if (-not $existingDiscoveryRule) {
+    New-NetFirewallRule -DisplayName $discoveryRuleName `
+        -Direction Inbound -Protocol UDP -LocalPort 19088 `
+        -Action Allow -Profile Private | Out-Null
+    Write-Info "UDP discovery firewall rule added."
+} else {
+    Write-Info "UDP discovery firewall rule already exists."
+}
+
 # --- Weekly Auto-Update Task ---
 Write-Info "Registering weekly auto-update task ($AutoUpdateDay at $AutoUpdateTime)..."
 try {
@@ -1162,6 +1266,16 @@ try {
     Write-Info "Scheduled task '$AutoUpdateTaskName' registered."
 } catch {
     Write-Warn "Failed to register scheduled auto-update task: $_"
+}
+
+# Scheduled backup tasks deliberately call the launcher, which loads .env and
+# the DPAPI bundle at runtime. No backup keys are persisted in task arguments.
+Write-Info "Registering encrypted hub backup tasks..."
+try {
+    Register-HubBackupTasks -LauncherPath $launcherPath -LogDirectory $LogDir
+    Write-Info "Scheduled backup tasks registered."
+} catch {
+    Write-Warn "Failed to register scheduled backup tasks: $_"
 }
 
 # --- Verify ---
@@ -1207,6 +1321,7 @@ Write-Host "    Restart-Service $ServiceName"
 Write-Host "    Stop-Service $ServiceName"
 Write-Host "    powershell -ExecutionPolicy Bypass -File $InstallDir\scripts\update-hub-windows.ps1"
 Write-Host "    Scheduled task: $AutoUpdateTaskName ($AutoUpdateDay $AutoUpdateTime)"
+Write-Host "    Backup tasks: VitoraHubDailyBackup, VitoraHubBackupUpload, VitoraHubWeeklyBackupVerify"
 Write-Host "    Auto-update log: $AutoUpdateLogFile"
 Write-Host "    # Updater keeps one rolling pre-update snapshot at $InstallDir\backup\pre-update-current"
 Write-Host "    $nssmExe edit $ServiceName"

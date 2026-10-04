@@ -40,6 +40,11 @@ from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 
+# Artifact compilation imports Django modules but never starts a Facility Hub or
+# opens a database. Force the runtime-only SQLCipher gate off for the compiler
+# and its Cython subprocess so a protected hub credential is never needed in CI.
+os.environ["HUB_DATABASE_ENCRYPTION_REQUIRED"] = "false"
+
 # Roots under BACKEND_DIR whose .py files are candidates for compilation
 COMPILE_ROOTS = ["hmis"]
 

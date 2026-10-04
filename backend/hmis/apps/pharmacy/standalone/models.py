@@ -88,10 +88,7 @@ class WalkInCustomer(FacilityScopedModel, TimeStampedModel):
         verbose_name_plural = "Walk-in Pharmacy Customers"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["registration_number"]),
-            models.Index(fields=["national_id_hmac"]),
             models.Index(fields=["last_name", "first_name"]),
-            models.Index(fields=["phone_number_hmac"]),
         ]
 
     def __str__(self):
@@ -195,8 +192,6 @@ class ExternalPrescriptionRequest(FacilityScopedModel, TimeStampedModel):
         verbose_name_plural = "External Prescription Requests"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["message_control_id"]),
-            models.Index(fields=["external_prescription_number"]),
             models.Index(fields=["status"]),
         ]
 

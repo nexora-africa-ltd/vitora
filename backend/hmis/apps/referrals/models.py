@@ -501,11 +501,8 @@ class ClinicalReferral(HistoryMixin, FacilityScopedModel, TimeStampedModel):
         indexes = [
             models.Index(fields=["status", "-created_at"], name="ref_status_created_idx"),
             models.Index(fields=["patient", "-created_at"], name="ref_patient_created_idx"),
-            models.Index(fields=["encounter"], name="ref_encounter_idx"),
             models.Index(fields=["referral_type"], name="ref_type_idx"),
             models.Index(fields=["target_service"], name="ref_service_idx"),
-            models.Index(fields=["referred_by"], name="ref_referred_by_idx"),
-            models.Index(fields=["referral_number"], name="ref_number_idx"),
         ]
 
     def __str__(self):

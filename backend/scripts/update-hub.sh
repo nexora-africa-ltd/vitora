@@ -134,6 +134,11 @@ info "Downloading ${URL}..."
 
 # Stop services before migrating SQLite schema.
 info "Stopping hub API and sync services..."
+for job in vitora-hub-backup vitora-hub-backup-upload vitora-hub-backup-verify; do
+    if systemctl list-unit-files "${job}.timer" --no-legend 2>/dev/null | grep -q "$job"; then
+        systemctl stop "${job}.timer" "${job}.service"
+    fi
+done
 if systemctl list-unit-files "${SYNC_SERVICE_NAME}.service" --no-legend 2>/dev/null | grep -q "${SYNC_SERVICE_NAME}"; then
     systemctl stop "$SYNC_SERVICE_NAME" || true
 fi
@@ -169,15 +174,62 @@ fi
 # Run migrations
 info "Running database migrations..."
 source "$APP_DIR/.env" 2>/dev/null || true
-HUB_SECRETS_FILE="${HUB_SECRETS_FILE:-/var/lib/vitora/secrets/hub-secrets.env}"
+HUB_SECRETS_FILE="${HUB_SECRETS_FILE:-/var/lib/vitora/secrets/hub-secrets.cred}"
+LEGACY_HUB_SECRETS_FILE="/var/lib/vitora/secrets/hub-secrets.env"
 if [[ -f "$HUB_SECRETS_FILE" ]]; then
     set -a
     # shellcheck disable=SC1090
-    source "$HUB_SECRETS_FILE"
+    source <(systemd-creds decrypt "$HUB_SECRETS_FILE" -)
     set +a
+elif [[ -f "$LEGACY_HUB_SECRETS_FILE" ]]; then
+    # One-time migration path for hubs released before protected credentials.
+    set -a
+    # shellcheck disable=SC1090
+    source "$LEGACY_HUB_SECRETS_FILE"
+    set +a
+fi
+
+if [[ -z "${CLOUD_API_BASE_URL:-}" && -n "${SYNC_SERVER_URL:-}" ]]; then
+    CLOUD_API_BASE_URL="${SYNC_SERVER_URL%/api/sync}"
+    if [[ "$CLOUD_API_BASE_URL" == "$SYNC_SERVER_URL" ]]; then
+        CLOUD_API_BASE_URL="${SYNC_SERVER_URL%/}"
+    fi
+    if grep -q '^CLOUD_API_BASE_URL=' "$APP_DIR/.env"; then
+        sed -i "s|^CLOUD_API_BASE_URL=.*|CLOUD_API_BASE_URL=${CLOUD_API_BASE_URL}|" "$APP_DIR/.env"
+    else
+        printf '\nCLOUD_API_BASE_URL=%s\n' "$CLOUD_API_BASE_URL" >> "$APP_DIR/.env"
+    fi
+    export CLOUD_API_BASE_URL
 fi
 export DJANGO_ENV=hub
 export DJANGO_SETTINGS_MODULE=hmis.settings
+
+# Snapshot the current database encryption epoch and its protected key bundle
+# together, before re-enrollment or conversion can change either one.
+HUB_DATABASE_PATH="${HUB_DB_PATH:-${APP_DIR}/data/hub.sqlite3}"
+RUNTIME_SNAPSHOT="$BACKUP_PATH/runtime-state"
+RUNTIME_HELPER="$BACKUP_PATH/hub-update-state.py"
+cp "$APP_DIR/scripts/hub-update-state.py" "$RUNTIME_HELPER"
+"$VENV_DIR/bin/python" "$RUNTIME_HELPER" capture --snapshot "$RUNTIME_SNAPSHOT" \
+    --database "$HUB_DATABASE_PATH" \
+    --sync-state "${HUB_DATA_DIR:-$(dirname "$HUB_DATABASE_PATH")}/.hub_sync_state.json" \
+    --secrets "$HUB_SECRETS_FILE" --env "$APP_DIR/.env" \
+    --device-key "/var/lib/vitora/secrets/device-x25519.pem"
+
+rollback_update() {
+    trap - ERR
+    systemctl stop "$SERVICE_NAME" "$SYNC_SERVICE_NAME" || true
+    for item in "${BACKUP_ITEMS[@]}"; do
+        rm -rf "$APP_DIR/$item"
+        if [[ -e "$BACKUP_PATH/$item" ]]; then
+            cp -a "$BACKUP_PATH/$item" "$APP_DIR/$item"
+        fi
+    done
+    "$VENV_DIR/bin/python" "$RUNTIME_HELPER" restore --snapshot "$RUNTIME_SNAPSHOT"
+    error "Previous database and protected credentials restored; services remain stopped for verification."
+    exit 1
+}
+trap rollback_update ERR
 
 # Protocol-v2 migration for existing hubs. The current license JWT authorizes
 # only its own Installation, so no admin password or activation code is kept
@@ -215,10 +267,12 @@ PY
 )
 curl -fsS -o "$REENROLL_RESPONSE" -X POST "${CLOUD_API_BASE_URL%/}/api/licensing/re-enroll/" \
     -H "Content-Type: application/json" -H "X-License-Token: ${LICENSE_TOKEN}" -d "$REENROLL_PAYLOAD"
-PII_KEY_PACKAGE_B64=$("$VENV_DIR/bin/python" - "$REENROLL_RESPONSE" "$TEMP_DEVICE_PRIVATE_KEY" "$HUB_SECRETS_FILE" "$HUB_ID" "$HUB_ORGANIZATION_ID" "$HUB_FACILITY_ID" <<'PY'
+HUB_SECRETS_PLAINTEXT=$(mktemp "${DEVICE_KEY_DIR}/hub-secrets.XXXXXX.env")
+PII_KEY_PACKAGE_B64=$("$VENV_DIR/bin/python" - "$REENROLL_RESPONSE" "$TEMP_DEVICE_PRIVATE_KEY" "$HUB_SECRETS_PLAINTEXT" "$HUB_ID" "$HUB_ORGANIZATION_ID" "$HUB_FACILITY_ID" <<'PY'
 import base64
 import json
 import os
+import secrets as stdlib_secrets
 import sys
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from hmis.apps.licensing.activation_secrets import decrypt_activation_secrets
@@ -227,6 +281,14 @@ response, private_path, output, installation_id, organization_id, facility_id = 
 with open(private_path, "rb") as key_file, open(response, encoding="utf-8") as response_file:
     secrets = decrypt_activation_secrets(json.load(response_file)["secrets_envelope"], load_pem_private_key(key_file.read(), password=None), installation_id=installation_id, organization_id=int(organization_id), facility_id=int(facility_id))
 package = secrets.pop("organization_pii_key_package")
+# Re-enrollment refreshes cloud-issued secrets only. The per-hub SQLCipher key
+# stays local and must never rotate as a side effect of an update. Keep
+# encryption disabled in this temporary bundle until an older plaintext DB has
+# been converted and the key has been verified below.
+secrets["hub_database_encryption_required"] = "false"
+secrets["hub_database_encryption_key"] = (
+    os.environ.get("HUB_DATABASE_ENCRYPTION_KEY") or stdlib_secrets.token_urlsafe(64)
+)
 temporary = f"{output}.new"
 with open(temporary, "w", encoding="utf-8") as secret_file:
     for name, value in secrets.items():
@@ -237,23 +299,150 @@ print(base64.b64encode(json.dumps(package, separators=(",", ":")).encode("utf-8"
 PY
 )
 mv -f "$TEMP_DEVICE_PRIVATE_KEY" "$DEVICE_PRIVATE_KEY"
-chmod 600 "$DEVICE_PRIVATE_KEY" "$HUB_SECRETS_FILE"
-chown vitora:vitora "$DEVICE_PRIVATE_KEY" "$HUB_SECRETS_FILE"
+chmod 600 "$DEVICE_PRIVATE_KEY" "$HUB_SECRETS_PLAINTEXT"
 LICENSE_TOKEN=$("$VENV_DIR/bin/python" - "$REENROLL_RESPONSE" <<'PY'
 import json
 import sys
 print(json.load(open(sys.argv[1], encoding="utf-8"))["license_token"])
 PY
 )
-sed -i "s|^LICENSE_TOKEN=.*|LICENSE_TOKEN=${LICENSE_TOKEN}|" "$APP_DIR/.env"
-printf '%s' "$PII_KEY_PACKAGE_B64" | base64 --decode | "$VENV_DIR/bin/python" manage.py seed_from_activation --response-file="$REENROLL_RESPONSE" --skip-locations --pii-key-package-stdin
+printf 'LICENSE_TOKEN=%s\n' "$LICENSE_TOKEN" >> "$HUB_SECRETS_PLAINTEXT"
+printf 'DJANGO_SECRET_KEY=%s\n' "$DJANGO_SECRET_KEY" >> "$HUB_SECRETS_PLAINTEXT"
+
+# Existing hubs may have a plaintext SQLite database. Use the newly available
+# bundle key to verify an already encrypted DB, or convert a plaintext one,
+# before persisting the required flag and allowing services to restart.
+set -a
+# shellcheck disable=SC1090
+source "$HUB_SECRETS_PLAINTEXT"
+set +a
+HUB_DATABASE_ENCRYPTION_REQUIRED=false
+export HUB_DATABASE_ENCRYPTION_REQUIRED HUB_DATABASE_ENCRYPTION_KEY
+HUB_DATABASE_PATH="${HUB_DB_PATH:-${APP_DIR}/data/hub.sqlite3}"
+if [[ -f "$HUB_DATABASE_PATH" ]]; then
+    info "Verifying hub database encryption..."
+    HUB_DATABASE_KEY_STATUS=$("$VENV_DIR/bin/python" "$APP_DIR/manage.py" hub_database_key_status --database "$HUB_DATABASE_PATH")
+    if ! "$VENV_DIR/bin/python" - "$HUB_DATABASE_KEY_STATUS" <<'PY'
+import json
+import sys
+sys.exit(0 if json.loads(sys.argv[1]).get("status") == "valid" else 1)
+PY
+    then
+        if ! "$VENV_DIR/bin/python" - "$HUB_DATABASE_KEY_STATUS" <<'PY'
+import json
+import sys
+sys.exit(0 if json.loads(sys.argv[1]).get("status") == "plaintext" else 1)
+PY
+        then
+            error "Database is not verified plaintext and the key is invalid; refusing conversion."
+            rollback_update
+        fi
+        info "Converting plaintext hub database to SQLCipher..."
+        "$VENV_DIR/bin/python" "$APP_DIR/manage.py" hub_encrypt_database --database "$HUB_DATABASE_PATH"
+        HUB_DATABASE_KEY_STATUS=$("$VENV_DIR/bin/python" "$APP_DIR/manage.py" hub_database_key_status --database "$HUB_DATABASE_PATH")
+        if ! "$VENV_DIR/bin/python" - "$HUB_DATABASE_KEY_STATUS" <<'PY'
+import json
+import sys
+sys.exit(0 if json.loads(sys.argv[1]).get("status") == "valid" else 1)
+PY
+        then
+            error "SQLCipher key verification failed after database conversion."
+            rollback_update
+        fi
+    fi
+else
+    info "No existing hub database found; a new encrypted database will be created by migrations."
+fi
+sed -i 's/^HUB_DATABASE_ENCRYPTION_REQUIRED=.*/HUB_DATABASE_ENCRYPTION_REQUIRED=true/' "$HUB_SECRETS_PLAINTEXT"
+HUB_DATABASE_ENCRYPTION_REQUIRED=true
+export HUB_DATABASE_ENCRYPTION_REQUIRED
+if ! command -v systemd-creds &>/dev/null; then
+    error "systemd-creds is required for protected hub secret storage."
+    rollback_update
+fi
+systemd-creds encrypt --with-key=host "$HUB_SECRETS_PLAINTEXT" "$HUB_SECRETS_FILE"
+rm -f "$HUB_SECRETS_PLAINTEXT"
+rm -f "$LEGACY_HUB_SECRETS_FILE"
+chmod 600 "$DEVICE_PRIVATE_KEY" "$HUB_SECRETS_FILE"
+chown vitora:vitora "$DEVICE_PRIVATE_KEY" "$HUB_SECRETS_FILE"
+sed -i '/^\(DJANGO_SECRET_KEY\|ENCRYPTION_KEY\|PII_HMAC_KEY\|LICENSE_TOKEN\)=/d' "$APP_DIR/.env"
+chmod 750 "$APP_DIR/scripts/start-hub-linux.sh"
+chown root:vitora "$APP_DIR/scripts/start-hub-linux.sh"
+
+install_backup_schedule() {
+    local unit_name="$1"
+    local launcher_mode="$2"
+    local timer_config="$3"
+    cat > "/etc/systemd/system/${unit_name}.service" <<EOF
+[Unit]
+Description=Vitora HMIS Hub ${unit_name#vitora-hub-}
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=vitora
+Group=vitora
+WorkingDirectory=${APP_DIR}
+EnvironmentFile=${APP_DIR}/.env
+LoadCredentialEncrypted=hub-secrets:${HUB_SECRETS_FILE}
+ExecStart=${APP_DIR}/scripts/start-hub-linux.sh ${launcher_mode}
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/vitora /var/log/vitora
+PrivateTmp=true
+StandardOutput=append:/var/log/vitora/${unit_name}.log
+StandardError=append:/var/log/vitora/${unit_name}-error.log
+EOF
+
+    cat > "/etc/systemd/system/${unit_name}.timer" <<EOF
+[Unit]
+Description=Schedule ${unit_name}
+
+[Timer]
+${timer_config}
+Persistent=true
+Unit=${unit_name}.service
+
+[Install]
+WantedBy=timers.target
+EOF
+}
+
+# Recreate schedule units on update so their launcher and encrypted credential
+# context stay aligned with the updated hub service.
+install_backup_schedule "vitora-hub-backup" "backup" "OnCalendar=daily"
+install_backup_schedule "vitora-hub-backup-upload" "backup-upload" "OnUnitActiveSec=30min"
+install_backup_schedule "vitora-hub-backup-verify" "backup-verify" "OnCalendar=weekly"
+HUB_PORT="${HUB_PORT:-9088}"
+mkdir -p "/etc/systemd/system/${SERVICE_NAME}.service.d" "/etc/systemd/system/${SYNC_SERVICE_NAME}.service.d"
+cat > "/etc/systemd/system/${SERVICE_NAME}.service.d/credentials.conf" <<EOF
+[Service]
+EnvironmentFile=${APP_DIR}/.env
+LoadCredentialEncrypted=hub-secrets:${HUB_SECRETS_FILE}
+ExecStart=
+ExecStart=${APP_DIR}/scripts/start-hub-linux.sh api
+EOF
+cat > "/etc/systemd/system/${SYNC_SERVICE_NAME}.service.d/credentials.conf" <<EOF
+[Service]
+EnvironmentFile=${APP_DIR}/.env
+LoadCredentialEncrypted=hub-secrets:${HUB_SECRETS_FILE}
+ExecStart=
+ExecStart=${APP_DIR}/scripts/start-hub-linux.sh sync
+EOF
+systemctl daemon-reload
+"$VENV_DIR/bin/python" "$APP_DIR/manage.py" migrate --no-input
+printf '%s' "$PII_KEY_PACKAGE_B64" | base64 --decode | "$VENV_DIR/bin/python" "$APP_DIR/manage.py" seed_from_activation --response-file="$REENROLL_RESPONSE" --skip-locations --pii-key-package-stdin
 rm -f "$REENROLL_RESPONSE"
 trap - EXIT
-"$VENV_DIR/bin/python" manage.py migrate --no-input
 "$VENV_DIR/bin/python" manage.py collectstatic --no-input 2>/dev/null || true
 
 # Restart service
 info "Starting hub service..."
+if command -v ufw &>/dev/null; then
+    ufw allow 19088/udp comment "Vitora Hub Discovery" 2>/dev/null || true
+fi
 systemctl start "$SERVICE_NAME"
 if systemctl list-unit-files "${SYNC_SERVICE_NAME}.service" --no-legend 2>/dev/null | grep -q "${SYNC_SERVICE_NAME}"; then
     systemctl start "$SYNC_SERVICE_NAME"
@@ -262,19 +451,12 @@ fi
 # Verify
 sleep 2
 if systemctl is-active --quiet "$SERVICE_NAME"; then
+    trap - ERR
+    systemctl enable --now vitora-hub-backup.timer
+    systemctl enable --now vitora-hub-backup-upload.timer
+    systemctl enable --now vitora-hub-backup-verify.timer
     info "Update complete! Now running version $VERSION"
 else
     error "Service failed to start after update."
-    warn "Restoring previous version..."
-    if [[ -d "$BACKUP_PATH" ]]; then
-        for item in "${BACKUP_ITEMS[@]}"; do
-            rm -rf "$APP_DIR/$item"
-            if [[ -e "$BACKUP_PATH/$item" ]]; then
-                mv "$BACKUP_PATH/$item" "$APP_DIR/$item"
-            fi
-        done
-        systemctl start "$SERVICE_NAME" || true
-        warn "Rolled back from $BACKUP_PATH. Check logs: journalctl -u $SERVICE_NAME -n 50"
-    fi
-    exit 1
+    rollback_update
 fi

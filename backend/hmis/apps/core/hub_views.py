@@ -20,6 +20,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
 
+from hmis.apps.core.hub_discovery import get_hub_discovery_health
 from hmis.apps.core.hub_sync import HubCloudSyncWorker, get_rbac_sync_health_snapshot
 from hmis.apps.core.models import SyncQueue
 
@@ -91,6 +92,7 @@ def hub_health(request):  # noqa: ARG001
         "uptime_seconds": int(time.time() - _START_TIME),
         "server_time": timezone.now().isoformat(),
         "version": get_runtime_version(),
+        "discovery": get_hub_discovery_health(),
     }
 
     # Database check
@@ -110,6 +112,13 @@ def hub_health(request):  # noqa: ARG001
         health["database"] = {"status": "error", "message": str(e)[:100]}
         health["status"] = "unhealthy"
         health["degraded_reasons"].append("database_unavailable")
+
+    if (
+        getattr(settings, "ENVIRONMENT", "") == "hub"
+        and health["discovery"]["udp"] == "unavailable"
+    ):
+        health["status"] = "degraded"
+        health["degraded_reasons"].append("udp_discovery_unavailable")
 
     # Sync queue status
     try:

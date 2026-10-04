@@ -5,11 +5,13 @@ This module tests the ASGI application configuration in hmis/asgi.py,
 including HTTP and WebSocket protocol routing.
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest  # type: ignore
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.testing import WebsocketCommunicator
 
-from hmis.asgi import application, websocket_urlpatterns
+from hmis.asgi import application, start_hub_discovery, stop_hub_discovery, websocket_urlpatterns
 
 
 @pytest.mark.django_db
@@ -28,6 +30,30 @@ class TestAsgiConfiguration:
     def test_application_has_websocket_handler(self):
         """Application should have a WebSocket handler configured."""
         assert "websocket" in application.application_mapping
+
+    @patch("hmis.asgi.HubDiscoveryService")
+    @pytest.mark.django_db
+    def test_hub_lifecycle_starts_and_stops_discovery(self, mock_service, settings):
+        """Only hub ASGI processes should own the LAN discovery responder."""
+        settings.ENVIRONMENT = "hub"
+        service = MagicMock()
+        mock_service.return_value = service
+
+        started = start_hub_discovery()
+        stop_hub_discovery(started)
+
+        assert started is service
+        service.start.assert_called_once()
+        service.stop.assert_called_once()
+
+    @patch("hmis.asgi.HubDiscoveryService")
+    @pytest.mark.django_db
+    def test_non_hub_lifecycle_does_not_start_discovery(self, mock_service, settings):
+        """Cloud and development ASGI processes must not advertise LAN hubs."""
+        settings.ENVIRONMENT = "development"
+
+        assert start_hub_discovery() is None
+        mock_service.assert_not_called()
 
     def test_websocket_urlpatterns_combined(self):
         """WebSocket URL patterns should combine all module patterns."""

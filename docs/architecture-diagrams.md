@@ -303,9 +303,9 @@ graph TB
     ACCESS --> MFA["MFA and Session Controls"]
 
     SECURITY --> DATA["Data Protection"]
-    DATA --> FERNET["Fernet Encryption<br/>(Selected PII fields)"]
-    DATA --> KMS_CURRENT["Current Key Management<br/>(Local Fernet key in environment)"]
-    KMS_CURRENT -. "planned migration" .-> KMS_TARGET["Target Production KMS<br/>(Azure Key Vault and HSM,<br/>managed identity and rotation)"]
+    DATA --> FERNET["Legacy Fernet and<br/>Organization AES-GCM PII"]
+    DATA --> KMS_CURRENT["Azure Key Vault KEKs<br/>(Separate staging and production)"]
+    KMS_CURRENT -. "migration evidence" .-> KMS_TARGET["Organization Key Rotation<br/>(Managed identity and recovery)"]
 
     SECURITY --> ACCOUNTABILITY["Accountability"]
     ACCOUNTABILITY --> AUDIT["Audit Log<br/>(7-year policy)"]
@@ -769,3 +769,32 @@ graph TB
     BACKUPS -->|"Validate restore"| RESTORE
     DHA_TARGET -. "target architecture; not yet evidenced" .-> RESTORE
 ```
+
+## Hub Encryption and Backup Flow
+
+```mermaid
+flowchart LR
+    HUB[Facility Hub]
+    DB[(SQLCipher hub.sqlite3)]
+    OSKEY[DPAPI or systemd-creds<br/>Per-hub database key]
+    SNAP[WAL-safe encrypted snapshot]
+    BUNDLE[Fernet-encrypted backup bundle<br/>sync state + manifest]
+    QUEUE[Offline upload queue]
+    API[Cloud licensing API]
+    KV[Azure Key Vault<br/>wrapped recovery key + signer]
+    BLOB[Azure Blob Storage<br/>Interim South Africa target]
+    KENYA[Kenya-resident object storage<br/>Required production destination]
+
+    OSKEY --> HUB
+    HUB --> DB
+    DB --> SNAP --> BUNDLE --> QUEUE
+    HUB -->|device-bound credential renewal| API
+    API --> KV
+    API -->|short-lived create/write/add SAS| HUB
+    QUEUE -->|interim only| BLOB
+    QUEUE -. production residency migration .-> KENYA
+```
+
+The Azure Blob destination is an interim upload target and does not establish Kenya data residency.
+SQLCipher database keys remain available locally through platform-protected storage for offline operation.
+Azure Key Vault stores only wrapped recovery material and cloud-side signing capability.

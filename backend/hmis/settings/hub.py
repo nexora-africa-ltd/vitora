@@ -64,21 +64,52 @@ MIDDLEWARE.insert(  # noqa: F405
 HUB_DATA_DIR = os.getenv("HUB_DATA_DIR", os.path.join(str(BASE_DIR), "data"))  # noqa: F405
 HUB_DB_PATH = os.getenv("HUB_DB_PATH", os.path.join(HUB_DATA_DIR, "hub.sqlite3"))
 os.makedirs(HUB_DATA_DIR, exist_ok=True)
+HUB_DATABASE_ENCRYPTION_REQUIRED = os.getenv(
+    "HUB_DATABASE_ENCRYPTION_REQUIRED", "true"
+).lower() in (
+    "true",
+    "1",
+    "yes",
+)
+HUB_DATABASE_ENCRYPTION_KEY = os.getenv("HUB_DATABASE_ENCRYPTION_KEY", "")
+HUB_DATABASE_ENGINE = (
+    "hmis.db_backends.sqlcipher"
+    if HUB_DATABASE_ENCRYPTION_REQUIRED
+    else "django.db.backends.sqlite3"
+)
+if HUB_DATABASE_ENCRYPTION_REQUIRED and not HUB_DATABASE_ENCRYPTION_KEY:
+    raise RuntimeError(
+        "HUB_DATABASE_ENCRYPTION_KEY is required when hub database encryption is enabled."
+    )
+
+# Backups are encrypted independently from the database and remain local until
+# the upload queue can reach the configured in-country NAS or object endpoint.
+HUB_BACKUP_DIR = os.getenv("HUB_BACKUP_DIR", os.path.join(HUB_DATA_DIR, "backups"))
+HUB_BACKUP_ENCRYPTION_KEY = os.getenv("HUB_BACKUP_ENCRYPTION_KEY", "")
+HUB_BACKUP_RETENTION_COUNT = int(os.getenv("HUB_BACKUP_RETENTION_COUNT", "14"))
+HUB_BACKUP_NAS_PATH = os.getenv("HUB_BACKUP_NAS_PATH", "")
+HUB_BACKUP_S3_URL = os.getenv("HUB_BACKUP_S3_URL", "")
+HUB_BACKUP_S3_TOKEN = os.getenv("HUB_BACKUP_S3_TOKEN", "")
+HUB_BACKUP_S3_TOKEN_EXPIRES_AT = os.getenv("HUB_BACKUP_S3_TOKEN_EXPIRES_AT", "")
+
+HUB_DATABASE_OPTIONS = {
+    "timeout": 30,  # Wait up to 30s for locks
+    "init_command": (
+        "PRAGMA journal_mode=WAL;"
+        "PRAGMA synchronous=NORMAL;"
+        "PRAGMA foreign_keys=ON;"
+        "PRAGMA busy_timeout=30000;"
+        "PRAGMA cache_size=-64000;"  # 64MB cache
+    ),
+}
+if HUB_DATABASE_ENCRYPTION_REQUIRED:
+    HUB_DATABASE_OPTIONS["cipher_key"] = HUB_DATABASE_ENCRYPTION_KEY
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
+        "ENGINE": HUB_DATABASE_ENGINE,
         "NAME": HUB_DB_PATH,
-        "OPTIONS": {
-            "timeout": 30,  # Wait up to 30s for locks
-            "init_command": (
-                "PRAGMA journal_mode=WAL;"
-                "PRAGMA synchronous=NORMAL;"
-                "PRAGMA foreign_keys=ON;"
-                "PRAGMA busy_timeout=30000;"
-                "PRAGMA cache_size=-64000;"  # 64MB cache
-            ),
-        },
+        "OPTIONS": HUB_DATABASE_OPTIONS,
     }
 }
 
@@ -89,35 +120,16 @@ DATABASES = {
 
 def _get_or_generate_secret_key() -> str:
     """
-    Return SECRET_KEY from env, or generate-and-persist one in the hub data
-    directory on first run.  Never falls back to a hardcoded string.
+    Return SECRET_KEY supplied by the protected hub secret store.
+
+    Hub launchers inject this only into the service process after decrypting
+    the OS-protected credential. Persisting a fallback in the data directory
+    would silently recreate plaintext secret storage after a misconfiguration.
     """
     key = os.getenv("DJANGO_SECRET_KEY", "")
     if key:
         return key
-
-    import secrets as _secrets  # stdlib — always available
-
-    key_file = os.path.join(
-        HUB_DATA_DIR,
-        ".hub_secret_key",
-    )
-    if os.path.exists(key_file):
-        with open(key_file) as f:
-            stored = f.read().strip()
-        if stored:
-            return stored
-
-    # Generate a new 50-char URL-safe secret key (Django convention)
-    new_key = _secrets.token_urlsafe(50)
-    # Write with owner-read-only permissions (0600)
-    old_umask = os.umask(0o177)
-    try:
-        with open(key_file, "w") as f:
-            f.write(new_key)
-    finally:
-        os.umask(old_umask)
-    return new_key
+    raise RuntimeError("DJANGO_SECRET_KEY is missing from the protected hub secret store.")
 
 
 SECRET_KEY = _get_or_generate_secret_key()

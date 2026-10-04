@@ -92,7 +92,6 @@ class Instrument(FacilityScopedModel):
         verbose_name_plural = "Instruments"
         ordering = ["department", "name"]
         indexes = [
-            models.Index(fields=["code"]),
             models.Index(fields=["is_active"]),
         ]
 
@@ -339,10 +338,7 @@ class DiagnosticReport(models.Model):
         verbose_name_plural = "Diagnostic Reports"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["report_number"]),
             models.Index(fields=["status"]),
-            models.Index(fields=["lab_order"]),
-            models.Index(fields=["supersedes"]),
             models.Index(fields=["issued_at"]),
         ]
 

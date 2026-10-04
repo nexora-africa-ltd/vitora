@@ -80,3 +80,57 @@ def test_windows_hub_service_env_includes_tibabot_and_cloud_auth_flags():
         assert "AppEnvironmentExtra" in script
         for var in required_vars:
             assert var in script
+
+
+def test_windows_hub_installer_opens_udp_discovery_port():
+    """LAN discovery needs a private-profile inbound UDP rule in addition to HTTP."""
+    script = (REPO_ROOT / "backend" / "scripts" / "install-hub-windows.ps1").read_text()
+
+    assert '"Vitora Hub Discovery (UDP 19088)"' in script
+    assert "-Protocol UDP -LocalPort 19088" in script
+    assert "-Direction Inbound" in script
+    assert "-Action Allow -Profile Private" in script
+
+
+def test_hub_updates_and_linux_installers_preserve_udp_discovery_access():
+    """Existing hubs and Linux container deployments must expose UDP discovery too."""
+    windows_updater = (REPO_ROOT / "backend" / "scripts" / "update-hub-windows.ps1").read_text()
+    linux_installer = (REPO_ROOT / "backend" / "scripts" / "install-hub.sh").read_text()
+    linux_updater = (REPO_ROOT / "backend" / "scripts" / "update-hub.sh").read_text()
+
+    assert '"Vitora Hub Discovery (UDP 19088)"' in windows_updater
+    assert "-Protocol UDP -LocalPort 19088" in windows_updater
+    assert '"19088:19088/udp"' in linux_installer
+    assert 'ufw allow 19088/udp comment "Vitora Hub Discovery"' in linux_installer
+    assert 'ufw allow 19088/udp comment "Vitora Hub Discovery"' in linux_updater
+
+
+def test_hub_installers_use_protected_secret_stores():
+    """Hub runtime secrets must not regress to plaintext env files."""
+    windows_installer = (REPO_ROOT / "backend" / "scripts" / "install-hub-windows.ps1").read_text()
+    windows_updater = (REPO_ROOT / "backend" / "scripts" / "update-hub-windows.ps1").read_text()
+    windows_launcher = (REPO_ROOT / "backend" / "scripts" / "start-hub-windows.ps1").read_text()
+    linux_installer = (REPO_ROOT / "backend" / "scripts" / "install-hub.sh").read_text()
+    linux_updater = (REPO_ROOT / "backend" / "scripts" / "update-hub.sh").read_text()
+    linux_launcher = (REPO_ROOT / "backend" / "scripts" / "start-hub-linux.sh").read_text()
+
+    assert "DJANGO_SECRET_KEY=$secretKey" not in windows_installer
+    assert "LICENSE_TOKEN=$LicenseToken" not in windows_installer
+    assert "TIBABOT_API_KEY=$TibaBotApiKey" not in windows_installer
+    assert "Load-DpapiSecretsBundle -Path $hubSecretsFile" in windows_updater
+    assert "Protected hub secret bundle is missing" in windows_installer
+    assert "DPAPI secret bundle has no protected ciphertext." in windows_launcher
+    assert "plain JSON fallback" not in windows_launcher
+    assert "systemd-creds encrypt --with-key=host" in linux_installer
+    assert "LoadCredentialEncrypted=hub-secrets:" in linux_installer
+    assert "EnvironmentFile=${HUB_SECRETS_FILE}" not in linux_installer
+    assert "systemd-creds decrypt" in linux_updater
+    assert "CREDENTIALS_DIRECTORY" in linux_launcher
+    assert "hub-secrets" in linux_launcher
+
+
+def test_windows_launcher_uses_independent_logs_for_api_and_sync_services():
+    """Concurrent NSSM services must not contend for one startup log file."""
+    launcher = (REPO_ROOT / "backend" / "scripts" / "start-hub-windows.ps1").read_text()
+
+    assert '$StartupLog = Join-Path $LogDir "start-hub-$Mode.log"' in launcher

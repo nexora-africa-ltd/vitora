@@ -114,6 +114,26 @@ class TestUDPDiscoveryResponder:
                 time.sleep(0.5)
                 assert not service._udp_thread.is_alive()
 
+    def test_udp_port_conflict_is_reported_without_crashing_hub(self, db):
+        """An occupied discovery port should degrade discovery, not HTTP service startup."""
+        occupied_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        occupied_socket.bind(("127.0.0.1", 0))
+        occupied_port = occupied_socket.getsockname()[1]
+        service = HubDiscoveryService()
+
+        try:
+            with patch("hmis.apps.core.hub_discovery.DISCOVERY_UDP_PORT", occupied_port):
+                service.start()
+                time.sleep(0.3)
+                health = service.health_snapshot()
+
+            assert health["udp"] == "unavailable"
+            assert health["udp_port"] == occupied_port
+            assert health["error"]
+        finally:
+            service.stop()
+            occupied_socket.close()
+
 
 # ===========================================================================
 # mDNS Advertisement Tests

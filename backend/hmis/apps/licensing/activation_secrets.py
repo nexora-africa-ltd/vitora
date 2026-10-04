@@ -121,10 +121,22 @@ def decrypt_activation_secrets(
     except (InvalidTag, KeyError, TypeError, ValueError) as exc:
         raise ValueError("Activation secrets envelope failed AAD authentication") from exc
     decoded = json.loads(plaintext.decode("utf-8"))
-    if (
-        not isinstance(decoded, dict)
-        or not isinstance(decoded.get("encryption_key"), str)
-        or not isinstance(decoded.get("pii_hmac_key"), str)
+    is_activation_payload = (
+        isinstance(decoded, dict)
+        and isinstance(decoded.get("encryption_key"), str)
+        and isinstance(decoded.get("pii_hmac_key"), str)
+    )
+    is_hub_database_recovery_payload = isinstance(decoded, dict) and isinstance(
+        decoded.get("hub_database_encryption_key"), str
+    )
+    is_hub_backup_credential_payload = isinstance(decoded, dict) and all(
+        isinstance(decoded.get(key), str)
+        for key in ("HUB_BACKUP_S3_URL", "HUB_BACKUP_S3_TOKEN", "HUB_BACKUP_S3_TOKEN_EXPIRES_AT")
+    )
+    if not (
+        is_activation_payload
+        or is_hub_database_recovery_payload
+        or is_hub_backup_credential_payload
     ):
         raise ValueError("Activation secrets envelope payload is invalid")
     return decoded

@@ -432,7 +432,6 @@ class AdverseTransfusionReaction(FacilityScopedModel, TimeStampedModel):
         verbose_name = "Adverse Transfusion Reaction"
         verbose_name_plural = "Adverse Transfusion Reactions"
         indexes = [
-            models.Index(fields=["transfusion"]),
             models.Index(fields=["status", "-report_date"]),
         ]
 

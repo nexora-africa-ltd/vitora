@@ -27,7 +27,7 @@ from django.core.management import call_command
 from django.utils import timezone
 
 from hmis.apps.core.models import SyncQueue
-from hmis.apps.core.sync_materializer import materialize_entry
+from hmis.apps.core.sync_materializer import materialize_entry, retry_deferred_materializations
 
 logger = logging.getLogger(__name__)
 
@@ -250,6 +250,14 @@ class HubCloudSyncWorker:
         if skip_push:
             logger.info("Hub sync push phase skipped by request.")
         pulled = self._pull_changes(force_full=force_full_pull, tables=tables)
+        retried = retry_deferred_materializations(limit=self.batch_size)
+        if retried:
+            logger.info(
+                "Resolved %d deferred materialization entr%s.",
+                retried,
+                "y" if retried == 1 else "ies",
+            )
+            pulled += retried
         if pushed or pulled:
             logger.info("Hub-to-cloud sync: pushed=%d, pulled=%d", pushed, pulled)
         return pushed, pulled

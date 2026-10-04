@@ -15,6 +15,56 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Hub 1.0.25] - 2026-10-03
+
+### Hub
+
+- Move hub runtime secrets to protected Windows DPAPI and Linux systemd credential stores, including shared DHA ILM credentials delivered through the device-encrypted activation envelope.
+- Expand cloud-to-hub sync coverage for Document Hub records and their P0 clinical, laboratory, billing, inventory, immunization, inpatient, MCH, blood bank, and theatre dependencies.
+
+## [Desktop 1.0.25] - 2026-10-03
+
+### Desktop
+
+- Align the desktop release with the expanded hub sync coverage for offline Document Hub workflows.
+
+## [Desktop 1.0.24] - 2026-10-03
+
+### Desktop
+
+- Health-check the configured facility hub before attempting LAN discovery, so healthy cached hubs do not broadcast on every launch.
+- Add frameless desktop window controls to login and organization onboarding routes.
+
+## [Desktop 1.0.23] - 2026-10-03
+
+### Desktop
+
+- Apply the repository Rust formatting baseline to desktop configuration, updater, and printer command source files.
+
+## [Desktop 1.0.22] - 2026-10-03
+
+### Desktop
+
+- Grant the packaged Tauri webview permission to invoke native `discover_hubs`, completing the LAN discovery release path.
+- Regenerate Tauri capability schemas for the discovery command.
+
+## [Hub 1.0.24] - 2026-10-03
+
+### Hub
+
+- Start the UDP LAN discovery responder with the hub ASGI lifecycle and stop it cleanly on Daphne shutdown.
+- Expose discovery health through `/api/hub/health/`, including a non-fatal degraded state when UDP port `19088` is unavailable.
+- Open UDP `19088` during Windows and Linux installs and updates, and publish it in Linux container deployments.
+- Keep TCP `9088` for all hub API, authentication, sync, and WebSocket traffic; UDP is used only to discover a candidate hub address.
+
+## [Desktop 1.0.21] - 2026-10-03
+
+### Desktop
+
+- Add native Tauri UDP broadcast discovery for facility hubs and verify discovered candidates through `/api/hub/health/` before use.
+- Use native discovery during first workstation setup and automatically recover a stale saved hub URL before login, with verified HTTP subnet scanning as a fallback for older hubs.
+- Bump desktop app version metadata to `1.0.21` across package, Tauri, and Cargo manifests and lockfiles.
+
 ## [Hub 1.0.23] - 2026-10-02
 
 ### Hub

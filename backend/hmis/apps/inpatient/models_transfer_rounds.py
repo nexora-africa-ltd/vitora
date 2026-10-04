@@ -513,8 +513,13 @@ class Transfer(TimeStampedModel):
 
     def save(self, *args, **kwargs):
         """Override save to update bed and admission status."""
+        from hmis.apps.core.sync_context import is_sync_materialization_active
+
         # Call parent save first
         super().save(*args, **kwargs)
+
+        if is_sync_materialization_active():
+            return
 
         # Move source bed into housekeeping turnover workflow
         if self.source_bed.status == "OCCUPIED":

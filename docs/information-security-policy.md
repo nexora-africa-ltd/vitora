@@ -136,8 +136,8 @@ Vitora security controls shall be designed and operated according to the followi
 
 | Control | Current software capability | Production policy requirement |
 |---|---|---|
-| Local KMS provider | Fernet symmetric encryption using an environment-managed `ENCRYPTION_KEY`; Fernet provides AES-128-CBC with HMAC-SHA256 authentication | Suitable for development, testing, and limited single-server deployment; must not be represented as HSM-backed cloud KMS |
-| Azure Key Vault provider | Implemented provider with Azure identity support, key wrapping/envelope encryption, and Azure cryptographic operations | Enable and verify Azure Key Vault or Managed HSM for cloud production before claiming managed production KMS capability |
+| Local KMS provider | Fernet symmetric encryption using an environment-managed `ENCRYPTION_KEY`; retained for legacy v1 compatibility and controlled single-server use | Must not be represented as HSM-backed cloud KMS |
+| Azure Key Vault provider | Separate staging/production vaults and KEKs with managed-identity cryptographic access; supports organization-scoped wrapped key material | Maintain migration, key-version, rotation, and recovery evidence before claiming complete legacy-key retirement |
 | Key rotation | Configurable KMS rotation interval defaults to 365 days | Maintain approved rotation schedule, key-version inventory, decryption continuity, re-encryption procedure, and test evidence |
 | HMAC key | `PII_HMAC_KEY` is distinct from the encryption key | Store as a managed secret and rotate independently according to approved procedure |
 

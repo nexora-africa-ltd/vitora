@@ -597,7 +597,6 @@ class SHARemittance(FacilityScopedModel):
         verbose_name_plural = "SHA Remittances"
         ordering = ["-payment_date"]
         indexes = [
-            models.Index(fields=["bank_reference"]),
             models.Index(fields=["payment_date"]),
             models.Index(fields=["status"]),
         ]

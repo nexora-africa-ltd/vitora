@@ -188,7 +188,7 @@ jobs:
           docker run -d --name hub-test \
             -e DJANGO_ENV=hub \
             -e DJANGO_SETTINGS_MODULE=hmis.settings.hub \
-            -e SECRET_KEY=test-secret-key-for-ci \
+            -e DJANGO_SECRET_KEY=test-secret-key-for-ci \
             -p 9088:9088 \
             "$IMAGE"
 

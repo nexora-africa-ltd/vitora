@@ -27,44 +27,64 @@ This document distinguishes software capability from verified production operati
 
 | Protection objective | Implemented mechanism | Scope | Verification requirement |
 |---|---|---|---|
-| Direct-identifier encryption at rest | Fernet field encryption | Selected PII and secret fields stored in encrypted database columns | Verify encrypted columns, key configuration, and migration completion in the target environment |
-| Integrity/authentication of encrypted fields | Fernet HMAC-SHA256 | Ciphertext authentication and tamper detection for Fernet-encrypted values | Verify application cryptography dependency and decryption tests |
+| Direct-identifier encryption at rest | Organization-scoped AES-256-GCM v2; legacy Fernet v1 compatibility | Selected PII and secret fields stored in encrypted database columns | Verify encrypted columns, key configuration, v2 migration completion, and legacy-read continuity in the target environment |
+| Integrity/authentication of encrypted fields | AES-GCM authentication with bound additional authenticated data (v2); Fernet HMAC-SHA256 (v1) | Ciphertext authentication and tamper detection | Verify application cryptography dependency, decryption tests, and field/tenant binding tests |
 | Search without plaintext storage | HMAC blind index | Eligible PII lookup fields with distinct `PII_HMAC_KEY` | Verify separate key, index scope, and no plaintext lookup storage |
 | Transport encryption | HTTPS and WSS | Browser, API, WebSocket, integration, and Front Door/public ingress traffic | Verify certificate chain, TLS settings, HTTPS redirect, and endpoint scan results |
 | Cloud KMS capability | Azure Key Vault provider | Envelope encryption and key wrapping when `KMS_PROVIDER=azure` | Verify deployed provider, managed identity, Key Vault key, access policy, and rotation evidence |
 | Backup encryption | GPG AES-256 when backup passphrase is supplied | Database backup files before Azure Blob upload | Verify `BACKUP_ENCRYPTION_KEY`, encrypted backup artifact, checksum, and restore drill |
 | Offline minimization | PowerSync Sync Streams exclusions | Browser-local PowerSync SQLite projection | Verify encrypted direct identifiers and keys are excluded from sync streams |
 
-## 3. Data at Rest: Fernet Field Encryption
+## 3. Data at Rest: PII Field Encryption
 
-### 3.1 Algorithm and Implementation
+### 3.1 Encryption Generations and Algorithms
 
-The current local KMS provider uses the Python `cryptography` Fernet implementation. Fernet provides:
+Vitora supports two ciphertext generations during the controlled PII migration:
+
+| Generation | Scope and use | Payload encryption | Key handling |
+|---|---|---|---|
+| v1 (legacy) | Existing ciphertext and records not yet migrated to v2 | Python `cryptography` Fernet: AES-128-CBC with HMAC-SHA256 | `ENCRYPTION_KEY` is supplied to the local Fernet provider. v1 remains readable for migration compatibility. |
+| v2 (current tenant-aware path) | New values for records with a resolvable organization when `ORGANIZATION_PII_ENCRYPTION_ENABLED=true` | AES-256-GCM with a randomly generated 96-bit nonce | A per-organization DEK and blind-index HMAC key are stored only in KMS-wrapped form. |
+
+The local KMS provider used for legacy v1 ciphertext uses the Python `cryptography` Fernet implementation. Fernet provides:
 
 - AES-128-CBC encryption for confidentiality.
 - HMAC-SHA256 authentication for ciphertext integrity and authenticity.
 - URL-safe base64 encoded ciphertext representation.
 - A 32-byte base64-encoded Fernet key supplied through `ENCRYPTION_KEY`.
 
-The local provider is implemented in `hmis.apps.core.kms.local.LocalKMSProvider`. It validates the Fernet key format at initialization and encrypts/decrypts bytes or strings through the configured KMS-provider abstraction.
+The local provider is implemented in `hmis.apps.core.kms.local.LocalKMSProvider`. It validates the Fernet key format at initialization and encrypts/decrypts bytes or strings. It is retained for local deployments and legacy v1 ciphertext compatibility; it is not an Azure Key Vault or hardware-backed control.
+
+For v2 ciphertext, `OrganizationPIIEncryptionService` encrypts the PII payload with AES-256-GCM. Its additional authenticated data binds ciphertext to the organization, model label, and field name. The configured KMS provider wraps and unwraps the organization DEK and HMAC key; it does not directly encrypt the v2 PII payload.
 
 ### 3.2 Encrypted Field Pattern
 
 Vitora uses `encrypted_pii_property()` to provide transparent encrypted field access. A model exposes a logical property, such as `phone_number`, while persistent storage uses a separate encrypted column, such as `phone_number_encrypted`.
 
 ```text
-Application write
+Application write: v2 tenant-aware record
   -> encrypted_pii_property setter
-  -> configured KMS provider encrypt_string(value)
+  -> OrganizationPIIEncryptionService encrypts with the organization DEK (AES-256-GCM)
+  -> <field>_encrypted database column, prefixed v2.<key-version>.
+
+Application write: legacy or non-tenant-resolvable record
+  -> encrypted_pii_property setter
+  -> LocalKMSProvider encrypts with Fernet
   -> <field>_encrypted database column
 
-Application read
+Application read: v2 ciphertext
   -> encrypted_pii_property getter
-  -> configured KMS provider decrypt_string(ciphertext)
+  -> OrganizationPIIEncryptionService unwraps the organization DEK through the configured KMS
+  -> AES-256-GCM decrypts and verifies tenant/model/field binding
+  -> plaintext only within the authorized application process
+
+Application read: legacy v1 ciphertext
+  -> encrypted_pii_property getter
+  -> LocalKMSProvider decrypts Fernet ciphertext with ENCRYPTION_KEY
   -> plaintext only within the authorized application process
 ```
 
-If a corresponding `<field>_hmac` column exists, the setter computes a blind-index value using `PII_HMAC_KEY`. The HMAC key is required to be distinct from `ENCRYPTION_KEY`.
+If a corresponding `<field>_hmac` column exists, the setter computes a blind-index value. Legacy v1 records use the `PII_HMAC_KEY`, which must be distinct from `ENCRYPTION_KEY`. v2 tenant-aware records use an independently generated organization HMAC key stored only in KMS-wrapped form. Lookup supports active and retired v2 key versions during rotation.
 
 ### 3.3 Covered Data Categories
 
@@ -96,16 +116,16 @@ Vitora selects its key-management provider through `KMS_PROVIDER`:
 | Provider | Configuration | Implementation status | Intended use |
 |---|---|---|---|
 | Local | `KMS_PROVIDER=local`, `ENCRYPTION_KEY` | Implemented | Development, testing, single-server/controlled deployments |
-| Azure Key Vault | `KMS_PROVIDER=azure`, `AZURE_KEY_VAULT_URL`, `AZURE_KEY_NAME` | Implemented in code | Cloud production target |
+| Azure Key Vault | `KMS_PROVIDER=azure`, `AZURE_KEY_VAULT_URL`, `AZURE_KEY_NAME` | Implemented; deployment configuration specifies separate staging/production KEKs | Cloud production key wrapping for organization-scoped v2 PII keys |
 | GCP KMS | `KMS_PROVIDER=gcp` and GCP key settings | Stub/future path | Not a production claim |
 
 The application caches the configured provider as a process singleton. A missing required provider setting causes provider initialization to fail rather than silently using another provider.
 
-### 4.2 Current Local KMS Posture
+### 4.2 Legacy Local KMS Posture
 
 The local provider uses `ENCRYPTION_KEY` from application settings. It is cryptographically valid Fernet encryption but is not a managed HSM or cloud KMS boundary. The local provider does not independently enforce key rotation; its configured rotation interval is metadata and operational policy, not automatic cryptographic re-encryption.
 
-The local provider shall not be described as Azure Key Vault, Managed HSM, hardware-backed encryption, or automatically rotated key management.
+The local provider shall not be described as Azure Key Vault, Managed HSM, hardware-backed encryption, or automatically rotated key management. It remains available for legacy v1 ciphertext compatibility while organization-scoped v2 migration is completed.
 
 ### 4.3 Azure Key Vault Provider
 
@@ -120,9 +140,9 @@ When configured, the Azure Key Vault provider uses `DefaultAzureCredential` and 
 
 For payloads larger than direct RSA-OAEP limits, the implementation generates an ephemeral Fernet DEK, encrypts the payload locally, wraps the DEK with the Key Vault key, and stores both wrapped key and ciphertext. The raw DEK is not persisted as a standalone application field.
 
-### 4.4 Production Key Management Requirements
+### 4.4 Production Key Management Status and Requirements
 
-Before managed cloud KMS is claimed for production, retain evidence of:
+Deployment configuration specifies separate Azure Key Vaults and KEKs for staging and production. Active runtime configuration, managed-identity assignment, and Key Vault authorization remain deployment evidence that must be verified. Retain evidence of:
 
 1. `KMS_PROVIDER=azure` in the active production runtime configuration.
 2. Azure Key Vault or Managed HSM name, key name, version strategy, region, and owner.
@@ -176,7 +196,7 @@ TLS 1.2+ must be verified by an external endpoint scan and certificate inspectio
 |---|---|
 | Web browser | HTTPS for API traffic; WSS for WebSocket traffic; secure HttpOnly cookie settings in production |
 | Desktop application | HTTPS to cloud API; local sidecar traffic is restricted to loopback origin where applicable |
-| Mobile application | HTTPS; includes SSL public-key-pinning capability in the mobile dependency set where configured for the release |
+| Mobile application | Planned client. Before release, require HTTPS and document any certificate-pinning or platform transport controls implemented for that release. |
 | Facility hub | LAN traffic must use an approved facility network and secure deployment configuration; cloud synchronization uses HTTPS when online |
 | SHA/DHA, FHIR, HL7, payment, AI, and third-party APIs | TLS-protected endpoints, credential protection, endpoint allowlisting/validation, and integration-specific security review |
 
@@ -200,9 +220,19 @@ Hubs that are authorized to retain encrypted data locally require controlled key
 
 For multi-tenant cloud operation, key management shall limit key access to the authorized organization or facility scope and avoid unnecessary cross-tenant key exposure. Detailed key-distribution, device-wrapping, and migration design is maintained in restricted internal security architecture documentation.
 
+### 6.4 SQLCipher Facility Hub Database Encryption
+
+Facility Hub deployments default to SQLCipher encryption for `hub.sqlite3`. The hub requires `HUB_DATABASE_ENCRYPTION_KEY` before opening the database and fails closed when the protected runtime key is unavailable. The key is unique per hub and is independent from the Django secret, PII encryption key, and backup-bundle encryption key.
+
+The installers generate and retain this key through the platform protected secret path: DPAPI `LocalMachine` bundles on Windows and `systemd-creds` encrypted credentials on Linux. Existing plaintext hubs follow a controlled verify-convert-verify update path before encrypted startup is enabled. SQLCipher database snapshots are additionally encrypted inside Fernet backup bundles.
+
+Recovery escrow stores only Azure Key Vault-wrapped database-key ciphertext. Recovery material is delivered only through an X25519 device-bound envelope after installation, organization, and facility authorization; plaintext database keys are not stored in cloud records or activation payloads.
+
 ## 7. Backup Encryption
 
-The active database backup script supports:
+The repository contains two database backup scripts with different missing-key behavior. The production runbook must identify which script is scheduled in each environment and retain evidence of its configuration:
+
+`scripts/backup-db.sh` supports:
 
 - PostgreSQL dump creation and compression.
 - SHA-256 checksum generation.
@@ -210,7 +240,7 @@ The active database backup script supports:
 - Azure Blob upload using SAS token or managed identity.
 - Backup artifact and checksum upload.
 
-The script can upload an unencrypted backup when no backup encryption key is supplied. Therefore, production backup encryption is a mandatory deployment verification item, not a control that may be assumed solely from the script's existence.
+`scripts/backup-db.sh` can upload an unencrypted backup when no backup encryption key is supplied. By contrast, `scripts/backup.sh` refuses to create an unencrypted backup when `BACKUP_ENCRYPTION_KEY` is absent. Therefore, production backup encryption is a mandatory deployment verification item, not a control that may be assumed solely from either script's existence.
 
 Production evidence must show:
 
@@ -218,6 +248,14 @@ Production evidence must show:
 2. Uploaded backup artifacts use the encrypted `.gpg` format.
 3. SHA-256 checksum verification succeeds.
 4. Restore drills decrypt and restore the expected backup successfully.
+
+### 7.1 Facility Hub Backup Encryption and Interim Azure Blob Delivery
+
+Hub backups use a WAL-safe SQLCipher snapshot and include the persisted sync watermark/state. Each bundle is encrypted with the independent `HUB_BACKUP_ENCRYPTION_KEY`, checksummed, retained locally, and queued if off-site delivery is unavailable.
+
+The interim off-site implementation issues device-bound, short-lived Azure Blob SAS upload credentials for the authorized installation. The cloud backend retains the storage-account key and grants hub credentials only create/write/add permissions. Backup paths are constructed under organization, facility, and installation identifiers. Expired credentials retain local queued bundles until renewal.
+
+Azure Blob Storage in South Africa North is an interim target only and must not be represented as Kenya-resident storage. Production Kenya residency requires migration to a contractually Kenya-resident object-storage or gateway provider.
 5. Backup retention, Azure Blob access, and recovery-key access are restricted and reviewed.
 
 ## 8. Cryptographic Data Handling Requirements

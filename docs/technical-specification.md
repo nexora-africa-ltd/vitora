@@ -97,11 +97,11 @@ The product is delivered through these clients:
 
 | Component | Current or configured role | Notes |
 |---|---|---|
-| Azure Container Apps | Django API and planned production Next.js SSR web origin | Production web migration uses a South Africa North Container App configuration |
-| Azure Database for PostgreSQL | Production relational database target | South Africa North deployment target; environment inventory must confirm the active server and backup configuration |
+| Azure Container Apps | Django API and production Next.js SSR web origin | Production web application is deployed in South Africa North Container Apps |
+| Azure Database for PostgreSQL | Production relational database system of record | South Africa North production deployment; environment inventory records the active server and backup configuration |
 | Azure Blob Storage | Media, documents, encrypted database backups, and release artifacts | Storage containers and retention must be verified per environment |
-| Azure Front Door Standard | Shared profile with isolated application and release endpoints | `vitoraappsa` application endpoint is configured; custom-domain cutover and WAF association require deployment validation |
-| Vercel | Existing web frontend delivery during Azure Front Door cutover | Current/target state must be confirmed at release time |
+| Azure Front Door Standard | Shared profile with isolated application and release endpoints | `vitoraappsa` application endpoint fronts the production ACA web origin; production custom domain, routing, and WAF/security-policy association are configured |
+| Vercel | Legacy web frontend delivery platform | Not the production frontend origin; retained only as a non-production or historical delivery surface where applicable |
 | PowerSync Cloud | Browser-local synchronization for approved data streams | Requires deployed Sync Streams configuration and tenant JWT credentials |
 | Redis | Optional broker/cache for asynchronous operation | Enabled only where asynchronous workers are deployed |
 | GitHub Actions | Build, test, release, backup, restore-drill, and deployment automation | Workflow gates and environment approvals are configuration-dependent |
@@ -220,7 +220,7 @@ Foreign keys model ownership and workflow relationships. Application models use 
 | Authorization | Django permissions, role permission matrices, tenant-scoped querysets, sensitive-patient permission filtering, and endpoint-specific checks |
 | Session protection | Secure cookie configuration in production, CSRF protection for cookie-based mutation requests, inactivity warning/logout in the web client, and token expiry |
 | Encryption in transit | HTTPS/WSS through public ingress and TLS-required integration endpoints |
-| Encryption at rest | Fernet field-level encryption for selected direct identifiers; current local KMS provider uses environment-managed Fernet key material; Azure Key Vault/HSM is the production target architecture and must be enabled before it is claimed as deployed |
+| Encryption at rest | Legacy Fernet field encryption plus organization-scoped AES-GCM v2 encryption for eligible PII; separate staging/production Azure Key Vault KEKs wrap organization key material, subject to migration and rotation evidence |
 | Audit integrity | Audit logging and SHA-256 hash-chain support for tamper-evident audit records |
 | Sensitive access | Explicit sensitive-patient classification and permission filtering; access should be attributable in audit records |
 | Offline minimization | PowerSync streams exclude encrypted direct identifiers and use server-issued tenant and read-permission claims |
@@ -265,7 +265,7 @@ The packaged desktop application bundles its required Next.js/Node sidecar. End 
 | Memory | 4 GB RAM | 8 GB RAM or more |
 | Storage | 40 GB available SSD storage plus backup capacity | Encrypted SSD with capacity sized for local clinical records, attachments, sync queues, logs, and backup retention |
 | Network | Wired or managed Wi-Fi LAN; stable route to cloud when synchronization is required | Segmented LAN, UPS-backed network equipment, monitored internet link, and documented downtime workflow |
-| Native hub runtime | Python 3.11+ for Linux or Windows native hub installations; container deployments require Docker 20.10+ and Docker Compose v2 instead | Managed Python runtime with an isolated virtual environment, dependency-lock verification, and service monitoring |
+| Native hub runtime | Python 3.12 for Linux or Windows native hub installations; container deployments require Docker 20.10+ and Docker Compose v2 instead | Managed Python 3.12 runtime with an isolated virtual environment, dependency-lock verification, and service monitoring |
 | Windows secret protection | Windows DPAPI is required only when `HUB_SECRETS_FILE` is enabled for a DPAPI-protected hub secret bundle | Protect the bundle using the same Windows service/user context that runs the hub; keep a documented recovery and key-rotation procedure |
 | Database | SQLite with WAL mode | SQLite with WAL mode; PostgreSQL hub deployment remains a future optional path, not a current supported hub baseline |
 
@@ -274,7 +274,7 @@ The packaged desktop application bundles its required Next.js/Node sidecar. End 
 | Component | Requirement |
 |---|---|
 | Application runtime | At least one healthy Django ASGI API replica running the Python 3.12 application image, with capacity and autoscaling configured for expected facility workload |
-| Web runtime | At least one healthy Next.js SSR replica when Azure web delivery is active, to avoid avoidable cold-start impact on SSR-heavy routes |
+| Web runtime | At least one healthy Next.js SSR replica in Azure Container Apps behind Azure Front Door, to avoid avoidable cold-start impact on SSR-heavy routes |
 | Database | Azure PostgreSQL production server in South Africa North, encrypted backup policy, monitored capacity, and tested restoration procedure |
 | Object storage | Private containers for media, documents, and backups; separate release-artifact storage controls |
 | Public ingress | HTTPS-only custom domains, certificate monitoring, restrictive CORS/CSRF configuration, and no edge caching of authenticated or patient-specific responses |
@@ -288,7 +288,7 @@ The packaged desktop application bundles its required Next.js/Node sidecar. End 
 3. Browser, API, document, and PowerSync data flows must be assessed before enabling a new third-party recipient, cloud region, or AI provider.
 4. Public release artifacts are delivered separately from authenticated healthcare application traffic. Their Front Door routes, origins, cache policy, and access controls must not be reused for application data.
 5. Authenticated pages, API responses, WebSockets, documents, and patient-specific content must not be cached by Azure Front Door or another CDN.
-6. The Azure Front Door application custom-domain, WAF/security policy, origin protection, and DNS cutover must be validated before they are treated as active production controls.
+6. Azure Front Door application custom-domain, WAF/security policy, origin protection, and DNS cutover are active production controls. Changes to these controls require deployment validation and an updated environment inventory.
 
 ## 10. Verification Evidence Required for DHA Submission
 

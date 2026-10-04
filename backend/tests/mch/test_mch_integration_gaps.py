@@ -15,6 +15,8 @@ from decimal import Decimal
 import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 
+from hmis.apps.core.sync_context import sync_materialization_context
+
 User = get_user_model()
 
 
@@ -308,6 +310,92 @@ class TestAutoTransitionToDelivered:
         registration.refresh_from_db()
         assert registration.status == "DELIVERED"
 
+    def test_sync_materialized_delivery_skips_derived_records(
+        self, mch_registration_with_enrollment
+    ):
+        """Should not transition the registration or create a baby during sync materialization."""
+        from hmis.apps.mch.models import Delivery
+
+        registration = mch_registration_with_enrollment
+        with sync_materialization_context():
+            delivery = Delivery.objects.create(
+                registration=registration,
+                delivery_date=date.today(),
+                delivery_type="SVD",
+                delivery_outcome="LIVE_BIRTH",
+                place_of_delivery="FACILITY",
+                baby_gender="F",
+                status="COMPLETED",
+            )
+
+        registration.refresh_from_db()
+        delivery.refresh_from_db()
+        assert registration.status == "ACTIVE"
+        assert delivery.baby_patient is None
+
+    def test_sync_materialized_delivery_does_not_infer_partograph_admission(
+        self,
+        mch_registration_with_enrollment,
+        sample_facility,
+        sample_organization,
+        sample_patient,
+        test_user,
+    ):
+        """Should not infer a delivery admission from a linked partograph during materialization."""
+        from django.utils import timezone
+
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.inpatient.models import Admission, Bed, Ward
+        from hmis.apps.mch.models import Delivery, LabourPartograph
+
+        ward = Ward.objects.create(
+            name="Maternity Ward",
+            code="MAT-001",
+            ward_type="MATERNITY",
+            capacity=1,
+            daily_rate=Decimal("600.00"),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        bed = Bed.objects.create(ward=ward, bed_number="MAT-001", status="AVAILABLE")
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="IPD",
+            encounter_date=date.today(),
+            chief_complaint="Labour",
+            facility=sample_facility,
+        )
+        admission = Admission.objects.create(
+            patient=sample_patient,
+            ipd_encounter=encounter,
+            admission_date=timezone.now(),
+            admitting_diagnosis="O80",
+            admitting_diagnosis_text="Labour",
+            admitting_officer=test_user,
+            ward=ward,
+            bed=bed,
+            payer_type="CASH",
+            mch_registration=mch_registration_with_enrollment,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        partograph = LabourPartograph.objects.create(
+            registration=mch_registration_with_enrollment,
+            admission=admission,
+        )
+
+        with sync_materialization_context():
+            delivery = Delivery.objects.create(
+                registration=mch_registration_with_enrollment,
+                partograph=partograph,
+                delivery_date=date.today(),
+                delivery_type="SVD",
+                delivery_outcome="LIVE_BIRTH",
+                status="PENDING",
+            )
+
+        assert delivery.admission is None
+
     def test_delivery_serializer_defaults_to_completed(self, mch_registration_with_enrollment):
         """DeliverySerializer should default status to COMPLETED."""
         from hmis.apps.mch.serializers import DeliverySerializer
@@ -324,6 +412,44 @@ class TestAutoTransitionToDelivered:
         serializer = DeliverySerializer(data=data)
         assert serializer.is_valid(), serializer.errors
         assert serializer.validated_data.get("status", "COMPLETED") == "COMPLETED"
+
+
+# =============================================================================
+# HEI derived behavior
+# =============================================================================
+
+
+@pytest.mark.django_db
+class TestHEIDerivedBehavior:
+    """Tests sync materialization behavior for HEI follow-up records."""
+
+    def test_sync_materialized_confirmed_positive_hei_skips_ccc_enrollment(
+        self, sample_patient, sample_facility, sample_organization, test_user
+    ):
+        """Should not enroll an infant in CCC while applying a synced HEI record."""
+        from hmis.apps.clinics.models import Clinic, ClinicEnrollment
+        from hmis.apps.mch.models import HEIFollowUp
+
+        ccc_clinic = Clinic.objects.create(
+            name="CCC Clinic",
+            clinic_type="CCC",
+            code="CCC-001",
+            status="ACTIVE",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        with sync_materialization_context():
+            HEIFollowUp.objects.create(
+                infant=sample_patient,
+                status="CONFIRMED_POSITIVE",
+                enrolled_by=test_user,
+            )
+
+        assert not ClinicEnrollment.objects.filter(
+            clinic=ccc_clinic,
+            patient=sample_patient,
+        ).exists()
 
 
 # =============================================================================

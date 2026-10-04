@@ -292,7 +292,6 @@ class SHAClaim(FacilityScopedModel):
         ]
         indexes = [
             models.Index(fields=["claim_number"]),
-            models.Index(fields=["sha_claim_reference"]),
             models.Index(fields=["patient", "status"]),
             models.Index(fields=["status", "submitted_at"]),
             models.Index(fields=["service_date"]),

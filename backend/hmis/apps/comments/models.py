@@ -81,8 +81,6 @@ class ClinicalComment(FacilityScopedModel, TimeStampedModel):
         ordering = ["created_at"]
         indexes = [
             models.Index(fields=["content_type", "object_id"], name="comment_target_idx"),
-            models.Index(fields=["parent"], name="comment_parent_idx"),
-            models.Index(fields=["author"], name="comment_author_idx"),
             models.Index(
                 fields=["facility", "content_type", "object_id"],
                 name="comment_facility_target_idx",
@@ -147,9 +145,7 @@ class CommentReaction(models.Model):
                 name="unique_reaction_per_user_per_emoji",
             ),
         ]
-        indexes = [
-            models.Index(fields=["comment"], name="reaction_comment_idx"),
-        ]
+        indexes = []
 
     def __str__(self):
         return f"{self.emoji} by {self.user_id} on comment {self.comment_id}"

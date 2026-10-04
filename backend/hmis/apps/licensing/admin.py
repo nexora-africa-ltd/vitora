@@ -9,7 +9,31 @@ and check-in logs.
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import CheckInLog, Installation, ReleaseManifest
+from .models import CheckInLog, HubBackupDestination, Installation, ReleaseManifest
+
+
+@admin.register(HubBackupDestination)
+class HubBackupDestinationAdmin(admin.ModelAdmin):
+    """Admin configuration for tenant-scoped, short-lived backup destinations."""
+
+    list_display = [
+        "organization",
+        "facility",
+        "enabled",
+        "target_type",
+        "residency_country",
+        "retention_days",
+        "last_credential_expires_at",
+    ]
+    list_filter = ["enabled", "target_type", "residency_country", "organization"]
+    search_fields = ["organization__name", "facility__name", "endpoint_url"]
+    raw_id_fields = ["organization", "facility"]
+    readonly_fields = [
+        "last_credential_issued_at",
+        "last_credential_expires_at",
+        "created_at",
+        "updated_at",
+    ]
 
 
 @admin.register(Installation)

@@ -16,6 +16,7 @@ from hmis.apps.immunizations.models import (
     FacilityCustomVaccine,
     FacilityVaccineConfig,
     ImmunizationRecord,
+    ImmunizationStatus,
     OrganizationVaccineConfig,
     StockTransaction,
     TemperatureLog,
@@ -523,6 +524,19 @@ class AEFICreateSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
+        immunization_record = attrs["immunization_record"]
+        if immunization_record.status != ImmunizationStatus.ADMINISTERED:
+            raise serializers.ValidationError(
+                {"immunization_record": "AEFI can only be reported for administered vaccines."}
+            )
+
+        request = self.context.get("request")
+        facility = getattr(request, "facility", None)
+        if not facility or immunization_record.facility_id != facility.id:
+            raise serializers.ValidationError(
+                {"immunization_record": "Immunization record is not available at this facility."}
+            )
+
         # Follow-up must reference a parent
         report_type = attrs.get("report_type", AEFIReportType.INITIAL)
         parent = attrs.get("parent_report")

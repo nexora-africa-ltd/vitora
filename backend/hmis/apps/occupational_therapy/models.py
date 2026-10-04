@@ -145,7 +145,6 @@ class OTTreatmentType(models.Model):
         verbose_name_plural = "OT Treatment Types"
         ordering = ["category", "name"]
         indexes = [
-            models.Index(fields=["code"]),
             models.Index(fields=["category"]),
             models.Index(fields=["is_active"]),
         ]
@@ -369,12 +368,9 @@ class OccupationalTherapyOrder(HistoryMixin, FacilityScopedModel):
         verbose_name_plural = "Occupational Therapy Orders"
         ordering = ["-ordered_at"]
         indexes = [
-            models.Index(fields=["order_number"]),
-            models.Index(fields=["patient"]),
             models.Index(fields=["status"]),
             models.Index(fields=["ordered_at"]),
             models.Index(fields=["priority"]),
-            models.Index(fields=["assigned_therapist"]),
             models.Index(fields=["assessment_type"]),
         ]
         permissions = [
@@ -697,8 +693,6 @@ class OTSession(models.Model):
         ordering = ["order", "session_number"]
         unique_together = [["order", "session_number"]]
         indexes = [
-            models.Index(fields=["order"]),
-            models.Index(fields=["therapist"]),
             models.Index(fields=["scheduled_date"]),
             models.Index(fields=["status"]),
         ]

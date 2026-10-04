@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "vitora-hmis"
-version = "1.0.23"
+version = "1.0.29"
 description = "Vitora HMIS - Offline-first Hospital Management Information System for Kenya"
 authors = ["Nexora Consulting Ltd <dev@nexora.africa>"]
 readme = "README.md"
@@ -68,6 +68,8 @@ openai = "^3.5.0"
 sqlparse = "^0.6.0"
 h2 = "^4.4.1"
 psycopg = {version = "^3.2", extras = ["binary", "pool"]}
+sqlcipher3-binary = {markers = "sys_platform == \"linux\"", version = "^0.6.0"}
+sqlcipher3 = {markers = "sys_platform == \"win32\"", version = "^0.6.2"}
 
 [tool.poetry.extras]
 azure = ["azure-identity", "azure-keyvault-keys"]

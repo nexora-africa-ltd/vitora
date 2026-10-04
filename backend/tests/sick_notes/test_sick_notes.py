@@ -21,6 +21,14 @@ from hmis.apps.sick_notes.serializers import (
     SickNoteSerializer,
 )
 
+
+def test_sick_note_encounter_uses_the_foreign_key_index_only():
+    """Django's automatic ForeignKey index must be the only encounter lookup index."""
+    encounter_indexes = [index for index in SickNote._meta.indexes if index.fields == ["encounter"]]
+
+    assert encounter_indexes == []
+
+
 # =============================================================================
 # Fixtures
 # =============================================================================

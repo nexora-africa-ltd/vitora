@@ -4,16 +4,18 @@
 import base64
 import uuid
 from datetime import date
+from unittest.mock import patch
 
 import pytest  # type: ignore
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from django.conf import settings
+from django.test import override_settings
 from rest_framework import status
 
 from hmis.apps.licensing import views as licensing_views
 from hmis.apps.licensing.activation_secrets import decrypt_activation_secrets
-from hmis.apps.licensing.models import Installation
+from hmis.apps.licensing.models import HubBackupDestination, Installation
 
 HUB_EULA_VERSION = "2026-07-31"
 
@@ -102,6 +104,121 @@ def test_v2_activation_encrypts_secrets_and_binds_them_to_tenant(api_client, pen
 
 
 @pytest.mark.django_db
+def test_v2_activation_includes_available_backup_credentials_in_envelope(
+    api_client, pending_installation
+):
+    """Activation must only deliver renewable backup credentials inside the device envelope."""
+    private_key, device_public_key = _device_public_key()
+    installation_id = str(uuid.uuid4())
+    HubBackupDestination.objects.create(
+        organization=pending_installation.organization,
+        facility=pending_installation.facility,
+        enabled=True,
+        target_type=HubBackupDestination.TargetType.S3_COMPATIBLE,
+        endpoint_url="https://backup.ke.example.test/tenant",
+        residency_country="KE",
+        retention_days=30,
+    )
+
+    with patch(
+        "hmis.apps.licensing.bootstrap.issue_configured_backup_credentials",
+        return_value={
+            "HUB_BACKUP_S3_URL": "https://backup.ke.example.test/tenant",
+            "HUB_BACKUP_S3_TOKEN": "temporary-token",
+            "HUB_BACKUP_S3_TOKEN_EXPIRES_AT": "2026-12-31T00:00:00+00:00",
+        },
+    ):
+        response = api_client.post(
+            "/api/licensing/activate/",
+            {
+                "installation_id": installation_id,
+                "activation_code": "TEST-ACTIVATION-CODE",
+                "device_public_key": device_public_key,
+                "protocol_version": 2,
+                "eula_accepted": True,
+                "eula_version": HUB_EULA_VERSION,
+            },
+            format="json",
+        )
+
+    assert response.status_code == status.HTTP_200_OK
+    secrets = decrypt_activation_secrets(
+        response.data["secrets_envelope"],
+        private_key,
+        installation_id=installation_id,
+        organization_id=pending_installation.organization_id,
+        facility_id=pending_installation.facility_id,
+    )
+    assert secrets["HUB_BACKUP_S3_TOKEN"] == "temporary-token"
+    assert "HUB_BACKUP_S3_TOKEN" not in response.data
+
+
+@pytest.mark.django_db
+@override_settings(
+    SHA_ENABLED=True,
+    SHA_AUTH_MODE="ilm",
+    SHA_AUTH_BASE_URL="https://ilm.example.test/oauth",
+    ILM_BASE_URL="https://ilm.example.test/api",
+    SHA_CLIENT_ID="vitora",
+    SHA_CLIENT_SECRET="shared-ilm-secret",
+)
+def test_v2_activation_encrypts_shared_ilm_credentials(api_client, pending_installation):
+    """Authorized hubs receive shared ILM credentials only inside the v2 envelope."""
+    private_key, device_public_key = _device_public_key()
+    installation_id = str(uuid.uuid4())
+
+    response = api_client.post(
+        "/api/licensing/activate/",
+        {
+            "installation_id": installation_id,
+            "activation_code": "TEST-ACTIVATION-CODE",
+            "device_public_key": device_public_key,
+            "protocol_version": 2,
+            "eula_accepted": True,
+            "eula_version": HUB_EULA_VERSION,
+        },
+        format="json",
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert "shared-ilm-secret" not in str(response.data)
+    secrets = decrypt_activation_secrets(
+        response.data["secrets_envelope"],
+        private_key,
+        installation_id=installation_id,
+        organization_id=pending_installation.organization_id,
+        facility_id=pending_installation.facility_id,
+    )
+    assert secrets["sha_auth_mode"] == "ilm"
+    assert secrets["sha_auth_base_url"] == "https://ilm.example.test/oauth"
+    assert secrets["ilm_base_url"] == "https://ilm.example.test/api"
+    assert secrets["sha_client_id"] == "vitora"
+    assert secrets["sha_client_secret"] == "shared-ilm-secret"
+
+
+def test_windows_installer_keeps_hub_and_ilm_secrets_out_of_dotenv():
+    """The Windows runtime must receive sensitive values only from DPAPI."""
+    from pathlib import Path
+
+    installer = (
+        Path(__file__).resolve().parents[2] / "scripts" / "install-hub-windows.ps1"
+    ).read_text()
+    updater = (
+        Path(__file__).resolve().parents[2] / "scripts" / "update-hub-windows.ps1"
+    ).read_text()
+
+    assert "DJANGO_SECRET_KEY=$secretKey" not in installer
+    assert "LICENSE_TOKEN=$LicenseToken" not in installer
+    assert "SHA_CLIENT_ID=$ShaClientId" not in installer
+    assert "SHA_CLIENT_SECRET=$ShaClientSecret" not in installer
+    assert "SHA_CLIENT_ID = $ShaClientId" in installer
+    assert "SHA_CLIENT_SECRET = $ShaClientSecret" in installer
+    assert "Load-DpapiSecretsBundle -Path $hubSecretsFile" in updater
+    assert "DJANGO_SECRET_KEY|ENCRYPTION_KEY|PII_HMAC_KEY|LICENSE_TOKEN" in updater
+    assert 'SHA_CLIENT_SECRET = (Get-HubEnvValue "SHA_CLIENT_SECRET")' in updater
+
+
+@pytest.mark.django_db
 def test_v1_activation_is_explicitly_flagged_legacy_compatibility(api_client, pending_installation):
     """A legacy client can opt in to v1, but the response clearly marks the risk."""
     response = api_client.post(
@@ -166,3 +283,57 @@ def test_hub_installers_request_v2_and_do_not_persist_secret_keys_in_dotenv():
     assert "HUB_PII_KEY_PACKAGE" not in windows
     assert "PlaintextFallback" not in windows
     assert 'throw "DPAPI is required' in windows
+
+
+def test_hub_installers_provision_and_preserve_database_encryption_keys():
+    """Install and re-enrollment flows keep SQLCipher keys in protected bundles."""
+    root = __import__("pathlib").Path(__file__).resolve().parents[3]
+    linux_installer = (root / "backend/scripts/install-hub.sh").read_text()
+    linux_updater = (root / "backend/scripts/update-hub.sh").read_text()
+    windows_installer = (root / "backend/scripts/install-hub-windows.ps1").read_text()
+    windows_updater = (root / "backend/scripts/update-hub-windows.ps1").read_text()
+    windows_launcher = (root / "backend/scripts/start-hub-windows.ps1").read_text()
+
+    for script in (linux_installer, linux_updater):
+        assert "hub_database_encryption_required" in script
+        assert "hub_database_encryption_key" in script
+        assert "token_urlsafe(64)" in script
+
+    for script in (windows_installer, windows_updater):
+        assert "HUB_DATABASE_ENCRYPTION_REQUIRED" in script
+        assert "HUB_DATABASE_ENCRYPTION_KEY" in script
+        assert "token_urlsafe(64)" in script
+
+    assert 'existing_secrets.get("HUB_DATABASE_ENCRYPTION_KEY")' in linux_installer
+    assert 'os.environ.get("HUB_DATABASE_ENCRYPTION_KEY")' in linux_updater
+    assert (
+        'Get-DpapiSecretValue -Path $HubSecretsFile -Name "HUB_DATABASE_ENCRYPTION_KEY"'
+        in windows_installer
+    )
+    assert 'Get-HubEnvValue "HUB_DATABASE_ENCRYPTION_KEY"' in windows_updater
+
+    for script in (linux_installer, windows_installer):
+        assert "HUB_DATABASE_ENCRYPTION_KEY=" not in script
+        assert "HUB_DATABASE_ENCRYPTION_REQUIRED=true" not in script
+
+    assert '$Name -eq "HUB_DATABASE_ENCRYPTION_KEY"' in windows_launcher
+    assert "Loaded $Name from ${Source}: $(Mask-SecretValue -Value $Value)" in windows_launcher
+
+
+def test_hub_updaters_convert_plaintext_databases_before_requiring_encryption():
+    """Existing hub databases are verified or converted before the flag is persisted."""
+    root = __import__("pathlib").Path(__file__).resolve().parents[3]
+    linux = (root / "backend/scripts/update-hub.sh").read_text()
+    windows = (root / "backend/scripts/update-hub-windows.ps1").read_text()
+
+    for script in (linux, windows):
+        assert "hub_database_key_status" in script
+        assert "hub_encrypt_database" in script
+        assert "SQLCipher key verification failed after database conversion" in script
+
+    assert linux.index("hub_database_key_status") < linux.index(
+        "HUB_DATABASE_ENCRYPTION_REQUIRED=true"
+    )
+    assert windows.index("hub_database_key_status") < windows.index(
+        '$env:HUB_DATABASE_ENCRYPTION_REQUIRED = "true"'
+    )

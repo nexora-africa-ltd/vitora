@@ -164,8 +164,6 @@ class SickNote(HistoryMixin, FacilityScopedModel, TimeStampedModel):
         indexes = [
             models.Index(fields=["status", "-created_at"], name="sn_status_created_idx"),
             models.Index(fields=["patient", "-created_at"], name="sn_patient_created_idx"),
-            models.Index(fields=["encounter"], name="sn_encounter_idx"),
-            models.Index(fields=["note_number"], name="sn_number_idx"),
             models.Index(
                 fields=["leave_start_date", "leave_end_date"],
                 name="sn_leave_dates_idx",

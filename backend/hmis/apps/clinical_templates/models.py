@@ -275,7 +275,6 @@ class ClinicalTemplateSnapshot(models.Model):
         verbose_name = "Clinical Template Snapshot"
         verbose_name_plural = "Clinical Template Snapshots"
         indexes = [
-            models.Index(fields=["encounter"]),
             models.Index(fields=["-created_at"]),
         ]
 

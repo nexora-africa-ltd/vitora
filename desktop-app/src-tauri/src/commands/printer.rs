@@ -103,10 +103,7 @@ fn print_unix(payload: &PrintReceiptPayload) -> PrintResult {
 #[cfg(target_os = "windows")]
 fn print_windows(payload: &PrintReceiptPayload) -> PrintResult {
     // On Windows, use `print /D:<printer>` or write to UNC path
-    let printer = payload
-        .printer_name
-        .as_deref()
-        .unwrap_or("LPT1");
+    let printer = payload.printer_name.as_deref().unwrap_or("LPT1");
 
     // Write content to a temp file, then send to printer
     let temp_path = std::env::temp_dir().join("vitora_receipt.bin");
@@ -132,10 +129,7 @@ fn print_windows(payload: &PrintReceiptPayload) -> PrintResult {
         },
         Ok(o) => PrintResult {
             success: false,
-            message: format!(
-                "Print failed: {}",
-                String::from_utf8_lossy(&o.stderr)
-            ),
+            message: format!("Print failed: {}", String::from_utf8_lossy(&o.stderr)),
         },
         Err(e) => PrintResult {
             success: false,
@@ -149,13 +143,11 @@ fn list_printers_unix() -> Vec<PrinterInfo> {
     let output = Command::new("lpstat").arg("-p").output();
     let default_output = Command::new("lpstat").arg("-d").output();
 
-    let default_name = default_output
-        .ok()
-        .and_then(|o| {
-            let s = String::from_utf8_lossy(&o.stdout).to_string();
-            s.strip_prefix("system default destination: ")
-                .map(|n| n.trim().to_string())
-        });
+    let default_name = default_output.ok().and_then(|o| {
+        let s = String::from_utf8_lossy(&o.stdout).to_string();
+        s.strip_prefix("system default destination: ")
+            .map(|n| n.trim().to_string())
+    });
 
     match output {
         Ok(o) => {

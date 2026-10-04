@@ -25,6 +25,8 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { VitoraLogo } from '@/components/ui/vitora-logo';
 import { AnimatedThemeToggle } from '@/components/ui/animated-theme-toggle';
+import { DesktopWindowToolbar } from '@/components/desktop/desktop-window-toolbar';
+import { isDesktop } from '@/lib/desktop';
 import { useCounties, useSubCounties, useWards } from '@/lib/hooks/use-locations';
 import type { County, SubCounty, Ward as LocationWard } from '@/lib/api/locations';
 import type {
@@ -514,6 +516,7 @@ export default function OnboardingPage() {
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
+        <DesktopWindowToolbar />
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -529,7 +532,10 @@ export default function OnboardingPage() {
 
   return (
     <div className="relative flex min-h-screen flex-col items-center bg-background px-4 py-6 sm:py-10">
-      <AnimatedThemeToggle className="absolute right-4 top-4 z-50" />
+      <DesktopWindowToolbar />
+      <AnimatedThemeToggle
+        className={`absolute top-4 z-50 ${isDesktop() ? 'right-36' : 'right-4'}`}
+      />
 
       {/* Header */}
       <div className="mb-6 text-center">

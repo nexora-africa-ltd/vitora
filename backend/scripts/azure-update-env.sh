@@ -81,6 +81,7 @@ declare -A SECRETS=(
   ["loinc-password"]="${LOINC_PASSWORD:-}"
   ["pricing-nonce-secret"]="${PRICING_NONCE_SECRET:-}"
   ["azure-storage-connection-string"]="${AZURE_STORAGE_CONNECTION_STRING:-}"
+  ["azure-hub-backup-storage-account-key"]="${AZURE_HUB_BACKUP_STORAGE_ACCOUNT_KEY:-}"
   ["paystack-secret-key"]="${PAYSTACK_SECRET_KEY:-}"
 )
 
@@ -133,6 +134,12 @@ az containerapp update \
     "PAYSTACK_PUBLIC_KEY=${PAYSTACK_PUBLIC_KEY:-}" \
     "PAYSTACK_CALLBACK_URL=${PAYSTACK_CALLBACK_URL:-https://staging.vitora.digital/account-billing?payment=returned}" \
     "PAYSTACK_WEBHOOK_URL=${PAYSTACK_WEBHOOK_URL:-https://${FQDN}/api/payments/paystack/webhook/}" \
+    "HUB_BACKUP_CREDENTIAL_SIGNER=${HUB_BACKUP_CREDENTIAL_SIGNER:-}" \
+    "HUB_BACKUP_ALLOWED_RESIDENCY_COUNTRIES=${HUB_BACKUP_ALLOWED_RESIDENCY_COUNTRIES:-KE}" \
+    "AZURE_HUB_BACKUP_STORAGE_ACCOUNT=${AZURE_HUB_BACKUP_STORAGE_ACCOUNT:-}" \
+    "AZURE_HUB_BACKUP_STORAGE_ACCOUNT_KEY=secretref:azure-hub-backup-storage-account-key" \
+    "AZURE_HUB_BACKUP_STORAGE_CONTAINER=${AZURE_HUB_BACKUP_STORAGE_CONTAINER:-hub-backups}" \
+    "AZURE_HUB_BACKUP_SAS_EXPIRY_MINUTES=${AZURE_HUB_BACKUP_SAS_EXPIRY_MINUTES:-60}" \
     "DEBUG=false" \
     "PORT=8000" \
     "MEDIA_BACKEND=${MEDIA_BACKEND:-azure_blob}" \
@@ -211,6 +218,8 @@ az containerapp update \
     "KMS_PROVIDER=${KMS_PROVIDER:-azure}" \
     "AZURE_KEY_VAULT_URL=${AZURE_KEY_VAULT_URL:-https://vitora-kv-stg-sa.vault.azure.net/}" \
     "AZURE_KEY_NAME=${AZURE_KEY_NAME:-vitora-stg-pii-kek}" \
+    "HUB_DB_ESCROW_ENABLED=${HUB_DB_ESCROW_ENABLED:-true}" \
+    "AZURE_HUB_DB_ESCROW_KEY_NAME=${AZURE_HUB_DB_ESCROW_KEY_NAME:-vitora-stg-hub-db-escrow-kek}" \
     "TIBABOT_ENABLED=${TIBABOT_ENABLED:-true}" \
     "TIBABOT_API_URL=${TIBABOT_API_URL:-https://ai.vitora.digital}" \
     "TIBABOT_API_KEY=secretref:tibabot-api-key" \

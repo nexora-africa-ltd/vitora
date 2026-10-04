@@ -20,6 +20,14 @@ from django.db import IntegrityError
 class TestDrugModel:
     """Tests for Drug catalog model."""
 
+    def test_hpt_code_has_one_model_index(self):
+        """HPT lookup keeps one canonical index definition."""
+        from hmis.apps.pharmacy.models import Drug
+
+        hpt_indexes = [index for index in Drug._meta.indexes if index.fields == ["hpt_code"]]
+
+        assert hpt_indexes == []
+
     def test_drug_creation_with_required_fields(self):
         """Drug can be created with minimum required fields."""
         from hmis.apps.pharmacy.models import Drug

@@ -787,7 +787,9 @@ def create_kardex_for_admission(sender, instance, created, **kwargs):
     This ensures every admission has a Kardex for nursing care coordination.
     Pre-populates allergies from the patient's structured allergy records.
     """
-    if created:
+    from hmis.apps.core.sync_context import is_sync_materialization_active
+
+    if created and not is_sync_materialization_active():
         # Build allergy summary from patient's active allergy records
         allergies_text = ""
         try:

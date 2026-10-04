@@ -75,9 +75,9 @@ def auto_generate_immunization_schedule(sender, instance, created, **kwargs):
         return
 
     try:
-        from hmis.apps.mch.services.immunization import generate_immunization_schedule
+        from hmis.apps.immunizations.services.schedule import generate_kepi_schedule
 
-        records = generate_immunization_schedule(instance)
+        records = generate_kepi_schedule(instance)
         if records:
             logger.info(
                 "Auto-generated %d immunization records for patient %s (age %d days)",

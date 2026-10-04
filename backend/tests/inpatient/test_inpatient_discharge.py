@@ -30,6 +30,7 @@ from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from hmis.apps.core.models import County, SubCounty
+from hmis.apps.core.sync_context import sync_materialization_context
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.inpatient.models import Admission, Bed, Discharge, DischargeDiagnosis, Ward
 from hmis.apps.patients.models import Patient
@@ -207,6 +208,35 @@ class TestDischargeCreation:
         active_admission.refresh_from_db()
         assert active_admission.status == "DISCHARGED"
         assert active_admission.discharge_date is not None
+
+    def test_sync_materialized_discharge_skips_direct_side_effects(
+        self, active_admission, test_user
+    ):
+        """Should persist a discharge without mutating related records during sync materialization."""
+        from hmis.apps.patients.models import DeathRecord
+
+        with sync_materialization_context():
+            Discharge.objects.create(
+                admission=active_admission,
+                discharge_type="DECEASED",
+                discharge_date=timezone.now(),
+                discharged_by=test_user,
+                admission_diagnosis="K35.8",
+                final_diagnosis="K35.8",
+                final_diagnosis_text="Resolved",
+                treatment_summary="Treatment completed",
+                patient_instructions="Rest at home",
+            )
+
+        active_admission.refresh_from_db()
+        active_admission.bed.refresh_from_db()
+        active_admission.ipd_encounter.refresh_from_db()
+
+        assert active_admission.status == "ACTIVE"
+        assert active_admission.discharge_date is None
+        assert active_admission.bed.status == "OCCUPIED"
+        assert active_admission.ipd_encounter.status != "CLOSED"
+        assert not DeathRecord.objects.filter(patient=active_admission.patient).exists()
 
     def test_ipd_encounter_closed_on_discharge(self, active_admission, test_user):
         """Should close the linked IPD encounter when the patient is discharged."""

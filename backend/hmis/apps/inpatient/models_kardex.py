@@ -574,12 +574,14 @@ class InpatientConsumableUsage(TimeStampedModel):
             )
 
     def save(self, *args, **kwargs):
+        from hmis.apps.core.sync_context import is_sync_materialization_active
+
         is_new = self.pk is None
 
         if self.batch_id and not self.drug_id:
             self.drug = self.batch.drug
 
-        if is_new:
+        if is_new and not is_sync_materialization_active():
             self.full_clean()
             self.batch.dispense(self.quantity_used)
 

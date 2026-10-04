@@ -26,7 +26,7 @@
 #>
 
 param(
-    [ValidateSet("api", "sync")]
+    [ValidateSet("api", "sync", "backup", "backup-upload", "backup-verify")]
     [string]$Mode = "api"
 )
 
@@ -35,7 +35,12 @@ $ErrorActionPreference = "Stop"
 
 $InstallDir = Split-Path -Parent $PSCommandPath
 $LogDir = Join-Path $InstallDir "logs"
-$StartupLog = Join-Path $LogDir "start-hub.log"
+# API and sync launch as separate NSSM services. Separate logs avoid a startup
+# file-handle race when both services initialize at the same time.
+$StartupLog = Join-Path $LogDir "start-hub-$Mode.log"
+$script:DpapiTypeInitialized = $false
+$script:DpapiProtectedDataType = $null
+$script:DpapiLocalMachineScope = $null
 
 if (-not (Test-Path $LogDir)) {
     New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
@@ -79,7 +84,11 @@ function Set-ProcessEnv {
     )
 
     [Environment]::SetEnvironmentVariable($Name, $Value, "Process")
-    if (Is-SensitiveName -Name $Name) {
+    if ($Name -eq "HUB_DATABASE_ENCRYPTION_KEY") {
+        # SQLCipher key material must never appear in service startup logs,
+        # including a masked prefix/suffix.
+        Write-StartupLog -Level "INFO" -Message "Loaded $Name from ${Source}"
+    } elseif (Is-SensitiveName -Name $Name) {
         Write-StartupLog -Level "INFO" -Message "Loaded $Name from ${Source}: $(Mask-SecretValue -Value $Value)"
     } else {
         Write-StartupLog -Level "INFO" -Message "Loaded $Name from ${Source}: $Value"
@@ -91,30 +100,13 @@ function Initialize-DpapiType {
         return
     }
 
-    $protectedDataType = [Type]::GetType("System.Security.Cryptography.ProtectedData, System.Security", $false)
-    if (-not $protectedDataType) {
-        try { Add-Type -AssemblyName "System.Security" -ErrorAction Stop } catch {}
-        try { Add-Type -AssemblyName "System.Security.Cryptography.ProtectedData" -ErrorAction Stop } catch {}
-        $protectedDataType = [Type]::GetType("System.Security.Cryptography.ProtectedData, System.Security", $false)
-        if (-not $protectedDataType) {
-            $protectedDataType = [Type]::GetType("System.Security.Cryptography.ProtectedData, System.Security.Cryptography.ProtectedData", $false)
-        }
-    }
-
-    if (-not $protectedDataType) {
+    try {
+        Add-Type -AssemblyName "System.Security" -ErrorAction Stop
+        $script:DpapiProtectedDataType = [System.Security.Cryptography.ProtectedData]
+        $script:DpapiLocalMachineScope = [System.Security.Cryptography.DataProtectionScope]::LocalMachine
+    } catch {
         throw "DPAPI is unavailable on this host. Run start-hub.ps1 from Windows PowerShell on Windows."
     }
-
-    $scopeType = [Type]::GetType("System.Security.Cryptography.DataProtectionScope, System.Security", $false)
-    if (-not $scopeType) {
-        $scopeType = [Type]::GetType("System.Security.Cryptography.DataProtectionScope, System.Security.Cryptography.ProtectedData", $false)
-    }
-    if (-not $scopeType) {
-        throw "DPAPI DataProtectionScope type is unavailable on this host."
-    }
-
-    $script:DpapiProtectedDataType = $protectedDataType
-    $script:DpapiLocalMachineScope = [Enum]::Parse($scopeType, "LocalMachine")
     $script:DpapiTypeInitialized = $true
 }
 
@@ -196,16 +188,10 @@ function Load-DpapiSecrets {
         $plainJson = ""
 
         $ciphertextB64 = Get-JsonPropertyValue -Object $payload -Name "ciphertext_b64"
-        $payloadSecrets = Get-JsonPropertyValue -Object $payload -Name "secrets"
-
         if ($null -ne $payload -and $null -ne $ciphertextB64 -and "$ciphertextB64" -ne "") {
             $plainJson = ConvertFrom-DpapiCiphertext -CiphertextB64 $ciphertextB64
-        } elseif ($null -ne $payload -and $null -ne $payloadSecrets) {
-            # Backward-compatible plain JSON fallback (not recommended)
-            $plainJson = $raw
         } else {
-            # Backward-compatible raw base64 payload fallback
-            $plainJson = ConvertFrom-DpapiCiphertext -CiphertextB64 $raw
+            throw "DPAPI secret bundle has no protected ciphertext."
         }
 
         $secretDoc = $plainJson | ConvertFrom-Json
@@ -246,13 +232,29 @@ try {
         Set-ProcessEnv -Name "DJANGO_SETTINGS_MODULE" -Value "hmis.settings.hub" -Source "default"
     }
 
-    if ($Mode -eq "sync") {
+    if ($Mode -in @("sync", "backup", "backup-upload", "backup-verify")) {
         $pythonExe = Join-Path $InstallDir "venv\Scripts\python.exe"
         if (-not (Test-Path $pythonExe)) {
             throw "Python executable not found at $pythonExe"
         }
-        Write-StartupLog -Level "INFO" -Message "Starting dedicated hub sync watcher"
-        & $pythonExe manage.py hub_sync --watch
+        switch ($Mode) {
+            "sync" {
+                Write-StartupLog -Level "INFO" -Message "Starting dedicated hub sync watcher"
+                & $pythonExe manage.py hub_sync --watch
+            }
+            "backup" {
+                Write-StartupLog -Level "INFO" -Message "Creating encrypted hub backup"
+                & $pythonExe manage.py hub_backup
+            }
+            "backup-upload" {
+                Write-StartupLog -Level "INFO" -Message "Uploading queued hub backups"
+                & $pythonExe manage.py hub_backup_upload
+            }
+            "backup-verify" {
+                Write-StartupLog -Level "INFO" -Message "Creating and verifying encrypted hub backup"
+                & $pythonExe manage.py hub_backup --verify
+            }
+        }
     } else {
         $port = if ($env:HUB_PORT) { $env:HUB_PORT } else { "9088" }
         $daphneExe = Join-Path $InstallDir "venv\Scripts\daphne.exe"

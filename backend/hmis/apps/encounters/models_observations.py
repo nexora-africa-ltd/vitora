@@ -93,7 +93,6 @@ class SocialHistoryObservation(FacilityScopedModel, TimeStampedModel):
     class Meta(TimeStampedModel.Meta):
         ordering = ["-effective_date", "-created_at"]
         indexes = [
-            models.Index(fields=["fhir_id"]),
             models.Index(fields=["patient", "observation_type"]),
         ]
 
@@ -180,7 +179,6 @@ class PregnancyObservation(FacilityScopedModel, TimeStampedModel):
     class Meta(TimeStampedModel.Meta):
         ordering = ["-effective_date", "-created_at"]
         indexes = [
-            models.Index(fields=["fhir_id"]),
             models.Index(fields=["patient", "observation_type"]),
         ]
 
@@ -283,7 +281,6 @@ class ChronicCondition(FacilityScopedModel, TimeStampedModel):
     class Meta(TimeStampedModel.Meta):
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["fhir_id"]),
             models.Index(fields=["patient", "status"]),
         ]
 
@@ -543,7 +540,6 @@ class CurrentMedication(FacilityScopedModel, TimeStampedModel):
     class Meta(TimeStampedModel.Meta):
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["fhir_id"]),
             models.Index(fields=["patient", "status"]),
         ]
 
@@ -598,10 +594,7 @@ class PastSurgery(FacilityScopedModel, TimeStampedModel):
     class Meta(TimeStampedModel.Meta):
         ordering = ["-procedure_date", "-created_at"]
         verbose_name_plural = "past surgeries"
-        indexes = [
-            models.Index(fields=["fhir_id"]),
-            models.Index(fields=["patient"]),
-        ]
+        indexes = []
 
     def __str__(self) -> str:
         date_str = f" ({self.procedure_date})" if self.procedure_date else ""
@@ -659,7 +652,6 @@ class FamilyHistory(FacilityScopedModel, TimeStampedModel):
         ordering = ["-created_at"]
         verbose_name_plural = "family histories"
         indexes = [
-            models.Index(fields=["fhir_id"]),
             models.Index(fields=["patient", "relationship"]),
         ]
 

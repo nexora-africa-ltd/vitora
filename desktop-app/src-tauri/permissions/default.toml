@@ -8,6 +8,7 @@ identifier = "default"
 description = "Default permissions for Vitora desktop app commands."
 permissions = [
   "allow-get-sidecar-port",
+  "allow-discover-hubs",
   "allow-get-app-version",
   "allow-print-receipt",
   "allow-list-printers",
@@ -42,6 +43,10 @@ permissions = [
 [[permission]]
 identifier = "allow-get-sidecar-port"
 commands.allow = ["get_sidecar_port"]
+
+[[permission]]
+identifier = "allow-discover-hubs"
+commands.allow = ["discover_hubs"]
 
 [[permission]]
 identifier = "allow-get-app-version"

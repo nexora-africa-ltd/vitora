@@ -809,7 +809,6 @@ class InsuranceClaim(FacilityScopedModel):
         indexes = [
             models.Index(fields=["provider", "status"]),
             models.Index(fields=["patient", "status"]),
-            models.Index(fields=["claim_number"]),
             models.Index(fields=["status", "submission_date"]),
         ]
 

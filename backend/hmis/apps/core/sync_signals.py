@@ -27,6 +27,7 @@ from django.utils import timezone
 from hmis.apps.core.models import SyncQueue
 from hmis.apps.core.sync_context import is_sync_materialization_active
 from hmis.apps.core.sync_registry import (
+    SYNC_NATURAL_IDENTITY_FIELDS,
     SyncDirection,
     get_registry_entry,
     is_downward_sync_model,
@@ -35,7 +36,7 @@ from hmis.apps.core.sync_registry import (
 
 logger = logging.getLogger(__name__)
 
-SYNC_PAYLOAD_SCHEMA_VERSION = 1
+SYNC_PAYLOAD_SCHEMA_VERSION = 2
 
 
 def get_model_label(instance) -> str:
@@ -654,6 +655,11 @@ def _with_relation_hints(data: dict, instance) -> dict:
         elif related_label in {"billing.Service", "billing.ServiceCategory", "pharmacy.Drug"}:
             hints[f"{prefix}_code"] = getattr(related, "code", "") or ""
 
+        for identity_field in SYNC_NATURAL_IDENTITY_FIELDS.get(related_label, ()):
+            value = getattr(related, identity_field, None)
+            if value not in (None, ""):
+                hints[f"{prefix}_identity_{identity_field}"] = value
+
     return hints
 
 
@@ -672,8 +678,19 @@ def _encounter_hints(prefix: str, encounter) -> dict:
     }
 
 
-def get_tenant_context(instance) -> tuple[object | None, object | None]:
-    """Resolve organization/facility context from common tenant-scoped fields."""
+def get_tenant_context(
+    instance, _visited: set[tuple[str, object]] | None = None
+) -> tuple[object | None, object | None]:
+    """Resolve tenant context through direct fields or a workflow parent chain."""
+    if instance is None:
+        return None, None
+
+    visited = _visited if _visited is not None else set()
+    instance_key = (instance._meta.label, getattr(instance, "pk", id(instance)))
+    if instance_key in visited:
+        return None, None
+    visited.add(instance_key)
+
     organization = getattr(instance, "organization", None)
     facility = getattr(instance, "facility", None)
     if facility is None:
@@ -688,7 +705,7 @@ def get_tenant_context(instance) -> tuple[object | None, object | None]:
         if staff_profile is not None:
             organization = getattr(staff_profile, "organization", None)
             facility = getattr(staff_profile, "primary_facility", None)
-    for related_name in (
+    related_names = {
         "clinic",
         "session",
         "resource",
@@ -704,10 +721,19 @@ def get_tenant_context(instance) -> tuple[object | None, object | None]:
         "lab_result",
         "imaging_order",
         "admission",
-    ):
+    }
+    # Clinical children should inherit tenant scope from their direct FK/O2O
+    # aggregate parent without each new model needing a hand-maintained list.
+    related_names.update(
+        field.name
+        for field in instance._meta.concrete_fields
+        if (getattr(field, "many_to_one", False) or getattr(field, "one_to_one", False))
+        and field.name not in {"organization", "facility", "registered_at_facility"}
+    )
+    for related_name in related_names:
         related = getattr(instance, related_name, None)
         if related is not None:
-            related_organization, related_facility = get_tenant_context(related)
+            related_organization, related_facility = get_tenant_context(related, visited)
             if organization is None:
                 organization = related_organization
             if facility is None:
@@ -724,12 +750,25 @@ def get_tenant_context(instance) -> tuple[object | None, object | None]:
     return organization, facility
 
 
+def _sync_source_node() -> str:
+    """Return the immutable namespace for records emitted by this node."""
+    configured = str(getattr(settings, "SYNC_SOURCE_NODE", "") or "").strip()
+    if configured:
+        return configured
+    if getattr(settings, "ENVIRONMENT", "") == "hub":
+        hub_id = str(getattr(settings, "HUB_ID", "") or "").strip()
+        if hub_id:
+            return f"hub:{hub_id}"
+    return "cloud"
+
+
 def add_sync_meta(data: dict, *, direction: SyncDirection, priority: int) -> dict:
     """Attach sync metadata to the queued payload."""
     data["sync_meta"] = {
         "priority": priority,
         "direction": direction.value,
         "schema_version": SYNC_PAYLOAD_SCHEMA_VERSION,
+        "source_node": _sync_source_node(),
     }
     return data
 

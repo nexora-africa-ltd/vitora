@@ -445,6 +445,7 @@ class AEFIViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """Override to return full AEFISerializer (not the input serializer)."""
+        self._resolve_tenant_context()
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -555,6 +556,16 @@ class CoverageView(APIView):
         responses={200: OpenApiTypes.OBJECT},
     )
     def get(self, request):
+        from hmis.apps.core.mixins import resolve_request_tenant
+
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        if not facility:
+            return Response(
+                {"detail": "An active facility is required for coverage reporting."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         vaccine_code = request.query_params.get("vaccine_code")
         if not vaccine_code:
             return Response(
@@ -586,8 +597,14 @@ class CoverageView(APIView):
                     {"detail": "Invalid end_date format. Use YYYY-MM-DD."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+        if parsed_start and parsed_end and parsed_start > parsed_end:
+            return Response(
+                {"detail": "start_date must be on or before end_date."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         result = calculate_coverage(
+            facility_id=facility.id,
             vaccine_code=vaccine_code,
             start_date=parsed_start,
             end_date=parsed_end,

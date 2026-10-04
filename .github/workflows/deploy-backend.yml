@@ -106,13 +106,21 @@ jobs:
       - name: Apply backend environment variables
         env:
           PAYSTACK_SECRET_KEY: ${{ secrets.PAYSTACK_SECRET_KEY }}
+          AZURE_HUB_BACKUP_STORAGE_ACCOUNT_KEY: ${{ secrets.AZURE_HUB_BACKUP_STORAGE_ACCOUNT_KEY }}
         run: |
           az extension add --name containerapp --upgrade --only-show-errors
+          SECRET_ARGS=()
           if [[ -n "$PAYSTACK_SECRET_KEY" ]]; then
+            SECRET_ARGS+=("paystack-secret-key=$PAYSTACK_SECRET_KEY")
+          fi
+          if [[ -n "$AZURE_HUB_BACKUP_STORAGE_ACCOUNT_KEY" ]]; then
+            SECRET_ARGS+=("azure-hub-backup-storage-account-key=$AZURE_HUB_BACKUP_STORAGE_ACCOUNT_KEY")
+          fi
+          if [[ ${#SECRET_ARGS[@]} -gt 0 ]]; then
             az containerapp secret set \
               --name "${{ env.CONTAINER_APP_NAME }}" \
               --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
-              --secrets "paystack-secret-key=$PAYSTACK_SECRET_KEY" \
+              --secrets "${SECRET_ARGS[@]}" \
               --output none
           fi
           az containerapp update \
@@ -134,6 +142,12 @@ jobs:
             PAYSTACK_PUBLIC_KEY=${{ vars.PAYSTACK_PUBLIC_KEY || '' }} \
             PAYSTACK_CALLBACK_URL=${{ vars.PAYSTACK_CALLBACK_URL || (env.DEPLOY_ENV == 'production' && 'https://app.vitora.digital/account-billing?payment=returned' || 'https://staging.vitora.digital/account-billing?payment=returned') }} \
             PAYSTACK_WEBHOOK_URL=${{ vars.PAYSTACK_WEBHOOK_URL || (env.DEPLOY_ENV == 'production' && 'https://api.vitora.digital/api/payments/paystack/webhook/' || 'https://staging-api.vitora.digital/api/payments/paystack/webhook/') }} \
+            HUB_BACKUP_CREDENTIAL_SIGNER=${{ vars.HUB_BACKUP_CREDENTIAL_SIGNER || 'hmis.apps.licensing.backup_credentials.sign_azure_blob_backup_credentials' }} \
+            HUB_BACKUP_ALLOWED_RESIDENCY_COUNTRIES=${{ vars.HUB_BACKUP_ALLOWED_RESIDENCY_COUNTRIES || 'KE' }} \
+            AZURE_HUB_BACKUP_STORAGE_ACCOUNT=${{ vars.AZURE_HUB_BACKUP_STORAGE_ACCOUNT || '' }} \
+            AZURE_HUB_BACKUP_STORAGE_ACCOUNT_KEY=secretref:azure-hub-backup-storage-account-key \
+            AZURE_HUB_BACKUP_STORAGE_CONTAINER=${{ vars.AZURE_HUB_BACKUP_STORAGE_CONTAINER || 'hub-backups' }} \
+            AZURE_HUB_BACKUP_SAS_EXPIRY_MINUTES=${{ vars.AZURE_HUB_BACKUP_SAS_EXPIRY_MINUTES || '60' }} \
             DEBUG=false \
             PORT=8000 \
             MEDIA_BACKEND=${{ vars.MEDIA_BACKEND || 'azure_blob' }} \
@@ -212,6 +226,8 @@ jobs:
             KMS_PROVIDER=azure \
             AZURE_KEY_VAULT_URL=${{ env.DEPLOY_ENV == 'production' && 'https://vitora-kv-prod-sa.vault.azure.net/' || 'https://vitora-kv-stg-sa.vault.azure.net/' }} \
             AZURE_KEY_NAME=${{ env.DEPLOY_ENV == 'production' && 'vitora-prod-pii-kek' || 'vitora-stg-pii-kek' }} \
+            HUB_DB_ESCROW_ENABLED=true \
+            AZURE_HUB_DB_ESCROW_KEY_NAME=${{ env.DEPLOY_ENV == 'production' && 'vitora-prod-hub-db-escrow-kek' || 'vitora-stg-hub-db-escrow-kek' }} \
             AT_API_KEY=secretref:at-api-key \
             AT_USERNAME=sandbox \
             TIBABOT_ENABLED=true \

@@ -89,10 +89,7 @@ class WalkInImagingPatient(FacilityScopedModel, TimeStampedModel):
         verbose_name_plural = "Walk-in Imaging Patients"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["registration_number"]),
-            models.Index(fields=["national_id_hmac"]),
             models.Index(fields=["last_name", "first_name"]),
-            models.Index(fields=["phone_number_hmac"]),
         ]
 
     def __str__(self):
@@ -212,8 +209,6 @@ class ExternalImagingOrderRequest(FacilityScopedModel, TimeStampedModel):
         verbose_name_plural = "External Imaging Order Requests"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["message_control_id"]),
-            models.Index(fields=["placer_order_number"]),
             models.Index(fields=["status"]),
         ]
 

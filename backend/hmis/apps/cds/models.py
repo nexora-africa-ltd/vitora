@@ -227,7 +227,6 @@ class CDSRule(models.Model):
         indexes = [
             models.Index(fields=["category", "status"]),
             models.Index(fields=["status", "priority"]),
-            models.Index(fields=["code"]),
         ]
 
     def __str__(self) -> str:

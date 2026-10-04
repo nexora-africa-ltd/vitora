@@ -4,14 +4,16 @@
 from __future__ import annotations
 
 import json
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
 from django.conf import settings
 from django.core.management.base import CommandError
+from django.utils import timezone
 
 from .activation_secrets import encrypt_activation_secrets
+from .backup_credentials import BackupCredentialUnavailable, issue_configured_backup_credentials
 
 
 def _safe_pii_hmac_key() -> str:
@@ -137,14 +139,50 @@ def build_activation_bootstrap_payload(
     else:
         from hmis.apps.core.pii_v2 import OrganizationPIIEncryptionService
 
+        secrets = {
+            "encryption_key": getattr(settings, "ENCRYPTION_KEY", ""),
+            "pii_hmac_key": _safe_pii_hmac_key(),
+            "organization_pii_key_package": OrganizationPIIEncryptionService().export_active_key_package(
+                organization
+            ),
+            # Shared DHA ILM tenant credentials are provisioned to each
+            # authorized hub only through this device-encrypted envelope.
+            "sha_enabled": "true" if getattr(settings, "SHA_ENABLED", False) else "false",
+            "sha_auth_mode": getattr(settings, "SHA_AUTH_MODE", "legacy"),
+            "sha_auth_base_url": getattr(settings, "SHA_AUTH_BASE_URL", ""),
+            "ilm_base_url": getattr(settings, "ILM_BASE_URL", ""),
+            "sha_client_id": getattr(settings, "SHA_CLIENT_ID", ""),
+            "sha_client_secret": getattr(settings, "SHA_CLIENT_SECRET", ""),
+        }
+        try:
+            from .models import HubBackupDestination
+
+            destination = HubBackupDestination.objects.filter(
+                organization=organization, facility=facility, enabled=True
+            ).first()
+            if destination is None:
+                destination = HubBackupDestination.objects.filter(
+                    organization=organization, facility__isnull=True, enabled=True
+                ).first()
+            if destination is not None:
+                credentials = issue_configured_backup_credentials(destination, installation)
+                secrets.update(credentials)
+                destination.last_credential_issued_at = timezone.now()
+                destination.last_credential_expires_at = datetime.fromisoformat(
+                    credentials["HUB_BACKUP_S3_TOKEN_EXPIRES_AT"]
+                )
+                destination.save(
+                    update_fields=[
+                        "last_credential_issued_at",
+                        "last_credential_expires_at",
+                        "updated_at",
+                    ]
+                )
+        except BackupCredentialUnavailable:
+            # Backup provisioning must not prevent an otherwise valid activation.
+            pass
         payload["secrets_envelope"] = encrypt_activation_secrets(
-            {
-                "encryption_key": getattr(settings, "ENCRYPTION_KEY", ""),
-                "pii_hmac_key": _safe_pii_hmac_key(),
-                "organization_pii_key_package": OrganizationPIIEncryptionService().export_active_key_package(
-                    organization
-                ),
-            },
+            secrets,
             installation.device_public_key,
             installation_id=str(installation.installation_id),
             organization_id=organization.id,
