@@ -121,22 +121,29 @@ class UserAdmin(BaseUserAdmin):
         return super().get_list_display(request) + ("mfa_status",)
 
     def get_form(self, request, obj=None, change=False, **kwargs):
+        """Use Django's creation form for new users and MFA controls for existing users."""
+        if obj is None:
+            return super().get_form(request, obj=obj, change=change, **kwargs)
+
         kwargs["form"] = MFAUserChangeForm
         form = super().get_form(request, obj=obj, change=change, **kwargs)
-        if obj is not None:
-            profile = getattr(obj, "staff_profile", None)
-            if profile:
-                form.base_fields["mfa_disabled_toggle"].initial = profile.mfa_disabled
+        profile = getattr(obj, "staff_profile", None)
+        if profile:
+            form.base_fields["mfa_disabled_toggle"].initial = profile.mfa_disabled
         return form
 
     def get_fieldsets(self, request, obj=None):
         fieldsets = super().get_fieldsets(request, obj)
+        if obj is None:
+            return fieldsets
+
         extra = ("MFA", {"fields": ("mfa_info", "mfa_disabled_toggle")})
         return fieldsets[:-1] + (extra,) + fieldsets[-1:]
 
     def get_readonly_fields(self, request, obj=None):
         readonly = list(super().get_readonly_fields(request, obj))
-        readonly.append("mfa_info")
+        if obj is not None:
+            readonly.append("mfa_info")
         return readonly
 
     @admin.display(description="MFA", boolean=False)
