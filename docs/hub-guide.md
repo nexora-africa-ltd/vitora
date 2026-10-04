@@ -192,12 +192,13 @@ Admin Panel (Cloud)          Installer                    Hub
       │                          │                        │
       │   GET /api/licensing/eula/                        │
       │   POST /api/licensing/activate/                   │
-      │   {activation_code, installation_id,              │
-      │    eula_accepted: true, eula_version}             │
+       │   {activation_code, installation_id,              │
+       │    device_public_key, protocol_version: 2,         │
+       │    eula_accepted: true, eula_version}             │
       │──────────────────────────────────────────────────▶│
       │                          │                        │
-      │   Response: {license_token, org, facility,        │
-      │              sync_url, encryption_key}            │
+       │   Response: {license_token, org, facility,        │
+       │              sync_url, secrets_envelope}           │
       │◄──────────────────────────────────────────────────│
       │                          │                        │
       │                          │ Writes license.jwt     │
@@ -269,7 +270,7 @@ For immediate local operations, create a hub-local admin with `C:\VitoraHub\hub-
 |----------|----------|---------|-------------|
 | `DJANGO_ENV` | Yes | `hub` | Must be `hub` for hub mode |
 | `DJANGO_SECRET_KEY` | Auto | Generated | Django cryptographic secret |
-| `ENCRYPTION_KEY` | Yes | From activation | Fernet key for PII encryption |
+| `ENCRYPTION_KEY` | Transitional | Protected secret store | Legacy v1 Fernet compatibility only; not stored in fresh-install `.env` |
 | `HUB_ID` | Yes | From activation | Unique installation identifier |
 | `HUB_FACILITY_ID` | Yes | From activation | Facility UUID |
 | `HUB_ORGANIZATION_ID` | Yes | From activation | Organization UUID |
@@ -291,8 +292,8 @@ The hub configuration is assembled from multiple sources during install/update.
 | Variable | Class | Source | Notes |
 |----------|-------|--------|-------|
 | `LICENSE_TOKEN` | Secret | **Cloud activation response** | Returned by `/api/licensing/activate/`; used for hub identity/check-in |
-| `ENCRYPTION_KEY` | Secret | **Cloud activation response** | Fernet key for encrypted PII fields |
-| `PII_HMAC_KEY` | Secret | Cloud activation response, or local fallback | If missing from cloud payload, installer generates fallback |
+| Organization PII key package | Secret | **Protocol-v2 encrypted activation/re-enrollment envelope** | Device-encrypted package containing the authorized organization key version; rewrapped locally by the hub KMS |
+| Legacy `ENCRYPTION_KEY` / `PII_HMAC_KEY` | Transitional secret | Protocol-v2 protected secret envelope only while v1 compatibility is required | Not returned as plaintext by v2 activation and not stored in fresh-install `.env` |
 | `DJANGO_SECRET_KEY` | Secret | **Generated locally** | Created during install |
 | `TIBABOT_API_KEY` | Secret | Cloud activation metadata and/or installer env override | Can be overridden by operator env |
 | `TIBABOT_JWT_PRIVATE_KEY` | Secret | Cloud activation metadata and/or installer env override | Optional |
@@ -462,7 +463,7 @@ powershell -ExecutionPolicy Bypass -File C:\VitoraHub\scripts\rotate-hub-secrets
 **Linux:**
 
 ```bash
-# Update secret keys in /opt/vitora/.env and restart
+# Update protected hub secret storage and restart
 sudo bash /opt/vitora/scripts/rotate-hub-secrets.sh --restart
 
 # Rotate specific keys explicitly
@@ -909,14 +910,9 @@ All API requests (except exempt paths) pass through `HubLicenseGuardMiddleware`:
 
 ### PII Encryption
 
-The hub uses the same Fernet encryption key as the cloud for:
+Protocol-v2 activation and re-enrollment generate a device key pair and return an organization-scoped PII key package only inside a device-encrypted secrets envelope. The hub decrypts the envelope locally and rewraps the authorized organization key package using its protected local secret storage.
 
-- `Patient.national_id`
-- `Patient.phone_number`
-- `Patient.email`
-- `Patient.address`
-
-The key is provided during activation and stored in `.env`.
+Fresh hub installations do not store PII key material in `.env`. Legacy Fernet key material is retained only while needed to read existing v1 ciphertext and is handled through protected secret storage during the transition.
 
 ### CORS (LAN)
 
@@ -943,6 +939,7 @@ The hub listens on **port 9088** on all interfaces (`0.0.0.0:9088`).
 
 ```bash
 sudo ufw allow 9088/tcp comment "Vitora Hub"
+sudo ufw allow 19088/udp comment "Vitora Hub Discovery"
 ```
 
 **Windows:**
@@ -951,6 +948,12 @@ sudo ufw allow 9088/tcp comment "Vitora Hub"
 # Already configured by installer (Private profile only)
 Get-NetFirewallRule -DisplayName "Vitora Hub*"
 ```
+
+Installers and update scripts permit TCP `9088` for API traffic and UDP `19088` for LAN discovery.
+Discovery only provides a candidate address; workstations verify it through
+`/api/hub/health/` before using the hub.
+
+TCP `9088` remains required for all API, login, sync, and WebSocket traffic. UDP `19088` carries only the `VITORA_DISCOVER` probe and its response.
 
 ### mDNS Discovery (Raspberry Pi)
 
@@ -982,9 +985,10 @@ nmap -p 9088 192.168.1.0/24
 
 When setting up the desktop app in "Facility Workstation" mode:
 
-1. Enter: `http://<hub-ip>:9088`
-2. The app validates via health check
-3. All subsequent API calls go to this URL
+1. Select **Scan Network**. The app broadcasts a UDP probe on port `19088`.
+2. The app verifies discovered candidates through `/api/hub/health/` before saving one.
+3. Enter `http://<hub-ip>:9088` manually only when network policy blocks discovery.
+4. All subsequent API calls go to the verified HTTP URL on port `9088`.
 
 ---
 
@@ -1029,6 +1033,7 @@ Get-Service -Name VitoraHub
 | `ModuleNotFoundError` | Venv corrupted or deps not installed | Re-run `pip install -r requirements-hub.txt` |
 | `OperationalError: database is locked` | Another process has the DB open | Kill stale processes: `fuser hub.sqlite3` |
 | `Address already in use` | Port 9088 occupied | `lsof -i :9088` then kill or change port |
+| `udp_discovery_unavailable` in health response | Another process owns UDP 19088, or a firewall blocks discovery | Keep using the hub on TCP 9088; free UDP 19088 or allow it through the private LAN firewall, then restart the hub |
 | `Permission denied: .env` | Wrong file ownership | `chown vitora:vitora /opt/vitora/.env` |
 | `No module named 'hmis'` | Working directory wrong | Check `WorkingDirectory` in service unit |
 
@@ -1064,7 +1069,7 @@ sync_to_cloud.delay()
 ### Desktop Clients Can't Connect
 
 1. **Verify hub is running**: `curl http://localhost:9088/api/hub/health/`
-2. **Check firewall**: `sudo ufw status` — port 9088 must be allowed
+2. **Check firewall**: `sudo ufw status` — allow TCP `9088` and UDP `19088`
 3. **Check network**: Client and hub on same subnet?
 4. **Check CORS**: Hub uses `CORS_ALLOW_ALL_ORIGINS=True` by default
 5. **Test from client**: `curl http://<hub-ip>:9088/api/hub/health/`

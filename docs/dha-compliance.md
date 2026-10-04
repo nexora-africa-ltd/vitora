@@ -181,10 +181,10 @@
 
 | Component | Implemented | Notes |
 |-----------|:-----------:|-------|
-| Data at Rest Encrypted | ✅ | Fernet field-level encryption for `national_id`, `phone_number`; SQLCipher full-DB encryption planned |
+| Data at Rest Encrypted | ✅ | Legacy Fernet field encryption and organization-scoped AES-GCM v2 encryption for eligible direct identifiers; migration evidence remains environment-specific |
 | Data in Transit Encrypted | ✅ | `SECURE_SSL_REDIRECT`, HSTS (1 year), `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, TLS enforced in production |
 | Encryption Standard | — | AES-128 (Fernet) for data at rest, TLS 1.2+ for data in transit |
-| Key Management System Implemented | ⚠️ | Partial — keys stored as environment variables; no HSM, KMS, or key rotation mechanism |
+| Key Management System Implemented | ⚠️ | Azure Key Vault KEKs are separated for staging and production with managed-identity crypto access; organization-scoped key migration and rotation evidence remain in progress |
 
 ### Authentication & Access Control
 

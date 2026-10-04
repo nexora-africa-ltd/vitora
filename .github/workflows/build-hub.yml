@@ -462,7 +462,6 @@ jobs:
         working-directory: hub
         run: |
           pip install -r requirements-hub.txt
-          $env:DJANGO_SETTINGS_MODULE = "hmis.settings.hub"
           $env:HUB_DATA_DIR = Join-Path $env:RUNNER_TEMP "vitora-hub-sqlcipher"
           New-Item -ItemType Directory -Force -Path $env:HUB_DATA_DIR | Out-Null
           $env:HUB_DB_PATH = Join-Path $env:HUB_DATA_DIR "hub.sqlite3"
@@ -473,16 +472,17 @@ jobs:
           @'
           import os
           import sqlite3
-          import django
+          from sqlcipher3 import dbapi2 as sqlcipher
 
-          django.setup()
-          from django.db import connection
-
-          with connection.cursor() as cursor:
-              cursor.execute('CREATE TABLE smoke_sqlcipher (value TEXT)')
-              cursor.execute("INSERT INTO smoke_sqlcipher VALUES ('protected')")
-              cursor.execute('SELECT value FROM smoke_sqlcipher')
-              assert cursor.fetchone()[0] == 'protected'
+          database_path = os.environ['HUB_DB_PATH']
+          key = os.environ['HUB_DATABASE_ENCRYPTION_KEY'].replace("'", "''")
+          connection = sqlcipher.connect(database_path)
+          connection.execute(f"PRAGMA key = '{key}'")
+          connection.execute('CREATE TABLE smoke_sqlcipher (value TEXT)')
+          connection.execute("INSERT INTO smoke_sqlcipher VALUES ('protected')")
+          connection.commit()
+          assert connection.execute('SELECT value FROM smoke_sqlcipher').fetchone()[0] == 'protected'
+          connection.close()
 
           try:
               plaintext = sqlite3.connect(os.environ['HUB_DB_PATH'])

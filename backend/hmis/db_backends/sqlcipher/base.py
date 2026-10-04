@@ -42,3 +42,7 @@ class DatabaseWrapper(SQLiteDatabaseWrapper):
             connection.close()
             raise RuntimeError("SQLCipher runtime verification failed.")
         return connection
+
+    def create_cursor(self, name=None):  # noqa: ARG002
+        """Return a SQLCipher DB-API cursor without Django's sqlite3-only factory."""
+        return self.connection.cursor()

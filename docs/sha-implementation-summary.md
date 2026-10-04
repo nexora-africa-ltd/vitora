@@ -507,7 +507,7 @@ All claim lifecycle events are logged:
 
 ### Kenya DPA 2019 Compliance
 
-- Patient data encrypted at rest (Fernet)
+- Patient data encrypted at rest through legacy Fernet and organization-scoped v2 encryption; SHA-related identifiers and credentials remain subject to tenant scope and KMS controls
 - Audit logs retained for 7 years
 - Purpose limitation enforced via audit details
 

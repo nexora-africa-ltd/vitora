@@ -256,29 +256,25 @@ LAN latency is <1ms, so polling 5–20 clients every 3s is negligible load.
 
 ## Hub Discovery
 
-### Option A: mDNS/DNS-SD (Primary — Recommended)
+### UDP Discovery (Primary)
 
-The facility hub advertises itself via mDNS/Bonjour:
+The desktop app sends `VITORA_DISCOVER` to UDP broadcast port `19088`. The hub replies with its current HTTP URL and identity, then the desktop app verifies the candidate through `GET /api/hub/health/` before it saves or uses the URL.
 
 ```
-Service: _vitora._tcp.local
-Port: 9088
-TXT: facility_id=<uuid>, facility_name=<name>, version=0.3.0
+UDP: 19088 (discovery only)
+HTTP/WebSocket API: 9088
+Verification: GET /api/hub/health/
 ```
 
-Tauri clients discover automatically on startup. No manual configuration needed.
+The workstation uses this flow during first installation and when a previously saved hub address no longer responds. TCP `9088` continues to carry authentication, sync, API, and WebSocket traffic.
 
-**Implementation:** `zeroconf` Python package on hub, Rust `mdns-sd` crate or Node `bonjour-service` on client.
-
-### Option B: UDP Broadcast Probe
-
-Client sends a UDP broadcast to `255.255.255.255:19088` with payload `VITORA_DISCOVER`. Hub responds with JSON:
+The hub response is:
 
 ```json
-{ "url": "http://192.168.1.100:9088", "facility_id": "uuid", "facility_name": "Demo Clinic", "version": "0.3.0" }
+{ "url": "http://192.168.1.100:9088", "facility_id": "uuid", "facility_name": "Demo Clinic", "hub_id": "hub-1", "version": "1.0.24" }
 ```
 
-Simplest possible discovery — works on any flat LAN, no library dependencies.
+If UDP `19088` is unavailable or blocked, the hub API remains available. The desktop client falls back to a verified HTTP subnet scan, then to manual configuration.
 
 ### Option C: Manual Configuration (Always-Available Fallback)
 
@@ -297,7 +293,7 @@ Settings UI in Tauri app:
 └─────────────────────────────────────────┘
 ```
 
-For networks where mDNS is blocked or VLAN'd, users (or IT staff) enter the hub IP/hostname directly. The "Scan Network" button triggers UDP broadcast probe.
+For networks where broadcast traffic is blocked or VLAN'd, users (or IT staff) enter the hub IP/hostname directly. The "Scan Network" button uses UDP first and then the verified HTTP fallback.
 
 ### ~~Option D: QR Code~~ (Removed)
 
@@ -522,8 +518,8 @@ async fn export_backup(app: AppHandle, dest_path: String, encrypt: bool) -> Resu
 
 ### PII Handling (Kenya DPA 2019)
 
-- Encrypted fields (`national_id`, `phone_number`, etc.) remain encrypted in local SQLite using the same Fernet key
-- Fernet key is stored in OS keychain (via `tauri-plugin-stronghold` or OS keyring)
+- Versioned encrypted fields (`national_id`, `phone_number`, etc.) remain encrypted in local SQLite; authorized hubs receive an organization-scoped key package through device-encrypted activation or re-enrollment
+- Hub key packages are rewrapped under protected local secret storage; legacy Fernet material is retained only while required for v1 compatibility
 - Local backups inherit encryption — no plaintext PII on disk
 - USB exports are additionally wrapped in AES-256
 
@@ -575,7 +571,7 @@ async fn export_backup(app: AppHandle, dest_path: String, encrypt: bool) -> Resu
 - [x] SQLCipher or OS-level encryption for local DB — Tauri keychain-backed key storage (`get_db_encryption_key`, `set_fernet_key`, `get_fernet_key` commands); keystore file with 0600 permissions on Unix
 - [ ] mTLS for LAN traffic (self-signed CA per facility) — deferred; LAN is private network behind firewall; hub already validates facility on WebSocket connect
 - [x] USB backup encryption (AES-256 + facility passphrase) — `exportEncryptedBackup()`/`importEncryptedBackup()` using AES-256-GCM + PBKDF2 (100k iterations)
-- [x] Fernet key storage in OS keychain — Tauri `KeyStore` with `set_fernet_key`/`get_fernet_key` commands
+- [x] Protected local key storage — device-encrypted organization key packages for hubs and Tauri keychain-backed storage for desktop compatibility data
 - [x] Remote wipe capability for lost/stolen hubs — `POST /api/hub/wipe/` (admin-only) + `GET /api/hub/wipe-check/` (hub polls) + client-side `executeLocalWipe()`
 - [x] Sync conflict dashboard in admin UI — `GET /api/sync/dashboard/` (queue summary, throughput, stale entries, conflict breakdown)
 - [x] Sync queue pruning + retry backoff — management command + Celery beat task (every 6h), client-side exponential backoff (5s→5min, max 10 retries)

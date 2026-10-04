@@ -220,7 +220,7 @@ Foreign keys model ownership and workflow relationships. Application models use 
 | Authorization | Django permissions, role permission matrices, tenant-scoped querysets, sensitive-patient permission filtering, and endpoint-specific checks |
 | Session protection | Secure cookie configuration in production, CSRF protection for cookie-based mutation requests, inactivity warning/logout in the web client, and token expiry |
 | Encryption in transit | HTTPS/WSS through public ingress and TLS-required integration endpoints |
-| Encryption at rest | Fernet field-level encryption for selected direct identifiers; current local KMS provider uses environment-managed Fernet key material; Azure Key Vault/HSM is the production target architecture and must be enabled before it is claimed as deployed |
+| Encryption at rest | Legacy Fernet field encryption plus organization-scoped AES-GCM v2 encryption for eligible PII; separate staging/production Azure Key Vault KEKs wrap organization key material, subject to migration and rotation evidence |
 | Audit integrity | Audit logging and SHA-256 hash-chain support for tamper-evident audit records |
 | Sensitive access | Explicit sensitive-patient classification and permission filtering; access should be attributable in audit records |
 | Offline minimization | PowerSync streams exclude encrypted direct identifiers and use server-issued tenant and read-permission claims |
