@@ -128,6 +128,14 @@ def test_windows_keep_plain_exclusions_are_narrow_and_evidence_backed():
     assert "python-magic/libmagic import crashes compiled startup" in compiler
 
 
+def test_windows_runtime_disables_optional_native_magic_sniffing():
+    """Windows diagnostics and launcher must avoid the libmagic native boundary."""
+    launcher = (BACKEND / "scripts" / "start-hub-windows.ps1").read_text(encoding="utf-8")
+    diagnostic = (BACKEND / "scripts" / "diagnose-hub-runtime.py").read_text(encoding="utf-8")
+    assert "VITORA_DISABLE_MAGIC_SNIFFING" in launcher
+    assert '"VITORA_DISABLE_MAGIC_SNIFFING": "true" if sys.platform == "win32"' in diagnostic
+
+
 def test_windows_keep_plain_exclusion_uses_staged_payload_relative_path(tmp_path, monkeypatch):
     """The Windows compiler must not compare staged build paths to source paths."""
     compiler_path = BACKEND / "scripts" / "compile-hub.py"

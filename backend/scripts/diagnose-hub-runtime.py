@@ -159,6 +159,7 @@ def child(args):
             "ENCRYPTION_KEY": Fernet.generate_key().decode(),
             "KMS_PROVIDER": "local",
             "SYNC_ENABLED": "false",
+            "VITORA_DISABLE_MAGIC_SNIFFING": "true" if sys.platform == "win32" else "false",
         }
     )
     marker(f"start {args.probe} pid={os.getpid()} python={platform.python_version()}")
