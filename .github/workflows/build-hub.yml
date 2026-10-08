@@ -151,6 +151,7 @@ jobs:
           cp backend/scripts/start-hub-windows.ps1 "dist/${ARTIFACT}/scripts/"
           cp backend/scripts/start-hub-linux.sh "dist/${ARTIFACT}/scripts/"
           cp backend/scripts/smoke-hub-sqlcipher.py "dist/${ARTIFACT}/scripts/"
+          cp backend/scripts/hub_database_key_escrow.py "dist/${ARTIFACT}/scripts/"
           cp backend/scripts/hub-update-state.py "dist/${ARTIFACT}/scripts/"
           cp backend/scripts/pi-setup.sh "dist/${ARTIFACT}/scripts/"
 
@@ -190,6 +191,7 @@ jobs:
           Copy-Item "backend\scripts\start-hub-windows.ps1" "dist\${ARTIFACT}\scripts\"
           Copy-Item "backend\scripts\start-hub-linux.sh" "dist\${ARTIFACT}\scripts\"
           Copy-Item "backend\scripts\smoke-hub-sqlcipher.py" "dist\${ARTIFACT}\scripts\"
+          Copy-Item "backend\scripts\hub_database_key_escrow.py" "dist\${ARTIFACT}\scripts\"
           Copy-Item "backend\scripts\hub-update-state.py" "dist\${ARTIFACT}\scripts\"
           Copy-Item "backend\scripts\install-hub.sh" "dist\${ARTIFACT}\scripts\"
           Copy-Item "backend\scripts\update-hub.sh" "dist\${ARTIFACT}\scripts\"

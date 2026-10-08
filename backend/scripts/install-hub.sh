@@ -722,6 +722,15 @@ set -a
 source <(systemd-creds decrypt "$HUB_SECRETS_FILE" -)
 set +a
 
+# Enrollment is attempted only after the key has been written to the
+# host-protected credential. A failure is visible and means cloud recovery is
+# unavailable; it never changes or exposes the local key.
+if "$VENV_DIR/bin/python" "$APP_DIR/scripts/hub_database_key_escrow.py" submit; then
+    info "Cloud database-key escrow enrollment completed."
+else
+    warn "Cloud database-key escrow enrollment failed; this hub is not cloud-recoverable until enrollment succeeds."
+fi
+
 # --- Hub Shell Wrapper ---
 # Convenience script that loads .env and invokes any manage.py command
 # (defaults to `shell`). Lets admins run Django commands without having to

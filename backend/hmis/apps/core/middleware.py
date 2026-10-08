@@ -15,6 +15,7 @@ from urllib.parse import quote
 
 from django.conf import settings
 from django.db import connection
+from django.http import JsonResponse
 from django.utils import timezone
 
 from hmis.apps.core.tenant_access import user_has_facility_access
@@ -831,6 +832,38 @@ class HubWatermarkMiddleware:
 # ---------------------------------------------------------------------------
 # Hub License Guard Middleware (Phase 1 — Code Protection Plan)
 # ---------------------------------------------------------------------------
+
+
+class HubCloudOnlyWorkflowMiddleware:
+    """Block local hub access to workflows that remain cloud-authoritative."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        from hmis.apps.core.hub_capabilities import HubCapability, get_hub_capability_for_path
+
+        capability = get_hub_capability_for_path(request.path)
+        if getattr(settings, "ENVIRONMENT", "") == "hub" and capability:
+            code = (
+                "hub_cloud_only"
+                if capability == HubCapability.CLOUD_ONLY
+                else "hub_workflow_unavailable"
+            )
+            detail = (
+                "This workflow is cloud-only and requires a connection to Vitora Cloud."
+                if capability == HubCapability.CLOUD_ONLY
+                else "This workflow is not available in facility hub mode."
+            )
+            return JsonResponse(
+                {
+                    "detail": detail,
+                    "code": code,
+                    "capability": capability.value,
+                },
+                status=409,
+            )
+        return self.get_response(request)
 
 
 class HubLicenseGuardMiddleware:

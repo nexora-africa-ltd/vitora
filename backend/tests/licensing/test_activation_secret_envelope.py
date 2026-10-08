@@ -320,6 +320,39 @@ def test_hub_installers_provision_and_preserve_database_encryption_keys():
     assert "Loaded $Name from ${Source}: $(Mask-SecretValue -Value $Value)" in windows_launcher
 
 
+def test_hub_installers_enroll_and_recover_database_keys_without_cli_key_arguments():
+    """Escrow runs after protected storage and recovery never falls back for an existing DB."""
+    root = __import__("pathlib").Path(__file__).resolve().parents[3]
+    helper = (root / "backend/scripts/hub_database_key_escrow.py").read_text()
+    linux_installer = (root / "backend/scripts/install-hub.sh").read_text()
+    linux_updater = (root / "backend/scripts/update-hub.sh").read_text()
+    windows_installer = (root / "backend/scripts/install-hub-windows.ps1").read_text()
+    windows_updater = (root / "backend/scripts/update-hub-windows.ps1").read_text()
+
+    assert 'sys.argv[1] not in {"submit", "recover"}' in helper
+    assert 'os.environ.get("HUB_DATABASE_ENCRYPTION_KEY"' in helper
+    assert '"hub_database_encryption_key": key' in helper
+    assert "sys.argv[2]" not in helper
+    for script in (linux_installer, linux_updater, windows_installer, windows_updater):
+        assert "hub_database_key_escrow.py" in script
+        assert "not cloud-recoverable" in script
+
+    assert linux_installer.index("systemd-creds encrypt") < linux_installer.index(
+        "hub_database_key_escrow.py"
+    )
+    assert windows_installer.index("Write-DpapiSecretsBundle") < windows_installer.index(
+        "hub_database_key_escrow.py"
+    )
+    assert (
+        "Cloud database-key recovery failed; this encrypted database cannot be opened"
+        in linux_updater
+    )
+    assert (
+        "Cloud database-key recovery failed; this encrypted database cannot be opened"
+        in windows_updater
+    )
+
+
 def test_hub_updaters_convert_plaintext_databases_before_requiring_encryption():
     """Existing hub databases are verified or converted before the flag is persisted."""
     root = __import__("pathlib").Path(__file__).resolve().parents[3]

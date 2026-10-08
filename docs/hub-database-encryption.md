@@ -37,8 +37,25 @@ The conversion first exports to a temporary encrypted database and atomically
 replaces the original only after key verification. Rotation uses SQLCipher's
 `PRAGMA rekey` after authenticating the current key.
 
-Key retrieval, escrow, rotation distribution, and persistence are deployment
-adapters. The installers implement the local operating-system secret adapters
-described above. Azure Key Vault network escrow is deliberately not implemented
-in this hub flow; a cloud deployment adapter may provide escrow according to
-the facility's recovery policy without changing the local key lifecycle.
+## Cloud Escrow And Recovery
+
+After an installer or updater has generated or preserved the local key in its
+host-protected bundle, it automatically submits that key to
+`POST /api/licensing/escrow/submit/`. The cloud service wraps it with the
+dedicated Azure Key Vault key; neither the hub nor cloud database stores a
+plaintext copy. Enrollment failures are displayed explicitly: the hub remains
+usable with its local protected key, but is **not cloud-recoverable** until a
+later installer/update enrollment succeeds.
+
+If an updater finds an existing database but its local key is absent, it calls
+`POST /api/licensing/escrow/recover/`. The response is an X25519
+device-encrypted envelope, decrypted only in the updater process and saved back
+to the host-protected bundle. If recovery is unavailable or fails, the update
+stops and keeps services unavailable rather than generating a replacement key
+that could not open the existing database.
+
+The escrow helper reads its key, license token, and cloud URL from process
+environment variables. It accepts no key on its command line; recovery output
+is captured directly into the updater process rather than printed to the
+terminal or installer logs. Azure Key Vault escrow must be enabled and
+configured on the cloud service for enrollment and recovery to succeed.

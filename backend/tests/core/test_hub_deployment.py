@@ -91,6 +91,32 @@ class TestHubHealthEndpoint:
         assert "rbac" in data
         assert "discovery" in data
         assert "version" in data
+        assert data["capabilities"]["surveillance"] == "CLOUD_ONLY"
+        assert data["capabilities"]["patients"] == "LOCAL_SYNCED"
+        assert data["capabilities"]["theatre"] == "UNAVAILABLE"
+
+    @override_settings(ENVIRONMENT="hub")
+    def test_hub_blocks_cloud_only_surveillance_routes(self, rf):
+        """Surveillance must not execute locally while it is not syncable."""
+        from hmis.apps.core.middleware import HubCloudOnlyWorkflowMiddleware
+
+        middleware = HubCloudOnlyWorkflowMiddleware(lambda request: None)
+        response = middleware(rf.get("/api/surveillance/cases/"))
+
+        assert response.status_code == status.HTTP_409_CONFLICT
+        assert b'"code": "hub_cloud_only"' in response.content
+
+    @override_settings(ENVIRONMENT="hub")
+    def test_hub_blocks_unavailable_theatre_routes(self, rf):
+        """Incomplete theatre workflows must not be exposed locally on hubs."""
+        from hmis.apps.core.middleware import HubCloudOnlyWorkflowMiddleware
+
+        response = HubCloudOnlyWorkflowMiddleware(lambda request: None)(
+            rf.get("/api/theatre/cases/")
+        )
+
+        assert response.status_code == status.HTTP_409_CONFLICT
+        assert b'"code": "hub_workflow_unavailable"' in response.content
 
     @override_settings(ENVIRONMENT="hub")
     @patch("hmis.apps.core.hub_views.get_hub_discovery_health")

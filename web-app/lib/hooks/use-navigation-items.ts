@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useAuth } from '@/lib/auth';
 import { useFacility } from '@/lib/context/facility-context';
@@ -21,6 +21,8 @@ import {
   resolveClinicalUtilityItems,
 } from '@/lib/config/clinical-navigation';
 import { isLISStandaloneRouteAllowed, isStandardRouteAllowed } from '@/lib/auth/route-access';
+import { getAppConfig } from '@/lib/desktop';
+import { getHubModuleCapability } from '@/lib/desktop/hub-capabilities';
 
 export interface NavigationResult {
   items: NavItemType[];
@@ -35,6 +37,15 @@ export function useNavigationItems(): NavigationResult {
   const { hasFeature } = useSubscription();
   const { isSustainedOffline } = useNetworkStatus();
   const interfacilityTransfersEnabled = useInterfacilityTransfersEnabled();
+  const [isHubMode, setIsHubMode] = useState(false);
+
+  useEffect(() => {
+    void getAppConfig().then((config) => {
+      setIsHubMode(
+        config?.deployment_mode === 'lan_client' || config?.deployment_mode === 'lan_hub'
+      );
+    });
+  }, []);
   const shouldFetchClinicTypes =
     canAccessModule('clinics') &&
     hasModule('outpatient') &&
@@ -81,6 +92,7 @@ export function useNavigationItems(): NavigationResult {
       if (item.featureFlag === 'interfacility_transfers' && !interfacilityTransfersEnabled) {
         return false;
       }
+      if (isHubMode && getHubModuleCapability(item.moduleKey) !== 'LOCAL_SYNCED') return false;
       if (isLISStandaloneProfile) {
         const href = 'href' in item && typeof item.href === 'string' ? item.href : '';
         if (href === '/patients/lookup' || href.startsWith('/patients/lookup/')) {
@@ -118,7 +130,9 @@ export function useNavigationItems(): NavigationResult {
       if (!isAllowed(item)) return null;
 
       if (hasChildren(item)) {
-        const filteredChildren = item.children.filter((child): child is NavItem => isAllowed(child));
+        const filteredChildren = item.children.filter((child): child is NavItem =>
+          isAllowed(child)
+        );
         if (filteredChildren.length === 0) return null;
         return { ...item, children: filteredChildren };
       }
@@ -156,6 +170,7 @@ export function useNavigationItems(): NavigationResult {
     isClinicalNavigationEligible,
     isSustainedOffline,
     interfacilityTransfersEnabled,
+    isHubMode,
     facility,
     user?.facility?.shr_enabled,
   ]);

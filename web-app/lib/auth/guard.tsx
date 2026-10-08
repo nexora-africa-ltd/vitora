@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
@@ -11,6 +11,8 @@ import {
   isLISStandaloneRouteAllowed,
   isStandardRouteAllowed,
 } from '@/lib/auth/route-access';
+import { getAppConfig } from '@/lib/desktop';
+import { isHubRestrictedRoute } from '@/lib/desktop/hub-capabilities';
 
 interface PermissionGuardProps {
   children: React.ReactNode;
@@ -102,7 +104,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 // Route → Module mapping for RouteGuard
 // =============================================================================
 
-
 /**
  * Resolve a pathname to its required ModuleKey, if any.
  */
@@ -132,8 +133,21 @@ export function RouteGuard({ children, fallback }: RouteGuardProps) {
   const pathname = usePathname();
   const { canAccessModule, canPerformAction, hasPermission, isAuthenticated } = usePermissions();
   const { hasModule, facilityDetail, facility } = useFacility();
+  const [isHubMode, setIsHubMode] = useState(false);
+
+  useEffect(() => {
+    void getAppConfig().then((config) => {
+      setIsHubMode(
+        config?.deployment_mode === 'lan_client' || config?.deployment_mode === 'lan_hub'
+      );
+    });
+  }, []);
 
   if (!isAuthenticated) return <>{children}</>;
+
+  if (isHubMode && isHubRestrictedRoute(pathname)) {
+    return fallback ?? <AccessDenied />;
+  }
 
   const isLISStandaloneProfile =
     facilityDetail?.operating_mode === 'STANDALONE_LAB' ||

@@ -83,7 +83,7 @@ DHIS2 JSON submission and ADX export resolve credentials and organization unit f
 
 Surveillance reporting is not currently a hub-syncable workflow. The hub synchronization registry explicitly excludes `NotifiableCase`, surveillance alerts, county notification deliveries, IHR notifications, contact-tracing records, and facility surveillance settings while the workflow remains under planned phase closure. `IDSRWeeklyReport` is not registered as a hub-synchronized model.
 
-Accordingly, facility hubs must not be represented as automatically generating, synchronizing, or submitting IDSR/KHIS reports. Cloud reporting remains authoritative. A hub may retain local clinical data under its offline workflow, but surveillance reporting must be completed through the cloud deployment after the relevant records are available there, or through a separately designed and approved hub reporting capability.
+Accordingly, facility hubs must not be represented as automatically generating, synchronizing, or submitting IDSR/KHIS reports. Hub surveillance API routes return `409` with `code: hub_cloud_only`. The hub capability registry distinguishes `LOCAL_SYNCED`, `CLOUD_ONLY`, and `UNAVAILABLE` modules; reporting and external workflows are cloud-only, while incomplete workflow modules are unavailable. Cloud reporting remains authoritative. A hub may retain local clinical data under its offline workflow, but surveillance reporting must be completed through the cloud deployment after the relevant records are available there, or through a separately designed and approved hub reporting capability.
 
 ## 7. Audit And Retention
 
