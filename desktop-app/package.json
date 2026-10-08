@@ -19,6 +19,6 @@
     "tauri": "cd src-tauri && cargo tauri"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0"
+    "concurrently": "^9.2.5"
   }
 }
