@@ -299,6 +299,8 @@ class IDSRWeeklyReportAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
 
     list_display = [
         "week_label",
+        "facility_ref",
+        "organization",
         "facility_name",
         "county_display",
         "total_cases",
@@ -307,8 +309,20 @@ class IDSRWeeklyReportAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
         "outbreak_badge",
         "generated_at",
     ]
-    list_filter = ["status", "outbreak_declared", "epi_year", "county"]
-    search_fields = ["facility_name", "facility_code"]
+    list_filter = [
+        "status",
+        "outbreak_declared",
+        "epi_year",
+        "organization",
+        "facility_ref",
+        "county",
+    ]
+    search_fields = [
+        "facility_ref__name",
+        "facility_ref__mfl_code",
+        "facility_name",
+        "facility_code",
+    ]
     ordering = ["-epi_year", "-epi_week"]
     readonly_fields = [
         "week_label",
@@ -321,14 +335,34 @@ class IDSRWeeklyReportAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
         "created_at",
         "updated_at",
     ]
-    raw_id_fields = ["county", "sub_county", "generated_by", "reviewed_by", "approved_by"]
+    raw_id_fields = [
+        "organization",
+        "facility_ref",
+        "county",
+        "sub_county",
+        "generated_by",
+        "reviewed_by",
+        "approved_by",
+    ]
     inlines = [IDSRDiseaseSummaryInline]
     fieldsets = (
         (
             "Week Identification",
             {"fields": ("epi_year", "epi_week", "week_label", "week_start_date", "week_end_date")},
         ),
-        ("Facility", {"fields": ("facility_code", "facility_name", "county", "sub_county")}),
+        (
+            "Facility",
+            {
+                "fields": (
+                    "organization",
+                    "facility_ref",
+                    "facility_code",
+                    "facility_name",
+                    "county",
+                    "sub_county",
+                )
+            },
+        ),
         (
             "Summary",
             {

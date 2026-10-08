@@ -865,8 +865,8 @@ class IDSRWeeklyReport(models.Model):
         verbose_name_plural = "IDSR Weekly Reports"
         constraints = [
             models.UniqueConstraint(
-                fields=["epi_year", "epi_week", "facility_code"],
-                name="unique_idsr_week_facility",
+                fields=["epi_year", "epi_week", "facility_ref"],
+                name="unique_idsr_week_facility_ref",
             )
         ]
         indexes = [

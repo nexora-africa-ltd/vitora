@@ -14,7 +14,7 @@ import random
 from datetime import date, datetime, timedelta
 
 from django.contrib.auth import get_user_model
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
 
@@ -412,12 +412,16 @@ class Command(BaseCommand):
     def _regenerate_report(self, epi_year, epi_week, week_start, week_end, user):
         """Regenerate IDSR report for the target week."""
         self.stdout.write(f"\nRegenerating IDSR report for W{epi_week:02d}/{epi_year}...")
+        facility = getattr(getattr(user, "staff_profile", None), "primary_facility", None)
+        if facility is None:
+            raise CommandError("Demo report generation requires the user's primary facility.")
 
         report = IDSRReportingService.generate_weekly_report(
             epi_year=epi_year,
             epi_week=epi_week,
             week_start=week_start,
             week_end=week_end,
+            facility=facility,
             generated_by=user,
         )
 
