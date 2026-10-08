@@ -32,9 +32,9 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install escrow helper dependencies
+      - name: Install escrow and SQLCipher drill dependencies
         working-directory: backend
-        run: pip install cryptography Django
+        run: pip install cryptography Django sqlcipher3-binary
 
       - name: Enroll and recover a disposable SQLCipher key
         working-directory: backend
@@ -55,11 +55,16 @@ jobs:
 
           export HUB_DATABASE_ENCRYPTION_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(64))')"
           echo "::add-mask::$HUB_DATABASE_ENCRYPTION_KEY"
+          DRILL_DB="$(mktemp --suffix=.sqlite3)"
+          trap 'rm -f "$DRILL_DB"' EXIT
+          python scripts/hub_sqlcipher_escrow_drill.py create "$DRILL_DB"
           python scripts/hub_database_key_escrow.py submit
 
+          unset HUB_DATABASE_ENCRYPTION_KEY
           RECOVERED_KEY="$(python scripts/hub_database_key_escrow.py recover)"
           echo "::add-mask::$RECOVERED_KEY"
-          test "$RECOVERED_KEY" = "$HUB_DATABASE_ENCRYPTION_KEY"
+          export HUB_DATABASE_ENCRYPTION_KEY="$RECOVERED_KEY"
+          python scripts/hub_sqlcipher_escrow_drill.py verify "$DRILL_DB"
 
       - name: Report successful drill
         run: |
