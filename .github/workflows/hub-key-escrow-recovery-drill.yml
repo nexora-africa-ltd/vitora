@@ -47,6 +47,12 @@ jobs:
             fi
           done
 
+          if [[ "$HUB_ID" != escrow-drill-* ]]; then
+            echo "Refusing to overwrite escrow for a non-dedicated drill installation." >&2
+            echo "Use an active staging installation ID beginning with escrow-drill-." >&2
+            exit 1
+          fi
+
           export HUB_DATABASE_ENCRYPTION_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(64))')"
           echo "::add-mask::$HUB_DATABASE_ENCRYPTION_KEY"
           python scripts/hub_database_key_escrow.py submit
