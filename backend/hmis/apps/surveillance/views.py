@@ -34,6 +34,7 @@ from .models import (
     ContactTracingContact,
     ContactTracingFollowUp,
     CountyNotificationDelivery,
+    IDSRWeeklyReport,
     IHRNotification,
     IHRNotificationStatus,
     NotifiableCase,
@@ -1345,7 +1346,7 @@ class IDSRWeeklyReportViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     tenant_scope = "facility"
     tenant_facility_field = "facility_ref"
 
-    queryset = None  # Set in get_queryset
+    queryset = IDSRWeeklyReport.objects.all()
     serializer_class = None  # Set dynamically
     permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     filterset_class = IDSRWeeklyReportFilter
@@ -1354,12 +1355,15 @@ class IDSRWeeklyReportViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     ordering = ["-epi_year", "-epi_week"]
 
     def get_queryset(self):
-        """Return queryset with related objects."""
-        from .models import IDSRWeeklyReport
-
-        return IDSRWeeklyReport.objects.select_related(
-            "county", "sub_county", "generated_by", "reviewed_by", "approved_by"
-        ).prefetch_related("disease_summaries", "disease_summaries__disease")
+        """Return the active facility's reports with required related data."""
+        return (
+            super()
+            .get_queryset()
+            .select_related(
+                "county", "sub_county", "generated_by", "reviewed_by", "approved_by", "facility_ref"
+            )
+            .prefetch_related("disease_summaries", "disease_summaries__disease")
+        )
 
     def get_serializer_class(self):
         """Use appropriate serializer based on action."""
@@ -1405,6 +1409,13 @@ class IDSRWeeklyReportViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
         epi_year = serializer.validated_data.get("epi_year")
         epi_week = serializer.validated_data.get("epi_week")
+        self._resolve_tenant_context()
+        facility = getattr(request, "facility", None)
+        if facility is None:
+            return Response(
+                {"detail": "An active facility is required to generate an IDSR report."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         if epi_year and epi_week:
             # Calculate week dates for the specified week
@@ -1424,10 +1435,14 @@ class IDSRWeeklyReportViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 epi_week=epi_week,
                 week_start=week_start,
                 week_end=week_end,
+                facility=facility,
                 generated_by=request.user,
             )
         else:
-            report = IDSRReportingService.generate_previous_week_report(generated_by=request.user)
+            report = IDSRReportingService.generate_previous_week_report(
+                facility=facility,
+                generated_by=request.user,
+            )
 
         AuditLog.log(
             action="idsr_report_generate",
@@ -1563,7 +1578,7 @@ class IDSRWeeklyReportViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         from hmis.apps.surveillance.adx_service import ADXExportService
 
         report = self.get_object()
-        service = ADXExportService(facility=getattr(report, "facility", None))
+        service = ADXExportService(facility=report.facility_ref)
         xml_content = service.export_idsr_to_adx(report)
         response = DjangoHttpResponse(xml_content, content_type="application/xml")
         response["Content-Disposition"] = (

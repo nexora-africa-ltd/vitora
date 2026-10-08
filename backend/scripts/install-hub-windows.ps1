@@ -876,6 +876,12 @@ $dpapiSecrets = @{
     HUB_DATABASE_ENCRYPTION_KEY = $DatabaseEncryptionKey
 }
 Write-DpapiSecretsBundle -Secrets $dpapiSecrets -Path $HubSecretsFile
+& $python "$InstallDir\scripts\hub_database_key_escrow.py" submit
+if ($LASTEXITCODE -eq 0) {
+    Write-Info "Cloud database-key escrow enrollment completed."
+} else {
+    Write-Warn "Cloud database-key escrow enrollment failed; this hub is not cloud-recoverable until enrollment succeeds."
+}
 # Write version file
 Set-Content -Path "$InstallDir\VERSION" -Value $Version
 Write-Info "Configuration saved."

@@ -1,0 +1,60 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
+# Staging-only drill for Azure Key Vault-wrapped hub SQLCipher key enrollment and recovery.
+# Run manually with a dedicated active staging hub license; uses repository/environment secrets only.
+name: Hub Key Escrow Recovery Drill
+
+on:
+  workflow_dispatch:
+
+jobs:
+  escrow-recovery-drill:
+    name: Verify device-bound hub key recovery
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: staging
+    permissions:
+      contents: read
+
+    env:
+      CLOUD_API_BASE_URL: ${{ vars.HUB_ESCROW_DRILL_CLOUD_API_BASE_URL }}
+      HUB_ID: ${{ vars.HUB_ESCROW_DRILL_INSTALLATION_ID }}
+      HUB_ORGANIZATION_ID: ${{ vars.HUB_ESCROW_DRILL_ORGANIZATION_ID }}
+      HUB_FACILITY_ID: ${{ vars.HUB_ESCROW_DRILL_FACILITY_ID }}
+      LICENSE_TOKEN: ${{ secrets.HUB_ESCROW_DRILL_LICENSE_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install escrow helper dependencies
+        working-directory: backend
+        run: pip install cryptography Django
+
+      - name: Enroll and recover a disposable SQLCipher key
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          for required in CLOUD_API_BASE_URL HUB_ID HUB_ORGANIZATION_ID HUB_FACILITY_ID LICENSE_TOKEN; do
+            if [[ -z "${!required}" ]]; then
+              echo "Missing required staging escrow drill configuration: $required" >&2
+              exit 1
+            fi
+          done
+
+          export HUB_DATABASE_ENCRYPTION_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(64))')"
+          echo "::add-mask::$HUB_DATABASE_ENCRYPTION_KEY"
+          python scripts/hub_database_key_escrow.py submit
+
+          RECOVERED_KEY="$(python scripts/hub_database_key_escrow.py recover)"
+          echo "::add-mask::$RECOVERED_KEY"
+          test "$RECOVERED_KEY" = "$HUB_DATABASE_ENCRYPTION_KEY"
+
+      - name: Report successful drill
+        run: |
+          echo "Hub SQLCipher escrow enrollment and device-bound recovery completed."
+          echo "No key material was emitted to workflow logs."

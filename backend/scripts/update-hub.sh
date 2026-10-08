@@ -286,9 +286,7 @@ package = secrets.pop("organization_pii_key_package")
 # encryption disabled in this temporary bundle until an older plaintext DB has
 # been converted and the key has been verified below.
 secrets["hub_database_encryption_required"] = "false"
-secrets["hub_database_encryption_key"] = (
-    os.environ.get("HUB_DATABASE_ENCRYPTION_KEY") or stdlib_secrets.token_urlsafe(64)
-)
+secrets["hub_database_encryption_key"] = os.environ.get("HUB_DATABASE_ENCRYPTION_KEY") or ""
 temporary = f"{output}.new"
 with open(temporary, "w", encoding="utf-8") as secret_file:
     for name, value in secrets.items():
@@ -319,6 +317,22 @@ set +a
 HUB_DATABASE_ENCRYPTION_REQUIRED=false
 export HUB_DATABASE_ENCRYPTION_REQUIRED HUB_DATABASE_ENCRYPTION_KEY
 HUB_DATABASE_PATH="${HUB_DB_PATH:-${APP_DIR}/data/hub.sqlite3}"
+if [[ -z "$HUB_DATABASE_ENCRYPTION_KEY" ]]; then
+    if [[ -f "$HUB_DATABASE_PATH" ]]; then
+        info "Local SQLCipher key is absent; requesting cloud recovery..."
+        if ! HUB_DATABASE_ENCRYPTION_KEY=$("$VENV_DIR/bin/python" "$APP_DIR/scripts/hub_database_key_escrow.py" recover); then
+            error "Cloud database-key recovery failed; this encrypted database cannot be opened and remains unavailable."
+            rollback_update
+        fi
+        export HUB_DATABASE_ENCRYPTION_KEY
+        sed -i "s|^HUB_DATABASE_ENCRYPTION_KEY=.*|HUB_DATABASE_ENCRYPTION_KEY=${HUB_DATABASE_ENCRYPTION_KEY}|" "$HUB_SECRETS_PLAINTEXT"
+        info "Cloud database-key recovery completed."
+    else
+        HUB_DATABASE_ENCRYPTION_KEY=$("$VENV_DIR/bin/python" -c 'import secrets; print(secrets.token_urlsafe(64))')
+        export HUB_DATABASE_ENCRYPTION_KEY
+        sed -i "s|^HUB_DATABASE_ENCRYPTION_KEY=.*|HUB_DATABASE_ENCRYPTION_KEY=${HUB_DATABASE_ENCRYPTION_KEY}|" "$HUB_SECRETS_PLAINTEXT"
+    fi
+fi
 if [[ -f "$HUB_DATABASE_PATH" ]]; then
     info "Verifying hub database encryption..."
     HUB_DATABASE_KEY_STATUS=$("$VENV_DIR/bin/python" "$APP_DIR/manage.py" hub_database_key_status --database "$HUB_DATABASE_PATH")
@@ -365,6 +379,11 @@ rm -f "$HUB_SECRETS_PLAINTEXT"
 rm -f "$LEGACY_HUB_SECRETS_FILE"
 chmod 600 "$DEVICE_PRIVATE_KEY" "$HUB_SECRETS_FILE"
 chown vitora:vitora "$DEVICE_PRIVATE_KEY" "$HUB_SECRETS_FILE"
+if "$VENV_DIR/bin/python" "$APP_DIR/scripts/hub_database_key_escrow.py" submit; then
+    info "Cloud database-key escrow enrollment completed."
+else
+    warn "Cloud database-key escrow enrollment failed; this hub is not cloud-recoverable until enrollment succeeds."
+fi
 sed -i '/^\(DJANGO_SECRET_KEY\|ENCRYPTION_KEY\|PII_HMAC_KEY\|LICENSE_TOKEN\)=/d' "$APP_DIR/.env"
 chmod 750 "$APP_DIR/scripts/start-hub-linux.sh"
 chown root:vitora "$APP_DIR/scripts/start-hub-linux.sh"

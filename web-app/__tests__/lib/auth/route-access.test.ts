@@ -8,10 +8,12 @@
 
 import {
   getStandardRouteAccessRequirement,
+  isHubCloudOnlyRoute,
   getLISStandaloneRouteAccessRequirement,
   isStandardRouteAllowed,
   isLISStandaloneRouteAllowed,
 } from '@/lib/auth/route-access';
+import { getHubModuleCapability, getHubRouteCapability } from '@/lib/desktop/hub-capabilities';
 
 const allowAllStandard = {
   canAccessModule: () => true,
@@ -77,5 +79,19 @@ describe('route-access', () => {
 
   it('blocks LIS admin routes not on the allowlist map', () => {
     expect(isLISStandaloneRouteAllowed('/admin/join-requests', allowAllLis)).toBe(false);
+  });
+
+  it('marks surveillance routes as cloud-only on hubs', () => {
+    expect(isHubCloudOnlyRoute('/surveillance')).toBe(true);
+    expect(isHubCloudOnlyRoute('/surveillance/idsr')).toBe(true);
+    expect(isHubCloudOnlyRoute('/patients')).toBe(false);
+  });
+
+  it('classifies all hub-facing module states conservatively', () => {
+    expect(getHubModuleCapability('patients')).toBe('LOCAL_SYNCED');
+    expect(getHubModuleCapability('billing')).toBe('LOCAL_SYNCED');
+    expect(getHubModuleCapability('analytics')).toBe('CLOUD_ONLY');
+    expect(getHubModuleCapability('theatre')).toBe('UNAVAILABLE');
+    expect(getHubRouteCapability('/theatre/cases')).toBe('UNAVAILABLE');
   });
 });

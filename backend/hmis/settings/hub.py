@@ -336,6 +336,10 @@ MIDDLEWARE.insert(  # noqa: F405
     MIDDLEWARE.index("django.contrib.auth.middleware.AuthenticationMiddleware") + 1,  # noqa: F405
     "hmis.apps.core.middleware.HubLicenseGuardMiddleware",
 )
+MIDDLEWARE.insert(  # noqa: F405
+    MIDDLEWARE.index("hmis.apps.core.middleware.TenantMiddleware") + 1,  # noqa: F405
+    "hmis.apps.core.middleware.HubCloudOnlyWorkflowMiddleware",
+)
 
 # Hub Watermark Middleware (Phase 5C — injects X-Vitora-Build header)
 MIDDLEWARE.append("hmis.apps.core.middleware.HubWatermarkMiddleware")  # noqa: F405

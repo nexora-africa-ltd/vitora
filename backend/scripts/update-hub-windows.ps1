@@ -260,7 +260,17 @@ function Invoke-HubDeviceReenrollment {
         # the local SQLCipher key. Older bundles receive a fresh key once.
         $databaseEncryptionKey = Get-HubEnvValue "HUB_DATABASE_ENCRYPTION_KEY"
         if (-not $databaseEncryptionKey) {
-            $databaseEncryptionKey = & $PythonExe -c "import secrets; print(secrets.token_urlsafe(64))"
+            $databasePath = if ($env:HUB_DB_PATH) { $env:HUB_DB_PATH } else { "$InstallDir\data\hub.sqlite3" }
+            if (Test-Path $databasePath) {
+                Write-Info "Local SQLCipher key is absent; requesting cloud recovery..."
+                $databaseEncryptionKey = & $PythonExe "$InstallDir\scripts\hub_database_key_escrow.py" recover
+                if ($LASTEXITCODE -ne 0 -or -not $databaseEncryptionKey) {
+                    throw "Cloud database-key recovery failed; this encrypted database cannot be opened and remains unavailable."
+                }
+                Write-Info "Cloud database-key recovery completed."
+            } else {
+                $databaseEncryptionKey = & $PythonExe -c "import secrets; print(secrets.token_urlsafe(64))"
+            }
         }
         # Do not persist the required flag until an existing plaintext database
         # has been converted and the local SQLCipher key has been verified.
@@ -867,6 +877,12 @@ $dpapiSecrets = @{
 }
 Write-DpapiSecretsBundle -Secrets $dpapiSecrets -Path $hubSecretsFile
 Write-Info "Refreshed DPAPI secret bundle."
+& $pythonExe "$InstallDir\scripts\hub_database_key_escrow.py" submit
+if ($LASTEXITCODE -eq 0) {
+    Write-Info "Cloud database-key escrow enrollment completed."
+} else {
+    Write-Warn "Cloud database-key escrow enrollment failed; this hub is not cloud-recoverable until enrollment succeeds."
+}
 Log "DPAPI secret bundle refreshed"
 
 Push-Location $InstallDir

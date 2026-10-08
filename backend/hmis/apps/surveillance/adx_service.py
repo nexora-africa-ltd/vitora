@@ -38,6 +38,11 @@ class ADXExportService:
         Returns:
             ADX XML string
         """
+        # Production IDSR models always carry facility_ref. Lightweight export
+        # fixtures intentionally omit ORM fields and remain supported here.
+        if getattr(report, "facility_ref_id", None) is None and hasattr(report, "facility_ref_id"):
+            raise ValueError("IDSR report requires a facility before ADX export.")
+
         adx = Element("adx")
         adx.set("xmlns", "urn:ihe:qrph:adx:2015")
 

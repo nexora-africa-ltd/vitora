@@ -1253,6 +1253,32 @@ Hub activation seeds local mirror rows for identity/config data, and hub-local P
 
 When adding downward-sync payloads in `sync_signals.serialize_instance_for_sync()`, include natural-key hints for every FK that may point at activation-seeded hub rows or separately materialized operational records. When materializing in `sync_materializer.py`, remap cloud FK IDs to local rows using those hints before saving. Models that call `full_clean()` can report missing parent rows as validation errors like `instance with id X is not a valid choice`, so hub full-pull deferral must treat those as dependency-order errors too. Otherwise `python manage.py hub_sync --full-pull` can receive valid cloud rows but silently log local FK/unique failures and leave the hub SQLite DB missing staff/role/membership/billing data.
 
+### 12B. Hub Workflow Capabilities Must Be Enforced End-to-End
+
+Facility module entitlement and hub execution support are separate decisions. A facility may enable a module while its hub cannot safely execute the workflow offline or synchronize it correctly.
+
+**SSOT:** `backend/hmis/apps/core/hub_capabilities.py`
+
+Every hub-facing module must be classified as exactly one of:
+
+| Capability | Meaning | Required behavior |
+|------------|---------|-------------------|
+| `LOCAL_SYNCED` | Workflow has a complete, tested local hub and synchronization path | Show hub navigation and permit local API operations |
+| `CLOUD_ONLY` | Workflow is authoritative in cloud or requires external/cloud services | Hide local hub navigation; hub API returns `409 {code: "hub_cloud_only"}`; use cloud workflow when online |
+| `UNAVAILABLE` | Sync dependency closure is incomplete or the workflow is unsafe locally | Hide navigation and return `409 {code: "hub_workflow_unavailable"}` for direct hub API access |
+
+**Current safety boundary:** Surveillance, IDSR/KHIS/DHIS2 reporting, county notification, IHR notification, contact tracing, analytics, MOH reporting, insurance, CDS, AI, and hub-admin workflows are not local hub workflows. Do not expose local forms or store permanent external reporting credentials on hubs for these capabilities.
+
+**Enforcement is mandatory in all layers:**
+
+- Backend: update `hub_capabilities.py` and ensure `HubCloudOnlyWorkflowMiddleware` protects restricted API prefixes.
+- Hub health: expose the capability payload from `/api/hub/health/` for desktop clients and support tooling.
+- Frontend: update `web-app/lib/desktop/hub-capabilities.ts`; `useNavigationItems()` and `RouteGuard` must hide/block any non-`LOCAL_SYNCED` module in `lan_client` and `lan_hub` modes.
+- Tests: add backend route/health tests and frontend navigation/direct-route tests for every changed classification.
+- Documentation: update DHA-facing workflow documentation whenever a capability changes.
+
+Never classify a module as `LOCAL_SYNCED` merely because one or more models appear in `sync_registry.py`. Confirm the complete workflow graph, including writes, FK dependencies, state transitions, audit events, conflict behavior, external side effects, and recovery behavior.
+
 ### 13. Domain Event Wiring Is MANDATORY for New Models with State Transitions
 
 > ⚠️ **CRITICAL**: Every new model that has state transitions (status fields, clinically significant creation, workflow actions) **MUST** publish domain events via `publish_event()` in `signals.py`. Failure to wire events means WebSocket consumers, read-model projections, and the EventStore audit trail will be blind to those changes.

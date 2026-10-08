@@ -1117,9 +1117,7 @@ class IDSRReportingService:
         epi_week: int,
         week_start: "date",
         week_end: "date",
-        facility_code: str | None = None,
-        facility_name: str | None = None,
-        county=None,
+        facility,
         generated_by=None,
     ) -> "IDSRWeeklyReport":
         """
@@ -1133,9 +1131,7 @@ class IDSRReportingService:
             epi_week: Epidemiological week number
             week_start: Monday of the week
             week_end: Sunday of the week
-            facility_code: MFL code (optional, from settings)
-            facility_name: Facility name
-            county: County for filtering/routing
+            facility: Facility whose cases and DHIS2 configuration are used
             generated_by: User generating the report
 
         Returns:
@@ -1143,7 +1139,6 @@ class IDSRReportingService:
         """
         from datetime import datetime
 
-        from django.conf import settings
         from django.db import transaction
 
         from .models import (
@@ -1154,17 +1149,20 @@ class IDSRReportingService:
             NotifiableCategory,
         )
 
-        # Get facility info from settings if not provided
-        if not facility_code:
-            facility_code = getattr(settings, "FACILITY_MFL_CODE", "")
-        if not facility_name:
-            facility_name = getattr(settings, "FACILITY_NAME", "")
+        if facility is None:
+            raise ValueError("A facility is required to generate an IDSR weekly report.")
+
+        facility_code = facility.mfl_code
+        facility_name = facility.name
+        county = facility.county
 
         # Convert week_end to datetime for comparison with detected_at
         week_start_dt = datetime.combine(week_start, datetime.min.time())
         week_end_dt = datetime.combine(week_end, datetime.max.time())
 
         # Make timezone-aware
+        from django.conf import settings
+
         if settings.USE_TZ:
             from django.utils import timezone as tz
 
@@ -1175,6 +1173,7 @@ class IDSRReportingService:
         cases_queryset = NotifiableCase.objects.select_related(
             "disease", "patient", "county"
         ).filter(
+            facility=facility,
             detected_at__gte=week_start_dt,
             detected_at__lte=week_end_dt,
         )
@@ -1189,8 +1188,10 @@ class IDSRReportingService:
             report, created = IDSRWeeklyReport.objects.update_or_create(
                 epi_year=epi_year,
                 epi_week=epi_week,
-                facility_code=facility_code,
+                facility_ref=facility,
                 defaults={
+                    "organization": facility.organization,
+                    "facility_code": facility_code,
                     "facility_name": facility_name,
                     "week_start_date": week_start,
                     "week_end_date": week_end,
@@ -1308,7 +1309,7 @@ class IDSRReportingService:
         return max(0, years)
 
     @classmethod
-    def generate_previous_week_report(cls, generated_by=None) -> "IDSRWeeklyReport":
+    def generate_previous_week_report(cls, facility, generated_by=None) -> "IDSRWeeklyReport":
         """
         Generate IDSR report for the previous epidemiological week.
 
@@ -1326,6 +1327,7 @@ class IDSRReportingService:
             epi_week=epi_week,
             week_start=week_start,
             week_end=week_end,
+            facility=facility,
             generated_by=generated_by,
         )
 
@@ -1351,7 +1353,7 @@ class IDSRReportingService:
         period = f"{report.epi_year}W{report.epi_week:02d}"
 
         # Resolve org unit from per-facility config or global fallback
-        facility = getattr(report, "facility", None)
+        facility = report.facility_ref
         creds = resolve_dhis2_credentials(facility)
         org_unit = creds.org_unit if creds.org_unit else report.facility_code
 
@@ -1427,7 +1429,7 @@ class IDSRReportingService:
         if report.status != "APPROVED":
             raise ValueError("Report must be approved before submission")
 
-        facility = getattr(report, "facility", None)
+        facility = report.facility_ref
         creds = resolve_dhis2_credentials(facility)
 
         if not all([creds.base_url, creds.username, creds.password]):

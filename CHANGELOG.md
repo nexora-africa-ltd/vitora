@@ -15,6 +15,22 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Hub 1.0.33] - 2026-10-08
+
+### Hub
+
+- Scope scheduled IDSR generation, report identity, API visibility, DHIS2 submission, ADX export, and Django admin review to the authoritative facility and organization fields.
+- Add Azure Key Vault-backed SQLCipher key escrow enrollment/recovery integration to Linux and Windows hub installers and updaters, plus a manual staging recovery drill workflow.
+- Add the hub capability registry and block cloud-only or unavailable workflow APIs locally, including surveillance, reporting, analytics, and incomplete workflow modules.
+- Add DHA-facing recovery, backup, disease reporting, IDSR, access-control, vulnerability assessment, and penetration-testing evidence documents.
+
+## [Desktop 1.0.27] - 2026-10-08
+
+### Desktop
+
+- Apply the shared hub capability registry to desktop hub navigation and direct-route guards, hiding cloud-only and unavailable modules in LAN hub/client modes.
+- Keep cloud-authoritative surveillance, IDSR, DHIS2/KHIS, county notification, IHR, and contact-tracing workflows out of local hub navigation.
+
 ## [Hub 1.0.25] - 2026-10-03
 
 ### Hub

@@ -82,6 +82,7 @@ def hub_health(request):  # noqa: ARG001
         - version: software version
     """
     from hmis import get_runtime_version
+    from hmis.apps.core.hub_capabilities import hub_capabilities_payload
 
     health = {
         "status": "healthy",
@@ -93,6 +94,7 @@ def hub_health(request):  # noqa: ARG001
         "server_time": timezone.now().isoformat(),
         "version": get_runtime_version(),
         "discovery": get_hub_discovery_health(),
+        "capabilities": hub_capabilities_payload(),
     }
 
     # Database check

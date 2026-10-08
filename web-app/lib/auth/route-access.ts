@@ -266,3 +266,8 @@ export function isLISStandaloneRouteAllowed(
   if (!requirement) return false;
   return passesRouteAccessRequirement(requirement, evaluators);
 }
+
+/** Routes that must be served by Vitora Cloud while hub sync is unavailable. */
+export function isHubCloudOnlyRoute(pathname: string): boolean {
+  return pathname === '/surveillance' || pathname.startsWith('/surveillance/');
+}

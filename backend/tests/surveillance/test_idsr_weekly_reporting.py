@@ -15,6 +15,24 @@ import pytest  # type: ignore
 from django.utils import timezone
 from rest_framework import status
 
+
+@pytest.fixture
+def other_facility(db, sample_organization, sample_county, sample_sub_county):
+    """Create a second active facility for tenant-scoping assertions."""
+    from hmis.apps.core.models import Facility
+
+    return Facility.objects.create(
+        organization=sample_organization,
+        name="Other Test Health Centre",
+        mfl_code="99997",
+        level="3",
+        county=sample_county,
+        sub_county=sample_sub_county,
+        is_active=True,
+        has_surveillance=True,
+    )
+
+
 # ============================================================================
 # IDSRWeeklyReport Model Tests
 # ============================================================================
@@ -131,7 +149,7 @@ class TestIDSRWeeklyReportModel:
         assert report.dhis2_submitted_at is not None
         assert report.dhis2_response == dhis2_response
 
-    def test_unique_constraint(self, db):
+    def test_unique_constraint(self, db, sample_facility):
         """Should prevent duplicate reports for same week/facility."""
         from django.db import IntegrityError
 
@@ -142,7 +160,7 @@ class TestIDSRWeeklyReportModel:
             epi_week=8,
             week_start_date=date(2026, 2, 16),
             week_end_date=date(2026, 2, 22),
-            facility_code="MFL001",
+            facility_ref=sample_facility,
         )
 
         with pytest.raises(IntegrityError):
@@ -151,8 +169,16 @@ class TestIDSRWeeklyReportModel:
                 epi_week=8,
                 week_start_date=date(2026, 2, 16),
                 week_end_date=date(2026, 2, 22),
-                facility_code="MFL001",
+                facility_ref=sample_facility,
             )
+
+    def test_admin_exposes_authoritative_facility_scope(self):
+        """IDSR administration must expose the facility FK used for report isolation."""
+        from hmis.apps.surveillance.admin import IDSRWeeklyReportAdmin
+
+        assert "facility_ref" in IDSRWeeklyReportAdmin.raw_id_fields
+        assert "facility_ref" in IDSRWeeklyReportAdmin.list_filter
+        assert "facility_ref__name" in IDSRWeeklyReportAdmin.search_fields
 
 
 # ============================================================================
@@ -308,7 +334,7 @@ class TestIDSRReportingService:
         assert epi_year == 2026
         assert epi_week == 7
 
-    def test_generate_weekly_report_creates_report(self, db, sample_county):
+    def test_generate_weekly_report_creates_report(self, db, sample_facility):
         """Should create a new IDSR weekly report."""
         from hmis.apps.surveillance.models import IDSRWeeklyReport
         from hmis.apps.surveillance.services import IDSRReportingService
@@ -318,9 +344,7 @@ class TestIDSRReportingService:
             epi_week=8,
             week_start=date(2026, 2, 16),
             week_end=date(2026, 2, 22),
-            facility_code="MFL001",
-            facility_name="Test Facility",
-            county=sample_county,
+            facility=sample_facility,
         )
 
         assert report.id is not None
@@ -328,7 +352,7 @@ class TestIDSRReportingService:
         assert report.epi_week == 8
         assert IDSRWeeklyReport.objects.count() == 1
 
-    def test_generate_weekly_report_updates_existing(self, db, sample_county):
+    def test_generate_weekly_report_updates_existing(self, db, sample_facility):
         """Should update existing report for same week."""
         from hmis.apps.surveillance.models import IDSRWeeklyReport
         from hmis.apps.surveillance.services import IDSRReportingService
@@ -339,8 +363,7 @@ class TestIDSRReportingService:
             epi_week=8,
             week_start=date(2026, 2, 16),
             week_end=date(2026, 2, 22),
-            facility_code="MFL001",
-            facility_name="Old Name",
+            facility=sample_facility,
         )
 
         # Regenerate - should update, not create new
@@ -349,15 +372,14 @@ class TestIDSRReportingService:
             epi_week=8,
             week_start=date(2026, 2, 16),
             week_end=date(2026, 2, 22),
-            facility_code="MFL001",
-            facility_name="New Name",
+            facility=sample_facility,
         )
 
         assert IDSRWeeklyReport.objects.count() == 1
-        assert report.facility_name == "New Name"
+        assert report.facility_name == sample_facility.name
 
     def test_generate_weekly_report_aggregates_cases(
-        self, db, sample_county, sample_patient, sample_encounter
+        self, db, sample_county, sample_patient, sample_encounter, sample_facility
     ):
         """Should aggregate notifiable cases into report."""
         from hmis.apps.surveillance.models import NotifiableCase, NotifiableDisease
@@ -375,7 +397,7 @@ class TestIDSRReportingService:
             disease=disease,
             patient=sample_patient,
             encounter=sample_encounter,
-            county=sample_county,
+            facility=sample_facility,
             detected_at=timezone.make_aware(timezone.datetime(2026, 2, 18, 10, 0, 0)),
         )
 
@@ -384,7 +406,7 @@ class TestIDSRReportingService:
             epi_week=8,
             week_start=date(2026, 2, 16),
             week_end=date(2026, 2, 22),
-            county=sample_county,
+            facility=sample_facility,
         )
 
         assert report.total_cases == 1
@@ -431,6 +453,26 @@ class TestIDSRReportingService:
         assert payload["orgUnit"] == "MFL001"
         assert len(payload["dataValues"]) > 0
 
+    def test_prepare_dhis2_payload_uses_report_facility(self, db, sample_facility, settings):
+        """DHIS2 payload must use the report facility rather than global configuration."""
+        from hmis.apps.surveillance.models import IDSRWeeklyReport
+        from hmis.apps.surveillance.services import IDSRReportingService
+
+        settings.DHIS2_ORG_UNIT = "GLOBAL-ORG-UNIT"
+        sample_facility.dhis2_org_unit = "FACILITY-ORG-UNIT"
+        sample_facility.save(update_fields=["dhis2_org_unit"])
+        report = IDSRWeeklyReport.objects.create(
+            epi_year=2026,
+            epi_week=8,
+            week_start_date=date(2026, 2, 16),
+            week_end_date=date(2026, 2, 22),
+            facility_ref=sample_facility,
+        )
+
+        payload = IDSRReportingService.prepare_dhis2_payload(report)
+
+        assert payload["orgUnit"] == "FACILITY-ORG-UNIT"
+
     def test_calculate_age(self, db):
         """Should calculate age correctly."""
         from hmis.apps.surveillance.services import IDSRReportingService
@@ -461,28 +503,18 @@ class TestIDSRReportingService:
 class TestIDSRCeleryTasks:
     """Tests for IDSR Celery tasks."""
 
-    @patch("hmis.apps.surveillance.services.IDSRReportingService.generate_previous_week_report")
-    def test_generate_idsr_weekly_report_task(self, mock_generate, db):
-        """Should call service to generate report."""
-        from hmis.apps.surveillance.models import IDSRWeeklyReport
+    def test_generate_idsr_weekly_report_task(self, db, sample_facility):
+        """Should generate a separate report for each enabled surveillance facility."""
         from hmis.apps.surveillance.tasks import generate_idsr_weekly_report
 
-        # Mock return value
-        mock_report = MagicMock()
-        mock_report.id = 1
-        mock_report.epi_year = 2026
-        mock_report.epi_week = 7
-        mock_report.total_cases = 5
-        mock_report.total_deaths = 0
-        mock_report.status = "DRAFT"
-        mock_report.disease_summaries.count.return_value = 2
-        mock_generate.return_value = mock_report
+        sample_facility.has_surveillance = True
+        sample_facility.save(update_fields=["has_surveillance"])
 
-        result = generate_idsr_weekly_report()
+        result = generate_idsr_weekly_report(epi_year=2026, epi_week=8)
 
-        mock_generate.assert_called_once()
-        assert result["report_id"] == 1
-        assert result["epi_week"] == 7
+        assert result["report_count"] == 1
+        assert result["reports"][0]["facility_id"] == sample_facility.id
+        assert result["epi_week"] == 8
 
     @patch("hmis.apps.surveillance.services.SurveillanceService.check_overdue_cases")
     def test_check_overdue_notifications_task(self, mock_check, db):
@@ -497,6 +529,147 @@ class TestIDSRCeleryTasks:
         assert result["overdue_count"] == 0
 
 
+class TestIDSRFacilityScopedGeneration:
+    """Tests that IDSR generation never aggregates cases across facilities."""
+
+    @pytest.fixture
+    def second_facility(self, db, sample_organization, sample_county, sample_sub_county):
+        """Create a second surveillance-enabled facility in the same organization."""
+        from hmis.apps.core.models import Facility
+
+        return Facility.objects.create(
+            organization=sample_organization,
+            name="Second Test Health Centre",
+            mfl_code="99998",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+            has_surveillance=True,
+        )
+
+    def test_weekly_reports_only_aggregate_cases_from_their_facility(
+        self,
+        db,
+        sample_facility,
+        second_facility,
+        sample_patient,
+        sample_encounter,
+        sample_county,
+    ):
+        """Each facility report must exclude cases assigned to another facility."""
+        from hmis.apps.surveillance.models import NotifiableCase, NotifiableDisease
+        from hmis.apps.surveillance.services import IDSRReportingService
+
+        sample_facility.has_surveillance = True
+        sample_facility.save(update_fields=["has_surveillance"])
+        disease_a = NotifiableDisease.objects.create(
+            name="Facility A Cholera",
+            icd10_codes="A00",
+            category="IMMEDIATE",
+        )
+        disease_b = NotifiableDisease.objects.create(
+            name="Facility B Measles",
+            icd10_codes="B05",
+            category="IMMEDIATE",
+        )
+        detected_at = timezone.make_aware(timezone.datetime(2026, 2, 18, 10, 0, 0))
+        NotifiableCase.objects.create(
+            disease=disease_a,
+            patient=sample_patient,
+            encounter=sample_encounter,
+            facility=sample_facility,
+            organization=sample_facility.organization,
+            county=sample_county,
+            detected_at=detected_at,
+        )
+        NotifiableCase.objects.create(
+            disease=disease_b,
+            patient=sample_patient,
+            encounter=sample_encounter,
+            facility=second_facility,
+            organization=second_facility.organization,
+            county=sample_county,
+            detected_at=detected_at,
+        )
+
+        report_a = IDSRReportingService.generate_weekly_report(
+            epi_year=2026,
+            epi_week=8,
+            week_start=date(2026, 2, 16),
+            week_end=date(2026, 2, 22),
+            facility=sample_facility,
+        )
+        report_b = IDSRReportingService.generate_weekly_report(
+            epi_year=2026,
+            epi_week=8,
+            week_start=date(2026, 2, 16),
+            week_end=date(2026, 2, 22),
+            facility=second_facility,
+        )
+
+        assert report_a.facility_ref == sample_facility
+        assert report_a.organization == sample_facility.organization
+        assert report_a.total_cases == 1
+        assert list(report_a.disease_summaries.values_list("disease__name", flat=True)) == [
+            "Facility A Cholera"
+        ]
+        assert report_b.facility_ref == second_facility
+        assert report_b.organization == second_facility.organization
+        assert report_b.total_cases == 1
+        assert list(report_b.disease_summaries.values_list("disease__name", flat=True)) == [
+            "Facility B Measles"
+        ]
+
+    def test_scheduled_task_generates_one_report_per_enabled_facility(
+        self, db, sample_facility, second_facility
+    ):
+        """The weekly task must run generation separately for each active surveillance facility."""
+        from hmis.apps.surveillance.models import IDSRWeeklyReport
+        from hmis.apps.surveillance.tasks import generate_idsr_weekly_report
+
+        sample_facility.has_surveillance = True
+        sample_facility.save(update_fields=["has_surveillance"])
+
+        result = generate_idsr_weekly_report(epi_year=2026, epi_week=8)
+
+        assert result["report_count"] == 2
+        assert result["failure_count"] == 0
+        assert set(
+            IDSRWeeklyReport.objects.filter(epi_year=2026, epi_week=8).values_list(
+                "facility_ref_id", flat=True
+            )
+        ) == {sample_facility.id, second_facility.id}
+
+    @patch("hmis.apps.surveillance.services.IDSRReportingService.generate_weekly_report")
+    def test_scheduled_task_continues_after_one_facility_fails(
+        self, mock_generate, db, sample_facility, second_facility
+    ):
+        """A failed facility report must not prevent other facilities from generating."""
+        from hmis.apps.surveillance.tasks import generate_idsr_weekly_report
+
+        sample_facility.has_surveillance = True
+        sample_facility.save(update_fields=["has_surveillance"])
+        successful_report = MagicMock(
+            id=22,
+            epi_year=2026,
+            epi_week=8,
+            total_cases=0,
+            total_deaths=0,
+            status="DRAFT",
+        )
+        successful_report.disease_summaries.count.return_value = 0
+        mock_generate.side_effect = [ValueError("bad facility data"), successful_report]
+
+        result = generate_idsr_weekly_report(epi_year=2026, epi_week=8)
+
+        assert mock_generate.call_count == 2
+        assert result["report_count"] == 1
+        assert result["failure_count"] == 1
+        assert result["reports"][0]["facility_id"] == second_facility.id
+        assert result["failures"][0]["facility_id"] == sample_facility.id
+
+
 # ============================================================================
 # API Endpoints Tests
 # ============================================================================
@@ -505,7 +678,7 @@ class TestIDSRCeleryTasks:
 class TestIDSRAPIEndpoints:
     """Tests for IDSR Weekly Report API endpoints."""
 
-    def test_list_idsr_reports(self, authenticated_client, db):
+    def test_list_idsr_reports(self, authenticated_client, db, sample_facility):
         """Should list IDSR reports."""
         from hmis.apps.surveillance.models import IDSRWeeklyReport
 
@@ -514,6 +687,7 @@ class TestIDSRAPIEndpoints:
             epi_week=8,
             week_start_date=date(2026, 2, 16),
             week_end_date=date(2026, 2, 22),
+            facility_ref=sample_facility,
         )
 
         response = authenticated_client.get("/api/surveillance/idsr/")
@@ -521,7 +695,7 @@ class TestIDSRAPIEndpoints:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 1
 
-    def test_retrieve_idsr_report(self, authenticated_client, db):
+    def test_retrieve_idsr_report(self, authenticated_client, db, sample_facility):
         """Should retrieve single IDSR report with disease summaries."""
         from hmis.apps.surveillance.models import IDSRWeeklyReport
 
@@ -530,6 +704,7 @@ class TestIDSRAPIEndpoints:
             epi_week=8,
             week_start_date=date(2026, 2, 16),
             week_end_date=date(2026, 2, 22),
+            facility_ref=sample_facility,
         )
 
         response = authenticated_client.get(f"/api/surveillance/idsr/{report.id}/")
@@ -537,6 +712,24 @@ class TestIDSRAPIEndpoints:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["epi_week"] == 8
         assert "disease_summaries" in response.data
+
+    def test_retrieve_idsr_report_from_other_facility_is_hidden(
+        self, authenticated_client, db, sample_facility, other_facility
+    ):
+        """Facility-scoped IDSR reports must not be retrievable from another facility."""
+        from hmis.apps.surveillance.models import IDSRWeeklyReport
+
+        report = IDSRWeeklyReport.objects.create(
+            epi_year=2026,
+            epi_week=8,
+            week_start_date=date(2026, 2, 16),
+            week_end_date=date(2026, 2, 22),
+            facility_ref=other_facility,
+        )
+
+        response = authenticated_client.get(f"/api/surveillance/idsr/{report.id}/")
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_generate_idsr_report_endpoint(self, authenticated_client, db):
         """Should generate new IDSR report via API."""
@@ -564,7 +757,7 @@ class TestIDSRAPIEndpoints:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_approve_idsr_report(self, authenticated_client, db):
+    def test_approve_idsr_report(self, authenticated_client, db, sample_facility):
         """Should approve IDSR report."""
         from hmis.apps.surveillance.models import IDSRWeeklyReport
 
@@ -574,6 +767,7 @@ class TestIDSRAPIEndpoints:
             week_start_date=date(2026, 2, 16),
             week_end_date=date(2026, 2, 22),
             status="DRAFT",
+            facility_ref=sample_facility,
         )
 
         response = authenticated_client.post(
@@ -584,7 +778,7 @@ class TestIDSRAPIEndpoints:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "APPROVED"
 
-    def test_approve_already_submitted_fails(self, authenticated_client, db):
+    def test_approve_already_submitted_fails(self, authenticated_client, db, sample_facility):
         """Should not approve already submitted report."""
         from hmis.apps.surveillance.models import IDSRWeeklyReport
 
@@ -594,6 +788,7 @@ class TestIDSRAPIEndpoints:
             week_start_date=date(2026, 2, 16),
             week_end_date=date(2026, 2, 22),
             status="SUBMITTED",
+            facility_ref=sample_facility,
         )
 
         response = authenticated_client.post(f"/api/surveillance/idsr/{report.id}/approve/", {})
@@ -609,7 +804,7 @@ class TestIDSRAPIEndpoints:
         assert "previous_weeks" in response.data
         assert "total_reports_this_year" in response.data
 
-    def test_dhis2_preview_endpoint(self, authenticated_client, db):
+    def test_dhis2_preview_endpoint(self, authenticated_client, db, sample_facility):
         """Should return DHIS2 payload preview."""
         from hmis.apps.surveillance.models import IDSRWeeklyReport
 
@@ -618,7 +813,7 @@ class TestIDSRAPIEndpoints:
             epi_week=8,
             week_start_date=date(2026, 2, 16),
             week_end_date=date(2026, 2, 22),
-            facility_code="MFL001",
+            facility_ref=sample_facility,
         )
 
         response = authenticated_client.get(f"/api/surveillance/idsr/{report.id}/dhis2_preview/")
@@ -628,7 +823,7 @@ class TestIDSRAPIEndpoints:
         assert response.data["payload"]["period"] == "2026W08"
 
     def test_export_endpoints_support_legacy_idsr_reports_post_paths(
-        self, authenticated_client, db
+        self, authenticated_client, db, sample_facility
     ):
         """Should support legacy idsr-reports POST export endpoints with underscore action names."""
         from hmis.apps.surveillance.models import IDSRWeeklyReport
@@ -638,8 +833,7 @@ class TestIDSRAPIEndpoints:
             epi_week=8,
             week_start_date=date(2026, 2, 16),
             week_end_date=date(2026, 2, 22),
-            facility_code="MFL001",
-            facility_name="Test Facility",
+            facility_ref=sample_facility,
         )
 
         adx_response = authenticated_client.post(
@@ -656,7 +850,7 @@ class TestIDSRAPIEndpoints:
         assert adx_response["Content-Type"].startswith("application/xml")
         assert sdmx_response["Content-Type"].startswith("application/xml")
 
-    def test_filter_by_status(self, authenticated_client, db):
+    def test_filter_by_status(self, authenticated_client, db, sample_facility):
         """Should filter reports by status."""
         from hmis.apps.surveillance.models import IDSRWeeklyReport
 
@@ -666,7 +860,7 @@ class TestIDSRAPIEndpoints:
             week_start_date=date(2026, 2, 16),
             week_end_date=date(2026, 2, 22),
             status="DRAFT",
-            facility_code="MFL001",
+            facility_ref=sample_facility,
         )
         IDSRWeeklyReport.objects.create(
             epi_year=2026,
@@ -674,7 +868,7 @@ class TestIDSRAPIEndpoints:
             week_start_date=date(2026, 2, 9),
             week_end_date=date(2026, 2, 15),
             status="SUBMITTED",
-            facility_code="MFL002",
+            facility_ref=sample_facility,
         )
 
         response = authenticated_client.get("/api/surveillance/idsr/?status=DRAFT")
