@@ -21,6 +21,7 @@ jobs:
       HUB_ORGANIZATION_ID: ${{ vars.HUB_ESCROW_DRILL_ORGANIZATION_ID }}
       HUB_FACILITY_ID: ${{ vars.HUB_ESCROW_DRILL_FACILITY_ID }}
       LICENSE_TOKEN: ${{ secrets.HUB_ESCROW_DRILL_LICENSE_TOKEN }}
+      PYTHONPATH: ${{ github.workspace }}/backend
 
     steps:
       - uses: actions/checkout@v5
