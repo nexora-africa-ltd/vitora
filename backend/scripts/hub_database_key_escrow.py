@@ -33,8 +33,14 @@ def _request(endpoint: str, payload: dict[str, str]) -> dict:
     try:
         with urllib.request.urlopen(request, timeout=20) as response:  # noqa: S310 - cloud URL is activation-configured
             return json.loads(response.read())
-    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ValueError) as exc:
-        raise RuntimeError("Cloud database-key escrow request failed.") from exc
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(
+            f"Cloud database-key escrow request failed with HTTP {exc.code}."
+        ) from exc
+    except (urllib.error.URLError, TimeoutError, ValueError) as exc:
+        raise RuntimeError(
+            "Cloud database-key escrow request failed before receiving an HTTP response."
+        ) from exc
 
 
 def submit() -> None:
