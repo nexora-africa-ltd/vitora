@@ -122,6 +122,7 @@ def test_upgrade_scripts_reenroll_with_v2_without_plaintext_dotenv_secrets():
         assert "secrets_envelope" in script
         assert "protocol_version" in script
 
-    assert "ENCRYPTION_KEY=" not in linux.split('cat > "$APP_DIR/.env"', 1)[-1]
-    assert "PII_HMAC_KEY=" not in linux.split('cat > "$APP_DIR/.env"', 1)[-1]
+    dotenv_writes = [line for line in linux.splitlines() if '>> "$APP_DIR/.env"' in line]
+    assert all("ENCRYPTION_KEY=" not in line for line in dotenv_writes)
+    assert all("PII_HMAC_KEY=" not in line for line in dotenv_writes)
     assert "PlaintextFallback" not in windows
