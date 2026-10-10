@@ -1211,9 +1211,9 @@ numpy==2.4.2 ; python_version >= "3.12" and python_version < "4.0" \
     --hash=sha256:fbde1b0c6e81d56f5dccd95dd4a711d9b95df1ae4009a60887e56b27e8d903fa \
     --hash=sha256:fcf92bee92742edd401ba41135185866f7026c502617f422eb432cfeca4fe236 \
     --hash=sha256:fd49860271d52127d61197bb50b64f58454e9f578cb4b2c001a6de8b1f50b0b1
-oauthlib==3.3.1 ; python_version >= "3.12" and python_version < "4.0" \
-    --hash=sha256:0f0f8aa759826a193cf66c12ea1af1637f87b9b4622d46e866952bb022e538c9 \
-    --hash=sha256:88119c938d2b8fb88561af5f6ee0eec8cc8d552b7bb1f712743136eb7523b7a1
+oauthlib==4.0.0 ; python_version >= "3.12" and python_version < "4.0" \
+    --hash=sha256:624c28c13a0a59cabf9747dfa52af63be3e512a7f2714df16e91b5b3a145e6cd \
+    --hash=sha256:efb274799819440f95b4ab3b818869f1ce9ae26c5beacba0201d1a1b76b54f86
 openai==3.5.0 ; python_version >= "3.12" and python_version < "4.0" \
     --hash=sha256:743738bb458a586d0d02d173bf398d29d7d7a80d182d167aa74f1c08814ecc78 \
     --hash=sha256:7c0873d379655f65fa515c5692c8620e73bf6a6dce3e63f37589bc99bda3fdfd
