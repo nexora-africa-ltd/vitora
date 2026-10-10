@@ -82,9 +82,10 @@ class TestImmunizationConsumerConnection:
         from hmis.asgi import application
 
         communicator = WebsocketCommunicator(application, "/ws/immunizations/99999/records/")
-        connected, _ = await communicator.connect()
+        connected, code = await communicator.connect()
 
         assert connected is False
+        assert code == 4404
 
     async def test_connect_joins_facility_group(self):
         """Should join the facility-specific immunization channel group on connect."""

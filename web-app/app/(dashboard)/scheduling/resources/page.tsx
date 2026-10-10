@@ -79,10 +79,18 @@ function isRadiologyDepartment(
   department: { name?: string; code?: string; department_type?: string } | undefined
 ): boolean {
   if (!department) return false;
-  if (department.department_type === 'RADIOLOGY') return true;
+  if (department.department_type === 'RADIOLOGY' || department.department_type === 'IMAGING') {
+    return true;
+  }
   const name = (department.name || '').toLowerCase();
   const code = (department.code || '').toLowerCase();
-  return name.includes('radiology') || code === 'rad' || code.includes('radio');
+  return (
+    name.includes('radiology') ||
+    name.includes('imaging') ||
+    code === 'rad' ||
+    code.includes('radio') ||
+    code.includes('imag')
+  );
 }
 
 const typeIcons: Record<ResourceType, React.ReactNode> = {
@@ -826,7 +834,7 @@ export default function SchedulingResourcesPage() {
                   </Select>
                 </div>
               )}
-              {formType !== 'PERSON' && (
+              {requiresRadiologyModalities && (
                 <div>
                   <Label>Supported imaging modalities</Label>
                   <div className="mt-2 grid grid-cols-2 gap-2 rounded-md border p-3 sm:grid-cols-3">
@@ -859,15 +867,9 @@ export default function SchedulingResourcesPage() {
                       );
                     })}
                   </div>
-                  {requiresRadiologyModalities ? (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Radiology rooms/equipment require at least one modality.
-                    </p>
-                  ) : (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Optional for non-radiology resources.
-                    </p>
-                  )}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Imaging and radiology rooms/equipment require at least one modality.
+                  </p>
                   {formErrors.modalities && (
                     <p className="mt-1 text-xs text-destructive">{formErrors.modalities}</p>
                   )}

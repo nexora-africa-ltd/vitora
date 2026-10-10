@@ -48,7 +48,7 @@ class LabEncounterConsumer(AsyncJsonWebsocketConsumer):
                 "WebSocket connection rejected: encounter %s not found",
                 self.encounter_id,
             )
-            await self.close()
+            await self.close(code=4404)
             return
 
         # Join encounter-specific group
@@ -130,7 +130,7 @@ class LabOrderConsumer(AsyncJsonWebsocketConsumer):
         order_exists = await self._order_exists(self.order_id)
         if not order_exists:
             logger.warning("WebSocket connection rejected: order %s not found", self.order_id)
-            await self.close()
+            await self.close(code=4404)
             return
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
@@ -196,7 +196,7 @@ class LabClinicianConsumer(AsyncJsonWebsocketConsumer):
         user = self.scope.get("user")
         if not user or user.is_anonymous:
             logger.warning("WebSocket connection rejected: user not authenticated")
-            await self.close()
+            await self.close(code=4401)
             return
 
         self.user_id = user.id

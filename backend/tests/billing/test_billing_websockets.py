@@ -85,9 +85,10 @@ class TestBillingConsumerConnection:
         from hmis.asgi import application
 
         communicator = WebsocketCommunicator(application, "/ws/billing/99999/invoices/")
-        connected, _ = await communicator.connect()
+        connected, code = await communicator.connect()
 
         assert connected is False
+        assert code == 4404
 
     async def test_connect_joins_billing_group(self):
         """Should join the facility-specific billing channel group on connect."""
@@ -209,9 +210,10 @@ class TestSHAClaimConsumerConnection:
         from hmis.asgi import application
 
         communicator = WebsocketCommunicator(application, "/ws/billing/99999/sha-claims/")
-        connected, _ = await communicator.connect()
+        connected, code = await communicator.connect()
 
         assert connected is False
+        assert code == 4404
 
     async def test_sha_claims_group_receives_events(self):
         """Should receive SHA claim events on the correct channel group."""

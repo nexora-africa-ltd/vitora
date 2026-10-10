@@ -77,9 +77,10 @@ class TestDashboardConsumerConnection:
         from hmis.asgi import application
 
         communicator = WebsocketCommunicator(application, "/ws/dashboard/99999/")
-        connected, _ = await communicator.connect()
+        connected, code = await communicator.connect()
 
         assert connected is False
+        assert code == 4404
 
     async def test_connect_joins_facility_group(self):
         """Should join the facility-specific dashboard channel group on connect."""

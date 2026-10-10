@@ -268,9 +268,10 @@ class TestWardCompatibilityConsumerConnection:
         from hmis.asgi import application
 
         communicator = WebsocketCommunicator(application, "/ws/inpatient/wards/99999/")
-        connected, _ = await communicator.connect()
+        connected, code = await communicator.connect()
 
         assert connected is False
+        assert code == 4404
 
     async def test_connect_joins_ward_group(self):
         """Should join the ward-specific channel group on connect."""

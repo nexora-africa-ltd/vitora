@@ -158,12 +158,23 @@ async function getAuthApiUrl(): Promise<string> {
   try {
     const { getApiUrl, isDesktop } = await import('@/lib/desktop');
     if (!isDesktop()) {
+      console.info('[Vitora auth] Resolved web login origin.', { origin: API_BASE_URL });
       return API_BASE_URL;
     }
 
     const desktopApiUrl = await getApiUrl();
-    return desktopApiUrl || API_BASE_URL;
-  } catch {
+    const origin = desktopApiUrl || API_BASE_URL;
+    console.info('[Vitora auth] Resolved desktop login origin.', {
+      native_api_url: desktopApiUrl || null,
+      origin,
+      used_fallback: !desktopApiUrl,
+    });
+    return origin;
+  } catch (error) {
+    console.warn('[Vitora auth] Failed to resolve native login origin; using build-time fallback.', {
+      fallback_origin: API_BASE_URL,
+      error_type: error instanceof Error ? error.name : typeof error,
+    });
     return API_BASE_URL;
   }
 }

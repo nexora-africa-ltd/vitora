@@ -15,6 +15,22 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Hub 1.0.36] - 2026-10-10
+
+### Hub
+
+- Return explicit WebSocket rejection codes for missing facilities/resources, unauthenticated users, and invalid targets so desktop clients can stop futile reconnect loops.
+- Refine hub routing metadata to keep local billing invoice sockets on the facility hub while routing SHA claim sockets to Cloud.
+
+## [Desktop 1.0.31] - 2026-10-10
+
+### Desktop
+
+- Resolve local WebSocket connections from runtime Tauri hub configuration instead of baked build-time API origins.
+- Stop WebSocket reconnect loops after permanent authentication, authorization, facility, resource, and conflict rejections.
+- Add credential-free login-origin diagnostics for hub versus build-time fallback troubleshooting.
+- Show supported imaging modalities only when a resource is assigned to an imaging or radiology department.
+
 ## [Hub 1.0.35] - 2026-10-10
 
 ### Hub

@@ -43,6 +43,11 @@ class MockWebSocket {
     }
   }
 
+  simulateClose(code: number) {
+    this.readyState = MockWebSocket.CLOSED;
+    this.onclose?.(new CloseEvent('close', { code }));
+  }
+
   // Test helpers
   simulateOpen() {
     this.readyState = MockWebSocket.OPEN;
@@ -154,6 +159,22 @@ describe('useWebSocket', () => {
     });
 
     expect(result.current.connectionState).toBe('disconnected');
+  });
+
+  it('does not reconnect after a permanent authorization or facility rejection', () => {
+    jest.useFakeTimers();
+    const { result } = renderHook(() => useWebSocket('ws://localhost/test'), {
+      wrapper: createWrapper(),
+    });
+
+    act(() => {
+      MockWebSocket.instances[0].simulateClose(4404);
+      jest.advanceTimersByTime(5000);
+    });
+
+    expect(result.current.connectionState).toBe('error');
+    expect(MockWebSocket.instances).toHaveLength(1);
+    jest.useRealTimers();
   });
 });
 

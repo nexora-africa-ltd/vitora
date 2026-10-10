@@ -20,6 +20,7 @@ import { createQueryClient } from '@/lib/query-client';
 import { initChunkErrorHandler } from '@/lib/utils/chunk-error-handler';
 import { initDesktopApiUrl } from '@/lib/api/client';
 import { isDesktop } from '@/lib/desktop';
+import { bootstrapWebSocketRuntime } from '@/lib/desktop/websocket-runtime';
 
 // Only load devtools in development - use dynamic import to avoid build errors
 const ReactQueryDevtools = dynamic(
@@ -48,10 +49,14 @@ export function Providers({ children }: ProvidersProps) {
   const [queryClient] = useState(() => createQueryClient());
   const desktopMode = isDesktop();
 
-  useEffect(() => registerAuthCleanup(async () => {
-    await queryClient.cancelQueries();
-    queryClient.clear();
-  }), [queryClient]);
+  useEffect(
+    () =>
+      registerAuthCleanup(async () => {
+        await queryClient.cancelQueries();
+        queryClient.clear();
+      }),
+    [queryClient]
+  );
 
   // Initialize chunk error handler to recover from stale chunks after deployment
   useEffect(() => {
@@ -61,6 +66,7 @@ export function Providers({ children }: ProvidersProps) {
   // Initialize desktop API URL from Tauri config (resolves hub URL for apiClient)
   useEffect(() => {
     initDesktopApiUrl();
+    void bootstrapWebSocketRuntime();
   }, []);
 
   return (

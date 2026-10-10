@@ -45,7 +45,7 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                 "WebSocket connection rejected: facility %s not found",
                 _sanitize_log_field(self.facility_id),
             )
-            await self.close()
+            await self.close(code=4404)
             return
 
         # Join facility-specific dashboard group

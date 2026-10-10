@@ -11,6 +11,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useWebSocket, UseWebSocketOptions } from '../use-websocket';
 import { inpatientQueryKeys } from '../use-inpatient';
 import type { WardWebSocketMessage } from './types';
+import { resolveWebSocketUrl } from '@/lib/desktop/websocket-runtime';
 
 // =============================================================================
 // Utility
@@ -19,24 +20,8 @@ import type { WardWebSocketMessage } from './types';
 /**
  * Get the WebSocket URL based on current environment
  */
-export function getWebSocketUrl(path: string): string {
-  if (typeof window === 'undefined') {
-    return ''; // Server-side, return empty
-  }
-
-  // Use environment variable if set
-  const wsHost = process.env.NEXT_PUBLIC_WS_URL;
-  if (wsHost) {
-    return `${wsHost}${path}`;
-  }
-
-  // Otherwise, derive from current location
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const host = process.env.NEXT_PUBLIC_API_URL
-    ? new URL(process.env.NEXT_PUBLIC_API_URL).host
-    : window.location.host;
-
-  return `${protocol}//${host}${path}`;
+export function getWebSocketUrl(path: string): string | null {
+  return resolveWebSocketUrl(path);
 }
 
 // =============================================================================
@@ -60,7 +45,7 @@ export function useWardCompatibilitySocket(
 ): ReturnType<typeof useWebSocket> {
   const queryClient = useQueryClient();
 
-  const url = wardId ? getWebSocketUrl(`/ws/inpatient/wards/${wardId}/`) : null;
+  const url = wardId ? `/ws/inpatient/wards/${wardId}/` : null;
 
   // Use stable ref for custom handler to prevent dependency issues
   const customOnMessage = options.onMessage;

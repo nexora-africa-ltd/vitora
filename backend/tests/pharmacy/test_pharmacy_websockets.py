@@ -82,9 +82,10 @@ class TestPharmacyQueueConsumerConnection:
         from hmis.asgi import application
 
         communicator = WebsocketCommunicator(application, "/ws/pharmacy/99999/queue/")
-        connected, _ = await communicator.connect()
+        connected, code = await communicator.connect()
 
         assert connected is False
+        assert code == 4404
 
     async def test_connect_joins_facility_group(self):
         """Should join the facility-specific pharmacy channel group on connect."""
