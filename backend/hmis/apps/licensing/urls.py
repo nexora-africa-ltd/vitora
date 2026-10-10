@@ -6,7 +6,7 @@ URL routes for the licensing API.
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from . import cloud_relay_views, views
+from . import cloud_relay_views, cloud_user_token_views, views
 
 router = DefaultRouter()
 router.register("installations", views.InstallationViewSet, basename="installation")
@@ -23,6 +23,16 @@ urlpatterns = [
     path("escrow/submit/", views.submit_hub_database_key_escrow, name="licensing-escrow-submit"),
     path("escrow/recover/", views.recover_hub_database_key_escrow, name="licensing-escrow-recover"),
     # Cloud relay endpoints (hubs forward requests here)
+    path(
+        "cloud/user-token/",
+        cloud_user_token_views.cloud_user_token,
+        name="cloud-user-token",
+    ),
+    path(
+        "hub/user-token/",
+        cloud_user_token_views.hub_cloud_user_token,
+        name="hub-cloud-user-token",
+    ),
     path("cloud/sha/submit/", cloud_relay_views.cloud_sha_submit, name="cloud-sha-submit"),
     path("cloud/sha/preauth/", cloud_relay_views.cloud_sha_preauth, name="cloud-sha-preauth"),
     path(

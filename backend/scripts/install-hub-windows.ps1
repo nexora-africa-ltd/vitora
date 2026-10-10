@@ -411,6 +411,8 @@ $devicePrivateKeyFile = Join-Path $env:TEMP "vitora-device-x25519.pem"
 $bootstrapPython = (Get-Command python -ErrorAction Stop).Source
 & $bootstrapPython -m pip install --quiet cryptography
 $DevicePublicKey = & $bootstrapPython -c "import base64,sys; from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey; from cryptography.hazmat.primitives.serialization import Encoding,NoEncryption,PrivateFormat,PublicFormat; k=X25519PrivateKey.generate(); open(sys.argv[1],'wb').write(k.private_bytes(Encoding.PEM,PrivateFormat.PKCS8,NoEncryption())); print(base64.b64encode(k.public_key().public_bytes(Encoding.Raw,PublicFormat.Raw)).decode('ascii'))" $devicePrivateKeyFile
+$hubSigningKeyPair = & $bootstrapPython -c "import base64; from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey; from cryptography.hazmat.primitives.serialization import Encoding,NoEncryption,PrivateFormat,PublicFormat; k=Ed25519PrivateKey.generate(); print(base64.b64encode(k.private_bytes(Encoding.Raw,PrivateFormat.Raw,NoEncryption())).decode('ascii')); print(base64.b64encode(k.public_key().public_bytes(Encoding.Raw,PublicFormat.Raw)).decode('ascii'))"
+$HubDeviceSigningPrivateKey, $HubDeviceSigningPublicKey = $hubSigningKeyPair
 
 try {
     $activationBody = @{
@@ -420,6 +422,7 @@ try {
         eula_version = $EulaVersion
         protocol_version = 2
         device_public_key = $DevicePublicKey
+        device_signing_public_key = $HubDeviceSigningPublicKey
     } | ConvertTo-Json
 
     $activationResponse = Invoke-RestMethod -Uri "$CloudUrl/api/licensing/activate/" `
@@ -819,6 +822,7 @@ foreach ($entry in @{
     SHA_CLIENT_SECRET = $ShaClientSecret
     HUB_DATABASE_ENCRYPTION_REQUIRED = "true"
     HUB_DATABASE_ENCRYPTION_KEY = $DatabaseEncryptionKey
+    HUB_DEVICE_SIGNING_PRIVATE_KEY = $HubDeviceSigningPrivateKey
 }.GetEnumerator()) {
     [Environment]::SetEnvironmentVariable($entry.Key, [string]$entry.Value, "Process")
 }
@@ -874,6 +878,7 @@ $dpapiSecrets = @{
     SHA_CLIENT_SECRET = $ShaClientSecret
     HUB_DATABASE_ENCRYPTION_REQUIRED = "true"
     HUB_DATABASE_ENCRYPTION_KEY = $DatabaseEncryptionKey
+    HUB_DEVICE_SIGNING_PRIVATE_KEY = $HubDeviceSigningPrivateKey
 }
 Write-DpapiSecretsBundle -Secrets $dpapiSecrets -Path $HubSecretsFile
 & $python "$InstallDir\scripts\hub_database_key_escrow.py" submit

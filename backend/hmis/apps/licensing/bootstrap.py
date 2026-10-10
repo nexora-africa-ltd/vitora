@@ -14,6 +14,7 @@ from django.utils import timezone
 
 from .activation_secrets import encrypt_activation_secrets
 from .backup_credentials import BackupCredentialUnavailable, issue_configured_backup_credentials
+from .tokens import build_cloud_config_payload, sign_cloud_config_envelope
 
 
 def _safe_pii_hmac_key() -> str:
@@ -116,6 +117,9 @@ def build_activation_bootstrap_payload(
         "expires_at": decoded.get("exp"),
         "check_in_by": decoded.get("check_in_by"),
         "sync_url": _activation_sync_url(request),
+        "cloud_config_envelope": sign_cloud_config_envelope(
+            build_cloud_config_payload(installation)
+        ),
         "protocol_version": protocol_version,
         # WebAuthn config so installers can seed sensible defaults. Leaving
         # these blank lets the installer fall back to localhost-scoped values

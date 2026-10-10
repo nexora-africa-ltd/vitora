@@ -259,10 +259,21 @@ with open(sys.argv[1], "wb") as output:
 print(base64.b64encode(key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)).decode("ascii"))
 PY
 )
-REENROLL_PAYLOAD=$("$VENV_DIR/bin/python" - "$DEVICE_PUBLIC_KEY" "$HUB_ID" <<'PY'
+HUB_DEVICE_SIGNING_PRIVATE_KEY=$("$VENV_DIR/bin/python" -c 'from hmis.apps.licensing.hub_signing import generate_hub_device_signing_private_key; print(generate_hub_device_signing_private_key())')
+HUB_DEVICE_SIGNING_PUBLIC_KEY=$(HUB_DEVICE_SIGNING_PRIVATE_KEY="$HUB_DEVICE_SIGNING_PRIVATE_KEY" "$VENV_DIR/bin/python" - <<'PY'
+import base64
+import os
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+key = Ed25519PrivateKey.from_private_bytes(base64.b64decode(os.environ["HUB_DEVICE_SIGNING_PRIVATE_KEY"], validate=True))
+print(base64.b64encode(key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)).decode("ascii"))
+PY
+)
+export HUB_DEVICE_SIGNING_PRIVATE_KEY
+REENROLL_PAYLOAD=$("$VENV_DIR/bin/python" - "$DEVICE_PUBLIC_KEY" "$HUB_DEVICE_SIGNING_PUBLIC_KEY" "$HUB_ID" <<'PY'
 import json
 import sys
-print(json.dumps({"protocol_version": 2, "device_public_key": sys.argv[1], "installation_id": sys.argv[2]}))
+print(json.dumps({"protocol_version": 2, "device_public_key": sys.argv[1], "device_signing_public_key": sys.argv[2], "installation_id": sys.argv[3]}))
 PY
 )
 curl -fsS -o "$REENROLL_RESPONSE" -X POST "${CLOUD_API_BASE_URL%/}/api/licensing/re-enroll/" \
@@ -287,6 +298,7 @@ package = secrets.pop("organization_pii_key_package")
 # been converted and the key has been verified below.
 secrets["hub_database_encryption_required"] = "false"
 secrets["hub_database_encryption_key"] = os.environ.get("HUB_DATABASE_ENCRYPTION_KEY") or ""
+secrets["hub_device_signing_private_key"] = os.environ["HUB_DEVICE_SIGNING_PRIVATE_KEY"]
 temporary = f"{output}.new"
 with open(temporary, "w", encoding="utf-8") as secret_file:
     for name, value in secrets.items():

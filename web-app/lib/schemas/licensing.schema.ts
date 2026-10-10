@@ -25,10 +25,17 @@ export const ActivationResponseSchema = z.object({
   hostname: z.string().optional(),
   hardware_fingerprint: z.string().optional(),
   binary_manifest_id: z.string().optional(),
+  cloud_config_envelope: z.string().optional(),
 });
 
 export const HubEulaResponseSchema = z.object({
   version: z.string(),
   title: z.string(),
   content: z.string(),
+});
+
+export const HubCloudUserTokenResponseSchema = z.object({
+  access_token: z.string(),
+  token_type: z.string().optional(),
+  expires_in: z.number().optional(),
 });

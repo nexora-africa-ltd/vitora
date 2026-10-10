@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { Eye, EyeOff, Loader2, AlertCircle, WifiOff, Clock } from 'lucide-react';
 import { useAuth } from '@/lib/auth/context';
-import { tokenStorage } from '@/lib/auth/storage';
 import { Button } from '@/components/ui/button';
 import { AnimatedThemeToggle } from '@/components/ui/animated-theme-toggle';
 import { Input } from '@/components/ui/input';
@@ -51,7 +50,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [cloudAutoLoginConsent, setCloudAutoLoginConsent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<{
@@ -79,7 +77,6 @@ export default function LoginPage() {
     setMounted(true);
     setIsOffline(!navigator.onLine);
     setIsDesktopMode(isDesktop());
-    setCloudAutoLoginConsent(tokenStorage.hasCloudAutoLoginConsent());
     const goOffline = () => setIsOffline(true);
     const goOnline = () => setIsOffline(false);
     window.addEventListener('offline', goOffline);
@@ -245,7 +242,6 @@ export default function LoginPage() {
 
       // Save or clear credentials based on Remember Me (desktop only)
       if (isDesktop()) {
-        tokenStorage.setCloudAutoLoginConsent(cloudAutoLoginConsent);
         if (rememberMe) {
           storeCredentials(username, password);
         } else {
@@ -556,20 +552,6 @@ export default function LoginPage() {
                         Remember me
                       </label>
                     </div>
-                    {!cloudAutoLoginConsent && (
-                      <div className="flex items-start gap-2">
-                        <input
-                          id="cloud-auto-login-consent"
-                          type="checkbox"
-                          checked={cloudAutoLoginConsent}
-                          onChange={(e) => setCloudAutoLoginConsent(e.target.checked)}
-                          className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
-                        />
-                        <label htmlFor="cloud-auto-login-consent" className="cursor-pointer text-sm text-muted-foreground">
-                          I agree that Vitora may reuse these credentials to establish a separate Vitora Cloud session for online-only workflows, subject to the Terms of Service and Privacy Policy.
-                        </label>
-                      </div>
-                    )}
                   </div>
                 )}
 

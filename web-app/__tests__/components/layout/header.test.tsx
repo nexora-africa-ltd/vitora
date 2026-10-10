@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Header } from '@/components/layout/header';
 import { isDesktop } from '@/lib/desktop';
+import { useCloudConnection } from '@/lib/hooks/use-cloud-connection';
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
@@ -107,6 +108,14 @@ jest.mock('@/lib/desktop', () => ({
   isDesktop: jest.fn(() => false),
 }));
 
+jest.mock('@/lib/hooks/use-cloud-connection', () => ({
+  useCloudConnection: jest.fn(() => ({
+    config: 'not_required',
+    session: 'not_required',
+    reachability: 'not_required',
+  })),
+}));
+
 // Mock NotificationPanel component
 jest.mock('@/components/notifications/notification-panel', () => ({
   NotificationPanel: () =>
@@ -132,11 +141,13 @@ jest.mock('@/components/ui/tooltip', () => ({
   Tooltip: ({ children }: { children: React.ReactNode }) => children,
   TooltipTrigger: ({ children, asChild }: { children: React.ReactNode; asChild?: boolean }) =>
     asChild ? children : React.createElement('span', null, children),
-  TooltipContent: () => null,
+  TooltipContent: ({ children }: { children: React.ReactNode }) =>
+    React.createElement('div', null, children),
 }));
 
 describe('Header', () => {
   const mockIsDesktop = isDesktop as jest.MockedFunction<typeof isDesktop>;
+  const mockUseCloudConnection = useCloudConnection as jest.MockedFunction<typeof useCloudConnection>;
   const defaultProps = {
     onMenuClick: jest.fn(),
     sidebarCollapsed: false,
@@ -189,6 +200,32 @@ describe('Header', () => {
   it('should render user avatar with initials', () => {
     render(<Header {...defaultProps} />);
     expect(screen.getByText('TU')).toBeInTheDocument(); // Test User initials
+  });
+
+  it('identifies a required TibaBot cloud connection separately from service unavailability', () => {
+    mockUseCloudConnection.mockReturnValue({
+      config: 'configured',
+      session: 'required',
+      reachability: 'available',
+    });
+
+    render(<Header {...defaultProps} />);
+
+    expect(screen.getByRole('button', { name: 'Cloud sign-in' })).toBeInTheDocument();
+    expect(screen.getByText('TibaBot cloud connection required')).toBeInTheDocument();
+  });
+
+  it('labels an unreachable cloud as a service outage', () => {
+    mockUseCloudConnection.mockReturnValue({
+      config: 'configured',
+      session: 'connected',
+      reachability: 'unavailable',
+    });
+
+    render(<Header {...defaultProps} />);
+
+    expect(screen.getByRole('button', { name: 'Cloud unavailable' })).toBeInTheDocument();
+    expect(screen.getByText('Cloud service unavailable')).toBeInTheDocument();
   });
 
   it('should provide working profile and settings links in the user menu', async () => {

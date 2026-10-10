@@ -1,6 +1,6 @@
 [package]
 name = "vitora-hmis"
-version = "1.0.29"
+version = "1.0.30"
 description = "Vitora HMIS Desktop Application"
 authors = ["Nexora Consulting Ltd"]
 edition = "2021"
@@ -30,6 +30,7 @@ shared_child = "1"
 port_check = "0.2"
 tokio = { version = "1", features = ["full"] }
 rand = "0.8"
+base64 = "0.22"
 log = "0.4"
 env_logger = "0.11"
 flate2 = "1"

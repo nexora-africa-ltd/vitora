@@ -9,14 +9,14 @@ use flate2::read::GzDecoder;
 use shared_child::SharedChild;
 use std::sync::Arc;
 use tar::Archive;
+#[cfg(not(debug_assertions))]
+use tauri::Emitter;
 use tauri::{
     image::Image,
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
     tray::TrayIconBuilder,
     AppHandle, Manager, State, WebviewWindow, WindowEvent,
 };
-#[cfg(not(debug_assertions))]
-use tauri::Emitter;
 #[cfg(not(debug_assertions))]
 use tauri_plugin_deep_link::DeepLinkExt;
 
@@ -27,11 +27,12 @@ pub mod updater;
 
 use commands::{list_printers, print_receipt};
 use config::{
-    clear_credentials, clear_license_token, get_api_url, get_app_config, get_credentials,
-    get_db_encryption_key, get_fernet_key, get_installation_id, get_license_token, is_first_run,
-    save_hub_config, set_api_url, set_backup_interval, set_deployment_mode, set_facility_id,
-    set_fernet_key, set_hub_url, set_organization_id, set_sync_interval, store_credentials,
-    store_license_token, AppConfig,
+    clear_credentials, clear_license_token, get_api_url, get_app_config, get_cloud_config_envelope,
+    get_credentials, get_db_encryption_key, get_fernet_key,
+    get_installation_id, get_license_token, is_first_run, save_hub_config, set_api_url,
+    set_backup_interval, set_deployment_mode, set_facility_id, set_fernet_key, set_hub_url,
+    set_organization_id, set_sync_interval, store_cloud_config_envelope,
+    store_credentials, store_license_token, AppConfig,
 };
 use hub_discovery::DiscoveredHub;
 use updater::{check_for_updates, get_update_status, install_available_update};
@@ -263,7 +264,10 @@ impl SidecarState {
         let local_data_dir = match app.path().app_local_data_dir() {
             Ok(dir) => dir,
             Err(e) => {
-                log::warn!("Could not resolve local app data dir for WebView cache purge: {}", e);
+                log::warn!(
+                    "Could not resolve local app data dir for WebView cache purge: {}",
+                    e
+                );
                 return;
             }
         };
@@ -301,13 +305,19 @@ impl SidecarState {
         let marker_path = match app.path().app_data_dir() {
             Ok(dir) => dir.join(format!(".webview-data-purged-{}", app_version)),
             Err(e) => {
-                log::warn!("Could not resolve app data dir for WebView purge marker: {}", e);
+                log::warn!(
+                    "Could not resolve app data dir for WebView purge marker: {}",
+                    e
+                );
                 return;
             }
         };
 
         if marker_path.exists() {
-            log::info!("WebView service worker data already purged for v{}", app_version);
+            log::info!(
+                "WebView service worker data already purged for v{}",
+                app_version
+            );
             return;
         }
 
@@ -325,7 +335,11 @@ impl SidecarState {
             std::time::SystemTime::now()
         );
         if let Err(e) = std::fs::write(&marker_path, marker.as_bytes()) {
-            log::warn!("Failed to write WebView purge marker {}: {}", marker_path.display(), e);
+            log::warn!(
+                "Failed to write WebView purge marker {}: {}",
+                marker_path.display(),
+                e
+            );
         }
     }
 
@@ -801,7 +815,10 @@ mod tests {
     #[test]
     fn tray_and_single_instance_routes_use_guardrail_actions() {
         assert_eq!(tray_menu_action("show"), TrayMenuAction::Show);
-        assert_eq!(tray_menu_action("check-updates"), TrayMenuAction::CheckUpdates);
+        assert_eq!(
+            tray_menu_action("check-updates"),
+            TrayMenuAction::CheckUpdates
+        );
         assert_eq!(tray_menu_action("quit"), TrayMenuAction::Quit);
         assert_eq!(tray_menu_action("unknown"), TrayMenuAction::None);
 
@@ -979,6 +996,8 @@ pub fn run() {
             get_installation_id,
             store_license_token,
             get_license_token,
+            store_cloud_config_envelope,
+            get_cloud_config_envelope,
             clear_license_token,
             store_credentials,
             get_credentials,

@@ -9,6 +9,7 @@ import { useSubscription } from '@/lib/hooks/use-subscription';
 import { useClinics } from '@/lib/hooks/use-clinics';
 import { useNetworkStatus } from '@/lib/hooks/use-network-status';
 import { useInterfacilityTransfersEnabled } from '@/lib/hooks/use-interfacility-transfers-enabled';
+import { useCloudConnection } from '@/lib/hooks/use-cloud-connection';
 import {
   mainNavItems,
   hasChildren,
@@ -37,6 +38,7 @@ export function useNavigationItems(): NavigationResult {
   const { hasFeature } = useSubscription();
   const { isSustainedOffline } = useNetworkStatus();
   const interfacilityTransfersEnabled = useInterfacilityTransfersEnabled();
+  const cloudConnection = useCloudConnection();
   const [isHubMode, setIsHubMode] = useState(false);
 
   useEffect(() => {
@@ -98,8 +100,13 @@ export function useNavigationItems(): NavigationResult {
         return false;
       }
       if (isHubMode && getHubModuleCapability(item.moduleKey) === 'UNAVAILABLE') return false;
-      // Cloud-only workflows remain discoverable. Their route gate handles a
-      // missing cloud session or unavailable cloud with a specific next step.
+      if (
+        isHubMode &&
+        getHubModuleCapability(item.moduleKey) === 'CLOUD_ONLY' &&
+        (cloudConnection.session !== 'connected' || cloudConnection.reachability !== 'available')
+      ) {
+        return false;
+      }
       if (isLISStandaloneProfile) {
         const href = 'href' in item && typeof item.href === 'string' ? item.href : '';
         if (href === '/patients/lookup' || href.startsWith('/patients/lookup/')) {
@@ -152,8 +159,8 @@ export function useNavigationItems(): NavigationResult {
       .filter((item): item is NavItemType => item !== null);
 
     const ctx = { canAccessModule, canPerformAction, hasModule };
-    const clinicalItems = resolveClinicalSidebarItems(ctx);
-    const clinicalUtility = resolveClinicalUtilityItems(ctx);
+    const clinicalItems = resolveClinicalSidebarItems(ctx).filter(isAllowed);
+    const clinicalUtility = resolveClinicalUtilityItems(ctx).filter(isAllowed);
 
     if (
       navigationMode !== 'clinical' ||
@@ -176,6 +183,7 @@ export function useNavigationItems(): NavigationResult {
     navigationMode,
     isClinicalNavigationEligible,
     isSustainedOffline,
+    cloudConnection,
     interfacilityTransfersEnabled,
     isHubMode,
     facility,

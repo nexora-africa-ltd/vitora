@@ -1,11 +1,35 @@
-import { transformAxiosError, apiClient, getApiErrorMessage } from '@/lib/api/client';
+import {
+  connectCloudSession,
+  transformAxiosError,
+  apiClient,
+  getApiErrorMessage,
+} from '@/lib/api/client';
 import { AxiosError } from 'axios';
 import { toast } from 'sonner';
 
-jest.mock('@/lib/auth/storage');
+const mockGetAppConfig = jest.fn();
+const mockIsDesktop = jest.fn();
+const mockSetCloudAccessToken = jest.fn();
+
+jest.mock('@/lib/desktop', () => ({
+  getAppConfig: (...args: unknown[]) => mockGetAppConfig(...args),
+  isDesktop: (...args: unknown[]) => mockIsDesktop(...args),
+}));
+jest.mock('@/lib/auth/storage', () => ({
+  tokenStorage: {
+    getCloudAccessToken: jest.fn(),
+    getAccessToken: jest.fn(),
+    getRefreshToken: jest.fn(),
+    setCloudAccessToken: (...args: unknown[]) => mockSetCloudAccessToken(...args),
+    clearCloudTokens: jest.fn(),
+    clearAll: jest.fn(),
+    setTokens: jest.fn(),
+  },
+}));
 jest.mock('sonner', () => ({
   toast: {
     error: jest.fn(),
+    success: jest.fn(),
   },
 }));
 
@@ -38,6 +62,29 @@ describe('API Client', () => {
     expect(apiClient.put).toBeDefined();
     expect(apiClient.delete).toBeDefined();
     expect(apiClient.patch).toBeDefined();
+  });
+});
+
+describe('connectCloudSession', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockIsDesktop.mockReturnValue(true);
+    mockGetAppConfig.mockResolvedValue({
+      client_id: 'client-installation-id',
+      deployment_mode: 'lan_client',
+    });
+  });
+
+  it('asks the authenticated hub to sign and exchange for an access-only cloud token', async () => {
+    jest.spyOn(apiClient, 'post').mockResolvedValue({ data: { access_token: 'cloud-access' } });
+
+    await expect(connectCloudSession()).resolves.toEqual({ connected: true });
+
+    expect(apiClient.post).toHaveBeenCalledWith('/api/licensing/hub/user-token/', {});
+    expect(mockSetCloudAccessToken).toHaveBeenCalledWith('cloud-access');
+    expect(toast.success).toHaveBeenCalledWith('Vitora Cloud connected', {
+      description: 'Cloud-only workflows are now available.',
+    });
   });
 });
 

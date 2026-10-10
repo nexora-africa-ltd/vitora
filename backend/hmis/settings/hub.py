@@ -134,6 +134,11 @@ def _get_or_generate_secret_key() -> str:
 
 SECRET_KEY = _get_or_generate_secret_key()
 
+# Ed25519 seed used only by the hub to sign cloud-user-token exchange proofs.
+# Linux launchers source it from a systemd encrypted credential; Windows
+# launchers decrypt the DPAPI bundle into the service process environment.
+HUB_DEVICE_SIGNING_PRIVATE_KEY = os.getenv("HUB_DEVICE_SIGNING_PRIVATE_KEY", "")
+
 # Session: use DB-backed sessions (no Redis required)
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
 

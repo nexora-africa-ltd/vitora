@@ -15,6 +15,23 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Hub 1.0.35] - 2026-10-10
+
+### Hub
+
+- Provision Ed25519 installation signing keys through activation and reenrollment, storing private keys in protected Linux systemd credentials and Windows DPAPI hub secrets.
+- Issue signed environment-bound Cloud configuration envelopes and require hub proof-of-possession for short-lived, facility-bound delegated Cloud user tokens.
+- Add authenticated hub-to-Cloud exchange proxying so local passwords and hub license credentials never reach desktop clients.
+
+## [Desktop 1.0.30] - 2026-10-10
+
+### Desktop
+
+- Verify and persist signed Cloud configuration envelopes through the native keystore during activation.
+- Replace password reuse with passwordless hub-delegated Cloud session exchange.
+- Display Cloud configuration, connectivity, and session state in the desktop header, including successful connection feedback.
+- Hide Cloud-only navigation until both a delegated Cloud session and Cloud reachability are available.
+
 ## [Desktop 1.0.29] - 2026-10-10
 
 ### Desktop

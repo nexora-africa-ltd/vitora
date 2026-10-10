@@ -52,6 +52,20 @@ describe('tokenStorage', () => {
     });
   });
 
+  describe('setCloudAccessToken', () => {
+    it('stores only the cloud access token and notifies cloud-session listeners', () => {
+      const listener = jest.fn();
+      window.addEventListener('vitora:cloud-session-changed', listener);
+
+      tokenStorage.setCloudAccessToken('cloud-access');
+
+      expect(localStorage.getItem('vitora_cloud_access_token')).toBe('cloud-access');
+      expect(localStorage.getItem('vitora_cloud_refresh_token')).toBeNull();
+      expect(listener).toHaveBeenCalledTimes(1);
+      window.removeEventListener('vitora:cloud-session-changed', listener);
+    });
+  });
+
   describe('getUser', () => {
     it('should return parsed user data from localStorage', () => {
       const userData = { id: 1, username: 'testuser', email: 'test@example.com' };
@@ -82,12 +96,19 @@ describe('tokenStorage', () => {
   describe('clearAll', () => {
     it('starts cleanup synchronously and waits before another session can initialize', async () => {
       let finish!: () => void;
-      const cleanup = jest.fn(() => new Promise<void>((resolve) => { finish = resolve; }));
+      const cleanup = jest.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            finish = resolve;
+          })
+      );
       const unsubscribe = registerAuthCleanup(cleanup);
       tokenStorage.clearAll();
       expect(cleanup).toHaveBeenCalledTimes(1);
       let completed = false;
-      const waiting = waitForAuthCleanup().then(() => { completed = true; });
+      const waiting = waitForAuthCleanup().then(() => {
+        completed = true;
+      });
       await Promise.resolve();
       expect(completed).toBe(false);
       finish();

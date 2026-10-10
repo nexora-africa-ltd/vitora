@@ -5,7 +5,7 @@ Serializers for the licensing API.
 
 from rest_framework import serializers
 
-from .activation_secrets import validate_device_public_key
+from .activation_secrets import validate_device_public_key, validate_device_signing_public_key
 from .models import Installation
 
 
@@ -55,17 +55,30 @@ class ActivationRequestSerializer(serializers.Serializer):
     # plaintext response so callers can migrate to v2.
     protocol_version = serializers.IntegerField(required=False, default=1, min_value=1, max_value=2)
     device_public_key = serializers.CharField(required=False, allow_blank=True, max_length=128)
+    device_signing_public_key = serializers.CharField(
+        required=False, allow_blank=True, max_length=128
+    )
 
     def validate(self, attrs):
         if attrs["protocol_version"] == 2 and not attrs.get("device_public_key"):
             raise serializers.ValidationError(
                 {"device_public_key": "Required for protocol version 2."}
             )
+        if attrs["protocol_version"] == 2 and not attrs.get("device_signing_public_key"):
+            raise serializers.ValidationError(
+                {"device_signing_public_key": "Required for protocol version 2."}
+            )
         if attrs["protocol_version"] == 2:
             try:
                 attrs["device_public_key"] = validate_device_public_key(attrs["device_public_key"])
             except ValueError as exc:
                 raise serializers.ValidationError({"device_public_key": str(exc)}) from exc
+            try:
+                attrs["device_signing_public_key"] = validate_device_signing_public_key(
+                    attrs["device_signing_public_key"]
+                )
+            except ValueError as exc:
+                raise serializers.ValidationError({"device_signing_public_key": str(exc)}) from exc
         return attrs
 
     def validate_eula_accepted(self, value: bool) -> bool:
@@ -273,6 +286,7 @@ class DeviceReenrollmentSerializer(serializers.Serializer):
 
     protocol_version = serializers.IntegerField(required=True)
     device_public_key = serializers.CharField(required=True, max_length=128)
+    device_signing_public_key = serializers.CharField(required=True, max_length=128)
 
     def validate(self, attrs):
         if attrs["protocol_version"] != 2:
@@ -283,6 +297,12 @@ class DeviceReenrollmentSerializer(serializers.Serializer):
             attrs["device_public_key"] = validate_device_public_key(attrs["device_public_key"])
         except ValueError as exc:
             raise serializers.ValidationError({"device_public_key": str(exc)}) from exc
+        try:
+            attrs["device_signing_public_key"] = validate_device_signing_public_key(
+                attrs["device_signing_public_key"]
+            )
+        except ValueError as exc:
+            raise serializers.ValidationError({"device_signing_public_key": str(exc)}) from exc
         return attrs
 
 
@@ -327,3 +347,32 @@ class LicenseStatusSerializer(serializers.Serializer):
     check_in_by = serializers.IntegerField(allow_null=True)
     check_in_overdue = serializers.BooleanField()
     error = serializers.CharField(allow_blank=True)
+
+
+class CloudUserTokenRequestSerializer(serializers.Serializer):
+    """Validate the signed, fresh, single-use hub cloud-token exchange request."""
+
+    username = serializers.CharField(max_length=150, trim_whitespace=True)
+    employee_id = serializers.CharField(max_length=50, required=False, trim_whitespace=True)
+    timestamp = serializers.IntegerField()
+    nonce = serializers.CharField(max_length=128, trim_whitespace=True)
+    signature = serializers.CharField(max_length=128, trim_whitespace=True)
+
+
+class HubCloudUserTokenRequestSerializer(serializers.Serializer):
+    """Validate a local hub token request; the hub generates the proof itself."""
+
+    def validate(self, attrs):
+        if self.initial_data:
+            raise serializers.ValidationError(
+                "The hub derives the exchange proof; browser request data is not accepted."
+            )
+        return attrs
+
+
+class CloudUserTokenResponseSerializer(serializers.Serializer):
+    """Short-lived purpose-specific token returned to an authenticated hub."""
+
+    access_token = serializers.CharField()
+    token_type = serializers.CharField()
+    expires_in = serializers.IntegerField()

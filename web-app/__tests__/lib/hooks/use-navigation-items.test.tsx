@@ -35,6 +35,10 @@ jest.mock('@/lib/hooks/use-interfacility-transfers-enabled', () => ({
   useInterfacilityTransfersEnabled: () => true,
 }));
 jest.mock('@/lib/hooks/use-cloud-availability', () => ({ useCloudAvailability: () => 'available' }));
+const mockUseCloudConnection = jest.fn();
+jest.mock('@/lib/hooks/use-cloud-connection', () => ({
+  useCloudConnection: () => mockUseCloudConnection(),
+}));
 jest.mock('@/lib/desktop', () => ({ getAppConfig: () => mockGetAppConfig() }));
 jest.mock('@/lib/desktop/hub-capabilities', () => ({
   getHubModuleCapability: (moduleKey?: string) =>
@@ -46,6 +50,11 @@ describe('useNavigationItems hub manifest fallback', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetAppConfig.mockResolvedValue({ deployment_mode: 'lan_client' });
+    mockUseCloudConnection.mockReturnValue({
+      config: 'configured',
+      session: 'connected',
+      reachability: 'available',
+    });
   });
 
   it('keeps standard navigation rendered while hub health is pending', async () => {
@@ -70,7 +79,7 @@ describe('useNavigationItems hub manifest fallback', () => {
     expect(result.current.items.some((item) => item.label === 'Patients')).toBe(true);
   });
 
-  it('keeps cloud-only modules visible for the route-level cloud connection gate', async () => {
+  it('shows cloud-only modules only with a connected reachable cloud session', async () => {
     mockLoadHubRoutingManifest.mockResolvedValue(null);
 
     const { result } = renderHook(() => useNavigationItems());
@@ -78,5 +87,21 @@ describe('useNavigationItems hub manifest fallback', () => {
     await waitFor(() => {
       expect(result.current.items.some((item) => item.label === 'TibaBot®')).toBe(true);
     });
+  });
+
+  it('hides cloud-only modules when the cloud session is missing', async () => {
+    mockLoadHubRoutingManifest.mockResolvedValue(null);
+    mockUseCloudConnection.mockReturnValue({
+      config: 'configured',
+      session: 'required',
+      reachability: 'available',
+    });
+
+    const { result } = renderHook(() => useNavigationItems());
+
+    await waitFor(() => {
+      expect(result.current.items.some((item) => item.label === 'Patients')).toBe(true);
+    });
+    expect(result.current.items.some((item) => item.label === 'TibaBot®')).toBe(false);
   });
 });

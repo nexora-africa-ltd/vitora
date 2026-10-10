@@ -255,7 +255,9 @@ function Invoke-HubDeviceReenrollment {
     $responseFile = Join-Path $env:TEMP "vitora-reenroll-response.json"
     try {
         $devicePublicKey = & $PythonExe -c "import base64,sys; from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey; from cryptography.hazmat.primitives.serialization import Encoding,NoEncryption,PrivateFormat,PublicFormat; k=X25519PrivateKey.generate(); open(sys.argv[1],'wb').write(k.private_bytes(Encoding.PEM,PrivateFormat.PKCS8,NoEncryption())); print(base64.b64encode(k.public_key().public_bytes(Encoding.Raw,PublicFormat.Raw)).decode('ascii'))" $tempPrivateKey
-        $body = @{ installation_id = $env:HUB_ID; protocol_version = 2; device_public_key = $devicePublicKey } | ConvertTo-Json
+        $hubSigningKeyPair = & $PythonExe -c "import base64; from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey; from cryptography.hazmat.primitives.serialization import Encoding,NoEncryption,PrivateFormat,PublicFormat; k=Ed25519PrivateKey.generate(); print(base64.b64encode(k.private_bytes(Encoding.Raw,PrivateFormat.Raw,NoEncryption())).decode('ascii')); print(base64.b64encode(k.public_key().public_bytes(Encoding.Raw,PublicFormat.Raw)).decode('ascii'))"
+        $hubSigningPrivateKey, $hubSigningPublicKey = $hubSigningKeyPair
+        $body = @{ installation_id = $env:HUB_ID; protocol_version = 2; device_public_key = $devicePublicKey; device_signing_public_key = $hubSigningPublicKey } | ConvertTo-Json
         $headers = @{ "X-License-Token" = $env:LICENSE_TOKEN }
         $response = Invoke-RestMethod -Uri "$($env:CLOUD_API_BASE_URL.TrimEnd('/'))/api/licensing/re-enroll/" -Method POST -Headers $headers -Body $body -ContentType "application/json" -UseBasicParsing
         $response | ConvertTo-Json -Depth 10 | Set-Content -Path $responseFile
@@ -292,6 +294,7 @@ function Invoke-HubDeviceReenrollment {
         # has been converted and the local SQLCipher key has been verified.
         [Environment]::SetEnvironmentVariable("HUB_DATABASE_ENCRYPTION_REQUIRED", "false", "Process")
         [Environment]::SetEnvironmentVariable("HUB_DATABASE_ENCRYPTION_KEY", $databaseEncryptionKey, "Process")
+        [Environment]::SetEnvironmentVariable("HUB_DEVICE_SIGNING_PRIVATE_KEY", $hubSigningPrivateKey, "Process")
         $script:PiiKeyPackageJson = $decrypted.organization_pii_key_package | ConvertTo-Json -Compress
         $script:ReenrollmentResponseFile = $responseFile
         return $response.license_token
@@ -890,6 +893,7 @@ $dpapiSecrets = @{
     SHA_CLIENT_SECRET = (Get-HubEnvValue "SHA_CLIENT_SECRET")
     HUB_DATABASE_ENCRYPTION_REQUIRED = (Get-HubEnvValue "HUB_DATABASE_ENCRYPTION_REQUIRED" "true")
     HUB_DATABASE_ENCRYPTION_KEY = (Get-HubEnvValue "HUB_DATABASE_ENCRYPTION_KEY")
+    HUB_DEVICE_SIGNING_PRIVATE_KEY = (Get-HubEnvValue "HUB_DEVICE_SIGNING_PRIVATE_KEY")
 }
 Write-DpapiSecretsBundle -Secrets $dpapiSecrets -Path $hubSecretsFile
 Write-Info "Refreshed DPAPI secret bundle."

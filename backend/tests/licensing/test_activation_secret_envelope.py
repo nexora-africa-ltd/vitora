@@ -7,6 +7,7 @@ from datetime import date
 from unittest.mock import patch
 
 import pytest  # type: ignore
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from django.conf import settings
@@ -24,6 +25,13 @@ def _device_public_key() -> tuple[X25519PrivateKey, str]:
     private_key = X25519PrivateKey.generate()
     encoded = private_key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
     return private_key, base64.b64encode(encoded).decode("ascii")
+
+
+def _device_signing_public_key() -> str:
+    """Return a base64-encoded raw Ed25519 public key for proof enrollment."""
+    private_key = Ed25519PrivateKey.generate()
+    encoded = private_key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
+    return base64.b64encode(encoded).decode("ascii")
 
 
 @pytest.fixture
@@ -57,6 +65,7 @@ def pending_installation(db, sample_organization, sample_facility):
 def test_v2_activation_encrypts_secrets_and_binds_them_to_tenant(api_client, pending_installation):
     """Protocol v2 must return only an AAD-bound encrypted secret envelope."""
     private_key, device_public_key = _device_public_key()
+    device_signing_public_key = _device_signing_public_key()
     installation_id = str(uuid.uuid4())
 
     response = api_client.post(
@@ -65,6 +74,7 @@ def test_v2_activation_encrypts_secrets_and_binds_them_to_tenant(api_client, pen
             "installation_id": installation_id,
             "activation_code": "TEST-ACTIVATION-CODE",
             "device_public_key": device_public_key,
+            "device_signing_public_key": device_signing_public_key,
             "protocol_version": 2,
             "eula_accepted": True,
             "eula_version": HUB_EULA_VERSION,
@@ -79,6 +89,7 @@ def test_v2_activation_encrypts_secrets_and_binds_them_to_tenant(api_client, pen
     assert response.data["secrets_envelope"]["algorithm"] == "X25519-HKDF-SHA256-AESGCM"
     pending_installation.refresh_from_db()
     assert pending_installation.device_public_key == device_public_key
+    assert pending_installation.device_signing_public_key == device_signing_public_key
 
     secrets = decrypt_activation_secrets(
         response.data["secrets_envelope"],
@@ -109,6 +120,7 @@ def test_v2_activation_includes_available_backup_credentials_in_envelope(
 ):
     """Activation must only deliver renewable backup credentials inside the device envelope."""
     private_key, device_public_key = _device_public_key()
+    device_signing_public_key = _device_signing_public_key()
     installation_id = str(uuid.uuid4())
     HubBackupDestination.objects.create(
         organization=pending_installation.organization,
@@ -134,6 +146,7 @@ def test_v2_activation_includes_available_backup_credentials_in_envelope(
                 "installation_id": installation_id,
                 "activation_code": "TEST-ACTIVATION-CODE",
                 "device_public_key": device_public_key,
+                "device_signing_public_key": device_signing_public_key,
                 "protocol_version": 2,
                 "eula_accepted": True,
                 "eula_version": HUB_EULA_VERSION,
@@ -165,6 +178,7 @@ def test_v2_activation_includes_available_backup_credentials_in_envelope(
 def test_v2_activation_encrypts_shared_ilm_credentials(api_client, pending_installation):
     """Authorized hubs receive shared ILM credentials only inside the v2 envelope."""
     private_key, device_public_key = _device_public_key()
+    device_signing_public_key = _device_signing_public_key()
     installation_id = str(uuid.uuid4())
 
     response = api_client.post(
@@ -173,6 +187,7 @@ def test_v2_activation_encrypts_shared_ilm_credentials(api_client, pending_insta
             "installation_id": installation_id,
             "activation_code": "TEST-ACTIVATION-CODE",
             "device_public_key": device_public_key,
+            "device_signing_public_key": device_signing_public_key,
             "protocol_version": 2,
             "eula_accepted": True,
             "eula_version": HUB_EULA_VERSION,
@@ -194,6 +209,33 @@ def test_v2_activation_encrypts_shared_ilm_credentials(api_client, pending_insta
     assert secrets["ilm_base_url"] == "https://ilm.example.test/api"
     assert secrets["sha_client_id"] == "vitora"
     assert secrets["sha_client_secret"] == "shared-ilm-secret"
+
+
+@pytest.mark.django_db
+def test_v2_activation_requires_a_valid_ed25519_signing_public_key(
+    api_client, pending_installation
+):
+    """Proof enrollment accepts only a base64-encoded raw Ed25519 public key."""
+    _, device_public_key = _device_public_key()
+
+    response = api_client.post(
+        "/api/licensing/activate/",
+        {
+            "installation_id": str(uuid.uuid4()),
+            "activation_code": "TEST-ACTIVATION-CODE",
+            "device_public_key": device_public_key,
+            "device_signing_public_key": base64.b64encode(b"not-an-ed25519-key").decode("ascii"),
+            "protocol_version": 2,
+            "eula_accepted": True,
+            "eula_version": HUB_EULA_VERSION,
+        },
+        format="json",
+    )
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "device_signing_public_key" in response.data
+    pending_installation.refresh_from_db()
+    assert pending_installation.status == Installation.Status.PENDING
 
 
 def test_windows_installer_keeps_hub_and_ilm_secrets_out_of_dotenv():

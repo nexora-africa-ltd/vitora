@@ -9,6 +9,7 @@ import base64
 from pathlib import Path
 
 import pytest  # type: ignore
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from django.utils import timezone
@@ -23,6 +24,13 @@ def _device_public_key() -> tuple[X25519PrivateKey, str]:
     private_key = X25519PrivateKey.generate()
     encoded = private_key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
     return private_key, base64.b64encode(encoded).decode("ascii")
+
+
+def _device_signing_public_key() -> str:
+    """Return a base64-encoded raw Ed25519 public key for proof enrollment."""
+    private_key = Ed25519PrivateKey.generate()
+    encoded = private_key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
+    return base64.b64encode(encoded).decode("ascii")
 
 
 @pytest.fixture
@@ -44,6 +52,7 @@ def active_installation(db, sample_organization, sample_facility):
 def test_active_installation_can_reenroll_with_its_license_token(api_client, active_installation):
     """A current hub credential may rotate its own v2 device key and receive an envelope."""
     private_key, device_public_key = _device_public_key()
+    device_signing_public_key = _device_signing_public_key()
 
     response = api_client.post(
         "/api/licensing/re-enroll/",
@@ -51,6 +60,7 @@ def test_active_installation_can_reenroll_with_its_license_token(api_client, act
             "installation_id": active_installation.installation_id,
             "protocol_version": 2,
             "device_public_key": device_public_key,
+            "device_signing_public_key": device_signing_public_key,
         },
         format="json",
         HTTP_X_LICENSE_TOKEN=active_installation.license_jwt,
@@ -62,6 +72,7 @@ def test_active_installation_can_reenroll_with_its_license_token(api_client, act
     assert "encryption_key" not in response.data
     active_installation.refresh_from_db()
     assert active_installation.device_public_key == device_public_key
+    assert active_installation.device_signing_public_key == device_signing_public_key
 
     decrypted = decrypt_activation_secrets(
         response.data["secrets_envelope"],
@@ -79,10 +90,15 @@ def test_reenrollment_requires_admin_or_matching_installation_license(
 ):
     """An unrelated caller cannot replace the active hub's device key."""
     _, device_public_key = _device_public_key()
+    device_signing_public_key = _device_signing_public_key()
 
     response = api_client.post(
         f"/api/licensing/installations/{active_installation.pk}/re-enroll/",
-        {"protocol_version": 2, "device_public_key": device_public_key},
+        {
+            "protocol_version": 2,
+            "device_public_key": device_public_key,
+            "device_signing_public_key": device_signing_public_key,
+        },
         format="json",
     )
 
@@ -99,10 +115,15 @@ def test_reenrollment_is_v2_only(authenticated_client, active_installation):
     user.is_superuser = True
     user.save()
     _, device_public_key = _device_public_key()
+    device_signing_public_key = _device_signing_public_key()
 
     response = authenticated_client.post(
         f"/api/licensing/installations/{active_installation.pk}/re-enroll/",
-        {"protocol_version": 1, "device_public_key": device_public_key},
+        {
+            "protocol_version": 1,
+            "device_public_key": device_public_key,
+            "device_signing_public_key": device_signing_public_key,
+        },
         format="json",
     )
 
