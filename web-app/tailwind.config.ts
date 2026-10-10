@@ -1,7 +1,7 @@
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
-  darkMode: ['class'],
+  darkMode: ['class', '.dark'],
   // Turbopack runs PostCSS inside worker contexts. Resolve globs from this
   // config file rather than the worker's current directory.
   content: {
