@@ -15,6 +15,14 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Desktop 1.0.29] - 2026-10-10
+
+### Desktop
+
+- Retain accepted cloud credential-reuse consent without repeatedly displaying the agreement at login.
+- Refresh TibaBot status after the desktop cloud session is established, preventing a stale unavailable indicator.
+- Keep cloud-only modules visible in desktop navigation and guide users through the cloud connection gate when needed.
+
 ## [Hub 1.0.34] - 2026-10-10
 
 ### Hub

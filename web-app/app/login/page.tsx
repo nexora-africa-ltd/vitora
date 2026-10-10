@@ -556,18 +556,20 @@ export default function LoginPage() {
                         Remember me
                       </label>
                     </div>
-                    <div className="flex items-start gap-2">
-                      <input
-                        id="cloud-auto-login-consent"
-                        type="checkbox"
-                        checked={cloudAutoLoginConsent}
-                        onChange={(e) => setCloudAutoLoginConsent(e.target.checked)}
-                        className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
-                      />
-                      <label htmlFor="cloud-auto-login-consent" className="cursor-pointer text-sm text-muted-foreground">
-                        I agree that Vitora may reuse these credentials to establish a separate Vitora Cloud session for online-only workflows, subject to the Terms of Service and Privacy Policy.
-                      </label>
-                    </div>
+                    {!cloudAutoLoginConsent && (
+                      <div className="flex items-start gap-2">
+                        <input
+                          id="cloud-auto-login-consent"
+                          type="checkbox"
+                          checked={cloudAutoLoginConsent}
+                          onChange={(e) => setCloudAutoLoginConsent(e.target.checked)}
+                          className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                        />
+                        <label htmlFor="cloud-auto-login-consent" className="cursor-pointer text-sm text-muted-foreground">
+                          I agree that Vitora may reuse these credentials to establish a separate Vitora Cloud session for online-only workflows, subject to the Terms of Service and Privacy Policy.
+                        </label>
+                      </div>
+                    )}
                   </div>
                 )}
 

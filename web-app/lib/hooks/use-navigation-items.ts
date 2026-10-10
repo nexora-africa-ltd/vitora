@@ -9,7 +9,6 @@ import { useSubscription } from '@/lib/hooks/use-subscription';
 import { useClinics } from '@/lib/hooks/use-clinics';
 import { useNetworkStatus } from '@/lib/hooks/use-network-status';
 import { useInterfacilityTransfersEnabled } from '@/lib/hooks/use-interfacility-transfers-enabled';
-import { useCloudAvailability } from '@/lib/hooks/use-cloud-availability';
 import {
   mainNavItems,
   hasChildren,
@@ -38,7 +37,6 @@ export function useNavigationItems(): NavigationResult {
   const { hasFeature } = useSubscription();
   const { isSustainedOffline } = useNetworkStatus();
   const interfacilityTransfersEnabled = useInterfacilityTransfersEnabled();
-  const cloudAvailability = useCloudAvailability();
   const [isHubMode, setIsHubMode] = useState(false);
 
   useEffect(() => {
@@ -100,13 +98,8 @@ export function useNavigationItems(): NavigationResult {
         return false;
       }
       if (isHubMode && getHubModuleCapability(item.moduleKey) === 'UNAVAILABLE') return false;
-      if (
-        isHubMode &&
-        getHubModuleCapability(item.moduleKey) === 'CLOUD_ONLY' &&
-        (isSustainedOffline || cloudAvailability !== 'available')
-      ) {
-        return false;
-      }
+      // Cloud-only workflows remain discoverable. Their route gate handles a
+      // missing cloud session or unavailable cloud with a specific next step.
       if (isLISStandaloneProfile) {
         const href = 'href' in item && typeof item.href === 'string' ? item.href : '';
         if (href === '/patients/lookup' || href.startsWith('/patients/lookup/')) {
@@ -183,7 +176,6 @@ export function useNavigationItems(): NavigationResult {
     navigationMode,
     isClinicalNavigationEligible,
     isSustainedOffline,
-    cloudAvailability,
     interfacilityTransfersEnabled,
     isHubMode,
     facility,

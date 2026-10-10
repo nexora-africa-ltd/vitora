@@ -37,7 +37,8 @@ jest.mock('@/lib/hooks/use-interfacility-transfers-enabled', () => ({
 jest.mock('@/lib/hooks/use-cloud-availability', () => ({ useCloudAvailability: () => 'available' }));
 jest.mock('@/lib/desktop', () => ({ getAppConfig: () => mockGetAppConfig() }));
 jest.mock('@/lib/desktop/hub-capabilities', () => ({
-  getHubModuleCapability: () => null,
+  getHubModuleCapability: (moduleKey?: string) =>
+    moduleKey === 'ai' ? 'CLOUD_ONLY' : null,
   loadHubRoutingManifest: () => mockLoadHubRoutingManifest(),
 }));
 
@@ -67,5 +68,15 @@ describe('useNavigationItems hub manifest fallback', () => {
       expect(result.current.items.length).toBeGreaterThan(0);
     });
     expect(result.current.items.some((item) => item.label === 'Patients')).toBe(true);
+  });
+
+  it('keeps cloud-only modules visible for the route-level cloud connection gate', async () => {
+    mockLoadHubRoutingManifest.mockResolvedValue(null);
+
+    const { result } = renderHook(() => useNavigationItems());
+
+    await waitFor(() => {
+      expect(result.current.items.some((item) => item.label === 'TibaBot®')).toBe(true);
+    });
   });
 });
