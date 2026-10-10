@@ -21,6 +21,7 @@
 **Frontend priority is `web-app/` (Next.js).** Implement and stabilize the web frontend first.
 
 Only after the web app implementation is complete should we shift focus to offline-first and platform clients:
+
 - `desktop-app/` (Electron)
 - `mobile-app/` (React Native)
 
@@ -72,16 +73,17 @@ Only after the web app implementation is complete should we shift focus to offli
 
 ### Current Status (May 2026)
 
-| Component | Status | Tests | Coverage |
-|-----------|--------|-------|----------|
-| **Backend (Django)** | ✅ Phase 0 Complete | 467+ | 82.21% |
-| **Backend Contract Tests** | ✅ Implemented | 67 serializer tests | - |
-| **DHA HIE Integration** | ✅ Claims & Preauths | 4 test suites | - |
-| **Desktop App (Electron)** | ✅ Phase 0 Complete | 66+ unit, 6 E2E | 70%+ |
-| **Mobile App (React Native)** | 📋 Planned Phase 1 | - | - |
-| **Web Frontend (Next.js)** | 📋 Planned Phase 2 | - | - |
+| Component                           | Status               | Tests               | Coverage |
+| ----------------------------------- | -------------------- | ------------------- | -------- |
+| **Backend (Django)**          | ✅ Phase 0 Complete  | 467+                | 82.21%   |
+| **Backend Contract Tests**    | ✅ Implemented       | 67 serializer tests | -        |
+| **DHA HIE Integration**       | ✅ Claims & Preauths | 4 test suites       | -        |
+| **Desktop App (Electron)**    | ✅ Phase 0 Complete  | 66+ unit, 6 E2E     | 70%+     |
+| **Mobile App (React Native)** | 📋 Planned Phase 1   | -                   | -        |
+| **Web Frontend (Next.js)**    | 📋 Planned Phase 2   | -                   | -        |
 
 ### Completed Features (Sprint 0.1-0.7)
+
 - ✅ Patient registration with auto-MRN (`MRN-YYYYMMDD-XXXX`)
 - ✅ Kenya location hierarchy (47 Counties → 289 Sub-Counties → 1448 Wards)
 - ✅ Emergency contacts with relationship tracking
@@ -425,58 +427,59 @@ Browser (SQLite/WASM)  ←→  PowerSync Cloud  ←→  PostgreSQL (Neon)
 
 ### Environment Variables
 
-| Env Var | Where | Dev | Staging/Production |
-|---------|-------|-----|--------------------|
-| `NEXT_PUBLIC_POWERSYNC_URL` | Vercel | *(empty)* | `https://69d7e1b30e377e689729cf08.powersync.journeyapps.com` |
-| `POWERSYNC_URL` | Azure Container App | *(empty)* | Same as above |
-| `POWERSYNC_JWT_KID` | Azure Container App | `vitora-dev` | `vitora-hmis-1` |
-| `POWERSYNC_JWT_AUDIENCE` | Azure Container App | *(empty)* | `https://69d7e1b30e377e689729cf08.powersync.journeyapps.com` |
+| Env Var                       | Where               | Dev            | Staging/Production                                             |
+| ----------------------------- | ------------------- | -------------- | -------------------------------------------------------------- |
+| `NEXT_PUBLIC_POWERSYNC_URL` | Vercel              | *(empty)*    | `https://69d7e1b30e377e689729cf08.powersync.journeyapps.com` |
+| `POWERSYNC_URL`             | Azure Container App | *(empty)*    | Same as above                                                  |
+| `POWERSYNC_JWT_KID`         | Azure Container App | `vitora-dev` | `vitora-hmis-1`                                              |
+| `POWERSYNC_JWT_AUDIENCE`    | Azure Container App | *(empty)*    | `https://69d7e1b30e377e689729cf08.powersync.journeyapps.com` |
 
 ### PowerSync Cloud Configuration
 
-| Setting | Value |
-|---------|-------|
-| **Region** | EU Central (matches Neon `eu-central-1`) |
-| **DB Host** | `ep-patient-cake-almonm9l.c-3.eu-central-1.aws.neon.tech` (**no** `-pooler`) |
-| **Publication** | `powersync` |
-| **JWT** | HS256, `kid`=`POWERSYNC_JWT_KID`, `aud`=PowerSync instance URL, `iss`=`vitora-hmis`, `sub`=user ID |
+| Setting               | Value                                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------------------- |
+| **Region**      | EU Central (matches Neon`eu-central-1`)                                                                     |
+| **DB Host**     | `ep-patient-cake-almonm9l.c-3.eu-central-1.aws.neon.tech` (**no** `-pooler`)                        |
+| **Publication** | `powersync`                                                                                                 |
+| **JWT**         | HS256,`kid`=`POWERSYNC_JWT_KID`, `aud`=PowerSync instance URL, `iss`=`vitora-hmis`, `sub`=user ID |
 
 > ⚠️ **JWT Pitfalls** (resolved in production):
+>
 > - **`kid` header is required**: PowerSync Cloud uses `kid` to look up the signing key. Django SimpleJWT does not support custom headers, so we use a **dedicated endpoint** (`GET /api/powersync/credentials/`) that generates JWTs with PyJWT directly.
 > - **Dashboard secret must be base64url-encoded**: Paste the output of `python3 -c "import base64; print(base64.urlsafe_b64encode(b'YOUR_SECRET_KEY').decode())"` into the dashboard, not the raw key.
 > - **`aud` must be the instance URL**: Set `POWERSYNC_JWT_AUDIENCE` to `https://69d7e1b30e377e689729cf08.powersync.journeyapps.com`, not a custom string like `"powersync"`.
 
 ### Synced Tables (18 tables across 3 phases)
 
-| Scope | Tables | Notes |
-|-------|--------|-------|
-| **Global (all users)** | `core_county`, `core_subcounty`, `core_ward`, `encounters_icd10code`, `clinical_templates_clinicaltemplate` | Reference data, `auto_subscribe: true` |
-| **Organization** | `patients_patient`, `patients_emergencycontact` | Scoped by `auth.parameter('organization_id')`. **Excludes** encrypted PII fields |
-| **Facility** | `encounters_encounter`, `triage_triageassessment`, `encounters_diagnosis`, `encounters_treatmentplan`, `encounters_medication`, `pharmacy_prescription`, `pharmacy_prescriptionitem`, `laboratory_laborder`, `laboratory_laborderitem`, `laboratory_labresult`, `billing_invoice` | Scoped by `auth.parameter('facility_id')` |
+| Scope                        | Tables                                                                                                                                                                                                                                                                                                  | Notes                                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| **Global (all users)** | `core_county`, `core_subcounty`, `core_ward`, `encounters_icd10code`, `clinical_templates_clinicaltemplate`                                                                                                                                                                                   | Reference data,`auto_subscribe: true`                                                 |
+| **Organization**       | `patients_patient`, `patients_emergencycontact`                                                                                                                                                                                                                                                     | Scoped by`auth.parameter('organization_id')`. **Excludes** encrypted PII fields |
+| **Facility**           | `encounters_encounter`, `triage_triageassessment`, `encounters_diagnosis`, `encounters_treatmentplan`, `encounters_medication`, `pharmacy_prescription`, `pharmacy_prescriptionitem`, `laboratory_laborder`, `laboratory_laborderitem`, `laboratory_labresult`, `billing_invoice` | Scoped by`auth.parameter('facility_id')`                                              |
 
 ### Key Files
 
-| File | Purpose |
-|------|--------|
-| `backend/powersync/sync-streams.yaml` | **Sync Streams config** — paste into PowerSync Cloud dashboard to deploy |
-| `backend/hmis/apps/core/powersync_tokens.py` | `PowerSyncCredentialsView` (dedicated JWT endpoint with `kid` header) + `PowerSyncTokenObtainPairSerializer` |
-| `backend/hmis/urls.py` | Routes `api/powersync/credentials/` to `PowerSyncCredentialsView` |
-| `web-app/lib/powersync/schema.ts` | Client-side SQLite schema (must mirror sync-streams.yaml) |
-| `web-app/lib/powersync/connector.ts` | `fetchCredentials()` (calls `/api/powersync/credentials/`) + `uploadData()` — bridges PowerSync ↔ Django API |
-| `web-app/lib/powersync/hooks.ts` | `usePowerSyncQuery()`, `usePowerSyncQueryFirst()`, `usePowerSyncDatabase()` |
-| `web-app/lib/context/sync-context.tsx` | `SyncProvider` — initializes PowerSync SDK, exposes `hasSynced` + `powerSyncHealth`, falls back to API-only mode |
-| `backend/scripts/setup_powersync_replication.sql` | One-time Neon publication setup (reference — already run) |
-| `backend/tests/test_powersync_tokens.py` | JWT claims tests |
+| File                                                | Purpose                                                                                                                 |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `backend/powersync/sync-streams.yaml`             | **Sync Streams config** — paste into PowerSync Cloud dashboard to deploy                                         |
+| `backend/hmis/apps/core/powersync_tokens.py`      | `PowerSyncCredentialsView` (dedicated JWT endpoint with `kid` header) + `PowerSyncTokenObtainPairSerializer`      |
+| `backend/hmis/urls.py`                            | Routes`api/powersync/credentials/` to `PowerSyncCredentialsView`                                                    |
+| `web-app/lib/powersync/schema.ts`                 | Client-side SQLite schema (must mirror sync-streams.yaml)                                                               |
+| `web-app/lib/powersync/connector.ts`              | `fetchCredentials()` (calls `/api/powersync/credentials/`) + `uploadData()` — bridges PowerSync ↔ Django API    |
+| `web-app/lib/powersync/hooks.ts`                  | `usePowerSyncQuery()`, `usePowerSyncQueryFirst()`, `usePowerSyncDatabase()`                                       |
+| `web-app/lib/context/sync-context.tsx`            | `SyncProvider` — initializes PowerSync SDK, exposes `hasSynced` + `powerSyncHealth`, falls back to API-only mode |
+| `backend/scripts/setup_powersync_replication.sql` | One-time Neon publication setup (reference — already run)                                                              |
+| `backend/tests/test_powersync_tokens.py`          | JWT claims tests                                                                                                        |
 
 ### PowerSync vs WebSockets
 
-| Use Case | PowerSync | WebSocket |
-|----------|-----------|----------|
-| Load patient record | ✅ Local SQLite query | ❌ |
-| Save encounter offline | ✅ Built-in | ❌ |
-| 🚨 Critical lab alert | ❌ | ✅ Instant push |
-| Triage queue display | ✅ Data | ✅ Position changes |
-| Dashboard stats | ✅ Cached locally | ❌ |
+| Use Case               | PowerSync             | WebSocket           |
+| ---------------------- | --------------------- | ------------------- |
+| Load patient record    | ✅ Local SQLite query | ❌                  |
+| Save encounter offline | ✅ Built-in           | ❌                  |
+| 🚨 Critical lab alert  | ❌                    | ✅ Instant push     |
+| Triage queue display   | ✅ Data               | ✅ Position changes |
+| Dashboard stats        | ✅ Cached locally     | ❌                  |
 
 ### Adding a New Table to PowerSync
 
@@ -512,6 +515,7 @@ bucket_definitions:
     data:
       - SELECT ... WHERE facility_id = bucket.fac_id
 ```
+
 ```
 
 ---
@@ -520,14 +524,17 @@ bucket_definitions:
 
 ### Authentication (JWT)
 ```
+
 POST   /api/token/           # Login: {username, password} → {access, refresh}
                               # username field accepts username OR email
 POST   /api/token/refresh/   # Refresh: {refresh} → {access}
 POST   /api/token/verify/    # Verify: {token} → 200 OK or 401
+
 ```
 
 ### Auth & Onboarding (Cookie-based)
 ```
+
 POST   /api/auth/login/                         # Cookie login: sets httpOnly access+refresh cookies
 POST   /api/auth/refresh/                        # Cookie refresh: rotates httpOnly cookies
 POST   /api/auth/logout/                         # Cookie logout: clears httpOnly cookies
@@ -540,10 +547,12 @@ GET    /api/core/setup/check/                    # Check if setup wizard needed 
 POST   /api/core/setup/initialize/               # First-run initialization (public)
 GET    /api/core/onboarding/status/              # Onboarding checklist (authenticated)
 POST   /api/core/onboarding/status/              # Mark onboarding complete (authenticated)
+
 ```
 
 ### Invitations (Admin)
 ```
+
 GET    /api/invitations/                         # List invitations (paginated)
 POST   /api/invitations/                         # Create invitation
 GET    /api/invitations/{id}/                    # Get invitation detail
@@ -551,10 +560,12 @@ POST   /api/invitations/{id}/resend/             # Resend invitation email
 POST   /api/invitations/{id}/revoke/             # Revoke invitation
 GET    /api/invitations/{token}/                 # Public invitation lookup (no auth)
 POST   /api/invitations/accept/                  # Accept invitation (public)
+
 ```
 
 ### Patients
 ```
+
 GET    /api/patients/                    # List patients (paginated, filterable)
 POST   /api/patients/                    # Create patient (auto-generates MRN)
 GET    /api/patients/{id}/               # Get patient detail
@@ -562,37 +573,46 @@ PATCH  /api/patients/{id}/               # Update patient
 DELETE /api/patients/{id}/               # Delete patient (soft delete)
 
 # Nested emergency contacts
+
 GET    /api/patients/{id}/emergency-contacts/
 POST   /api/patients/{id}/emergency-contacts/
 PATCH  /api/patients/{id}/emergency-contacts/{contact_id}/
 DELETE /api/patients/{id}/emergency-contacts/{contact_id}/
+
 ```
 
 ### Encounters
 ```
+
 GET    /api/encounters/                  # List encounters
 POST   /api/encounters/                  # Create encounter
 GET    /api/encounters/{id}/             # Get encounter detail
 PATCH  /api/encounters/{id}/             # Update encounter
 DELETE /api/encounters/{id}/             # Delete encounter
+
 ```
 
 ### Kenya Locations (Cascading)
 ```
+
 GET    /api/locations/counties/                        # All 47 counties
 GET    /api/locations/sub-counties/?county={id}        # Sub-counties for county
 GET    /api/locations/wards/?sub_county={id}           # Wards for sub-county
+
 ```
 
 ### Audit Logs
 ```
+
 GET    /api/auditlogs/                   # List audit logs (admin only)
 GET    /api/auditlogs/?user={id}         # Filter by user
 GET    /api/auditlogs/?action=patient_view  # Filter by action
+
 ```
 
 ### Scheduling (Roster & Shifts)
 ```
+
 GET|POST        /api/scheduling/shifts/                       # List/bulk-create shifts
 PATCH|DELETE    /api/scheduling/shifts/{id}/                   # Update/delete shift
 POST            /api/scheduling/shifts/bulk_delete/            # Bulk delete by ID list
@@ -607,6 +627,7 @@ POST            /api/scheduling/resources/sync_from_wards/     # Sync PLACE reso
 GET             /api/scheduling/resources/{id}/linked_clinics/ # Clinics linked via ClinicRoom
 
 # Room-aware clock-in/out — requires scheduling.manage_schedules for roster writes
+
 POST            /api/scheduling/shifts/{id}/start/             # Clock in {room_id?, clinic_id?, method?} — blocks after shift end time
 POST            /api/scheduling/shifts/{id}/complete/          # Clock out — auto-closes ClinicSession if last active shift
 POST            /api/scheduling/shifts/{id}/cancel/            # Cancel shift
@@ -617,17 +638,22 @@ GET             /api/scheduling/shifts/my-shift-today/         # Current user's 
 GET             /api/scheduling/shifts/available-rooms/        # Unoccupied PLACE resources for clock-in
 
 # Clinic rooms (ClinicRoom M2M)
+
 GET|POST        /api/clinics/{id}/rooms/                       # List/add rooms for a clinic
 DELETE          /api/clinics/{id}/rooms/{room_id}/             # Remove room from clinic
 GET             /api/clinics/{id}/public-queue/                # Public queue display (no auth required)
+
 ```
 
 ### SHA / DHA HIE Integration
 ```
+
 # Eligibility
+
 POST   /api/sha/eligibility/check/                          # Check patient eligibility (includes PFMS fields)
 
 # Consent & Visit
+
 POST   /api/sha/consent/send-otp/                           # Send consent OTP to patient
 POST   /api/sha/consent/validate-otp/                       # Validate OTP → consent token
 POST   /api/sha/consent/start-visit/                        # Start visit with DHA
@@ -635,6 +661,7 @@ POST   /api/sha/consent/authorize/                          # Initiate biometric
 GET    /api/sha/consent/authorize/{guid}/status/             # Poll biometric status
 
 # Claims
+
 POST   /api/sha/claims/{id}/validate/                       # Pre-submit validation
 POST   /api/sha/claims/{id}/submit/                         # Submit claim to DHA
 POST   /api/sha/claims/{id}/ilm/interventions/retire/       # Retire intervention
@@ -642,6 +669,7 @@ POST   /api/sha/claims/{id}/ilm/interventions/restore/      # Restore interventi
 POST   /api/sha/claims/{id}/ilm/preview-payer/              # Fetch payer-side adjudication view
 
 # Preauthorizations
+
 POST   /api/sha/ilm/preauth/create/                         # Create preauth (7 types)
 POST   /api/sha/preauth/submit/                             # Submit preauth
 POST   /api/sha/ilm/preauth/cancel/                         # Cancel preauth
@@ -651,20 +679,24 @@ GET    /api/sha/ilm/preauth/doctor-consent/poll/             # Poll doctor conse
 GET    /api/sha/preauths/                                    # List preauths
 
 # Remittances
+
 GET    /api/sha/remittances/                                 # List remittances (facility-scoped)
 GET    /api/sha/remittances/{id}/                            # Remittance detail
 GET    /api/sha/remittances/{id}/claims/                     # Claims paid in remittance
 POST   /api/sha/remittances/fetch/                           # Trigger DHA remittance fetch
+
 ```
 
 ### AI Stored Results (Persisted TibaBot Outputs)
 ```
+
 GET    /api/ai/results/care-plans/?encounter_id={id}           # Stored care plans
 GET    /api/ai/results/cds/?encounter_id={id}                  # Stored CDS evaluations
 GET    /api/ai/results/lab-interpretations/?encounter_id={id}   # Stored lab interpretations
 GET    /api/ai/results/lab-interpretations/?lab_result_id={id}  # Stored lab interpretations by lab result
 GET    /api/ai/results/discharge/?admission_id={id}            # Stored discharge assessments
 GET    /api/ai/results/icu-risk/?admission_id={id}             # Stored ICU risk predictions
+
 ```
 
 ---
@@ -676,9 +708,11 @@ GET    /api/ai/results/icu-risk/?admission_id={id}             # Stored ICU risk
 ### TDD Workflow
 
 ```
+
 1. RED    → Write a failing test that defines expected behavior
 2. GREEN  → Write minimal code to make the test pass
 3. REFACTOR → Improve code while keeping tests green
+
 ```
 
 ### Test File Conventions
@@ -864,6 +898,7 @@ async list(): Promise<Item[]> {
 **5. Three Pages per Module**
 
 Every module needs at minimum:
+
 - **List page** — with dashboard stats, filters, search, `ResponsiveTable`, pagination, `PullToRefresh`
 - **Detail page** — with summary bar, status badges, action buttons/dialogs, related data cards
 - **Create page** — with form cards, dropdowns fetched from API, validation, cancel/submit
@@ -1055,6 +1090,7 @@ Electron spawns backend on port 9088 when running via `npm run dev`
 The current desktop app is Tauri v2 + a bundled Next.js standalone Node sidecar. Preserve these guardrails; they fixed the post-update blank screen and duplicate tray icon incidents in desktop v0.1.14-v0.1.31.
 
 **Blank screen prevention:**
+
 - Pipe sidecar stdout/stderr to log files (`sidecar-stdout.log`, `sidecar-stderr.log`) before diagnosing startup failures. Never discard sidecar output during packaged builds.
 - Readiness must be a real HTTP health check, not just a bound-port check. Probe `GET /api/desktop-health` and require HTTP 200 before navigating the WebView.
 - Prefer the stable desktop sidecar origin `http://127.0.0.1:50872`. Random sidecar ports create a new browser origin on every restart, so `localStorage.vitora_user` disappears while the port-independent `vitora_authenticated` cookie can remain. That mismatch redirects the WebView to `/dashboard` with no client auth state and renders a blank protected route.
@@ -1068,15 +1104,18 @@ The current desktop app is Tauri v2 + a bundled Next.js standalone Node sidecar.
 - Desktop standalone builds must exclude COOP/COEP/HSTS headers. `Cross-Origin-Opener-Policy: same-origin` can trigger a browsing context group switch when WebView2 moves from `tauri://localhost` to `http://127.0.0.1:{port}`, which can destroy Tauri IPC injection. Next.js `headers()` is baked at build time, so set `VITORA_DESKTOP=1` during `npm run build` in both local desktop scripts and CI.
 
 **Node/Next sidecar pitfalls:**
+
 - In desktop server-only modules, import Node built-ins as namespaces with the `node:` prefix (`import * as path from 'node:path'`, `import * as fs from 'node:fs'`). Turbopack CJS interop can break default imports (`e.default.join is not a function`).
 - `better-sqlite3` `db.backup(destPath)` is Promise-based. Do not call it from synchronous backup code without `await`; that causes `fs.statSync` ENOENT races and unhandled-rejection sidecar exits. For sync startup backups, use `db.pragma('wal_checkpoint(FULL)')` plus `fs.copyFileSync(getDbPath(), destPath)`.
 
 **Tray and shutdown:**
+
 - There must be exactly one tray source. Do not add a declarative `trayIcon` block in `tauri.conf.json` when Rust builds a programmatic tray via `TrayIconBuilder`; doing both creates duplicate Windows tray icons.
 - Register `tauri_plugin_single_instance` as the first plugin to prevent duplicate app processes, sidecars, ports, and tray icons.
 - The main window close button should truly quit and kill the sidecar unless product requirements explicitly choose minimize-to-tray. Hiding to tray makes Windows uninstall/update report that Vitora is still running.
 
 **Release validation checklist for desktop changes:**
+
 - Run `cd web-app && npx tsc --noEmit` and `cd desktop-app/src-tauri && cargo check --offline`.
 - Bump all desktop version files together: `desktop-app/package.json`, `desktop-app/package-lock.json`, `desktop-app/src-tauri/Cargo.toml`, `desktop-app/src-tauri/Cargo.lock`, and `desktop-app/src-tauri/tauri.conf.json`.
 - For hub releases, keep version declarations aligned when touched (`backend/pyproject.toml`, `backend/hmis/__init__.py`) and always create the release tag `hub-vX.Y.Z`.
@@ -1087,9 +1126,9 @@ The current desktop app is Tauri v2 + a bundled Next.js standalone Node sidecar.
 
 Some models exist in multiple apps (e.g., `Ward` in both `core` and `inpatient`). Their serializers MUST have unique names to avoid OpenAPI schema conflicts:
 
-| Model | Core App | Inpatient App |
-|-------|----------|---------------|
-| Ward | `WardSerializer` (location hierarchy) | `InpatientWardSerializer` (beds, occupancy) |
+| Model | Core App                                | Inpatient App                                 |
+| ----- | --------------------------------------- | --------------------------------------------- |
+| Ward  | `WardSerializer` (location hierarchy) | `InpatientWardSerializer` (beds, occupancy) |
 
 ```python
 # ❌ WRONG - Causes OpenAPI schema corruption
@@ -1106,6 +1145,7 @@ class InpatientWardSerializer(...)  # in inpatient/serializers.py
 Wards have a `capacity` field but individual `Bed` records must exist for admissions. Beds are auto-generated:
 
 **On Ward Creation:**
+
 ```python
 # When a new ward is created with capacity=20, 20 Bed records are auto-created:
 # B-001, B-002, ..., B-020 (all with status='AVAILABLE')
@@ -1114,6 +1154,7 @@ ward = Ward.objects.create(name="Medical Ward 1", code="MW001", capacity=20, ...
 ```
 
 **Backfill Existing Wards:**
+
 ```bash
 # Generate missing beds for all wards
 python manage.py generate_ward_beds
@@ -1126,6 +1167,7 @@ python manage.py generate_ward_beds --ward MW001
 ```
 
 **API Endpoint:**
+
 ```
 POST /api/inpatient/wards/{id}/generate_beds/
 # Returns: { created: 10, total: 20, capacity: 20, message: "Generated 10 bed(s)" }
@@ -1138,18 +1180,19 @@ POST /api/inpatient/wards/{id}/generate_beds/
 > ⚠️ **CRITICAL**: Every new model that stores tenant-specific data **MUST** inherit from `OrganizationScopedModel` or `FacilityScopedModel`. Failure to enforce this causes **cross-tenant data leaks** and **data integrity corruption** that is extremely difficult to fix retroactively.
 
 **Why this matters:**
+
 - Without scoping, queries return data from ALL organizations/facilities.
 - A user at Facility A would see patients, stock, and records from Facility B.
 - Retroactively adding scoping to an existing model requires a data migration to backfill `organization`/`facility` for every existing row — risky and time-consuming.
 
 **Decision matrix:**
 
-| Scope Level | When to Use | Example Models |
-|-------------|-------------|----------------|
-| **`FacilityScopedModel`** | Data created at / belonging to a specific facility | `Encounter`, `Triage`, `Invoice`, `LabOrder`, `VaccineStock`, `ImmunizationRecord`, `ColdChainEquipment` |
-| **`OrganizationScopedModel`** | Data shared across all facilities in an org | `Patient`, `Allergy`, shared catalogues |
-| **No scoping** | Global reference data (read-only, not tenant-specific) | `VaccineDefinition`, `ICD10Code`, `DrugCatalogue` |
-| **`NestedTenantScopeMixin`** (view only) | Models with no direct facility FK but reachable via parent chain | `Diagnosis` (→ Encounter → Facility), `TemperatureLog` (→ Equipment → Facility) |
+| Scope Level                                      | When to Use                                                      | Example Models                                                                                                         |
+| ------------------------------------------------ | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **`FacilityScopedModel`**                | Data created at / belonging to a specific facility               | `Encounter`, `Triage`, `Invoice`, `LabOrder`, `VaccineStock`, `ImmunizationRecord`, `ColdChainEquipment` |
+| **`OrganizationScopedModel`**            | Data shared across all facilities in an org                      | `Patient`, `Allergy`, shared catalogues                                                                            |
+| **No scoping**                             | Global reference data (read-only, not tenant-specific)           | `VaccineDefinition`, `ICD10Code`, `DrugCatalogue`                                                                |
+| **`NestedTenantScopeMixin`** (view only) | Models with no direct facility FK but reachable via parent chain | `Diagnosis` (→ Encounter → Facility), `TemperatureLog` (→ Equipment → Facility)                                |
 
 **Model pattern:**
 
@@ -1197,6 +1240,7 @@ def my_record(db, sample_patient, sample_facility):
 ```
 
 **Checklist for every new model:**
+
 - [ ] Inherits from `FacilityScopedModel` or `OrganizationScopedModel`
 - [ ] ViewSet uses `TenantScopedViewMixin` with correct `tenant_scope`
 - [ ] `perform_create()` calls `self.get_tenant_save_kwargs()`
@@ -1233,23 +1277,23 @@ The mixin re-queries the instance through `get_queryset()` (honouring `select_re
 
 Hub activation seeds local mirror rows for identity/config data, and hub-local PKs can differ from cloud PKs. Full cloud-to-hub pulls must therefore reconcile identity dependencies by stable natural keys before saving:
 
-| Model / FK | Natural key to include and remap |
-|------------|----------------------------------|
-| `auth.User` | `username` (and email as secondary match) |
-| `core.Organization` | `slug` |
-| `core.Facility` | `mfl_code` |
-| `core.Role` | `code` |
-| `core.Department` | `facility.mfl_code` + `code` |
-| `core.StaffProfile` | `username`, `employee_id`, role code, department code, facility MFL code, org slug |
-| `core.OrgMembership` | staff username/employee ID, role code, department code, org slug, facility MFL codes |
-| `scheduling.Resource` | `facility.mfl_code` + `code`, department code, staff username |
-| `clinics.Clinic` | `code`, facility MFL code, scheduling resource code, department code |
-| `encounters.Encounter` | patient MRN, facility MFL code, `encounter_date`, `encounter_type`, `chief_complaint`, user FK usernames |
-| `billing.ServiceCategory` / `billing.Service` | `code`, category code, created-by username |
-| `billing.Invoice` | `invoice_number`, patient MRN, facility MFL code, encounter hints, user FK usernames, related invoice numbers |
-| `billing.InvoiceItem` | parent invoice number, service/drug code, converted-from item parent hints where needed |
-| `billing.PaymentPoint` | `facility.mfl_code` + `code`, created-by username |
-| `billing.Payment` / `billing.Receipt` | payment reference, receipt number, invoice number, payment point code + facility MFL code, user FK usernames |
+| Model / FK                                        | Natural key to include and remap                                                                                |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `auth.User`                                     | `username` (and email as secondary match)                                                                     |
+| `core.Organization`                             | `slug`                                                                                                        |
+| `core.Facility`                                 | `mfl_code`                                                                                                    |
+| `core.Role`                                     | `code`                                                                                                        |
+| `core.Department`                               | `facility.mfl_code` + `code`                                                                                |
+| `core.StaffProfile`                             | `username`, `employee_id`, role code, department code, facility MFL code, org slug                          |
+| `core.OrgMembership`                            | staff username/employee ID, role code, department code, org slug, facility MFL codes                            |
+| `scheduling.Resource`                           | `facility.mfl_code` + `code`, department code, staff username                                               |
+| `clinics.Clinic`                                | `code`, facility MFL code, scheduling resource code, department code                                          |
+| `encounters.Encounter`                          | patient MRN, facility MFL code,`encounter_date`, `encounter_type`, `chief_complaint`, user FK usernames   |
+| `billing.ServiceCategory` / `billing.Service` | `code`, category code, created-by username                                                                    |
+| `billing.Invoice`                               | `invoice_number`, patient MRN, facility MFL code, encounter hints, user FK usernames, related invoice numbers |
+| `billing.InvoiceItem`                           | parent invoice number, service/drug code, converted-from item parent hints where needed                         |
+| `billing.PaymentPoint`                          | `facility.mfl_code` + `code`, created-by username                                                           |
+| `billing.Payment` / `billing.Receipt`         | payment reference, receipt number, invoice number, payment point code + facility MFL code, user FK usernames    |
 
 When adding downward-sync payloads in `sync_signals.serialize_instance_for_sync()`, include natural-key hints for every FK that may point at activation-seeded hub rows or separately materialized operational records. When materializing in `sync_materializer.py`, remap cloud FK IDs to local rows using those hints before saving. Models that call `full_clean()` can report missing parent rows as validation errors like `instance with id X is not a valid choice`, so hub full-pull deferral must treat those as dependency-order errors too. Otherwise `python manage.py hub_sync --full-pull` can receive valid cloud rows but silently log local FK/unique failures and leave the hub SQLite DB missing staff/role/membership/billing data.
 
@@ -1261,11 +1305,11 @@ Facility module entitlement and hub execution support are separate decisions. A 
 
 Every hub-facing module must be classified as exactly one of:
 
-| Capability | Meaning | Required behavior |
-|------------|---------|-------------------|
-| `LOCAL_SYNCED` | Workflow has a complete, tested local hub and synchronization path | Show hub navigation and permit local API operations |
-| `CLOUD_ONLY` | Workflow is authoritative in cloud or requires external/cloud services | Hide local hub navigation; hub API returns `409 {code: "hub_cloud_only"}`; use cloud workflow when online |
-| `UNAVAILABLE` | Sync dependency closure is incomplete or the workflow is unsafe locally | Hide navigation and return `409 {code: "hub_workflow_unavailable"}` for direct hub API access |
+| Capability       | Meaning                                                                 | Required behavior                                                                                          |
+| ---------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `LOCAL_SYNCED` | Workflow has a complete, tested local hub and synchronization path      | Show hub navigation and permit local API operations                                                        |
+| `CLOUD_ONLY`   | Workflow is authoritative in cloud or requires external/cloud services  | Hide local hub navigation; hub API returns`409 {code: "hub_cloud_only"}`; use cloud workflow when online |
+| `UNAVAILABLE`  | Sync dependency closure is incomplete or the workflow is unsafe locally | Hide navigation and return`409 {code: "hub_workflow_unavailable"}` for direct hub API access             |
 
 **Current safety boundary:** Surveillance, IDSR/KHIS/DHIS2 reporting, county notification, IHR notification, contact tracing, analytics, MOH reporting, insurance, CDS, AI, and hub-admin workflows are not local hub workflows. Do not expose local forms or store permanent external reporting credentials on hubs for these capabilities.
 
@@ -1287,13 +1331,13 @@ Never classify a module as `LOCAL_SYNCED` merely because one or more models appe
 
 **When to wire events:**
 
-| Scenario | Required? | Example |
-|----------|-----------|--------|
-| New model with status field (TextChoices enum) | ✅ Always | Admission, LabOrder, Prescription |
-| Creation of clinically significant records | ✅ Always | Encounter, TriageAssessment, ImmunizationRecord |
-| Soft-delete / archival | ✅ Always | Patient deactivation |
-| Reference data updates (read-only catalogues) | ❌ Skip | ICD10Code, DrugCatalogue |
-| Intermediate join tables with no business meaning | ❌ Skip | M2M through tables |
+| Scenario                                          | Required? | Example                                         |
+| ------------------------------------------------- | --------- | ----------------------------------------------- |
+| New model with status field (TextChoices enum)    | ✅ Always | Admission, LabOrder, Prescription               |
+| Creation of clinically significant records        | ✅ Always | Encounter, TriageAssessment, ImmunizationRecord |
+| Soft-delete / archival                            | ✅ Always | Patient deactivation                            |
+| Reference data updates (read-only catalogues)     | ❌ Skip   | ICD10Code, DrugCatalogue                        |
+| Intermediate join tables with no business meaning | ❌ Skip   | M2M through tables                              |
 
 **Step 1: Define event type constants** in `hmis/apps/core/events/types.py`:
 
@@ -1342,6 +1386,7 @@ def test_my_model_creation_publishes_event(self, db, mocker):
 **Step 5: Update the SSOT** — add your new events to `docs/domain-events.md` (event catalog table + signal wiring table).
 
 **Checklist for every new model with state transitions:**
+
 - [ ] Event type constants defined in `core/events/types.py`
 - [ ] Constants exported in `core/events/__init__.py`
 - [ ] `post_save` signal handler calls `publish_event()` in `{module}/signals.py`
@@ -1371,6 +1416,7 @@ def destroy(self, request, *args, **kwargs):
 ```
 
 **Already enforced on:**
+
 - `PatientViewSet` → `patients.delete_patient`
 - `EncounterViewSet` → `encounters.delete_encounter`
 - `DiagnosisViewSet` → `encounters.delete_diagnosis`
@@ -1380,6 +1426,7 @@ def destroy(self, request, *args, **kwargs):
 - `ClinicalTemplateViewSet` → ownership + system template check
 
 **Checklist for every new ViewSet with destroy:**
+
 - [ ] `destroy()` calls `has_perm("{app_label}.delete_{model}")`
 - [ ] Returns 403 with clear error message if denied
 - [ ] Test exists verifying a user WITHOUT the permission gets 403
@@ -1412,35 +1459,42 @@ def test_delete_with_permission(self, authenticated_client):
 > ⚠️ **CRITICAL**: Large refactors must preserve behavior first, structure second. Do not ship mechanical code movement that changes API semantics, error mapping, or patch/import compatibility.
 
 **When splitting a monolithic file:**
+
 - Split by **single concern** (workflow, ILM, attachments, reporting, helpers) using focused modules/mixins
 - Keep one small composition module (shim/aggregator) that assembles the final class
 - Preserve public import surfaces for existing callers (`sha_views`-style re-export shim when needed)
 
 **Error-handling invariants (must not regress):**
+
 - Do not replace typed handlers with broad `except Exception` in request paths
 - Keep existing status-code contracts (`400/409/502/503`) and error `code` fields stable
 - If a handler method is called via `self.method()`, ensure `@staticmethod` is present only when intended (missing decorators can cause runtime `TypeError`)
 
 **Broad catch policy (`except Exception`)**
+
 - Allowed only at true boundaries (telemetry, best-effort cleanup, background/audit logging) where failure must never block the primary response
 - Every allowed broad catch must include an inline rationale comment (e.g. `# noqa: BLE001 - telemetry must not break API`)
 - In request/endpoint paths, catch specific exception classes and map to explicit HTTP responses; do not silently downgrade to generic `400`
 - If broad catch is unavoidable, log with context (`action`, `resource_id`, exception class) and add a focused test proving expected mapping/behavior
 
 **Mixin split safety rules:**
+
 - Methods that call shared helpers must import them explicitly from the helper module (no implicit cross-file globals)
 - Ensure MRO order is deliberate: core helpers/errors should be available before action mixins
 - Keep DRF action signatures intact (`pk`, path kwargs) to avoid router/runtime breakage
 
 **Compatibility and test patch points:**
+
 - If tests patch symbols via legacy paths (e.g. `hmis.apps.billing.sha_views.*`), keep those symbols re-exported
 - When moving helpers/services, verify old patch targets still resolve
 
 **Required verification for structural refactors:**
+
 - Run targeted suites for affected endpoints first, then full app suite (for billing changes: `pytest tests/billing -q`)
 - If behavior changes are intentional, update tests/docs in the same PR with explicit rationale
 
 **Testing is mandatory (no testless refactors):**
+
 - Structural moves must keep or improve test coverage for touched behaviors; do not merge without automated verification
 - Add/adjust tests for: error mapping contracts, compatibility import paths, patched legacy symbols, and any moved helper used by public endpoints
 - Minimum for billing view refactors: targeted SHA API/ILM action tests + full `tests/billing` run green
@@ -1451,6 +1505,7 @@ def test_delete_with_permission(self, authenticated_client):
 > ⚠️ **CRITICAL**: Never place early returns (permission gates, loading gates, feature flags) before hooks in React components.
 
 **Required pattern for page components and forms:**
+
 - Call all hooks (`useState`, `useMemo`, `useEffect`, `useQuery`, `useMutation`, custom hooks) at top-level, unconditionally, on every render.
 - Compute access booleans first (e.g., `hasCreateAccess`) and place access-denied `return (...)` blocks only **after** hooks are declared.
 - For data hooks that should not fire when access is denied, keep the hook call but gate execution with `enabled: hasAccess`.
@@ -1461,14 +1516,14 @@ def test_delete_with_permission(self, authenticated_client):
 
 ### Kenya Data Protection Act 2019 Compliance
 
-| Requirement | Implementation |
-|-------------|----------------|
-| **Data Minimization** | Only collect necessary patient data |
-| **Purpose Limitation** | `AuditLog.details['purpose']` tracks processing purpose |
-| **Storage Limitation** | 7-year audit log retention |
-| **Integrity & Confidentiality** | Fernet encryption for national_id, phone_number |
-| **Accountability** | Full audit trail on all data access |
-| **Data Subject Rights** | Export/delete patient data via API |
+| Requirement                           | Implementation                                            |
+| ------------------------------------- | --------------------------------------------------------- |
+| **Data Minimization**           | Only collect necessary patient data                       |
+| **Purpose Limitation**          | `AuditLog.details['purpose']` tracks processing purpose |
+| **Storage Limitation**          | 7-year audit log retention                                |
+| **Integrity & Confidentiality** | Fernet encryption for national_id, phone_number           |
+| **Accountability**              | Full audit trail on all data access                       |
+| **Data Subject Rights**         | Export/delete patient data via API                        |
 
 ### Email-or-Username Login
 
@@ -1501,17 +1556,18 @@ ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY')  # 32-byte Fernet key
 
 **PII classification for Vitora (Kenya DPA 2019 § 41):**
 
-| Category | Examples | Encrypted? | Rationale |
-|----------|----------|------------|-----------|
-| **Direct identifiers** | National ID, phone, email, address, passport | ✅ Fernet | Can uniquely identify a person on their own |
-| **Patient names** | first_name, last_name | ❌ Not encrypted | Needed for clinical workflow display; protected by tenant scoping + RBAC |
-| **Staff names** | ordered_by, referring_physician_name | ❌ Not encrypted | Staff are not data subjects in the same sense; names needed for audit trails |
-| **Clinical data** | diagnoses, findings, indications, medications | ❌ Not encrypted | Protected by tenant scoping + RBAC + sensitive patient filtering |
-| **Communication recipients** | critical_communicated_to | ❌ Not encrypted | Staff/clinician workflow metadata |
-| **DICOM metadata** | PatientName, PatientID (from tags) | ❌ Not encrypted at rest | Used for matching/verification only; never surfaced in bulk listing APIs |
-| **Reference/catalog data** | procedure names, ICD codes, drug names | ❌ Not encrypted | Non-identifying clinical reference data |
+| Category                           | Examples                                      | Encrypted?               | Rationale                                                                    |
+| ---------------------------------- | --------------------------------------------- | ------------------------ | ---------------------------------------------------------------------------- |
+| **Direct identifiers**       | National ID, phone, email, address, passport  | ✅ Fernet                | Can uniquely identify a person on their own                                  |
+| **Patient names**            | first_name, last_name                         | ❌ Not encrypted         | Needed for clinical workflow display; protected by tenant scoping + RBAC     |
+| **Staff names**              | ordered_by, referring_physician_name          | ❌ Not encrypted         | Staff are not data subjects in the same sense; names needed for audit trails |
+| **Clinical data**            | diagnoses, findings, indications, medications | ❌ Not encrypted         | Protected by tenant scoping + RBAC + sensitive patient filtering             |
+| **Communication recipients** | critical_communicated_to                      | ❌ Not encrypted         | Staff/clinician workflow metadata                                            |
+| **DICOM metadata**           | PatientName, PatientID (from tags)            | ❌ Not encrypted at rest | Used for matching/verification only; never surfaced in bulk listing APIs     |
+| **Reference/catalog data**   | procedure names, ICD codes, drug names        | ❌ Not encrypted         | Non-identifying clinical reference data                                      |
 
 **PII encryption decision rules:**
+
 1. **Encrypt** if the field alone can identify a natural person (direct identifiers): national_id, phone, email, physical address, passport number, SHA principal ID
 2. **Do NOT encrypt** patient names — they require clinical context (FK lookup) and are protected by tenant scoping, RBAC, and `is_sensitive` filtering
 3. **Do NOT encrypt** staff/clinician names — staff are system users, not data subjects under the same DPA provisions
@@ -1521,6 +1577,7 @@ ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY')  # 32-byte Fernet key
 7. **Always audit** access to sensitive patient records (is_sensitive=True) via AuditLog
 
 **When adding new models:**
+
 - If the model stores direct patient identifiers (ID numbers, phone, email, address), use `encrypted_pii_property()` from `hmis.apps.core.pii`
 - Patient names derived via FK (e.g., `get_patient_name` on serializers) are acceptable as read-only computed fields
 - DICOM metadata containing patient names should only be used for matching/verification, never exposed in bulk listing APIs
@@ -1654,17 +1711,18 @@ ONBOARDING_GRACE_PERIOD_DAYS = 7           # Configurable
 
 ## 🗺️ Development Roadmap Summary
 
-| Phase | Timeline | Focus | Key Deliverables |
-|-------|----------|-------|------------------|
-| **Phase 0** ✅ | Jan-Mar 2026 | Foundation | Desktop app, Backend API, Offline sync |
-| **Phase 1** 📋 | Apr-Sep 2026 | Clinical Core | Encounters, Pharmacy, Billing, Mobile app, Pilots |
-| **Phase 2** 📋 | Oct 2026-Mar 2027 | Integration | SHA claims, KHIS/DHIS2, Cloud sync, Web frontend |
-| **Phase 3** 📋 | Apr-Sep 2027 | Expansion | MCH, Imaging, BI, Multi-site |
-| **Phase 4** 📋 | Oct-Dec 2027 | Advanced | AI/ML, Global scaling |
+| Phase                | Timeline          | Focus         | Key Deliverables                                  |
+| -------------------- | ----------------- | ------------- | ------------------------------------------------- |
+| **Phase 0** ✅ | Jan-Mar 2026      | Foundation    | Desktop app, Backend API, Offline sync            |
+| **Phase 1** 📋 | Apr-Sep 2026      | Clinical Core | Encounters, Pharmacy, Billing, Mobile app, Pilots |
+| **Phase 2** 📋 | Oct 2026-Mar 2027 | Integration   | SHA claims, KHIS/DHIS2, Cloud sync, Web frontend  |
+| **Phase 3** 📋 | Apr-Sep 2027      | Expansion     | MCH, Imaging, BI, Multi-site                      |
+| **Phase 4** 📋 | Oct-Dec 2027      | Advanced      | AI/ML, Global scaling                             |
 
 ### Upcoming Sprint Details
 
 **Phase 1, Sprint 1.1-1.2 (Weeks 1-4)**:
+
 - Track A: Encounter management (vitals, diagnosis, treatment plans)
 - Track B: Mobile app foundation (React Native, offline storage)
 
@@ -1674,17 +1732,17 @@ See `ROADMAP.md` for complete sprint breakdown.
 
 ## 📚 Reference Documents
 
-| Document | Purpose |
-|----------|---------|
-| `ROADMAP.md` | Complete development roadmap with sprint details |
-| `README.md` | Architecture overview, setup guide, tech stack |
-| `docs/tdd-guidelines.md` | TDD methodology and best practices |
-| `docs/coding-standards.md` | Code style, naming conventions |
-| `docs/dpia.md` | Data Protection Impact Assessment |
-| `docs/sprint-*.md` | Sprint deliverables with implementation details |
-| `docs/domain-events.md` | Domain events SSOT: architecture, catalog, wiring tables, projections |
-| `docs/contract-testing-recommendations.md` | API contract testing strategy (Layer 1-4) |
-| `docs/dha-hie-implementation.md` | DHA HIE Claims & Preauths implementation guide (Phases 1-4) |
+| Document                                     | Purpose                                                               |
+| -------------------------------------------- | --------------------------------------------------------------------- |
+| `ROADMAP.md`                               | Complete development roadmap with sprint details                      |
+| `README.md`                                | Architecture overview, setup guide, tech stack                        |
+| `docs/tdd-guidelines.md`                   | TDD methodology and best practices                                    |
+| `docs/coding-standards.md`                 | Code style, naming conventions                                        |
+| `docs/dpia.md`                             | Data Protection Impact Assessment                                     |
+| `docs/sprint-*.md`                         | Sprint deliverables with implementation details                       |
+| `docs/domain-events.md`                    | Domain events SSOT: architecture, catalog, wiring tables, projections |
+| `docs/contract-testing-recommendations.md` | API contract testing strategy (Layer 1-4)                             |
+| `docs/dha-hie-implementation.md`           | DHA HIE Claims & Preauths implementation guide (Phases 1-4)           |
 
 ---
 
@@ -1790,20 +1848,20 @@ export const patientsApi = {
 
 ### Schema Files
 
-| Module | Schema File | Status |
-|--------|-------------|--------|
-| Clinics | `lib/schemas/clinic.schema.ts` | ✅ Implemented |
-| Patients | `lib/schemas/patient.schema.ts` | ✅ Implemented |
-| Encounters | `lib/schemas/encounter.schema.ts` | 📋 Placeholder |
-| Pharmacy | `lib/schemas/pharmacy.schema.ts` | 📋 Placeholder |
+| Module     | Schema File                          | Status         |
+| ---------- | ------------------------------------ | -------------- |
+| Clinics    | `lib/schemas/clinic.schema.ts`     | ✅ Implemented |
+| Patients   | `lib/schemas/patient.schema.ts`    | ✅ Implemented |
+| Encounters | `lib/schemas/encounter.schema.ts`  | 📋 Placeholder |
+| Pharmacy   | `lib/schemas/pharmacy.schema.ts`   | 📋 Placeholder |
 | Laboratory | `lib/schemas/laboratory.schema.ts` | 📋 Placeholder |
-| Billing | `lib/schemas/billing.schema.ts` | 📋 Placeholder |
-| Triage | `lib/schemas/triage.schema.ts` | 📋 Placeholder |
-| Inpatient | `lib/schemas/inpatient.schema.ts` | 📋 Placeholder |
-| RBAC | `lib/schemas/rbac.schema.ts` | 📋 Placeholder |
-| SHA | `lib/schemas/sha.schema.ts` | ✅ Implemented |
-| Core | `lib/schemas/core.schema.ts` | 📋 Placeholder |
-| AI | `lib/schemas/ai.schema.ts` | ✅ Implemented |
+| Billing    | `lib/schemas/billing.schema.ts`    | 📋 Placeholder |
+| Triage     | `lib/schemas/triage.schema.ts`     | 📋 Placeholder |
+| Inpatient  | `lib/schemas/inpatient.schema.ts`  | 📋 Placeholder |
+| RBAC       | `lib/schemas/rbac.schema.ts`       | 📋 Placeholder |
+| SHA        | `lib/schemas/sha.schema.ts`        | ✅ Implemented |
+| Core       | `lib/schemas/core.schema.ts`       | 📋 Placeholder |
+| AI         | `lib/schemas/ai.schema.ts`         | ✅ Implemented |
 | Onboarding | `lib/schemas/onboarding.schema.ts` | ✅ Implemented |
 
 ### When Adding New API Endpoints
@@ -1828,21 +1886,22 @@ When working on `web-app/` pages under Inventory, Pharmacy, and Transactions/Inv
 ### Required Rules
 
 1. **Gate by module availability**
+
    - Inventory routes/actions must honor `inventory_enabled`
    - Pharmacy routes/actions must honor `pharmacy_enabled`
    - Invoice routes/actions must honor `modules.billing` from inventory bootstrap
-
 2. **Gate write actions by RBAC + capability flags**
+
    - Inventory examples: `can_create_po`, `can_receive_grn`, `can_adjust_stock`, `can_manage_suppliers`
    - Pharmacy examples: `can_create_prescription`, `can_dispense`, `can_adjust_stock`, `can_manage_catalog`
    - Do not rely on one layer only; enforce both frontend RBAC and bootstrap capability flags.
-
 3. **Align item source and pricing behavior with bootstrap**
+
    - Inventory invoice source set is `services | catalogs`
    - Use canonical source labels in UI (normalize unknown values to a safe default)
    - When `unified_pricing_enabled` is true, disable manual price inputs where applicable
-
 4. **Reflect capability state in UI**
+
    - Disable unavailable actions/controls
    - Show concise badges or contextual alerts for disabled capabilities
    - Prefer clear “read-only/disabled by facility settings” messaging
@@ -1874,18 +1933,19 @@ Follow these established patterns when creating or modifying frontend components
 
 Use Tailwind's standard breakpoints consistently:
 
-| Breakpoint | Size | Usage |
-|------------|------|-------|
-| `sm` | 640px | Large phones - show abbreviated text, basic icons |
-| `md` | 768px | Tablets - show search bar (compact), 2-column grids |
-| `lg` | 1024px | Small laptops, tablets landscape - **sidebar still hidden** |
-| `xl` | 1280px | Desktops - **persistent sidebar**, full status text |
-| `2xl` | 1536px | Large desktops - maximum content width |
+| Breakpoint | Size   | Usage                                                            |
+| ---------- | ------ | ---------------------------------------------------------------- |
+| `sm`     | 640px  | Large phones - show abbreviated text, basic icons                |
+| `md`     | 768px  | Tablets - show search bar (compact), 2-column grids              |
+| `lg`     | 1024px | Small laptops, tablets landscape -**sidebar still hidden** |
+| `xl`     | 1280px | Desktops -**persistent sidebar**, full status text         |
+| `2xl`    | 1536px | Large desktops - maximum content width                           |
 
 > ⚠️ **IMPORTANT**: The sidebar becomes persistent at `xl` (1280px), NOT `lg` (1024px).
 > At 1024px, the sidebar is still in hamburger menu mode to prevent crowding.
 
 **Breakpoint Usage Summary:**
+
 - **Sidebar visible**: `xl:translate-x-0`, `xl:ml-64`
 - **Mobile menu button**: `xl:hidden`
 - **Full status text**: `xl:inline`, short text uses `sm:inline xl:hidden`
@@ -1917,6 +1977,7 @@ import { PageHeader } from '@/components/shared/page-header';
 ```
 
 **Guidelines:**
+
 - ❌ Don't use separate `<h1>` and `<p>` for page headers
 - ❌ Don't include back buttons in pages (users can use browser back/keyboard)
 - ✅ Use `helpContent` prop instead of description text for contextual help
@@ -1945,6 +2006,7 @@ import { HelpPopover } from '@/components/shared/help-popover';
 ```
 
 **Where to use help tooltips:**
+
 - Page headers (use `helpContent` prop on `PageHeader`)
 - Dialog/modal titles
 - Card headers for complex sections
@@ -1972,10 +2034,10 @@ import { formatLastFetch, formatLastFetchShort } from '@/lib/context/page-refres
 </>
 ```
 
-| Format | Example Output |
-|--------|----------------|
-| `formatLastFetch()` | "Just now", "5s ago", "1 min ago", "2 hrs ago" |
-| `formatLastFetchShort()` | "now", "5s", "1m", "2h" |
+| Format                     | Example Output                                 |
+| -------------------------- | ---------------------------------------------- |
+| `formatLastFetch()`      | "Just now", "5s ago", "1 min ago", "2 hrs ago" |
+| `formatLastFetchShort()` | "now", "5s", "1m", "2h"                        |
 
 ### Breadcrumb Responsive Pattern
 
@@ -2022,6 +2084,7 @@ Prevent badges from stretching full-width on mobile:
 ```
 
 **`sortType` behavior:**
+
 - `'string'` — `localeCompare` (default). First click sorts ascending.
 - `'number'` — numeric subtraction. First click sorts ascending.
 - `'date'` — `Date.getTime()` comparison. **First click sorts descending** (newest first).
@@ -2050,6 +2113,7 @@ Prevent badges from stretching full-width on mobile:
 ```
 
 **Guidelines:**
+
 - Sorting is client-side and renders `ArrowUp`/`ArrowDown`/`ChevronsUpDown` icons automatically
 - Date/time columns default to descending (newest first); text/number columns default to ascending
 - Action columns (buttons, dropdowns, links) are NOT sortable — omit `sortable`
@@ -2086,6 +2150,7 @@ import { ResponsiveTable } from '@/components/ui/responsive-table';
 ```
 
 **Benefits of `ResponsiveTable`:**
+
 - **Built-in column sorting** with `sortable: true` (no manual state management)
 - Auto card layout on mobile (< md breakpoint)
 - `hideOnMobile: true` to hide columns on mobile cards
@@ -2187,6 +2252,7 @@ export function PatientListPage() {
 ```
 
 **Guidelines:**
+
 - Wrap the main scrollable content area
 - Use `usePageRefresh()` hook for refresh logic (invalidates React Query cache)
 - The component shows a visual indicator when pulled past threshold
@@ -2194,6 +2260,7 @@ export function PatientListPage() {
 - Desktop users have a refresh button in the header instead
 
 **Important refresh wiring notes:**
+
 - `refresh` invalidates React Query cache; pages should fetch via React Query for the header refresh and Pull-to-Refresh to actually reload data.
 - Avoid wiring Pull-to-Refresh to ad-hoc `refetch()` functions unless the page is already integrated with `usePageRefresh()`.
 - After write actions (create/update/verify/upload), prefer `queryClient.invalidateQueries()` over manual reloads so the header refresh and Pull-to-Refresh stay consistent.
@@ -2242,6 +2309,7 @@ Apply a dual radial gradient to **data-display / highlight cards** (stat cards, 
 ```
 
 **Where to apply:**
+
 - `StatsCard` (dashboard) — subtle
 - `KPICard` (reports) — subtle
 - `EntityCard` (staff/patient grids) — subtle
@@ -2251,6 +2319,7 @@ Apply a dual radial gradient to **data-display / highlight cards** (stat cards, 
 - `AIChatPanel` container — subtle
 
 **Where NOT to apply:**
+
 - Base `Card` component (`components/ui/card.tsx`)
 - Ghost, muted, dashed card variants
 - Form/dialog containers
@@ -2298,8 +2367,8 @@ When using a `Switch` to toggle between two modes, show **only the active label*
 Every commit must follow these rules:
 
 1. **Write comprehensive commit messages**
-    - The commit message must encapsulate the change and act as the summary.
-    - Include a clear subject line plus a body that explains *what changed* and *why* (and notable API/model/test/migration impacts).
+   - The commit message must encapsulate the change and act as the summary.
+   - Include a clear subject line plus a body that explains *what changed* and *why* (and notable API/model/test/migration impacts).
 
 ---
 
@@ -2309,26 +2378,26 @@ Every commit must follow these rules:
 
 ### The Four Files to Keep in Sync
 
-| # | File | Purpose | Sensitive values |
-|---|------|---------|------------------|
-| 1 | `backend/.env` | Local development & source of truth for variable names | Plain text |
-| 2 | `backend/scripts/azure-update-env.sh` | Manual Azure deploy (secrets dict + `--set-env-vars`) | `secretref:` for secrets |
-| 3 | `.github/workflows/deploy-backend.yml` | CI/CD deploy (`environmentVariables:` block) | `secretref:` for secrets, `${{ vars.* }}` for configurable values |
-| 4 | `backend/Makefile` | `make staging-deploy` chains `azure-update-env.sh` | Inherits from #2 |
+| # | File                                     | Purpose                                                | Sensitive values                                                      |
+| - | ---------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------- |
+| 1 | `backend/.env`                         | Local development & source of truth for variable names | Plain text                                                            |
+| 2 | `backend/scripts/azure-update-env.sh`  | Manual Azure deploy (secrets dict +`--set-env-vars`) | `secretref:` for secrets                                            |
+| 3 | `.github/workflows/deploy-backend.yml` | CI/CD deploy (`environmentVariables:` block)         | `secretref:` for secrets, `${{ vars.* }}` for configurable values |
+| 4 | `backend/Makefile`                     | `make staging-deploy` chains `azure-update-env.sh` | Inherits from#2                                                       |
 
 ### Decision: Plain Env Var vs Secret
 
-| Contains | Example | Treatment |
-|----------|---------|-----------|
-| API keys, passwords, tokens, crypto keys | `DJANGO_SECRET_KEY`, `ENCRYPTION_KEY`, `METABASE_EMBEDDING_SECRET` | **Secret**: add to `SECRETS` dict in `azure-update-env.sh`, reference as `secretref:secret-name` in env vars |
-| URLs, feature flags, non-sensitive config | `POWERSYNC_URL`, `TIBABOT_ENABLED`, `FACILITY_LEVEL` | **Plain env var**: add directly to `--set-env-vars` |
+| Contains                                  | Example                                                                  | Treatment                                                                                                                |
+| ----------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| API keys, passwords, tokens, crypto keys  | `DJANGO_SECRET_KEY`, `ENCRYPTION_KEY`, `METABASE_EMBEDDING_SECRET` | **Secret**: add to `SECRETS` dict in `azure-update-env.sh`, reference as `secretref:secret-name` in env vars |
+| URLs, feature flags, non-sensitive config | `POWERSYNC_URL`, `TIBABOT_ENABLED`, `FACILITY_LEVEL`               | **Plain env var**: add directly to `--set-env-vars`                                                              |
 
 ### Decision: Hardcoded vs `${{ vars.* }}` in CI Workflow
 
-| Value is... | Example | Treatment in workflow |
-|-------------|---------|----------------------|
-| Same across all environments | `SHA_AGENT=DHABP05113`, `POWERSYNC_JWT_KID=vitora-hmis-1` | Hardcode in the workflow |
-| Different per environment (staging vs prod) | `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `POWERSYNC_URL` | Use `${{ vars.VAR_NAME }}` and set in GitHub environment settings |
+| Value is...                                 | Example                                                        | Treatment in workflow                                              |
+| ------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Same across all environments                | `SHA_AGENT=DHABP05113`, `POWERSYNC_JWT_KID=vitora-hmis-1`  | Hardcode in the workflow                                           |
+| Different per environment (staging vs prod) | `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `POWERSYNC_URL` | Use`${{ vars.VAR_NAME }}` and set in GitHub environment settings |
 
 ### Checklist for Every New Environment Variable
 

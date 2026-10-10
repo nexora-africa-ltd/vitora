@@ -9,6 +9,7 @@ import { useSubscription } from '@/lib/hooks/use-subscription';
 import { useClinics } from '@/lib/hooks/use-clinics';
 import { useNetworkStatus } from '@/lib/hooks/use-network-status';
 import { useInterfacilityTransfersEnabled } from '@/lib/hooks/use-interfacility-transfers-enabled';
+import { useCloudAvailability } from '@/lib/hooks/use-cloud-availability';
 import {
   mainNavItems,
   hasChildren,
@@ -22,7 +23,7 @@ import {
 } from '@/lib/config/clinical-navigation';
 import { isLISStandaloneRouteAllowed, isStandardRouteAllowed } from '@/lib/auth/route-access';
 import { getAppConfig } from '@/lib/desktop';
-import { getHubModuleCapability } from '@/lib/desktop/hub-capabilities';
+import { getHubModuleCapability, loadHubRoutingManifest } from '@/lib/desktop/hub-capabilities';
 
 export interface NavigationResult {
   items: NavItemType[];
@@ -37,6 +38,7 @@ export function useNavigationItems(): NavigationResult {
   const { hasFeature } = useSubscription();
   const { isSustainedOffline } = useNetworkStatus();
   const interfacilityTransfersEnabled = useInterfacilityTransfersEnabled();
+  const cloudAvailability = useCloudAvailability();
   const [isHubMode, setIsHubMode] = useState(false);
 
   useEffect(() => {
@@ -44,6 +46,11 @@ export function useNavigationItems(): NavigationResult {
       setIsHubMode(
         config?.deployment_mode === 'lan_client' || config?.deployment_mode === 'lan_hub'
       );
+      if (config?.deployment_mode === 'lan_client' || config?.deployment_mode === 'lan_hub') {
+        // Navigation remains available while discovery completes. The hub middleware
+        // is authoritative and blocks restricted routes if the manifest is delayed.
+        void loadHubRoutingManifest();
+      }
     });
   }, []);
   const shouldFetchClinicTypes =
@@ -92,7 +99,14 @@ export function useNavigationItems(): NavigationResult {
       if (item.featureFlag === 'interfacility_transfers' && !interfacilityTransfersEnabled) {
         return false;
       }
-      if (isHubMode && getHubModuleCapability(item.moduleKey) !== 'LOCAL_SYNCED') return false;
+      if (isHubMode && getHubModuleCapability(item.moduleKey) === 'UNAVAILABLE') return false;
+      if (
+        isHubMode &&
+        getHubModuleCapability(item.moduleKey) === 'CLOUD_ONLY' &&
+        (isSustainedOffline || cloudAvailability !== 'available')
+      ) {
+        return false;
+      }
       if (isLISStandaloneProfile) {
         const href = 'href' in item && typeof item.href === 'string' ? item.href : '';
         if (href === '/patients/lookup' || href.startsWith('/patients/lookup/')) {
@@ -169,6 +183,7 @@ export function useNavigationItems(): NavigationResult {
     navigationMode,
     isClinicalNavigationEligible,
     isSustainedOffline,
+    cloudAvailability,
     interfacilityTransfersEnabled,
     isHubMode,
     facility,

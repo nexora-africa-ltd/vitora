@@ -12,7 +12,13 @@ import {
   isStandardRouteAllowed,
 } from '@/lib/auth/route-access';
 import { getAppConfig } from '@/lib/desktop';
-import { isHubRestrictedRoute } from '@/lib/desktop/hub-capabilities';
+import {
+  getHubRouteCapability,
+  isCloudOnlyRoute,
+  loadHubRoutingManifest,
+} from '@/lib/desktop/hub-capabilities';
+import { hasCloudSession } from '@/lib/api/client';
+import { useCloudAvailability } from '@/lib/hooks/use-cloud-availability';
 
 interface PermissionGuardProps {
   children: React.ReactNode;
@@ -131,22 +137,53 @@ interface RouteGuardProps {
  */
 export function RouteGuard({ children, fallback }: RouteGuardProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { canAccessModule, canPerformAction, hasPermission, isAuthenticated } = usePermissions();
   const { hasModule, facilityDetail, facility } = useFacility();
+  const cloudAvailability = useCloudAvailability();
   const [isHubMode, setIsHubMode] = useState(false);
+  const [routingManifestLoaded, setRoutingManifestLoaded] = useState(false);
+  const [cloudSession, setCloudSession] = useState(false);
 
   useEffect(() => {
     void getAppConfig().then((config) => {
       setIsHubMode(
         config?.deployment_mode === 'lan_client' || config?.deployment_mode === 'lan_hub'
       );
+      if (config?.deployment_mode === 'lan_client' || config?.deployment_mode === 'lan_hub') {
+        void loadHubRoutingManifest().then(() => setRoutingManifestLoaded(true));
+      }
     });
   }, []);
 
+  useEffect(() => {
+    const updateCloudSession = () => setCloudSession(hasCloudSession());
+    updateCloudSession();
+    window.addEventListener('vitora:cloud-session-changed', updateCloudSession);
+    window.addEventListener('vitora:cloud-session-required', updateCloudSession);
+    return () => {
+      window.removeEventListener('vitora:cloud-session-changed', updateCloudSession);
+      window.removeEventListener('vitora:cloud-session-required', updateCloudSession);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isHubMode && isCloudOnlyRoute(pathname) && !cloudSession && cloudAvailability === 'available') {
+      router.replace(`/cloud-sign-in?callbackUrl=${encodeURIComponent(pathname)}`);
+    }
+  }, [cloudAvailability, cloudSession, isHubMode, pathname, router, routingManifestLoaded]);
+
   if (!isAuthenticated) return <>{children}</>;
 
-  if (isHubMode && isHubRestrictedRoute(pathname)) {
+  if (isHubMode && getHubRouteCapability(pathname) === 'UNAVAILABLE') {
     return fallback ?? <AccessDenied />;
+  }
+
+  if (isHubMode && isCloudOnlyRoute(pathname) && !cloudSession) {
+    if (cloudAvailability === 'unavailable') {
+      return <div className="p-6 text-sm text-muted-foreground">Vitora Cloud is currently unavailable.</div>;
+    }
+    return <div className="p-6 text-sm text-muted-foreground">Opening Vitora Cloud sign-in...</div>;
   }
 
   const isLISStandaloneProfile =
