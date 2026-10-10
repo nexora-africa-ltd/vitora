@@ -21,6 +21,9 @@ import os
 
 from .base import *  # noqa: F401, F403, F405
 
+# Hub imports/reloads must not add local-only guards to other settings modules.
+MIDDLEWARE = list(MIDDLEWARE)  # noqa: F405
+
 DEBUG = False
 
 # ---------------------------------------------------------------------------

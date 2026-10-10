@@ -19,6 +19,18 @@ from hmis.apps.licensing.cloud_proxy import CloudProxyResponse
 pytestmark = pytest.mark.django_db
 
 
+@pytest.fixture(autouse=True)
+def assert_runtime_settings_restored():
+    """Proxy tests must restore Django settings after all overrides tear down."""
+    from django.conf import settings
+
+    original_settings = settings._wrapped
+    original_environment = settings.ENVIRONMENT
+    yield
+    assert settings._wrapped is original_settings
+    assert original_environment == settings.ENVIRONMENT
+
+
 class TestHubCloudUserTokenProxy:
     """The hub proxies only the current local user's identity to cloud."""
 
@@ -31,9 +43,9 @@ class TestHubCloudUserTokenProxy:
             )
         ).decode("ascii")
 
-    @override_settings(ENVIRONMENT="hub")
+    @override_settings(ENVIRONMENT="hub", HUB_ID="hub-proof-test")
     def test_forwards_current_user_identity_and_returns_only_cloud_token(
-        self, authenticated_client, test_staff_profile, settings
+        self, authenticated_client, test_staff_profile
     ):
         """Browser-supplied identity cannot replace the authenticated local user."""
         cloud_response = CloudProxyResponse(
@@ -45,7 +57,6 @@ class TestHubCloudUserTokenProxy:
                 "expires_in": 300,
             },
         )
-        settings.HUB_ID = "hub-proof-test"
         with (
             patch.dict("os.environ", {"HUB_DEVICE_SIGNING_PRIVATE_KEY": self._private_key()}),
             patch(
@@ -93,13 +104,12 @@ class TestHubCloudUserTokenProxy:
         assert response.data["code"] == "hub_only"
         exchange.assert_not_called()
 
-    @override_settings(ENVIRONMENT="hub")
-    def test_does_not_return_malformed_upstream_data(self, authenticated_client, settings):
+    @override_settings(ENVIRONMENT="hub", HUB_ID="hub-proof-test")
+    def test_does_not_return_malformed_upstream_data(self, authenticated_client):
         """Only the expected short-lived token response shape reaches the browser."""
         cloud_response = CloudProxyResponse(
             success=True, status_code=200, data={"license_token": "secret"}
         )
-        settings.HUB_ID = "hub-proof-test"
         with (
             patch.dict("os.environ", {"HUB_DEVICE_SIGNING_PRIVATE_KEY": self._private_key()}),
             patch(

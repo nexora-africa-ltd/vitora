@@ -844,7 +844,10 @@ class HubCloudOnlyWorkflowMiddleware:
         from hmis.apps.core.hub_capabilities import HubCapability, get_hub_capability_for_path
 
         capability = get_hub_capability_for_path(request.path)
-        if getattr(settings, "ENVIRONMENT", "") == "hub" and capability:
+        if getattr(settings, "ENVIRONMENT", "") == "hub" and capability in {
+            HubCapability.CLOUD_ONLY,
+            HubCapability.UNAVAILABLE,
+        }:
             code = (
                 "hub_cloud_only"
                 if capability == HubCapability.CLOUD_ONLY
