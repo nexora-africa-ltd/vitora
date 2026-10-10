@@ -45,6 +45,22 @@ function Write-Err   { param($msg) Write-Host "  [ERROR] $msg" -ForegroundColor 
 
 function Log { param($msg) Add-Content -Path $LogFile -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $msg" }
 
+function Invoke-HubPythonScript {
+    param(
+        [Parameter(Mandatory=$true)][string]$PythonExe,
+        [Parameter(Mandatory=$true)][string]$ScriptPath,
+        [Parameter()][string[]]$Arguments = @()
+    )
+
+    $previousPythonPath = $env:PYTHONPATH
+    $env:PYTHONPATH = if ($previousPythonPath) { "$InstallDir;$previousPythonPath" } else { $InstallDir }
+    try {
+        & $PythonExe $ScriptPath @Arguments
+    } finally {
+        $env:PYTHONPATH = $previousPythonPath
+    }
+}
+
 function Initialize-DpapiType {
     if ($script:DpapiTypeInitialized) {
         return $script:DpapiAvailable
@@ -263,7 +279,7 @@ function Invoke-HubDeviceReenrollment {
             $databasePath = if ($env:HUB_DB_PATH) { $env:HUB_DB_PATH } else { "$InstallDir\data\hub.sqlite3" }
             if (Test-Path $databasePath) {
                 Write-Info "Local SQLCipher key is absent; requesting cloud recovery..."
-                $databaseEncryptionKey = & $PythonExe "$InstallDir\scripts\hub_database_key_escrow.py" recover
+                $databaseEncryptionKey = Invoke-HubPythonScript -PythonExe $PythonExe -ScriptPath "$InstallDir\scripts\hub_database_key_escrow.py" -Arguments @("recover")
                 if ($LASTEXITCODE -ne 0 -or -not $databaseEncryptionKey) {
                     throw "Cloud database-key recovery failed; this encrypted database cannot be opened and remains unavailable."
                 }
@@ -877,11 +893,11 @@ $dpapiSecrets = @{
 }
 Write-DpapiSecretsBundle -Secrets $dpapiSecrets -Path $hubSecretsFile
 Write-Info "Refreshed DPAPI secret bundle."
-& $pythonExe "$InstallDir\scripts\hub_database_key_escrow.py" submit
+Invoke-HubPythonScript -PythonExe $pythonExe -ScriptPath "$InstallDir\scripts\hub_database_key_escrow.py" -Arguments @("submit")
 if ($LASTEXITCODE -eq 0) {
     Write-Info "Cloud database-key escrow enrollment completed."
 } else {
-    Write-Warn "Cloud database-key escrow enrollment failed; this hub is not cloud-recoverable until enrollment succeeds."
+    Write-Warning "Cloud database-key escrow enrollment failed; this hub is not cloud-recoverable until enrollment succeeds."
 }
 Log "DPAPI secret bundle refreshed"
 

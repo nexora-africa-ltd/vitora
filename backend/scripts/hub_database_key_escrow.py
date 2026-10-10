@@ -14,11 +14,20 @@ import os
 import sys
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
-from hmis.apps.licensing.activation_secrets import decrypt_activation_secrets
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+
+def _decrypt_activation_secrets(*args, **kwargs):
+    from hmis.apps.licensing.activation_secrets import decrypt_activation_secrets
+
+    return decrypt_activation_secrets(*args, **kwargs)
 
 
 def _request(endpoint: str, payload: dict[str, str]) -> dict:
@@ -57,7 +66,7 @@ def recover() -> None:
     ).decode("ascii")
     response = _request("recover", {"device_public_key": public_key})
     try:
-        recovered = decrypt_activation_secrets(
+        recovered = _decrypt_activation_secrets(
             response["recovery_envelope"],
             private_key,
             installation_id=os.environ["HUB_ID"],
