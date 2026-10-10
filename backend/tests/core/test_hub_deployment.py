@@ -93,7 +93,11 @@ class TestHubHealthEndpoint:
         assert "version" in data
         assert data["capabilities"]["surveillance"] == "CLOUD_ONLY"
         assert data["capabilities"]["patients"] == "LOCAL_SYNCED"
-        assert data["capabilities"]["theatre"] == "UNAVAILABLE"
+        assert data["capabilities"]["theatre"] == "CLOUD_ONLY"
+        assert data["routing_manifest"]["version"] == 1
+        policies = {policy["key"]: policy for policy in data["routing_manifest"]["workflows"]}
+        assert policies["cds"]["routing_policy"] == "CLOUD"
+        assert "/api/cds/" in policies["cds"]["api_prefixes"]
 
     @override_settings(ENVIRONMENT="hub")
     def test_hub_blocks_cloud_only_surveillance_routes(self, rf):
@@ -107,8 +111,8 @@ class TestHubHealthEndpoint:
         assert b'"code": "hub_cloud_only"' in response.content
 
     @override_settings(ENVIRONMENT="hub")
-    def test_hub_blocks_unavailable_theatre_routes(self, rf):
-        """Incomplete theatre workflows must not be exposed locally on hubs."""
+    def test_hub_blocks_cloud_only_theatre_routes(self, rf):
+        """Cloud-authoritative theatre workflows must not execute locally on hubs."""
         from hmis.apps.core.middleware import HubCloudOnlyWorkflowMiddleware
 
         response = HubCloudOnlyWorkflowMiddleware(lambda request: None)(
@@ -116,7 +120,19 @@ class TestHubHealthEndpoint:
         )
 
         assert response.status_code == status.HTTP_409_CONFLICT
-        assert b'"code": "hub_workflow_unavailable"' in response.content
+        assert b'"code": "hub_cloud_only"' in response.content
+
+    @override_settings(ENVIRONMENT="hub")
+    def test_hub_blocks_cloud_only_cds_routes(self, rf):
+        """Every cloud-only manifest prefix is enforced by the hub middleware."""
+        from hmis.apps.core.middleware import HubCloudOnlyWorkflowMiddleware
+
+        response = HubCloudOnlyWorkflowMiddleware(lambda request: None)(
+            rf.get("/api/cds/evaluate/")
+        )
+
+        assert response.status_code == status.HTTP_409_CONFLICT
+        assert b'"code": "hub_cloud_only"' in response.content
 
     @override_settings(ENVIRONMENT="hub")
     @patch("hmis.apps.core.hub_views.get_hub_discovery_health")

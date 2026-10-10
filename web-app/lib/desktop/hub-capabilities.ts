@@ -1,72 +1,111 @@
 // Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 /**
- * Defines workflow availability for facility hub desktop modes.
- * Use the exported module and route helpers in hub-aware UI guards.
- * Inputs: navigation module keys and client-side route pathnames.
+ * Loads the backend-owned hub/cloud routing manifest for desktop clients.
+ * Use loadHubRoutingManifest() before routing desktop API, route, or WS traffic.
+ * Inputs: hub health response at GET /api/hub/health/; no frontend policy map exists here.
  */
+
+import { getAppConfig } from '@/lib/desktop';
+
 export type HubCapability = 'LOCAL_SYNCED' | 'CLOUD_ONLY' | 'UNAVAILABLE';
+export type HubRoutingPolicy = 'HUB' | 'CLOUD' | 'BLOCK';
 
-export const HUB_MODULE_CAPABILITIES: Record<string, HubCapability> = {
-  dashboard: 'LOCAL_SYNCED',
-  checkin: 'LOCAL_SYNCED',
-  patients: 'LOCAL_SYNCED',
-  triage: 'LOCAL_SYNCED',
-  clinics: 'LOCAL_SYNCED',
-  encounters: 'LOCAL_SYNCED',
-  procedures: 'LOCAL_SYNCED',
-  inpatient: 'LOCAL_SYNCED',
-  pharmacy: 'LOCAL_SYNCED',
-  laboratory: 'LOCAL_SYNCED',
-  billing: 'LOCAL_SYNCED',
-  inventory: 'LOCAL_SYNCED',
-  scheduling: 'LOCAL_SYNCED',
-  immunizations: 'LOCAL_SYNCED',
-  mch: 'LOCAL_SYNCED',
-  blood_bank: 'LOCAL_SYNCED',
-  imaging: 'LOCAL_SYNCED',
-  surveillance: 'CLOUD_ONLY',
-  analytics: 'CLOUD_ONLY',
-  moh_reporting: 'CLOUD_ONLY',
-  insurance: 'CLOUD_ONLY',
-  cds: 'CLOUD_ONLY',
-  ai: 'CLOUD_ONLY',
-  admin: 'CLOUD_ONLY',
-  quality: 'UNAVAILABLE',
-  theatre: 'UNAVAILABLE',
-  allied_health: 'UNAVAILABLE',
-  emergency: 'UNAVAILABLE',
-  dialysis: 'UNAVAILABLE',
-  last_office: 'UNAVAILABLE',
-};
+export interface HubWorkflowManifest {
+  key: string;
+  capability: HubCapability;
+  routing_policy: HubRoutingPolicy;
+  frontend_routes: string[];
+  api_prefixes: string[];
+  websocket_prefixes: string[];
+}
 
-const HUB_RESTRICTED_ROUTES: Array<[string, HubCapability]> = [
-  ['/surveillance', 'CLOUD_ONLY'],
-  ['/analytics', 'CLOUD_ONLY'],
-  ['/reports/moh', 'CLOUD_ONLY'],
-  ['/insurance', 'CLOUD_ONLY'],
-  ['/cds', 'CLOUD_ONLY'],
-  ['/ai', 'CLOUD_ONLY'],
-  ['/quality', 'UNAVAILABLE'],
-  ['/theatre', 'UNAVAILABLE'],
-  ['/allied-health', 'UNAVAILABLE'],
-  ['/emergency', 'UNAVAILABLE'],
-  ['/dialysis', 'UNAVAILABLE'],
-  ['/last-office', 'UNAVAILABLE'],
-  ['/admin', 'CLOUD_ONLY'],
-];
+export interface HubRoutingManifest {
+  version: 1;
+  workflows: HubWorkflowManifest[];
+}
 
-export function getHubModuleCapability(moduleKey?: string): HubCapability {
-  return HUB_MODULE_CAPABILITIES[moduleKey ?? ''] ?? 'UNAVAILABLE';
+let manifest: HubRoutingManifest | null = null;
+let manifestRequest: Promise<HubRoutingManifest | null> | null = null;
+
+function isHubMode(mode?: string): boolean {
+  return mode === 'lan_client' || mode === 'lan_hub';
+}
+
+function matchesPrefix(path: string, prefix: string): boolean {
+  return path === prefix.slice(0, -1) || path.startsWith(prefix);
+}
+
+function parseManifest(payload: unknown): HubRoutingManifest | null {
+  const candidate = (payload as { routing_manifest?: HubRoutingManifest } | null)?.routing_manifest;
+  if (candidate?.version !== 1 || !Array.isArray(candidate.workflows)) return null;
+  return candidate;
+}
+
+/** Fetch and cache the current hub's backend-owned routing manifest. */
+export async function loadHubRoutingManifest(): Promise<HubRoutingManifest | null> {
+  if (manifest) return manifest;
+  if (manifestRequest) return manifestRequest;
+  manifestRequest = (async () => {
+    const config = await getAppConfig();
+    if (!isHubMode(config?.deployment_mode)) return null;
+    const hubUrl = config?.api_url;
+    if (!hubUrl) return null;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 3_000);
+    try {
+      const response = await fetch(`${hubUrl.replace(/\/$/, '')}/api/hub/health/`, {
+        signal: controller.signal,
+      });
+      if (!response.ok) return null;
+      manifest = parseManifest(await response.json());
+      return manifest;
+    } catch {
+      return null;
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  })();
+  return manifestRequest;
+}
+
+/** Clear stale data after hub rediscovery or a desktop configuration change. */
+export function clearHubRoutingManifest(): void {
+  manifest = null;
+  manifestRequest = null;
+}
+
+export function getCachedHubRoutingManifest(): HubRoutingManifest | null {
+  return manifest;
+}
+
+export function getHubModuleCapability(moduleKey?: string): HubCapability | null {
+  return manifest?.workflows.find((workflow) => workflow.key === moduleKey)?.capability ?? null;
 }
 
 export function getHubRouteCapability(pathname: string): HubCapability | null {
   return (
-    HUB_RESTRICTED_ROUTES.find(
-      ([prefix]) => pathname === prefix || pathname.startsWith(`${prefix}/`)
-    )?.[1] ?? null
+    manifest?.workflows.find((workflow) =>
+      workflow.frontend_routes.some((route) => matchesPrefix(pathname, route))
+    )?.capability ?? null
   );
 }
 
-export function isHubRestrictedRoute(pathname: string): boolean {
-  return getHubRouteCapability(pathname) !== null;
+export function getHubApiRoutingPolicy(pathname: string): HubRoutingPolicy | null {
+  return (
+    manifest?.workflows.find((workflow) =>
+      workflow.api_prefixes.some((prefix) => matchesPrefix(pathname, prefix))
+    )?.routing_policy ?? null
+  );
+}
+
+export function getHubWebSocketRoutingPolicy(pathname: string): HubRoutingPolicy | null {
+  return (
+    manifest?.workflows.find((workflow) =>
+      workflow.websocket_prefixes.some((prefix) => matchesPrefix(pathname, prefix))
+    )?.routing_policy ?? null
+  );
+}
+
+export function isCloudOnlyRoute(pathname: string): boolean {
+  return getHubRouteCapability(pathname) === 'CLOUD_ONLY';
 }

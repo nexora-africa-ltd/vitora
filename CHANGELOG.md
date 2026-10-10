@@ -15,6 +15,22 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Hub 1.0.34] - 2026-10-10
+
+### Hub
+
+- Make the hub workflow registry the authoritative source for module, frontend-route, HTTP API, and WebSocket routing policy, published as a versioned manifest through hub health.
+- Route cloud-authoritative workflows through Vitora Cloud and close coverage gaps for CDS, quality, theatre, allied health, dialysis, and Last Office APIs.
+- Preserve local emergency workflows through the existing triage-backed hub execution path.
+
+## [Desktop 1.0.28] - 2026-10-10
+
+### Desktop
+
+- Route cloud-only workflows from LAN desktop clients directly to Vitora Cloud using a separate cloud session and cloud-issued facility context.
+- Verify cloud health before exposing cloud-only navigation, and require consent before reusing desktop sign-in credentials to establish the cloud session.
+- Keep standard navigation visible while hub routing-manifest discovery is pending or unavailable.
+
 ## [Hub 1.0.33] - 2026-10-08
 
 ### Hub

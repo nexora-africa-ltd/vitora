@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useCallback, useEffect, ReactNode 
 import { clearAllDrafts } from '@/lib/hooks/use-draft-save';
 import { tokenStorage, waitForAuthCleanup } from '@/lib/auth/storage';
 import { API_BASE_URL } from '@/lib/utils/constants';
+import { connectCloudSession } from '@/lib/api/client';
 import type { OrgMembership } from '@/lib/types/membership';
 
 // Facility modules matching backend Facility.modules property
@@ -462,6 +463,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (desktop && data.access && data.refresh) {
         const { tokenStorage } = await import('@/lib/auth/storage');
         tokenStorage.setTokens(data.access, data.refresh);
+        // A cloud failure never blocks local hub access. Cloud-only routes expose
+        // their own sign-in flow when this background connection cannot complete.
+        if (tokenStorage.hasCloudAutoLoginConsent()) {
+          void connectCloudSession(username, password);
+        }
       }
 
       // Store user profile (non-sensitive) in localStorage

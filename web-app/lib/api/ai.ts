@@ -10,6 +10,7 @@ import {
   getActiveFacilityId,
   getActiveOrganizationId,
   getApiBaseUrl,
+  getApiBaseUrlForPath,
 } from '@/lib/api/client';
 import { tokenStorage } from '@/lib/auth/storage';
 import { isDesktop } from '@/lib/desktop';
@@ -230,7 +231,8 @@ export const aiApi = {
     handlers: AIClinicalChatStreamHandlers = {}
   ): Promise<AIClinicalChatResponse> => {
     const endpoint = '/api/ai/clinical/chat/';
-    const baseUrl = getApiBaseUrl().replace(/\/$/, '');
+    const baseUrl = (await getApiBaseUrlForPath(endpoint)).replace(/\/$/, '');
+    const cloudOnly = baseUrl !== getApiBaseUrl();
     const url = `${baseUrl}${endpoint}`;
 
     const headers: Record<string, string> = {
@@ -243,17 +245,19 @@ export const aiApi = {
     }
 
     const activeFacilityId = getActiveFacilityId();
-    if (activeFacilityId != null) {
+    if (!cloudOnly && activeFacilityId != null) {
       headers['X-Facility-Id'] = String(activeFacilityId);
     }
 
     const activeOrganizationId = getActiveOrganizationId();
-    if (activeOrganizationId != null) {
+    if (!cloudOnly && activeOrganizationId != null) {
       headers['X-Organization-Id'] = String(activeOrganizationId);
     }
 
     if (isDesktop()) {
-      const accessToken = tokenStorage.getAccessToken();
+      const accessToken = cloudOnly
+        ? tokenStorage.getCloudAccessToken()
+        : tokenStorage.getAccessToken();
       if (accessToken) {
         headers.Authorization = `Bearer ${accessToken}`;
       }

@@ -285,6 +285,8 @@ export type DeploymentMode = 'standalone' | 'lan_client' | 'lan_hub' | 'web_only
 
 export interface AppConfig {
   api_url: string;
+  /** Stable Vitora Cloud origin, retained when LAN mode changes api_url to a hub. */
+  cloud_api_url: string;
   deployment_mode: DeploymentMode;
   client_id: string;
   sync_interval_secs: number;

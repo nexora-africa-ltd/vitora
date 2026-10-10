@@ -32,6 +32,9 @@ impl Default for DeploymentMode {
 pub struct AppConfig {
     /// The base URL for the Vitora API (e.g., "https://api.vitora.digital")
     pub api_url: String,
+    /// Vitora Cloud origin used by cloud-only workflows while a LAN hub serves local care.
+    #[serde(default = "default_cloud_api_url")]
+    pub cloud_api_url: String,
     /// Deployment mode for offline-first sync.
     #[serde(default)]
     pub deployment_mode: DeploymentMode,
@@ -83,6 +86,10 @@ fn default_sync_interval() -> u64 {
     30 // 30 seconds
 }
 
+fn default_cloud_api_url() -> String {
+    DEFAULT_API_URL.to_string()
+}
+
 fn default_backup_interval() -> u64 {
     30 // 30 minutes
 }
@@ -91,6 +98,7 @@ impl Default for AppConfig {
     fn default() -> Self {
         Self {
             api_url: DEFAULT_API_URL.to_string(),
+            cloud_api_url: default_cloud_api_url(),
             deployment_mode: DeploymentMode::default(),
             client_id: generate_client_id(),
             sync_interval_secs: default_sync_interval(),
@@ -137,6 +145,7 @@ impl AppConfig {
                                 config.setup_completed = false;
                             }
                             config.api_url = normalize_api_url(&config.api_url);
+                            config.cloud_api_url = normalize_api_url(&config.cloud_api_url);
                             config
                         }
                         Err(_) => Self::default(),

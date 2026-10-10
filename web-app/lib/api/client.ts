@@ -1,6 +1,11 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { tokenStorage } from '@/lib/auth/storage';
 import { isDesktop, getApiUrl, getAppConfig } from '@/lib/desktop';
+import {
+  getHubApiRoutingPolicy,
+  getHubRouteCapability,
+  loadHubRoutingManifest,
+} from '@/lib/desktop/hub-capabilities';
 import { API_BASE_URL } from '@/lib/utils/constants';
 import { toast } from 'sonner';
 
@@ -12,11 +17,44 @@ export function getApiBaseUrl(): string {
   return _desktopApiUrl || API_BASE_URL;
 }
 
+/** Resolve a URL for a specific API path, including cloud-only desktop routes. */
+export async function getApiBaseUrlForPath(path: string): Promise<string> {
+  if (!isDesktop()) return getApiBaseUrl();
+  const config = await getAppConfig();
+  if (config?.deployment_mode !== 'lan_client' && config?.deployment_mode !== 'lan_hub') {
+    return getApiBaseUrl();
+  }
+  await loadHubRoutingManifest();
+  const routePolicy =
+    getHubApiRoutingPolicy(path) ??
+    (typeof window !== 'undefined' ? getHubRouteCapability(window.location.pathname) : null);
+  return routePolicy === 'CLOUD_ONLY' || routePolicy === 'CLOUD'
+    ? config.cloud_api_url || API_BASE_URL
+    : getApiBaseUrl();
+}
+
 // ---------------------------------------------------------------------------
 // Desktop dynamic API URL — resolved from Tauri config at runtime
 // ---------------------------------------------------------------------------
 let _desktopApiUrl: string | null = null;
 let _desktopApiUrlPromise: Promise<string> | null = null;
+
+type DesktopRequestConfig = InternalAxiosRequestConfig & { _vitoraCloudRoute?: boolean };
+
+function isHubDesktopMode(mode?: string): boolean {
+  return mode === 'lan_client' || mode === 'lan_hub';
+}
+
+async function isCloudRoutedDesktopRequest(config: InternalAxiosRequestConfig): Promise<boolean> {
+  if (!isDesktop()) return false;
+  const appConfig = await getAppConfig();
+  if (!isHubDesktopMode(appConfig?.deployment_mode)) return false;
+  await loadHubRoutingManifest();
+  const routePolicy =
+    getHubApiRoutingPolicy(String(config.url ?? '')) ??
+    (typeof window !== 'undefined' ? getHubRouteCapability(window.location.pathname) : null);
+  return routePolicy === 'CLOUD' || routePolicy === 'CLOUD_ONLY';
+}
 
 /**
  * Initialize the desktop API URL from Tauri config.
@@ -47,6 +85,104 @@ export function setDesktopApiUrl(url: string): void {
   _desktopApiUrl = url;
   _desktopApiUrlPromise = Promise.resolve(url);
   apiClient.defaults.baseURL = url;
+}
+
+export type CloudSessionResult =
+  | { connected: true }
+  | {
+      connected: false;
+      reason: 'mfa_required';
+      mfaToken: string;
+      availableMethods: string[];
+    }
+  | { connected: false; reason: 'not_required' | 'unavailable' | 'rejected' };
+
+/** True when this desktop has a separate authenticated cloud session. */
+export function hasCloudSession(): boolean {
+  return tokenStorage.getCloudAccessToken() !== null;
+}
+
+/**
+ * Establish a cloud session without replacing the active hub session.
+ * The caller deliberately supplies credentials; hub credentials are never sent
+ * implicitly to a different origin.
+ */
+export async function connectCloudSession(
+  username: string,
+  password: string
+): Promise<CloudSessionResult> {
+  if (!isDesktop()) return { connected: false, reason: 'not_required' };
+
+  const config = await getAppConfig();
+  if (!isHubDesktopMode(config?.deployment_mode)) return { connected: false, reason: 'not_required' };
+
+  try {
+    const response = await fetch(`${config?.cloud_api_url || API_BASE_URL}/api/auth/login/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Vitora-Client': 'desktop/0.1.0',
+      },
+      body: JSON.stringify({ username, password }),
+    });
+    if (!response.ok) return { connected: false, reason: 'rejected' };
+
+    const data = (await response.json()) as {
+      access?: string;
+      refresh?: string;
+      mfa_required?: boolean;
+      mfa_token?: string;
+      available_methods?: string[];
+      user?: { facility?: { id?: number | null } | null };
+    };
+    if (data.mfa_required && data.mfa_token) {
+      return {
+        connected: false,
+        reason: 'mfa_required',
+        mfaToken: data.mfa_token,
+        availableMethods: data.available_methods ?? ['totp', 'backup_code'],
+      };
+    }
+    if (!data.access || !data.refresh) return { connected: false, reason: 'rejected' };
+
+    tokenStorage.setCloudTokens(data.access, data.refresh, data.user?.facility?.id);
+    return { connected: true };
+  } catch {
+    return { connected: false, reason: 'unavailable' };
+  }
+}
+
+/** Complete an MFA challenge for the separate cloud session. */
+export async function verifyCloudSessionMfa(
+  mfaToken: string,
+  options: { token?: string; backupCode?: string }
+): Promise<boolean> {
+  const config = await getAppConfig();
+  try {
+    const response = await fetch(`${config?.cloud_api_url || API_BASE_URL}/api/auth/mfa-verify/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Vitora-Client': 'desktop/0.1.0',
+      },
+      body: JSON.stringify({
+        mfa_token: mfaToken,
+        ...(options.token ? { token: options.token } : {}),
+        ...(options.backupCode ? { backup_code: options.backupCode } : {}),
+      }),
+    });
+    if (!response.ok) return false;
+    const data = (await response.json()) as {
+      access?: string;
+      refresh?: string;
+      user?: { facility?: { id?: number | null } | null };
+    };
+    if (!data.access || !data.refresh) return false;
+    tokenStorage.setCloudTokens(data.access, data.refresh, data.user?.facility?.id);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -129,26 +265,42 @@ const processQueue = (error: Error | null) => {
  */
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
+    const desktopConfig = config as DesktopRequestConfig;
+    const useCloud = await isCloudRoutedDesktopRequest(config);
+
     // In desktop mode, ensure we have the hub URL before making requests
     if (isDesktop()) {
-      if (!_desktopApiUrl && _desktopApiUrlPromise) {
+      if (!useCloud && !_desktopApiUrl && _desktopApiUrlPromise) {
         await _desktopApiUrlPromise;
       }
-      if (_desktopApiUrl) {
+      if (useCloud) {
+        const appConfig = await getAppConfig();
+        config.baseURL = appConfig?.cloud_api_url || API_BASE_URL;
+        config.withCredentials = false;
+        desktopConfig._vitoraCloudRoute = true;
+      } else if (_desktopApiUrl) {
         config.baseURL = _desktopApiUrl;
       }
       // Desktop: attach Bearer token (httpOnly cookies don't work cross-origin HTTP)
-      const accessToken = tokenStorage.getAccessToken();
+      const accessToken = useCloud
+        ? tokenStorage.getCloudAccessToken()
+        : tokenStorage.getAccessToken();
       if (accessToken) {
         config.headers['Authorization'] = `Bearer ${accessToken}`;
       }
+      if (useCloud) {
+        const cloudFacilityId = tokenStorage.getCloudFacilityId();
+        if (cloudFacilityId != null) config.headers['X-Facility-Id'] = String(cloudFacilityId);
+      }
     }
     // Attach facility ID header for multi-facility data scoping
-    if (_activeFacilityId != null) {
+    // Cloud resolves tenancy from its independently authenticated identity. Hub-local
+    // integer IDs are not safe to forward because they may differ from cloud IDs.
+    if (!useCloud && _activeFacilityId != null) {
       config.headers['X-Facility-Id'] = String(_activeFacilityId);
     }
     // Attach organization ID header for multi-org data scoping
-    if (_activeOrganizationId != null) {
+    if (!useCloud && _activeOrganizationId != null) {
       config.headers['X-Organization-Id'] = String(_activeOrganizationId);
     }
     // Identify desktop app to the backend (analytics + debugging)
@@ -264,12 +416,19 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshed = await refreshViaCookie();
+        const refreshed = await refreshViaCookie(
+          (originalRequest as DesktopRequestConfig)._vitoraCloudRoute === true
+        );
         if (refreshed) {
           processQueue(null);
           return apiClient(originalRequest);
         } else {
-          handleAuthError();
+          if ((originalRequest as DesktopRequestConfig)._vitoraCloudRoute) {
+            // A cloud session expiring must not log a clinician out of the local hub.
+            window.dispatchEvent(new Event('vitora:cloud-session-required'));
+          } else {
+            handleAuthError();
+          }
           return Promise.reject(error);
         }
       } catch (refreshError) {
@@ -290,13 +449,18 @@ apiClient.interceptors.response.use(
  * Web mode: via httpOnly cookie (backend reads refresh cookie, sets new access cookie).
  * Desktop mode: via POST /api/token/refresh/ with refresh token in body.
  */
-async function refreshViaCookie(): Promise<boolean> {
+async function refreshViaCookie(useCloudSession = false): Promise<boolean> {
   try {
-    const baseUrl = _desktopApiUrl || API_BASE_URL;
+    const config = useCloudSession ? await getAppConfig() : null;
+    const baseUrl = useCloudSession
+      ? config?.cloud_api_url || API_BASE_URL
+      : _desktopApiUrl || API_BASE_URL;
 
     if (isDesktop()) {
       // Desktop: use token-based refresh (cookies don't work cross-origin HTTP)
-      const refreshToken = tokenStorage.getRefreshToken();
+      const refreshToken = useCloudSession
+        ? tokenStorage.getCloudRefreshToken()
+        : tokenStorage.getRefreshToken();
       if (!refreshToken) return false;
       const resp = await axios.post(
         `${baseUrl}/api/token/refresh/`,
@@ -304,7 +468,11 @@ async function refreshViaCookie(): Promise<boolean> {
         { headers: { 'Content-Type': 'application/json' } }
       );
       if (resp.data?.access) {
-        tokenStorage.setTokens(resp.data.access, refreshToken);
+        if (useCloudSession) {
+          tokenStorage.setCloudTokens(resp.data.access, refreshToken);
+        } else {
+          tokenStorage.setTokens(resp.data.access, refreshToken);
+        }
         return true;
       }
       return false;
@@ -314,7 +482,11 @@ async function refreshViaCookie(): Promise<boolean> {
     await axios.post(`${baseUrl}/api/auth/refresh/`, {}, { withCredentials: true });
     return true;
   } catch {
-    tokenStorage.clearAll();
+    if (useCloudSession) {
+      tokenStorage.clearCloudTokens();
+    } else {
+      tokenStorage.clearAll();
+    }
     return false;
   }
 }
