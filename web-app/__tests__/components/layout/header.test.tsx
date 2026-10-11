@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { Header } from '@/components/layout/header';
 import { isDesktop } from '@/lib/desktop';
 import { useCloudConnection } from '@/lib/hooks/use-cloud-connection';
@@ -226,6 +226,24 @@ describe('Header', () => {
 
     expect(screen.getByRole('button', { name: 'Cloud unavailable' })).toBeInTheDocument();
     expect(screen.getByText('Cloud service unavailable')).toBeInTheDocument();
+  });
+
+  it('uses compact cloud and sync labels in the Tauri desktop window', () => {
+    mockIsDesktop.mockReturnValue(true);
+    mockUseCloudConnection.mockReturnValue({
+      config: 'configured',
+      session: 'connected',
+      reachability: 'available',
+    });
+
+    render(<Header {...defaultProps} />);
+
+    expect(screen.getByText('Cloud', { exact: true })).toHaveClass('sm:inline');
+    const syncButton = screen.getByText('now', { exact: true }).closest('button');
+    if (!syncButton) throw new Error('Sync button was not rendered');
+
+    expect(within(syncButton).getByText('now', { exact: true })).toHaveClass('sm:inline');
+    expect(within(syncButton).getByText('Just now', { exact: true })).not.toHaveClass('xl:inline');
   });
 
   it('should provide working profile and settings links in the user menu', async () => {

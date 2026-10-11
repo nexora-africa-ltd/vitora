@@ -69,6 +69,12 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
         ? 'Cloud check'
         : 'Cloud connected';
 
+  const cloudIndicatorClass = cloudSessionRequired
+    ? 'bg-amber-500'
+    : cloudConnection.reachability === 'unavailable'
+      ? 'bg-red-500'
+      : 'bg-green-500';
+
   const handleClearCache = async () => {
     setIsClearingCache(true);
     await clearCacheAndReload();
@@ -140,8 +146,16 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
                     type="button"
                     aria-label={cloudStatusLabel}
                   >
-                    {cloudSessionRequired ? <LogIn className="h-3.5 w-3.5" /> : <Cloud className="h-3.5 w-3.5" />}
-                    <span className="hidden xl:inline">{cloudStatusLabel}</span>
+                    {desktopMode ? (
+                      <span className={cn('h-2 w-2 rounded-full', cloudIndicatorClass)} aria-hidden="true" />
+                    ) : cloudSessionRequired ? (
+                      <LogIn className="h-3.5 w-3.5" />
+                    ) : (
+                      <Cloud className="h-3.5 w-3.5" />
+                    )}
+                    <span className={cn('hidden', desktopMode ? 'sm:inline' : 'xl:inline')}>
+                      {desktopMode ? 'Cloud' : cloudStatusLabel}
+                    </span>
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-xs">
@@ -185,12 +199,12 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
                     state={isSyncing ? 'fixing' : isOnline ? 'active' : 'down'}
                     size="sm"
                   />
-                  {/* Short text on sm-lg screens */}
-                  <span className="hidden sm:inline xl:hidden">
+                  {/* Desktop windows are narrower than the web xl layout despite matching its viewport breakpoint. */}
+                  <span className={cn('hidden sm:inline', !desktopMode && 'xl:hidden')}>
                     {isSyncing ? 'Sync' : isOnline ? formatLastFetchShort(lastFetchTime) : 'Off'}
                   </span>
-                  {/* Full text on xl+ screens */}
-                  <span className="hidden xl:inline">
+                  {/* Full text is reserved for the web layout, where the persistent sidebar has more room. */}
+                  <span className={cn('hidden', !desktopMode && 'xl:inline')}>
                     {isSyncing
                       ? 'Syncing...'
                       : isOnline
