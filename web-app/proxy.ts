@@ -18,9 +18,19 @@ function externalOrigin(value: string | undefined): string | null {
   }
 }
 
+function webSocketOrigin(value: string | undefined): string | null {
+  const origin = externalOrigin(value);
+  if (!origin) return null;
+
+  const url = new URL(origin);
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+  return url.origin;
+}
+
 export function createContentSecurityPolicy(nonce: string): string {
   const sources = new Set(["'self'"]);
   const apiOrigin = externalOrigin(process.env.NEXT_PUBLIC_API_URL);
+  const apiWebSocketOrigin = webSocketOrigin(process.env.NEXT_PUBLIC_API_URL);
   const powerSyncOrigin = externalOrigin(process.env.NEXT_PUBLIC_POWERSYNC_URL);
   const umamiOrigin = externalOrigin(process.env.NEXT_PUBLIC_UMAMI_URL);
   const mediaOrigin = externalOrigin(process.env.NEXT_PUBLIC_MEDIA_BASE_URL);
@@ -29,7 +39,11 @@ export function createContentSecurityPolicy(nonce: string): string {
     if (origin) sources.add(origin);
   }
 
-  const connectSources = [...sources, 'https://*.ingest.de.sentry.io'];
+  const connectSources = [
+    ...sources,
+    ...(apiWebSocketOrigin ? [apiWebSocketOrigin] : []),
+    'https://*.ingest.de.sentry.io',
+  ];
   const imageSources = ["'self'", 'data:', 'blob:'];
 
   for (const origin of [apiOrigin, mediaOrigin]) {
