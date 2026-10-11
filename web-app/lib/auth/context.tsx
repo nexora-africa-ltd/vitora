@@ -6,6 +6,11 @@ import { tokenStorage, waitForAuthCleanup } from '@/lib/auth/storage';
 import { API_BASE_URL } from '@/lib/utils/constants';
 import type { OrgMembership } from '@/lib/types/membership';
 
+function connectDesktopCloudSession(): void {
+  // The exchange uses the authenticated hub token, never the user's password.
+  void import('@/lib/api/client').then(({ connectCloudSession }) => connectCloudSession());
+}
+
 // Facility modules matching backend Facility.modules property
 export interface FacilityModules {
   outpatient: boolean;
@@ -499,6 +504,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         resetToken: data.password_reset_token || null,
       });
 
+      if (desktop && !data.must_change_password) {
+        connectDesktopCloudSession();
+      }
+
       return {
         success: true,
         mustChangePassword: !!data.must_change_password,
@@ -604,6 +613,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           resetToken: data.password_reset_token || null,
         });
 
+        if (desktop && !data.must_change_password) {
+          connectDesktopCloudSession();
+        }
+
         return {
           mustChangePassword: !!data.must_change_password,
           passwordResetToken: data.password_reset_token,
@@ -698,6 +711,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         mustChangePassword: !!data.must_change_password,
         resetToken: data.password_reset_token || null,
       });
+
+      if (desktop && !data.must_change_password) {
+        connectDesktopCloudSession();
+      }
 
       return {
         mustChangePassword: !!data.must_change_password,

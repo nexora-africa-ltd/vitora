@@ -15,6 +15,20 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Hub 1.0.42] - 2026-10-12
+
+### Hub
+
+- Preserve cloud-issued offsite backup credentials across Windows hub re-enrollment, retaining existing credentials when a replacement cannot be issued.
+
+## [Desktop 1.0.36] - 2026-10-12
+
+### Desktop
+
+- Retry transient hub routing-manifest discovery failures so cloud-only API requests do not fall back to the hub.
+- Automatically exchange a successful hub login for the delegated Cloud session after password or MFA authentication.
+- Require both a reachable Cloud and delegated session before rendering cloud-only routes.
+
 ## [Hub 1.0.41] - 2026-10-11
 
 ### Hub

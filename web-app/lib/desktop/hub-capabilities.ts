@@ -69,7 +69,7 @@ function parseManifest(payload: unknown): HubRoutingManifest | null {
 export async function loadHubRoutingManifest(): Promise<HubRoutingManifest | null> {
   if (manifest) return manifest;
   if (manifestRequest) return manifestRequest;
-  manifestRequest = (async () => {
+  const request = (async () => {
     const config = await getAppConfig();
     if (!isHubMode(config?.deployment_mode)) return null;
     const hubUrl = config?.api_url;
@@ -89,7 +89,14 @@ export async function loadHubRoutingManifest(): Promise<HubRoutingManifest | nul
       window.clearTimeout(timeout);
     }
   })();
-  return manifestRequest;
+  manifestRequest = request;
+  try {
+    return await request;
+  } finally {
+    // A startup race or temporary hub outage must not pin all cloud-only APIs
+    // to the hub for the rest of the desktop session.
+    if (!manifest && manifestRequest === request) manifestRequest = null;
+  }
 }
 
 /** Clear stale data after hub rediscovery or a desktop configuration change. */
