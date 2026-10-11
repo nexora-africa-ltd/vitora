@@ -50,9 +50,10 @@ create_or_update_app() {
       --resource-group "${TARGET_RG}" \
       --name "${app_name}" \
       --image "${image_ref}" \
-      --set-env-vars \
+        --set-env-vars \
         "DJANGO_ENV=${deploy_env}" \
         "DJANGO_SETTINGS_MODULE=${settings_module}" \
+        "VITORA_DB_APPLICATION_NAME=vitora-${deploy_env}-api" \
         "DEBUG=false" \
         "PORT=8000" >/dev/null
   else
@@ -69,9 +70,10 @@ create_or_update_app() {
       --cpu 0.5 \
       --memory 1.0Gi \
       --registry-server "${TARGET_ACR_NAME}.azurecr.io" \
-      --env-vars \
+        --env-vars \
         "DJANGO_ENV=${deploy_env}" \
         "DJANGO_SETTINGS_MODULE=${settings_module}" \
+        "VITORA_DB_APPLICATION_NAME=vitora-${deploy_env}-api" \
         "DEBUG=false" \
         "PORT=8000" >/dev/null
   fi
@@ -100,14 +102,14 @@ create_process_app() {
     az containerapp update --resource-group "${TARGET_RG}" --name "${app_name}" \
       --image "${image_ref}" --min-replicas "${min_replicas}" --max-replicas "${max_replicas}" \
       --set-env-vars "DJANGO_ENV=${deploy_env}" "DJANGO_SETTINGS_MODULE=hmis.settings.${deploy_env}" \
-        "DEBUG=false" "VITORA_PROCESS=${process}" "CELERY_TASK_ALWAYS_EAGER=false" >/dev/null
+        "VITORA_DB_APPLICATION_NAME=vitora-${deploy_env}-${process}" "DEBUG=false" "VITORA_PROCESS=${process}" "CELERY_TASK_ALWAYS_EAGER=false" >/dev/null
   else
     echo "==> Creating ${process} app: ${app_name}"
     az containerapp create --resource-group "${TARGET_RG}" --name "${app_name}" \
       --environment "${TARGET_ENV}" --image "${image_ref}" --ingress internal \
       --min-replicas "${min_replicas}" --max-replicas "${max_replicas}" --cpu 0.5 --memory 1.0Gi \
       --registry-server "${TARGET_ACR_NAME}.azurecr.io" --env-vars "DJANGO_ENV=${deploy_env}" \
-        "DJANGO_SETTINGS_MODULE=hmis.settings.${deploy_env}" "DEBUG=false" "VITORA_PROCESS=${process}" \
+        "DJANGO_SETTINGS_MODULE=hmis.settings.${deploy_env}" "VITORA_DB_APPLICATION_NAME=vitora-${deploy_env}-${process}" "DEBUG=false" "VITORA_PROCESS=${process}" \
         "CELERY_TASK_ALWAYS_EAGER=false" >/dev/null
   fi
 }

@@ -31,6 +31,7 @@ ALLOWED_HOSTS = [
 # =============================================================================
 DATABASE_URL = os.getenv("DATABASE_URL")
 DB_CONN_MAX_AGE = int(os.getenv("DB_CONN_MAX_AGE", "60"))
+DB_APPLICATION_NAME = os.getenv("VITORA_DB_APPLICATION_NAME", "vitora-staging-api").strip()
 
 if DATABASE_URL:
     # PostgreSQL (Neon / Vercel Postgres / Render)
@@ -51,6 +52,8 @@ if DATABASE_URL:
         "min_size": 1,
         "max_size": 4,
     }
+    # Attribute every PostgreSQL session so a Neon connection spike is traceable.
+    DATABASES["default"]["OPTIONS"]["application_name"] = DB_APPLICATION_NAME
     # Wrap DB engine for Prometheus query metrics
     DATABASES["default"]["ENGINE"] = "django_prometheus.db.backends.postgresql"
 else:
@@ -248,6 +251,16 @@ LOGGING = {  # noqa: F811
         "hmis": {
             "handlers": ["console"],
             "level": "DEBUG",  # Verbose for staging debugging
+            "propagate": False,
+        },
+        "azure": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "azure.core.pipeline.policies.http_logging_policy": {
+            "handlers": ["console"],
+            "level": "WARNING",
             "propagate": False,
         },
     },

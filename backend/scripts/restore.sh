@@ -191,6 +191,8 @@ parse_database_url() {
     log_verbose "Target database: $DB_NAME @ $DB_HOST:$DB_PORT"
 }
 
+export PGAPPNAME="${VITORA_DB_APPLICATION_NAME:-vitora-${VITORA_ENV:-production}-restore}"
+
 # -----------------------------------------------------------------------------
 # List Available Backups
 # -----------------------------------------------------------------------------

@@ -17,6 +17,7 @@
 #   SLACK_WEBHOOK_URL        — Slack webhook for success/failure alerts
 #   ALERT_EMAIL              — Email address for failure alerts
 #   VITORA_ENV               — Environment label (default: production)
+#   VITORA_DB_APPLICATION_NAME — PostgreSQL session label (default: vitora-<env>-backup)
 #
 # Usage:
 #   bash scripts/backup-db.sh
@@ -28,6 +29,7 @@ set -euo pipefail
 # ─── Configuration ──────────────────────────────────────────────────────────
 TIMESTAMP=$(date -u +"%Y-%m-%d_%H%M%S")
 ENVIRONMENT="${VITORA_ENV:-production}"
+export PGAPPNAME="${VITORA_DB_APPLICATION_NAME:-vitora-${ENVIRONMENT}-backup}"
 BACKUP_BASE="vitora-${ENVIRONMENT}-${TIMESTAMP}"
 BACKUP_FILE="${BACKUP_BASE}.sql.gz"
 RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-30}
