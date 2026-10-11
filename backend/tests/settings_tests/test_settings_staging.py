@@ -143,7 +143,28 @@ class TestStagingSettings:
             assert staging.DATABASES["default"]["CONN_MAX_AGE"] == 0
             assert staging.DATABASES["default"]["OPTIONS"]["pool"] == {
                 "min_size": 1,
-                "max_size": 4,
+                "max_size": 8,
+            }
+
+    def test_staging_postgres_pool_size_can_be_tuned_per_environment(self):
+        """Staging capacity changes must not require a source-code edit."""
+        with mock.patch.dict(
+            os.environ,
+            {
+                "DATABASE_URL": "postgres://test:test@localhost/test",
+                "DB_POOL_MIN_SIZE": "2",
+                "DB_POOL_MAX_SIZE": "6",
+            },
+            clear=False,
+        ):
+            import importlib
+
+            from hmis.settings import staging
+
+            importlib.reload(staging)
+            assert staging.DATABASES["default"]["OPTIONS"]["pool"] == {
+                "min_size": 2,
+                "max_size": 6,
             }
 
     def test_staging_postgres_identifies_the_connection_client(self):

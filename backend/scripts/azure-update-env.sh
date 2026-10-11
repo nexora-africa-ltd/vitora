@@ -127,6 +127,8 @@ az containerapp update \
     "VITORA_DB_APPLICATION_NAME=${VITORA_DB_APPLICATION_NAME:-vitora-staging-api}" \
     "REDIS_URL=${REDIS_URL:+secretref:redis-url}" \
     "DB_CONN_MAX_AGE=${DB_CONN_MAX_AGE:-300}" \
+    "DB_POOL_MIN_SIZE=${DB_POOL_MIN_SIZE:-1}" \
+    "DB_POOL_MAX_SIZE=${DB_POOL_MAX_SIZE:-8}" \
     "ENCRYPTION_KEY=secretref:encryption-key" \
     "PII_HMAC_KEY=secretref:pii-hmac-key" \
     "ORGANIZATION_PII_ENCRYPTION_ENABLED=true" \

@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useDashboardStats } from '@/lib/hooks/use-dashboard-stats';
 import { useUnreadCount } from '@/lib/hooks/use-notifications';
 import { useEmergencyDeferredBacklog, useWaitingQueue } from '@/lib/hooks/use-triage';
 import { useActionableBadgeCounts } from '@/lib/hooks/use-actionable-badge-counts';
 import { useAuth } from '@/lib/auth/context';
+import { useFacility } from '@/lib/context/facility-context';
 
 /**
  * Badge counts keyed by sidebar item href.
@@ -21,18 +22,37 @@ export type SidebarBadges = Record<string, number>;
  */
 export function useSidebarBadges(): SidebarBadges {
   const { isAuthenticated, isLoading } = useAuth();
-  const canQuery = isAuthenticated && !isLoading;
+  const { hasModule } = useFacility();
+  const [shouldLoadBadges, setShouldLoadBadges] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShouldLoadBadges(true), 2500);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const canQuery = isAuthenticated && !isLoading && shouldLoadBadges;
+  const outpatientEnabled = hasModule('outpatient');
+  const actionableModules = {
+    pharmacy: hasModule('pharmacy'),
+    inventory: hasModule('inventory'),
+    scheduling: hasModule('scheduling'),
+    insurance: hasModule('private_insurance'),
+    billing: hasModule('billing'),
+    laboratory: hasModule('laboratory'),
+    inpatient: hasModule('inpatient'),
+    surveillance: hasModule('surveillance'),
+  };
   const { data: stats } = useDashboardStats({ enabled: canQuery });
   const { data: unreadCount } = useUnreadCount({ enabled: canQuery });
   const { data: waitingTriageQueue } = useWaitingQueue(
     { status: 'WAITING_TRIAGE' },
-    { enabled: canQuery }
+    { enabled: canQuery && outpatientEnabled }
   );
   const { data: overdueDeferredBacklog } = useEmergencyDeferredBacklog(
     { overdue_only: true },
-    { enabled: canQuery, refetchInterval: 60000 }
+    { enabled: canQuery && outpatientEnabled, refetchInterval: 60000 }
   );
-  const { data: actionableCounts } = useActionableBadgeCounts(canQuery);
+  const { data: actionableCounts } = useActionableBadgeCounts(canQuery, actionableModules);
 
   return useMemo(() => {
     const badges: SidebarBadges = {};
@@ -44,7 +64,8 @@ export function useSidebarBadges(): SidebarBadges {
     }
 
     // Triage: patients still awaiting their initial assessment, not past assessments.
-    const triageActionableCount = (waitingTriageQueue?.count ?? 0) + (overdueDeferredBacklog?.count ?? 0);
+    const triageActionableCount =
+      (waitingTriageQueue?.count ?? 0) + (overdueDeferredBacklog?.count ?? 0);
     if (triageActionableCount > 0) {
       badges['/triage'] = triageActionableCount;
     }
@@ -149,5 +170,11 @@ export function useSidebarBadges(): SidebarBadges {
     }
 
     return badges;
-  }, [actionableCounts, overdueDeferredBacklog?.count, stats, unreadCount, waitingTriageQueue?.count]);
+  }, [
+    actionableCounts,
+    overdueDeferredBacklog?.count,
+    stats,
+    unreadCount,
+    waitingTriageQueue?.count,
+  ]);
 }

@@ -32,6 +32,8 @@ ALLOWED_HOSTS = [
 DATABASE_URL = os.getenv("DATABASE_URL")
 DB_CONN_MAX_AGE = int(os.getenv("DB_CONN_MAX_AGE", "60"))
 DB_APPLICATION_NAME = os.getenv("VITORA_DB_APPLICATION_NAME", "vitora-staging-api").strip()
+DB_POOL_MIN_SIZE = max(1, int(os.getenv("DB_POOL_MIN_SIZE", "1")))
+DB_POOL_MAX_SIZE = max(DB_POOL_MIN_SIZE, int(os.getenv("DB_POOL_MAX_SIZE", "8")))
 
 if DATABASE_URL:
     # PostgreSQL (Neon / Vercel Postgres / Render)
@@ -49,8 +51,8 @@ if DATABASE_URL:
     # Django's bounded Psycopg client pool instead.
     DATABASES["default"]["CONN_MAX_AGE"] = 0
     DATABASES["default"].setdefault("OPTIONS", {})["pool"] = {
-        "min_size": 1,
-        "max_size": 4,
+        "min_size": DB_POOL_MIN_SIZE,
+        "max_size": DB_POOL_MAX_SIZE,
     }
     # Attribute every PostgreSQL session so a Neon connection spike is traceable.
     DATABASES["default"]["OPTIONS"]["application_name"] = DB_APPLICATION_NAME

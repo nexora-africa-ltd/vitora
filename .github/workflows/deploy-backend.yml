@@ -132,6 +132,8 @@ jobs:
             DATABASE_URL=secretref:database-url \
             VITORA_DB_APPLICATION_NAME=vitora-${{ env.DEPLOY_ENV }}-api \
             DB_CONN_MAX_AGE=${{ vars.DB_CONN_MAX_AGE || (env.DEPLOY_ENV == 'production' && '600' || '60') }} \
+            DB_POOL_MIN_SIZE=${{ vars.DB_POOL_MIN_SIZE || '1' }} \
+            DB_POOL_MAX_SIZE=${{ vars.DB_POOL_MAX_SIZE || (env.DEPLOY_ENV == 'production' && '4' || '8') }} \
             REDIS_URL=${{ env.ASYNC_WORKERS_ENABLED == 'true' && 'secretref:redis-url' || '' }} \
             ENCRYPTION_KEY=secretref:encryption-key \
             PII_HMAC_KEY=secretref:pii-hmac-key \
@@ -320,14 +322,23 @@ jobs:
 
       - name: Apply bounded API autoscaling
         run: |
+          if [[ "${{ env.DEPLOY_ENV }}" == "staging" ]]; then
+            API_MIN_REPLICAS=2
+            API_MAX_REPLICAS=2
+            API_CONCURRENT_REQUESTS=10
+          else
+            API_MIN_REPLICAS="${{ env.API_MIN_REPLICAS }}"
+            API_MAX_REPLICAS="${{ env.API_MAX_REPLICAS }}"
+            API_CONCURRENT_REQUESTS=80
+          fi
           az containerapp update \
             --name "${{ env.CONTAINER_APP_NAME }}" \
             --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
-            --min-replicas "${{ env.API_MIN_REPLICAS }}" \
-            --max-replicas "${{ env.API_MAX_REPLICAS }}" \
+            --min-replicas "$API_MIN_REPLICAS" \
+            --max-replicas "$API_MAX_REPLICAS" \
             --scale-rule-name http-concurrency \
             --scale-rule-type http \
-            --scale-rule-http-concurrency 80 \
+            --scale-rule-http-concurrency "$API_CONCURRENT_REQUESTS" \
             --output none
 
       - name: Disable distributed async processes for budget mode
