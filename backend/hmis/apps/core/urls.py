@@ -9,6 +9,7 @@ from rest_framework import routers
 from .auth_views import (
     OrgJoinRequestViewSet,
     StaffInvitationViewSet,
+    accept_backup_policy,
     accept_cross_org,
     change_password,
     decline_invitation,
@@ -112,6 +113,7 @@ urlpatterns = [
     path("setup/initialize/", setup_initialize, name="setup-initialize"),
     # --- Onboarding checklist (authenticated) ---
     path("onboarding/status/", onboarding_status, name="onboarding-status"),
+    path("onboarding/backup-policy/", accept_backup_policy, name="onboarding-backup-policy"),
     path(
         "sms/africastalking/callback/",
         AfricasTalkingSMSCallbackView.as_view(),

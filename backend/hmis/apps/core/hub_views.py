@@ -145,6 +145,18 @@ def hub_health(request):  # noqa: ARG001
 
         worker = HubCloudSyncWorker()
         health["license"] = {"present": worker.has_license_token}
+        backup_target = bool(
+            getattr(settings, "HUB_BACKUP_NAS_PATH", "")
+            or getattr(settings, "HUB_BACKUP_S3_URL", "")
+        )
+        health["backup"] = {
+            "offsite_configured": backup_target,
+            "credentials_expire_at": getattr(settings, "HUB_BACKUP_S3_TOKEN_EXPIRES_AT", "")
+            or None,
+        }
+        if not backup_target:
+            health["status"] = "degraded"
+            health["degraded_reasons"].append("offsite_backup_not_configured")
         health["rbac"] = get_rbac_sync_health_snapshot()
 
         if health["rbac"].get("last_status") == "failed":

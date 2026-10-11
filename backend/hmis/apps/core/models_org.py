@@ -234,6 +234,15 @@ class Organization(TimeStampedModel):
             "first clinic, inviting staff, etc.)."
         ),
     )
+    backup_policy_accepted_at = models.DateTimeField(null=True, blank=True)
+    backup_policy_accepted_by = models.ForeignKey(
+        "auth.User",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="accepted_backup_policies",
+    )
+    backup_policy_version = models.CharField(max_length=32, blank=True, default="")
 
     # ------------------------------------------------------------------
     # Meta & Methods
@@ -420,6 +429,7 @@ class Organization(TimeStampedModel):
 
         # Check if there's more than 1 staff member (the initial admin)
         has_invited_staff = self.staff_count > 1
+        backup_policy_accepted = self.backup_policy_version == "2026-10-11"
 
         steps = [
             {
@@ -434,6 +444,13 @@ class Organization(TimeStampedModel):
                 "label": "Create your first clinic",
                 "description": "Set up an outpatient clinic for patient consultations.",
                 "done": has_clinic,
+                "required": True,
+            },
+            {
+                "key": "backup_policy_acceptance",
+                "label": "Accept encrypted backup policy",
+                "description": "Approve encrypted offsite backups stored under the approved Kenya residency policy.",
+                "done": backup_policy_accepted,
                 "required": True,
             },
             {

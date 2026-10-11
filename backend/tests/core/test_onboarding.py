@@ -106,16 +106,19 @@ class TestOrganizationOnboardingModel:
         sample_organization.refresh_from_db()
         assert sample_organization.onboarding_complete is True
 
-    def test_checklist_returns_three_steps(self, sample_organization, sample_facility):
-        """Checklist should return 3 steps (2 required, 1 optional)."""
+    def test_checklist_includes_required_backup_policy_acceptance(
+        self, sample_organization, sample_facility
+    ):
+        """Offsite backup policy consent is required before completing onboarding."""
         steps = sample_organization.get_onboarding_checklist()
-        assert len(steps) == 3
+        assert len(steps) == 4
         required_steps = [s for s in steps if s["required"]]
-        assert len(required_steps) == 2
+        assert len(required_steps) == 3
         keys = [s["key"] for s in steps]
         assert "facility_modules" in keys
         assert "first_clinic" in keys
         assert "invite_staff" in keys
+        assert "backup_policy_acceptance" in keys
 
     def test_checklist_facility_modules_incomplete_with_defaults(
         self, sample_organization, sample_facility
@@ -244,7 +247,7 @@ class TestOnboardingStatusEndpoint:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["complete"] is False
         assert response.data["completed_at"] is None
-        assert len(response.data["steps"]) == 3
+        assert len(response.data["steps"]) == 4
         assert "all_required_done" in response.data
 
     def test_post_fails_when_steps_incomplete(self, authenticated_client, sample_organization):
@@ -277,6 +280,8 @@ class TestOnboardingStatusEndpoint:
         sample_facility.save(update_fields=["has_outpatient", "has_pharmacy"])
 
         Clinic.objects.create(facility=sample_facility, name="OPD", code="OPD-001")
+        sample_organization.backup_policy_version = "2026-10-11"
+        sample_organization.save(update_fields=["backup_policy_version"])
 
         User = get_user_model()
         user2 = User.objects.create_user(username="staff2", password="test1234")
@@ -311,6 +316,8 @@ class TestOnboardingStatusEndpoint:
         sample_facility.save(update_fields=["has_outpatient", "has_pharmacy"])
 
         Clinic.objects.create(facility=sample_facility, name="OPD", code="OPD-001")
+        sample_organization.backup_policy_version = "2026-10-11"
+        sample_organization.save(update_fields=["backup_policy_version"])
 
         # Only 1 staff member (the admin) — invite_staff is optional
         assert sample_organization.staff_count == 1
@@ -327,6 +334,33 @@ class TestOnboardingStatusEndpoint:
         response = authenticated_client.post(self.URL)
         assert response.status_code == status.HTTP_200_OK
         assert "already completed" in response.data["detail"]
+
+    def test_backup_policy_acceptance_creates_default_destination(
+        self, authenticated_client, sample_organization, settings
+    ):
+        """An admin acceptance creates one enabled organization-level destination."""
+        from hmis.apps.licensing.models import HubBackupDestination
+
+        settings.HUB_BACKUP_CREDENTIAL_SIGNER = (
+            "hmis.apps.licensing.backup_credentials.sign_azure_blob_backup_credentials"
+        )
+        settings.HUB_BACKUP_ALLOWED_RESIDENCY_COUNTRIES = "KE"
+        settings.AZURE_HUB_BACKUP_STORAGE_ACCOUNT = "vitoraarchive"
+        settings.AZURE_HUB_BACKUP_STORAGE_ACCOUNT_KEY = "cloud-only-account-key"
+        settings.AZURE_HUB_BACKUP_STORAGE_CONTAINER = "hub-backups"
+        user = authenticated_client.handler._force_user
+        user.is_superuser = True
+        user.save(update_fields=["is_superuser"])
+
+        response = authenticated_client.post("/api/core/onboarding/backup-policy/")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["accepted"] is True
+        destination = HubBackupDestination.objects.get(
+            organization=sample_organization, facility=None
+        )
+        assert destination.enabled is True
+        assert destination.residency_country == "KE"
 
 
 # ============================================================================

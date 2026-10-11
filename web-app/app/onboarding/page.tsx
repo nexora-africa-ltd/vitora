@@ -13,6 +13,7 @@ import {
   ArrowLeft,
   LogOut,
   Settings2,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth/context';
 import { onboardingChecklistApi } from '@/lib/api/onboarding';
@@ -96,7 +97,7 @@ const MODULE_GROUPS = [
   },
 ];
 
-type WizardStep = 'facility' | 'modules' | 'clinic' | 'invite';
+type WizardStep = 'facility' | 'modules' | 'clinic' | 'invite' | 'backup';
 
 const WIZARD_STEPS: {
   key: WizardStep;
@@ -107,6 +108,7 @@ const WIZARD_STEPS: {
   { key: 'modules', label: 'Modules', icon: Settings2 },
   { key: 'clinic', label: 'Clinic', icon: Stethoscope },
   { key: 'invite', label: 'Team', icon: Users },
+  { key: 'backup', label: 'Backup', icon: ShieldCheck },
 ];
 
 type ErrorPayload = Record<string, unknown>;
@@ -190,6 +192,7 @@ export default function OnboardingPage() {
     modules: false,
     clinic: false,
     invite: false,
+    backup: false,
   });
 
   // Facility form state
@@ -251,12 +254,14 @@ export default function OnboardingPage() {
         facility_modules: 'modules',
         first_clinic: 'clinic',
         invite_staff: 'invite',
+        backup_policy_acceptance: 'backup',
       };
       const newStatus: Record<string, boolean> = {
         facility: false,
         modules: false,
         clinic: false,
         invite: false,
+        backup: false,
       };
       for (const step of data.steps) {
         const wizardKey = stepMap[step.key];
@@ -282,8 +287,7 @@ export default function OnboardingPage() {
       if (newStatus.facility && !newStatus.modules) setCurrentStep('modules');
       else if (newStatus.facility && newStatus.modules && !newStatus.clinic)
         setCurrentStep('clinic');
-      else if (newStatus.facility && newStatus.modules && newStatus.clinic)
-        setCurrentStep('invite');
+      else if (newStatus.facility && newStatus.modules && newStatus.clinic) setCurrentStep('invite');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load onboarding status');
     } finally {
@@ -507,6 +511,16 @@ export default function OnboardingPage() {
     }
   };
 
+  const handleAcceptBackupPolicy = async () => {
+    setError(null);
+    try {
+      await onboardingChecklistApi.acceptBackupPolicy();
+      setStepsStatus((previous) => ({ ...previous, backup: true }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to enable encrypted offsite backups');
+    }
+  };
+
   // ==========================================================================
   // Render guards
   // ==========================================================================
@@ -524,7 +538,7 @@ export default function OnboardingPage() {
 
   if (isComplete) return null;
 
-  const allDone = stepsStatus.facility && stepsStatus.modules && stepsStatus.clinic;
+  const allDone = stepsStatus.facility && stepsStatus.modules && stepsStatus.clinic && stepsStatus.backup;
 
   // ==========================================================================
   // Render
@@ -963,6 +977,22 @@ export default function OnboardingPage() {
             </CardContent>
           </Card>
         )}
+        {currentStep === 'backup' && (
+          <Card>
+            <CardContent className="space-y-4 p-5">
+              <div className="flex items-center gap-2 text-base font-semibold">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+                Encrypted offsite backups
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Accept the Kenya-residency backup policy to enable encrypted, installation-scoped offsite backups.
+              </p>
+              <Button className="w-full" disabled={stepsStatus.backup} onClick={handleAcceptBackupPolicy}>
+                {stepsStatus.backup ? 'Backup policy accepted' : 'Accept backup policy'}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Navigation footer */}
@@ -973,7 +1003,7 @@ export default function OnboardingPage() {
         </Button>
 
         <div className="flex gap-2">
-          {currentStep === 'invite' ? (
+          {currentStep === 'backup' ? (
             <Button onClick={handleComplete} disabled={isCompleting || !allDone}>
               {isCompleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Finish Setup
