@@ -15,6 +15,13 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Hub 1.0.41] - 2026-10-11
+
+### Hub
+
+- Explicitly classify the local runtime as `hub`, restoring hub-only Cloud session exchange and capability guards for Tauri clients.
+- Preserve Cloud token exchange rejection codes so desktop clients show actionable hub configuration errors instead of false connectivity failures.
+
 ## [Hub 1.0.40] - 2026-10-11
 
 ### Hub

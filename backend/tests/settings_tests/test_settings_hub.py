@@ -40,6 +40,19 @@ def test_hub_settings_default_database_lives_under_data(monkeypatch):
     assert hub.DATABASES["default"]["ENGINE"] == "hmis.db_backends.sqlcipher"
 
 
+def test_hub_settings_are_explicitly_classified_as_hub(monkeypatch):
+    """Hub-only endpoints depend on settings.ENVIRONMENT, not DJANGO_ENV."""
+    monkeypatch.setenv("DJANGO_SECRET_KEY", "test-secret")
+    monkeypatch.setenv("HUB_DATABASE_ENCRYPTION_REQUIRED", "true")
+    monkeypatch.setenv("HUB_DATABASE_ENCRYPTION_KEY", "test-sqlcipher-key")
+
+    from hmis.settings import hub
+
+    importlib.reload(hub)
+
+    assert hub.ENVIRONMENT == "hub"
+
+
 def test_hub_settings_honor_explicit_data_dir(monkeypatch, tmp_path):
     """HUB_DATA_DIR alone is enough to derive the canonical hub DB path."""
     data_dir = tmp_path / "hub-data"

@@ -24,7 +24,7 @@ def get_runtime_version() -> str:
     try:
         return version("vitora-hmis")
     except PackageNotFoundError:
-        return "1.0.40"
+        return "1.0.41"
 
 
 __version__ = get_runtime_version()
