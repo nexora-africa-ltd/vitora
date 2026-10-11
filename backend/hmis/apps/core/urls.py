@@ -50,6 +50,7 @@ from .views import (
     generate_prc_number_view,
     verify_document,
 )
+from .websocket_ticket_views import WebSocketTicketView
 
 router = routers.DefaultRouter()
 router.register(r"auditlogs", AuditLogViewSet, basename="auditlog")
@@ -72,6 +73,7 @@ router.register(r"invitations", StaffInvitationViewSet, basename="staffinvitatio
 router.register(r"join-requests", OrgJoinRequestViewSet, basename="orgjoinrequest")
 
 urlpatterns = [
+    path("websocket-ticket/", WebSocketTicketView.as_view(), name="websocket-ticket"),
     # Dashboard statistics
     path("dashboard/stats/", dashboard_stats, name="dashboard-stats"),
     path("dashboard/patient-volume/", patient_volume_history, name="dashboard-patient-volume"),

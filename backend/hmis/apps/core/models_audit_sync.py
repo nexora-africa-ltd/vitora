@@ -14,10 +14,75 @@ Supported inputs/args:
 import hashlib
 import hmac
 import json
+import secrets
+from datetime import timedelta
 
 from django.conf import settings
 from django.db import models, transaction
 from django.utils import timezone
+
+WEBSOCKET_TICKET_LIFETIME = timedelta(minutes=2)
+
+
+class WebSocketTicket(models.Model):
+    """One-time, short-lived credential for authenticated WebSocket upgrades."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="websocket_tickets",
+    )
+    token_hash = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField(db_index=True)
+    consumed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["expires_at", "consumed_at"])]
+
+    def __str__(self) -> str:
+        """Return a safe administrative representation without revealing the ticket."""
+        return f"WebSocket ticket for user {self.user_id}"
+
+    @classmethod
+    def issue(cls, user) -> str:
+        """Create an opaque ticket while persisting only its SHA-256 digest."""
+        token = secrets.token_urlsafe(32)
+        cls.objects.create(
+            user=user,
+            token_hash=cls.hash_token(token),
+            expires_at=timezone.now() + WEBSOCKET_TICKET_LIFETIME,
+        )
+        return token
+
+    @classmethod
+    def consume(cls, token: str):
+        """Atomically consume a valid ticket and return its user, or ``None``."""
+        if not token:
+            return None
+
+        now = timezone.now()
+        with transaction.atomic():
+            ticket = (
+                cls.objects.select_for_update()
+                .select_related("user")
+                .filter(
+                    token_hash=cls.hash_token(token),
+                    consumed_at__isnull=True,
+                    expires_at__gt=now,
+                )
+                .first()
+            )
+            if ticket is None or not ticket.user.is_active:
+                return None
+            ticket.consumed_at = now
+            ticket.save(update_fields=["consumed_at"])
+            return ticket.user
+
+    @staticmethod
+    def hash_token(token: str) -> str:
+        """Return the fixed-length digest used for ticket lookup."""
+        return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 class AuditLog(models.Model):

@@ -32,7 +32,10 @@ from hmis.apps.core.hub_discovery import (  # noqa: E402
     set_active_hub_discovery_service,
 )
 from hmis.apps.core.routing import websocket_urlpatterns as core_ws_patterns  # noqa: E402
-from hmis.apps.core.websockets.middleware import FacilityWebSocketMiddleware  # noqa: E402
+from hmis.apps.core.websockets.middleware import (  # noqa: E402
+    FacilityWebSocketMiddleware,
+    JWTWebSocketAuthMiddleware,
+)
 from hmis.apps.imaging.routing import websocket_urlpatterns as imaging_ws_patterns  # noqa: E402
 from hmis.apps.immunizations.routing import (  # noqa: E402
     websocket_urlpatterns as immunization_ws_patterns,
@@ -112,7 +115,9 @@ application = ProtocolTypeRouter(
     {
         "http": django_asgi_app,
         "websocket": AuthMiddlewareStack(
-            FacilityWebSocketMiddleware(URLRouter(websocket_urlpatterns))
+            JWTWebSocketAuthMiddleware(
+                FacilityWebSocketMiddleware(URLRouter(websocket_urlpatterns))
+            )
         ),
         "lifespan": hub_lifespan,
     }

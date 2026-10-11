@@ -15,6 +15,21 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Hub 1.0.38] - 2026-10-11
+
+### Hub
+
+- Authenticate browser WebSocket upgrades with the existing HttpOnly `vitora_access` JWT cookie.
+- Add short-lived, opaque, single-use WebSocket tickets for desktop clients so bearer access tokens are never placed in WebSocket URLs.
+- Store only ticket hashes and atomically consume tickets during the WebSocket handshake.
+
+## [Desktop 1.0.33] - 2026-10-11
+
+### Desktop
+
+- Request and validate a fresh one-time WebSocket ticket before each desktop real-time connection.
+- Keep compact Cloud and sync status indicators in the desktop header without changing standard web layouts.
+
 ## [Hub 1.0.36] - 2026-10-10
 
 ### Hub

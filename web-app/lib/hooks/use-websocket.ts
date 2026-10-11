@@ -26,9 +26,11 @@ import { toast } from '@/lib/hooks/use-toast';
 import { clinicKeys } from './use-clinics';
 import {
   getWebSocketRuntimeStatus,
+  resolveAuthenticatedWebSocketUrl,
   resolveWebSocketUrl,
   subscribeWebSocketRuntime,
 } from '@/lib/desktop/websocket-runtime';
+import { isDesktop } from '@/lib/desktop';
 
 // =============================================================================
 // Types
@@ -330,17 +332,16 @@ export function useWebSocket<TMessage = WebSocketMessage>(
       wsRef.current.close();
     }
 
-    setConnectionState('connecting');
-
-    try {
-      const ws = new WebSocket(url);
+    const open = (connectionUrl: string) => {
+      try {
+      const ws = new WebSocket(connectionUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
         setConnectionState('connected');
         setReconnectAttempts(0);
         onConnectRef.current?.();
-        console.log(`[WebSocket] Connected to ${url}`);
+        console.log(`[WebSocket] Connected to ${connectionUrl}`);
       };
 
       ws.onmessage = (event) => {
@@ -357,7 +358,7 @@ export function useWebSocket<TMessage = WebSocketMessage>(
         onErrorRef.current?.(event);
         // WebSocket error events don't carry useful info — log the URL instead
         console.warn(
-          `[WebSocket] Connection error for ${url}. Server may not be running or WebSocket endpoint is unavailable. Falling back to polling.`
+          `[WebSocket] Connection error for ${connectionUrl}. Server may not be running or WebSocket endpoint is unavailable. Falling back to polling.`
         );
       };
 
@@ -368,7 +369,7 @@ export function useWebSocket<TMessage = WebSocketMessage>(
         // Auth, authorization, and missing-resource closes cannot recover by retrying.
         if ([4400, 4401, 4403, 4404, 4409].includes(event.code)) {
           setConnectionState('error');
-          console.warn(`[WebSocket] Connection rejected (${event.code}) for ${url}; retry disabled.`);
+          console.warn(`[WebSocket] Connection rejected (${event.code}) for ${connectionUrl}; retry disabled.`);
           return;
         }
 
@@ -385,10 +386,27 @@ export function useWebSocket<TMessage = WebSocketMessage>(
           }, reconnectDelay);
         }
       };
-    } catch (e) {
-      console.error('[WebSocket] Failed to connect:', e);
-      setConnectionState('error');
+      } catch (e) {
+        console.error('[WebSocket] Failed to connect:', e);
+        setConnectionState('error');
+      }
+    };
+
+    setConnectionState('connecting');
+    if (!isDesktop()) {
+      open(url);
+      return;
     }
+
+    void resolveAuthenticatedWebSocketUrl(url)
+      .then((connectionUrl) => {
+        if (connectionUrl) open(connectionUrl);
+        else setConnectionState('disconnected');
+      })
+      .catch((error: unknown) => {
+        console.warn('[WebSocket] Failed to obtain WebSocket credentials:', error);
+        setConnectionState('error');
+      });
   }, [url, autoReconnect, reconnectDelay, maxReconnectAttempts]);
 
   const disconnect = useCallback(() => {
