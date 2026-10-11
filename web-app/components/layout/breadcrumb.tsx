@@ -68,11 +68,11 @@ export function Breadcrumb() {
 
   return (
     <nav aria-label="Breadcrumb" className="min-w-0 max-w-full">
-      {/* Mobile & Medium: show only the current page */}
-      <div className="truncate text-sm font-medium text-foreground lg:hidden">{currentLabel}</div>
+      {/* Mobile through large desktop windows: show only the current page. */}
+      <div className="truncate text-sm font-medium text-foreground xl:hidden">{currentLabel}</div>
 
-      {/* Large screens: show full breadcrumb */}
-      <div className="hidden min-w-0 max-w-full items-center overflow-x-auto whitespace-nowrap text-sm lg:flex">
+      {/* Full breadcrumb trails are reserved for layouts with a persistent sidebar. */}
+      <div className="hidden min-w-0 max-w-full items-center overflow-x-auto whitespace-nowrap text-sm xl:flex">
         <Link
           href="/"
           className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"

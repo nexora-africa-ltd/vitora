@@ -1,10 +1,6 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { tokenStorage } from '@/lib/auth/storage';
-import {
-  getAppConfig,
-  getApiUrl,
-  isDesktop,
-} from '@/lib/desktop';
+import { getAppConfig, getApiUrl, isDesktop } from '@/lib/desktop';
 import {
   getHubApiRoutingPolicy,
   getHubRouteCapability,
@@ -95,7 +91,11 @@ export function setDesktopApiUrl(url: string): void {
 
 export type CloudSessionResult =
   | { connected: true }
-  | { connected: false; reason: 'not_required' | 'unavailable' | 'rejected' };
+  | {
+      connected: false;
+      reason: 'not_required' | 'unavailable' | 'rejected';
+      detail?: string;
+    };
 
 /** True when this desktop has a separate authenticated cloud session. */
 export function hasCloudSession(): boolean {
@@ -123,8 +123,15 @@ export async function connectCloudSession(): Promise<CloudSessionResult> {
       description: 'Cloud-only workflows are now available.',
     });
     return { connected: true };
-  } catch {
-    return { connected: false, reason: 'unavailable' };
+  } catch (error) {
+    const response = (error as AxiosError<{ detail?: string }>).response;
+    const detail = response?.data?.detail;
+    const status = response?.status;
+    return {
+      connected: false,
+      reason: !status || status >= 500 ? 'unavailable' : 'rejected',
+      ...(detail ? { detail } : {}),
+    };
   }
 }
 

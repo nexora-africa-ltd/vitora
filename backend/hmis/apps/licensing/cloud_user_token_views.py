@@ -214,8 +214,12 @@ def hub_cloud_user_token(request: Request) -> Response:
 
     proxy_response = exchange_cloud_user_token(proof)
     if not proxy_response.success:
+        error_code = proxy_response.data.get("code", "cloud_user_token_exchange_failed")
         return Response(
-            {"detail": proxy_response.error or "Cloud user-token exchange failed."},
+            {
+                "detail": proxy_response.error or "Cloud user-token exchange failed.",
+                "code": error_code,
+            },
             status=proxy_response.status_code,
         )
 

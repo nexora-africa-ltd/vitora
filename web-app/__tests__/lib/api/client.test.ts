@@ -86,6 +86,21 @@ describe('connectCloudSession', () => {
       description: 'Cloud-only workflows are now available.',
     });
   });
+
+  it('reports a reachable cloud rejection instead of an unavailable cloud', async () => {
+    jest.spyOn(apiClient, 'post').mockRejectedValue({
+      response: {
+        status: 409,
+        data: { detail: 'Hub activation requires review.', code: 'hub_activation_pending' },
+      },
+    });
+
+    await expect(connectCloudSession()).resolves.toEqual({
+      connected: false,
+      reason: 'rejected',
+      detail: 'Hub activation requires review.',
+    });
+  });
 });
 
 describe('transformAxiosError', () => {

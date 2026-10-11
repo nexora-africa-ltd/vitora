@@ -147,7 +147,9 @@ jest.mock('@/components/ui/tooltip', () => ({
 
 describe('Header', () => {
   const mockIsDesktop = isDesktop as jest.MockedFunction<typeof isDesktop>;
-  const mockUseCloudConnection = useCloudConnection as jest.MockedFunction<typeof useCloudConnection>;
+  const mockUseCloudConnection = useCloudConnection as jest.MockedFunction<
+    typeof useCloudConnection
+  >;
   const defaultProps = {
     onMenuClick: jest.fn(),
     sidebarCollapsed: false,
@@ -228,7 +230,7 @@ describe('Header', () => {
     expect(screen.getByText('Cloud service unavailable')).toBeInTheDocument();
   });
 
-  it('uses compact cloud and sync labels in the Tauri desktop window', () => {
+  it('uses icon-only cloud and sync controls in the Tauri desktop window', () => {
     mockIsDesktop.mockReturnValue(true);
     mockUseCloudConnection.mockReturnValue({
       config: 'configured',
@@ -238,11 +240,11 @@ describe('Header', () => {
 
     render(<Header {...defaultProps} />);
 
-    expect(screen.getByText('Cloud', { exact: true })).toHaveClass('sm:inline');
+    expect(screen.getByText('Cloud', { exact: true })).toHaveClass('2xl:inline');
     const syncButton = screen.getByText('now', { exact: true }).closest('button');
     if (!syncButton) throw new Error('Sync button was not rendered');
 
-    expect(within(syncButton).getByText('now', { exact: true })).toHaveClass('sm:inline');
+    expect(within(syncButton).getByText('now', { exact: true })).toHaveClass('2xl:inline');
     expect(within(syncButton).getByText('Just now', { exact: true })).not.toHaveClass('xl:inline');
   });
 
