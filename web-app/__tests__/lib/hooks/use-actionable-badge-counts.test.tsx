@@ -45,4 +45,21 @@ describe('useActionableBadgeCounts', () => {
     expect(mockGet).not.toHaveBeenCalledWith('/api/inventory/exceptions-summary/');
     expect(mockGet).not.toHaveBeenCalledWith('/api/inpatient/discharge-readiness-summary/');
   });
+
+  it('uses lower-case insurance claim status values accepted by the API', async () => {
+    mockGet.mockResolvedValue({ data: { count: 0 } });
+
+    const { result } = renderHook(() => useActionableBadgeCounts(true, { insurance: true }), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(mockGet).toHaveBeenCalledWith('/api/insurance/claims/', {
+      params: { status: 'query', page_size: '1' },
+    });
+    expect(mockGet).toHaveBeenCalledWith('/api/insurance/claims/', {
+      params: { status: 'rejected', page_size: '1' },
+    });
+  });
 });

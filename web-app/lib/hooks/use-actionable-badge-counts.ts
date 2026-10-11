@@ -76,10 +76,10 @@ export function useActionableBadgeCounts(enabled: boolean, modules?: ActionableB
       ]);
       const [insuranceQueries, rejectedClaims, pendingInvoices] = await Promise.all([
         moduleEnabled('insurance')
-          ? getCount('/api/insurance/claims/', { status: 'QUERY', page_size: '1' })
+          ? getCount('/api/insurance/claims/', { status: 'query', page_size: '1' })
           : Promise.resolve(0),
         moduleEnabled('insurance')
-          ? getCount('/api/insurance/claims/', { status: 'REJECTED', page_size: '1' })
+          ? getCount('/api/insurance/claims/', { status: 'rejected', page_size: '1' })
           : Promise.resolve(0),
         moduleEnabled('billing')
           ? getCount('/api/billing/invoices/', { status__in: 'pending,partial', page_size: '1' })

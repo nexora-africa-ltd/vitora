@@ -32,7 +32,10 @@ export function createContentSecurityPolicy(nonce: string): string {
   const apiOrigin = externalOrigin(process.env.NEXT_PUBLIC_API_URL);
   const apiWebSocketOrigin = webSocketOrigin(process.env.NEXT_PUBLIC_API_URL);
   const powerSyncOrigin = externalOrigin(process.env.NEXT_PUBLIC_POWERSYNC_URL);
-  const umamiOrigin = externalOrigin(process.env.NEXT_PUBLIC_UMAMI_URL);
+  const umamiOrigin =
+    process.env.NEXT_PUBLIC_UMAMI_ENABLED === 'true'
+      ? externalOrigin(process.env.NEXT_PUBLIC_UMAMI_URL)
+      : null;
   const mediaOrigin = externalOrigin(process.env.NEXT_PUBLIC_MEDIA_BASE_URL);
 
   for (const origin of [apiOrigin, powerSyncOrigin, umamiOrigin]) {
@@ -53,7 +56,7 @@ export function createContentSecurityPolicy(nonce: string): string {
   return [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${umamiOrigin ? ` ${umamiOrigin}` : ''}`,
-    "style-src 'self'",
+    `style-src 'self' 'nonce-${nonce}'`,
     // Existing responsive layouts use inline style attributes. Keep those
     // while blocking arbitrary inline <style> elements.
     "style-src-attr 'unsafe-inline'",

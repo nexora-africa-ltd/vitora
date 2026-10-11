@@ -224,6 +224,10 @@ describe('Dashboard Page', () => {
       '/encounters/new'
     );
     expect(screen.getByRole('link', { name: /open triage/i })).toHaveAttribute('href', '/triage');
+    expect(screen.getByRole('link', { name: /today's check-ins/i })).toHaveAttribute(
+      'href',
+      '/patients/checkin'
+    );
   });
 
   it('should render websocket status instead of refresh controls', () => {

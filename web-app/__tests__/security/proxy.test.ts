@@ -32,7 +32,7 @@ describe('createContentSecurityPolicy', () => {
   it('allows style attributes without allowing inline style elements', () => {
     const policy = createContentSecurityPolicy('test-nonce');
 
-    expect(policy).toContain("style-src 'self'");
+    expect(policy).toContain("style-src 'self' 'nonce-test-nonce'");
     expect(policy).toContain("style-src-attr 'unsafe-inline'");
     expect(policy).not.toContain("style-src 'self' 'unsafe-inline'");
   });
