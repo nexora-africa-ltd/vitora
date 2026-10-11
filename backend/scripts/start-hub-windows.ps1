@@ -243,22 +243,26 @@ try {
         if (-not (Test-Path $pythonExe)) {
             throw "Python executable not found at $pythonExe"
         }
+        $managePy = Join-Path $InstallDir "manage.py"
+        if (-not (Test-Path $managePy)) {
+            throw "Django management entrypoint not found at $managePy"
+        }
         switch ($Mode) {
             "sync" {
                 Write-StartupLog -Level "INFO" -Message "Starting dedicated hub sync watcher"
-                & $pythonExe manage.py hub_sync --watch
+                & $pythonExe $managePy hub_sync --watch
             }
             "backup" {
                 Write-StartupLog -Level "INFO" -Message "Creating encrypted hub backup"
-                & $pythonExe manage.py hub_backup
+                & $pythonExe $managePy hub_backup
             }
             "backup-upload" {
                 Write-StartupLog -Level "INFO" -Message "Uploading queued hub backups"
-                & $pythonExe manage.py hub_backup_upload
+                & $pythonExe $managePy hub_backup_upload
             }
             "backup-verify" {
                 Write-StartupLog -Level "INFO" -Message "Creating and verifying encrypted hub backup"
-                & $pythonExe manage.py hub_backup --verify
+                & $pythonExe $managePy hub_backup --verify
             }
         }
     } else {

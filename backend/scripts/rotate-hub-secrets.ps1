@@ -296,6 +296,13 @@ try {
         TIBABOT_JWT_PRIVATE_KEY = Resolve-SecretValue -Name "TIBABOT_JWT_PRIVATE_KEY" -ExplicitValue $TibaBotJwtPrivateKey -EnvMap $envMap -ExistingMap $existingMap
         TIBABOT_JWT_SECRET = Resolve-SecretValue -Name "TIBABOT_JWT_SECRET" -ExplicitValue $TibaBotJwtSecret -EnvMap $envMap -ExistingMap $existingMap
         TIBABOT_ADMIN_KEY = Resolve-SecretValue -Name "TIBABOT_ADMIN_KEY" -ExplicitValue $TibaBotAdminKey -EnvMap $envMap -ExistingMap $existingMap
+        # These local keys are not rotated by cloud re-enrollment. Preserve them
+        # so updating optional application secrets cannot make the encrypted
+        # database or its independently encrypted backups unrecoverable.
+        HUB_DATABASE_ENCRYPTION_REQUIRED = Resolve-SecretValue -Name "HUB_DATABASE_ENCRYPTION_REQUIRED" -ExplicitValue "" -EnvMap $envMap -ExistingMap $existingMap
+        HUB_DATABASE_ENCRYPTION_KEY = Resolve-SecretValue -Name "HUB_DATABASE_ENCRYPTION_KEY" -ExplicitValue "" -EnvMap $envMap -ExistingMap $existingMap
+        HUB_BACKUP_ENCRYPTION_KEY = Resolve-SecretValue -Name "HUB_BACKUP_ENCRYPTION_KEY" -ExplicitValue "" -EnvMap $envMap -ExistingMap $existingMap
+        HUB_DEVICE_SIGNING_PRIVATE_KEY = Resolve-SecretValue -Name "HUB_DEVICE_SIGNING_PRIVATE_KEY" -ExplicitValue "" -EnvMap $envMap -ExistingMap $existingMap
     }
 
     $missing = @($secrets.GetEnumerator() | Where-Object { -not $_.Value } | ForEach-Object { $_.Key })

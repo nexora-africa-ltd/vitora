@@ -810,6 +810,12 @@ if (-not $DatabaseEncryptionKey) {
     # shell-sensitive characters while remaining suitable for SQLCipher.
     $DatabaseEncryptionKey = & $python -c "import secrets; print(secrets.token_urlsafe(64))"
 }
+$BackupEncryptionKey = Get-DpapiSecretValue -Path $HubSecretsFile -Name "HUB_BACKUP_ENCRYPTION_KEY"
+if (-not $BackupEncryptionKey) {
+    # Backups use a separate Fernet key so they can be restored independently
+    # of the SQLCipher database key and are never written to plaintext .env.
+    $BackupEncryptionKey = & $python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+}
 
 # Management commands run during installation need the same protected values
 # that the service launcher will load after installation completes.
@@ -822,6 +828,7 @@ foreach ($entry in @{
     SHA_CLIENT_SECRET = $ShaClientSecret
     HUB_DATABASE_ENCRYPTION_REQUIRED = "true"
     HUB_DATABASE_ENCRYPTION_KEY = $DatabaseEncryptionKey
+    HUB_BACKUP_ENCRYPTION_KEY = $BackupEncryptionKey
     HUB_DEVICE_SIGNING_PRIVATE_KEY = $HubDeviceSigningPrivateKey
 }.GetEnumerator()) {
     [Environment]::SetEnvironmentVariable($entry.Key, [string]$entry.Value, "Process")
@@ -878,6 +885,7 @@ $dpapiSecrets = @{
     SHA_CLIENT_SECRET = $ShaClientSecret
     HUB_DATABASE_ENCRYPTION_REQUIRED = "true"
     HUB_DATABASE_ENCRYPTION_KEY = $DatabaseEncryptionKey
+    HUB_BACKUP_ENCRYPTION_KEY = $BackupEncryptionKey
     HUB_DEVICE_SIGNING_PRIVATE_KEY = $HubDeviceSigningPrivateKey
 }
 Write-DpapiSecretsBundle -Secrets $dpapiSecrets -Path $HubSecretsFile
