@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest  # type: ignore
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.testing import WebsocketCommunicator
+from django.test import override_settings
 
 from hmis.asgi import application, start_hub_discovery, stop_hub_discovery, websocket_urlpatterns
 
@@ -33,9 +34,9 @@ class TestAsgiConfiguration:
 
     @patch("hmis.asgi.HubDiscoveryService")
     @pytest.mark.django_db
-    def test_hub_lifecycle_starts_and_stops_discovery(self, mock_service, settings):
+    @override_settings(ENVIRONMENT="hub")
+    def test_hub_lifecycle_starts_and_stops_discovery(self, mock_service):
         """Only hub ASGI processes should own the LAN discovery responder."""
-        settings.ENVIRONMENT = "hub"
         service = MagicMock()
         mock_service.return_value = service
 
@@ -48,10 +49,9 @@ class TestAsgiConfiguration:
 
     @patch("hmis.asgi.HubDiscoveryService")
     @pytest.mark.django_db
-    def test_non_hub_lifecycle_does_not_start_discovery(self, mock_service, settings):
+    @override_settings(ENVIRONMENT="test")
+    def test_non_hub_lifecycle_does_not_start_discovery(self, mock_service):
         """Cloud and development ASGI processes must not advertise LAN hubs."""
-        settings.ENVIRONMENT = "development"
-
         assert start_hub_discovery() is None
         mock_service.assert_not_called()
 

@@ -43,7 +43,7 @@ class WardCompatibilityConsumer(AsyncJsonWebsocketConsumer):
         ward_exists = await self._ward_exists(self.ward_id)
         if not ward_exists:
             logger.warning("WebSocket connection rejected: ward %s not found", self.ward_id)
-            await self.close()
+            await self.close(code=4404)
             return
 
         # Join ward-specific group

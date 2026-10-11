@@ -27,26 +27,26 @@ RUN_CREATE_MISSING_LAB_QUEUES="${RUN_CREATE_MISSING_LAB_QUEUES:-false}"
 RUN_CHECK_PII_INTEGRITY="${RUN_CHECK_PII_INTEGRITY:-false}"
 
 echo "==> Running migrations"
-python manage.py migrate --noinput
+VITORA_DB_APPLICATION_NAME="vitora-${DJANGO_ENV:-staging}-migrations" python manage.py migrate --noinput
 
 if [ "$POSTDEPLOY_MODE" = "full" ] || [ "$RUN_SYNC_ROLE_PERMISSIONS" = "true" ]; then
   echo "==> Syncing role permissions"
-  python manage.py sync_role_permissions
+  VITORA_DB_APPLICATION_NAME="vitora-${DJANGO_ENV:-staging}-postdeploy" python manage.py sync_role_permissions
 fi
 
 if [ "$POSTDEPLOY_MODE" = "full" ] || [ "$RUN_BACKFILL_DEATH_RECORDS" = "true" ]; then
   echo "==> Backfilling death records"
-  python manage.py backfill_death_records --apply
+  VITORA_DB_APPLICATION_NAME="vitora-${DJANGO_ENV:-staging}-postdeploy" python manage.py backfill_death_records --apply
 fi
 
 if [ "$POSTDEPLOY_MODE" = "full" ] || [ "$RUN_CREATE_MISSING_LAB_QUEUES" = "true" ]; then
   echo "==> Creating missing lab queues"
-  python manage.py create_missing_lab_queues
+  VITORA_DB_APPLICATION_NAME="vitora-${DJANGO_ENV:-staging}-postdeploy" python manage.py create_missing_lab_queues
 fi
 
 if [ "$POSTDEPLOY_MODE" = "full" ] || [ "$RUN_CHECK_PII_INTEGRITY" = "true" ]; then
   echo "==> Checking PII encryption integrity"
-  python manage.py check_pii_integrity --model Facility || true
+  VITORA_DB_APPLICATION_NAME="vitora-${DJANGO_ENV:-staging}-postdeploy" python manage.py check_pii_integrity --model Facility || true
 fi
 
 echo "==> Post-deploy maintenance complete"

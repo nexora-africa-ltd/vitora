@@ -30,10 +30,25 @@ def load_sibling_env(base_dir: str | os.PathLike | None = None) -> None:
         os.environ[key] = value.strip().strip('"').strip("'")
 
 
+def set_database_application_name() -> None:
+    """Label staging management sessions before Django initializes connections."""
+    if os.environ.get("VITORA_DB_APPLICATION_NAME"):
+        return
+
+    environment = os.environ.get("DJANGO_ENV", "development").strip().lower()
+    if environment != "staging":
+        return
+
+    command = sys.argv[1] if len(sys.argv) > 1 else "shell"
+    role = "migrations" if command in {"migrate", "makemigrations", "sqlmigrate"} else "management"
+    os.environ["VITORA_DB_APPLICATION_NAME"] = f"vitora-{environment}-{role}"
+
+
 def main():
     """Run administrative tasks."""
     load_sibling_env()
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "hmis.settings")
+    set_database_application_name()
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

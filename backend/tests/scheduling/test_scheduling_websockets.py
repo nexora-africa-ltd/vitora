@@ -88,9 +88,10 @@ class TestSchedulingConsumerConnection:
         from hmis.asgi import application
 
         communicator = WebsocketCommunicator(application, "/ws/scheduling/99999/appointments/")
-        connected, _ = await communicator.connect()
+        connected, code = await communicator.connect()
 
         assert connected is False
+        assert code == 4404
 
     async def test_connect_joins_facility_group(self):
         """Should join the facility-specific scheduling channel group on connect."""

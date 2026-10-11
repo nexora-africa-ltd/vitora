@@ -124,6 +124,7 @@ az containerapp update \
     "DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-hmis.settings.staging}" \
     "DJANGO_SECRET_KEY=secretref:django-secret-key" \
     "DATABASE_URL=secretref:database-url" \
+    "VITORA_DB_APPLICATION_NAME=${VITORA_DB_APPLICATION_NAME:-vitora-staging-api}" \
     "REDIS_URL=${REDIS_URL:+secretref:redis-url}" \
     "DB_CONN_MAX_AGE=${DB_CONN_MAX_AGE:-300}" \
     "ENCRYPTION_KEY=secretref:encryption-key" \

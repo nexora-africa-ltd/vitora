@@ -80,9 +80,10 @@ class TestImagingConsumerConnection:
         from hmis.asgi import application
 
         communicator = WebsocketCommunicator(application, "/ws/imaging/99999/orders/")
-        connected, _ = await communicator.connect()
+        connected, code = await communicator.connect()
 
         assert connected is False
+        assert code == 4404
 
     async def test_connect_joins_facility_group(self):
         """Should join the facility-specific imaging channel group on connect."""

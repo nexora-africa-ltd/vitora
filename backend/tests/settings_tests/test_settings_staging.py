@@ -146,6 +146,53 @@ class TestStagingSettings:
                 "max_size": 4,
             }
 
+    def test_staging_postgres_identifies_the_connection_client(self):
+        """PostgreSQL sessions must be attributable in Neon activity views."""
+        with mock.patch.dict(
+            os.environ,
+            {
+                "DATABASE_URL": "postgres://test:test@localhost/test",
+                "VITORA_DB_APPLICATION_NAME": "vitora-staging-worker",
+            },
+            clear=False,
+        ):
+            import importlib
+
+            from hmis.settings import staging
+
+            importlib.reload(staging)
+            assert (
+                staging.DATABASES["default"]["OPTIONS"]["application_name"]
+                == "vitora-staging-worker"
+            )
+
+    def test_staging_postgres_defaults_to_api_connection_name(self):
+        """The API remains identifiable when no explicit process label is set."""
+        with mock.patch.dict(
+            os.environ,
+            {"DATABASE_URL": "postgres://test:test@localhost/test"},
+            clear=False,
+        ):
+            import importlib
+
+            from hmis.settings import staging
+
+            os.environ.pop("VITORA_DB_APPLICATION_NAME", None)
+            importlib.reload(staging)
+            assert (
+                staging.DATABASES["default"]["OPTIONS"]["application_name"] == "vitora-staging-api"
+            )
+
+    def test_staging_suppresses_routine_azure_sdk_transport_logs(self):
+        """Azure request/response logs should not obscure application failures."""
+        from hmis.settings import staging
+
+        assert staging.LOGGING["loggers"]["azure"]["level"] == "WARNING"
+        assert (
+            staging.LOGGING["loggers"]["azure.core.pipeline.policies.http_logging_policy"]["level"]
+            == "WARNING"
+        )
+
     def test_staging_azure_blob_media_storage_backend(self):
         """Staging should switch default storage backend when MEDIA_BACKEND=azure_blob."""
         with mock.patch.dict(

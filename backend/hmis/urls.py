@@ -503,6 +503,25 @@ def _set_cached_tibabot_health(payload: dict[str, object]) -> None:
 
 @csrf_exempt
 @never_cache
+def liveness_check(request):
+    """Confirm the ASGI process can accept requests without probing dependencies."""
+    from hmis import get_runtime_version
+
+    uptime_seconds = int(time.monotonic() - PROCESS_START_MONOTONIC)
+    return JsonResponse(
+        {
+            "status": "healthy",
+            "service": "vitora-hmis",
+            "version": get_runtime_version(),
+            "mode": "liveness",
+            "timestamp": datetime.now(UTC).isoformat(),
+            "uptime_seconds": uptime_seconds,
+        }
+    )
+
+
+@csrf_exempt
+@never_cache
 def health_check(request):
     """Comprehensive health endpoint for monitoring and diagnostics."""
     from hmis import get_runtime_version
@@ -904,7 +923,7 @@ urlpatterns = [
         serve,
         {"path": "favicon.ico", "document_root": settings.STATIC_ROOT},
     ),
-    path("", health_check, name="health_check"),
+    path("", liveness_check, name="liveness_check"),
     path("api/health/", health_check, name="api_health_check"),
     path("admin/mfa-verify/", admin_mfa_verify, name="admin-mfa-verify"),
     path("admin/mfa-verify/webauthn/begin/", admin_webauthn_begin, name="admin-webauthn-begin"),

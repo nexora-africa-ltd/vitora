@@ -214,3 +214,8 @@ def check_sha_eligibility_via_cloud(eligibility_data: dict[str, Any]) -> CloudPr
     """Check patient SHA eligibility through the cloud proxy."""
     client = get_cloud_proxy()
     return client.post("/api/cloud/sha/eligibility/", eligibility_data)
+
+
+def exchange_cloud_user_token(token_proof: dict[str, Any]) -> CloudProxyResponse:
+    """Exchange a locally authenticated staff proof for a short-lived cloud token."""
+    return get_cloud_proxy().post("/api/licensing/cloud/user-token/", token_proof)

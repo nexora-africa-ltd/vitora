@@ -94,6 +94,19 @@ jobs:
           echo "::add-mask::$SAS"
           echo "token=$SAS" >> "$GITHUB_OUTPUT"
 
+      - name: Prepare unique backup artifact
+        id: backup_context
+        run: |
+          BACKUP_ENV="${{ github.event.inputs.environment || 'production' }}"
+          RUN_ID="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          TIMESTAMP=$(date -u +"%Y-%m-%d_%H%M%S")
+          STARTED_EPOCH=$(date -u +%s)
+
+          echo "environment=$BACKUP_ENV" >> "$GITHUB_OUTPUT"
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "timestamp=$TIMESTAMP" >> "$GITHUB_OUTPUT"
+          echo "started_epoch=$STARTED_EPOCH" >> "$GITHUB_OUTPUT"
+
       - name: Ensure container app replica is available
         id: ensure_replica
         run: |
@@ -151,18 +164,44 @@ jobs:
           exit 1
 
       - name: Run backup in container
+        id: run_backup
         run: |
+          set -o pipefail
           SAS_ESCAPED=$(printf '%q' "${{ steps.sas.outputs.token }}")
-          REMOTE_CMD="AZURE_STORAGE_ACCOUNT=${{ env.STORAGE_ACCOUNT }} AZURE_STORAGE_CONTAINER=${{ env.STORAGE_CONTAINER }} AZURE_STORAGE_SAS_TOKEN=${SAS_ESCAPED} /app/scripts/backup-db.sh"
+          REMOTE_CMD="AZURE_STORAGE_ACCOUNT=${{ env.STORAGE_ACCOUNT }} AZURE_STORAGE_CONTAINER=${{ env.STORAGE_CONTAINER }} AZURE_STORAGE_SAS_TOKEN=${SAS_ESCAPED} VITORA_ENV=${{ steps.backup_context.outputs.environment }} VITORA_BACKUP_TIMESTAMP=${{ steps.backup_context.outputs.timestamp }} VITORA_BACKUP_RUN_ID=${{ steps.backup_context.outputs.run_id }} /app/scripts/backup-db.sh"
+          EXEC_OUTPUT=$(mktemp)
+          chmod 600 "$EXEC_OUTPUT"
 
+          set +e
           if command -v script >/dev/null 2>&1; then
-            script -q -e -c "az containerapp exec --name ${{ env.CONTAINER_APP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --command \"$REMOTE_CMD\"" /dev/null
+            script -q -e -c "az containerapp exec --name ${{ env.CONTAINER_APP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --command \"$REMOTE_CMD\"" /dev/null >"$EXEC_OUTPUT" 2>&1
+            EXEC_STATUS=$?
           else
             az containerapp exec \
               --name ${{ env.CONTAINER_APP_NAME }} \
               --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-              --command "$REMOTE_CMD"
+              --command "$REMOTE_CMD" >"$EXEC_OUTPUT" 2>&1
+            EXEC_STATUS=$?
           fi
+          set -e
+
+          cat "$EXEC_OUTPUT"
+          if [[ "$EXEC_STATUS" -ne 0 ]] || grep -Eq 'ClusterExecFailure|websocket: close [0-9]+|^ERROR:' "$EXEC_OUTPUT"; then
+            echo "ERROR: Container exec did not complete the backup command."
+            rm -f "$EXEC_OUTPUT"
+            exit 1
+          fi
+
+          ARTIFACT=$(tr -d '\r' <"$EXEC_OUTPUT" | sed -n 's/^BACKUP_ARTIFACT=//p' | tail -n 1)
+          EXPECTED_BASE="vitora-${{ steps.backup_context.outputs.environment }}-${{ steps.backup_context.outputs.timestamp }}-${{ steps.backup_context.outputs.run_id }}.sql.gz"
+          rm -f "$EXEC_OUTPUT"
+
+          if [[ "$ARTIFACT" != "$EXPECTED_BASE" && "$ARTIFACT" != "${EXPECTED_BASE}.gpg" ]]; then
+            echo "ERROR: Backup did not confirm the expected run-scoped artifact."
+            exit 1
+          fi
+
+          echo "artifact=$ARTIFACT" >> "$GITHUB_OUTPUT"
 
       - name: Restore original min replica setting
         if: always() && steps.ensure_replica.outputs.scaled_up == 'true'
@@ -193,27 +232,44 @@ jobs:
           done
           echo "Pruned ${DELETED} backup(s) older than 30 days"
 
-      - name: Verify latest backup
+      - name: Verify this run's backup artifact
         run: |
-          LATEST_NAME=$(az storage blob list \
+          ARTIFACT="${{ steps.run_backup.outputs.artifact }}"
+          CREATED_AT=$(az storage blob show \
             --account-name ${{ env.STORAGE_ACCOUNT }} \
             --container-name ${{ env.STORAGE_CONTAINER }} \
+            --name "$ARTIFACT" \
             --sas-token "${{ steps.sas.outputs.token }}" \
-            --query "sort_by([?ends_with(name, '.sql.gz') || ends_with(name, '.sql.gz.gpg')], &properties.creationTime)[-1].name" \
+            --query "properties.creationTime" \
             -o tsv)
 
-          if [[ -z "$LATEST_NAME" ]]; then
-            echo "ERROR: No backup blob found in container '${{ env.STORAGE_CONTAINER }}'."
-            echo "The backup command may have failed inside the container app."
+          if [[ -z "$CREATED_AT" ]]; then
+            echo "ERROR: Expected backup artifact '$ARTIFACT' was not found."
             exit 1
           fi
 
-          echo "Latest backup blob: $LATEST_NAME"
+          CREATED_EPOCH=$(date -u -d "$CREATED_AT" +%s)
+          if [[ "$CREATED_EPOCH" -lt "${{ steps.backup_context.outputs.started_epoch }}" ]]; then
+            echo "ERROR: Backup artifact '$ARTIFACT' predates this workflow run."
+            exit 1
+          fi
+
+          SIZE_BYTES=$(az storage blob show \
+            --account-name ${{ env.STORAGE_ACCOUNT }} \
+            --container-name ${{ env.STORAGE_CONTAINER }} \
+            --name "$ARTIFACT" \
+            --sas-token "${{ steps.sas.outputs.token }}" \
+            --query "properties.contentLength" \
+            -o tsv)
+          if ! [[ "$SIZE_BYTES" =~ ^[0-9]+$ ]] || [[ "$SIZE_BYTES" -lt 1024 ]]; then
+            echo "ERROR: Backup artifact '$ARTIFACT' is missing or too small ($SIZE_BYTES bytes)."
+            exit 1
+          fi
 
           az storage blob show \
             --account-name ${{ env.STORAGE_ACCOUNT }} \
             --container-name ${{ env.STORAGE_CONTAINER }} \
-            --name "$LATEST_NAME" \
+            --name "$ARTIFACT" \
             --sas-token "${{ steps.sas.outputs.token }}" \
             --query "{name:name,size:properties.contentLength,created:properties.creationTime}" \
             -o table

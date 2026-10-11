@@ -130,6 +130,7 @@ jobs:
             DJANGO_ENV=${{ env.DEPLOY_ENV }} \
             DJANGO_SETTINGS_MODULE=hmis.settings.${{ env.DEPLOY_ENV }} \
             DATABASE_URL=secretref:database-url \
+            VITORA_DB_APPLICATION_NAME=vitora-${{ env.DEPLOY_ENV }}-api \
             DB_CONN_MAX_AGE=${{ vars.DB_CONN_MAX_AGE || (env.DEPLOY_ENV == 'production' && '600' || '60') }} \
             REDIS_URL=${{ env.ASYNC_WORKERS_ENABLED == 'true' && 'secretref:redis-url' || '' }} \
             ENCRYPTION_KEY=secretref:encryption-key \
@@ -359,7 +360,7 @@ jobs:
             --image "${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}" \
             --min-replicas "${{ env.WORKER_MIN_REPLICAS }}" \
             --max-replicas "${{ env.WORKER_MAX_REPLICAS }}" \
-            --set-env-vars VITORA_PROCESS=worker REDIS_URL=secretref:redis-url CELERY_TASK_ALWAYS_EAGER=false \
+            --set-env-vars VITORA_PROCESS=worker VITORA_DB_APPLICATION_NAME=vitora-${{ env.DEPLOY_ENV }}-worker REDIS_URL=secretref:redis-url CELERY_TASK_ALWAYS_EAGER=false \
             --output none
 
           az containerapp update \
@@ -368,7 +369,7 @@ jobs:
             --image "${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}" \
             --min-replicas 1 \
             --max-replicas 1 \
-            --set-env-vars VITORA_PROCESS=beat REDIS_URL=secretref:redis-url CELERY_TASK_ALWAYS_EAGER=false \
+            --set-env-vars VITORA_PROCESS=beat VITORA_DB_APPLICATION_NAME=vitora-${{ env.DEPLOY_ENV }}-beat REDIS_URL=secretref:redis-url CELERY_TASK_ALWAYS_EAGER=false \
             --output none
 
       - name: Run post-deploy maintenance

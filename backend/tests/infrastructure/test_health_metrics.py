@@ -42,6 +42,23 @@ class TestHealthCheckICD11Status:
 
 
 class TestHealthCheckExpandedPayload:
+    def test_root_liveness_does_not_run_dependency_checks(self, api_client, mocker):
+        """The root liveness endpoint must remain available during dependency outages."""
+        database_check = mocker.patch("hmis.urls._check_database_health")
+        cache_check = mocker.patch("hmis.urls._check_cache_health")
+        kms_check = mocker.patch("hmis.urls._check_kms_health")
+        storage_check = mocker.patch("hmis.urls._check_media_storage_health")
+
+        response = api_client.get("/")
+
+        assert response.status_code == 200
+        assert response.json()["status"] == "healthy"
+        assert response.json()["mode"] == "liveness"
+        database_check.assert_not_called()
+        cache_check.assert_not_called()
+        kms_check.assert_not_called()
+        storage_check.assert_not_called()
+
     def test_health_includes_runtime_and_component_checks(self, api_client):
         response = api_client.get("/api/health/")
 

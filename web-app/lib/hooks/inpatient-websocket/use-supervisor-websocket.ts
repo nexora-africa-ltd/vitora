@@ -10,7 +10,6 @@ import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWebSocket, UseWebSocketOptions } from '../use-websocket';
 import { inpatientQueryKeys } from '../use-inpatient';
-import { getWebSocketUrl } from './use-ward-websocket';
 import type { SupervisorWebSocketMessage } from './types';
 
 // =============================================================================
@@ -30,7 +29,7 @@ export function useSupervisorAlertsSocket(
 ): ReturnType<typeof useWebSocket> {
   const queryClient = useQueryClient();
 
-  const url = getWebSocketUrl('/ws/inpatient/supervisor/alerts/');
+  const url = '/ws/inpatient/supervisor/alerts/';
 
   // Use stable ref for custom handler to prevent dependency issues
   const customOnMessage = options.onMessage;

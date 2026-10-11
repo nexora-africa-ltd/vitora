@@ -11,6 +11,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { licensingApi } from '@/lib/api/licensing';
+import { storeCloudConfigEnvelope } from '@/lib/desktop';
+import { verifyCloudConfigEnvelope } from '@/lib/licensing/cloud-config-envelope';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +63,17 @@ export default function ActivatePage() {
 
       // Store the license token
       licensingApi.storeToken(response.license_token);
+
+      if (response.cloud_config_envelope) {
+        const verification = await verifyCloudConfigEnvelope(response.cloud_config_envelope, {
+          installationId: installationId.trim(),
+        });
+        if (verification.status === 'invalid') {
+          throw new Error(verification.reason);
+        }
+        // Web Crypto-unavailable clients retain only the opaque envelope.
+        await storeCloudConfigEnvelope(response.cloud_config_envelope);
+      }
       setSuccess(true);
 
       // Redirect to dashboard after short delay

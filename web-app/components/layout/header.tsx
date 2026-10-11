@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Menu, Settings, User, RefreshCw, Trash2, Stethoscope } from 'lucide-react';
+import { Cloud, LogIn, Menu, Settings, User, RefreshCw, Trash2, Stethoscope } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -36,6 +36,7 @@ import { useNavigationMode } from '@/lib/context/navigation-mode-context';
 import { CommandMenuTrigger } from '@/components/layout/command-menu';
 import { Switch } from '@/components/ui/switch';
 import { isDesktop } from '@/lib/desktop';
+import { useCloudConnection } from '@/lib/hooks/use-cloud-connection';
 import { cn } from '@/lib/utils/cn';
 
 interface HeaderProps {
@@ -55,6 +56,18 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
   const { navigationMode, setNavigationMode, isClinicalNavigationEligible } = useNavigationMode();
   const isClinicalMode = navigationMode === 'clinical';
   const desktopMode = isDesktop();
+  const cloudConnection = useCloudConnection();
+  const showCloudStatus = cloudConnection.config === 'configured' || cloudConnection.config === 'missing';
+  const cloudSessionRequired =
+    cloudConnection.session === 'required' && cloudConnection.reachability === 'available';
+
+  const cloudStatusLabel = cloudSessionRequired
+    ? 'Cloud sign-in'
+    : cloudConnection.reachability === 'unavailable'
+      ? 'Cloud unavailable'
+      : cloudConnection.reachability === 'checking'
+        ? 'Cloud check'
+        : 'Cloud connected';
 
   const handleClearCache = async () => {
     setIsClearingCache(true);
@@ -105,7 +118,53 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
         </div>
 
         {/* Right side */}
-        <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 xl:gap-4">
+         <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 xl:gap-4">
+          {showCloudStatus && (
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    className={cn(
+                      'flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium',
+                      cloudSessionRequired
+                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                        : cloudConnection.reachability === 'unavailable'
+                          ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
+                          : 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+                    )}
+                    onClick={() => {
+                      if (cloudSessionRequired) {
+                        router.push(`/cloud-sign-in?callbackUrl=${encodeURIComponent(window.location.pathname)}`);
+                      }
+                    }}
+                    type="button"
+                    aria-label={cloudStatusLabel}
+                  >
+                    {cloudSessionRequired ? <LogIn className="h-3.5 w-3.5" /> : <Cloud className="h-3.5 w-3.5" />}
+                    <span className="hidden xl:inline">{cloudStatusLabel}</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  {cloudSessionRequired ? (
+                    <div className="space-y-1">
+                      <p className="font-medium">TibaBot cloud connection required</p>
+                      <p className="text-xs text-muted-foreground">
+                        Sign in separately to Vitora Cloud for TibaBot and cloud-only workflows.
+                      </p>
+                    </div>
+                  ) : cloudConnection.reachability === 'unavailable' ? (
+                    <div className="space-y-1">
+                      <p className="font-medium">Cloud service unavailable</p>
+                      <p className="text-xs text-muted-foreground">Your local hub remains available offline.</p>
+                    </div>
+                  ) : (
+                    <p className="text-xs">Vitora Cloud session connected.</p>
+                  )}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+
           {/* Online/Offline indicator */}
           <TooltipProvider delayDuration={300}>
             <Tooltip>

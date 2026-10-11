@@ -9,6 +9,7 @@ The public key is embedded in every installation for local verification.
 import base64
 import datetime
 import os
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +28,12 @@ ISSUER = "nexora-licensing"
 AUDIENCE = "vitora-hmis"
 TOKEN_VALIDITY_DAYS = 90
 CHECK_IN_WINDOW_DAYS = 30
+CLOUD_CONFIG_AUDIENCE = "vitora-hub-cloud-config"
+CLOUD_CONFIG_TOKEN_TYPE = "cloud_config"  # noqa: S105 - nonsecret JWT protocol type
+CLOUD_CONFIG_VALIDITY_DAYS = 30
+CLOUD_USER_TOKEN_AUDIENCE = "vitora-hub-cloud-user"  # noqa: S105 - nonsecret JWT audience
+CLOUD_USER_TOKEN_TYPE = "hub_cloud_user"  # noqa: S105 - nonsecret JWT protocol type
+CLOUD_USER_TOKEN_VALIDITY_SECONDS = 300
 
 
 def get_private_key() -> str:
@@ -116,6 +123,139 @@ def verify_license_token(token: str) -> dict[str, Any]:
         issuer=ISSUER,
         audience=AUDIENCE,
     )
+
+
+def build_cloud_config_payload(installation) -> dict[str, Any]:
+    """Build the nonsecret cloud configuration claims for one installation."""
+    organization_id = getattr(installation, "organization_id", None)
+    if not isinstance(organization_id, int):
+        organization_id = getattr(getattr(installation, "organization", None), "id", None)
+
+    facility = getattr(installation, "facility", None)
+    facility_id = getattr(installation, "facility_id", None)
+    if not isinstance(facility_id, int):
+        facility_id = getattr(facility, "id", None) if facility is not None else None
+
+    return {
+        "installation_id": str(installation.installation_id),
+        "organization_id": organization_id,
+        "facility_id": facility_id,
+        "environment": str(getattr(settings, "ENVIRONMENT", "") or ""),
+        "cloud_api_base_url": (
+            str(getattr(settings, "CLOUD_API_BASE_URL", "") or "").strip().rstrip("/")
+        ),
+        "sync_server_url": (
+            str(getattr(settings, "SYNC_SERVER_URL", "") or "").strip().rstrip("/")
+        ),
+    }
+
+
+def sign_cloud_config_envelope(payload: dict[str, Any]) -> str:
+    """Sign a short-lived configuration envelope with the license signing key."""
+    now = timezone.now()
+    token_payload = {
+        **payload,
+        "iss": ISSUER,
+        "aud": CLOUD_CONFIG_AUDIENCE,
+        "token_type": CLOUD_CONFIG_TOKEN_TYPE,
+        "iat": int(now.timestamp()),
+        "exp": int((now + datetime.timedelta(days=CLOUD_CONFIG_VALIDITY_DAYS)).timestamp()),
+    }
+    return jwt.encode(token_payload, get_private_key(), algorithm=ALGORITHM)
+
+
+def verify_cloud_config_envelope(
+    token: str,
+    *,
+    installation_id: str | None = None,
+    organization_id: int | None = None,
+    facility_id: int | None = None,
+    environment: str | None = None,
+) -> dict[str, Any]:
+    """Verify a configuration envelope and optional installation-bound claims."""
+    payload = jwt.decode(
+        token,
+        get_public_key(),
+        algorithms=[ALGORITHM],
+        issuer=ISSUER,
+        audience=CLOUD_CONFIG_AUDIENCE,
+    )
+    if payload.get("token_type") != CLOUD_CONFIG_TOKEN_TYPE:
+        raise jwt.InvalidTokenError("Invalid cloud configuration envelope type.")
+
+    expected_claims = {
+        "installation_id": installation_id,
+        "organization_id": organization_id,
+        "facility_id": facility_id,
+        "environment": environment,
+    }
+    for claim, expected in expected_claims.items():
+        if expected is not None and payload.get(claim) != expected:
+            raise jwt.InvalidTokenError(f"Cloud configuration envelope {claim} does not match.")
+    return payload
+
+
+def _build_cloud_user_token_payload(installation, user) -> dict[str, Any]:
+    """Build claims for one short-lived, installation-bound cloud user token."""
+    now = timezone.now()
+    return {
+        "iss": ISSUER,
+        "aud": CLOUD_USER_TOKEN_AUDIENCE,
+        "token_type": CLOUD_USER_TOKEN_TYPE,
+        "iat": int(now.timestamp()),
+        "exp": int(
+            (now + datetime.timedelta(seconds=CLOUD_USER_TOKEN_VALIDITY_SECONDS)).timestamp()
+        ),
+        "jti": str(uuid.uuid4()),
+        "sub": str(user.pk),
+        "user_id": user.pk,
+        "username": user.username,
+        "installation_id": str(installation.installation_id),
+        "organization_id": installation.organization_id,
+        "facility_id": installation.facility_id,
+    }
+
+
+def issue_cloud_user_token(installation, user) -> tuple[str, str]:
+    """Issue a five-minute, non-refreshable cloud token and return its JTI."""
+    token_payload = _build_cloud_user_token_payload(installation, user)
+    return (
+        jwt.encode(token_payload, get_private_key(), algorithm=ALGORITHM),
+        token_payload["jti"],
+    )
+
+
+def sign_cloud_user_token(installation, user) -> str:
+    """Issue a five-minute, non-refreshable cloud token for one hub-resolved user."""
+    return issue_cloud_user_token(installation, user)[0]
+
+
+def verify_cloud_user_token(token: str) -> dict[str, Any]:
+    """Verify the dedicated audience and purpose of a hub cloud user token."""
+    payload = jwt.decode(
+        token,
+        get_public_key(),
+        algorithms=[ALGORITHM],
+        issuer=ISSUER,
+        audience=CLOUD_USER_TOKEN_AUDIENCE,
+        options={
+            "require": [
+                "exp",
+                "iat",
+                "jti",
+                "sub",
+                "user_id",
+                "username",
+                "installation_id",
+                "organization_id",
+                "facility_id",
+                "token_type",
+            ]
+        },
+    )
+    if payload.get("token_type") != CLOUD_USER_TOKEN_TYPE:
+        raise jwt.InvalidTokenError("Invalid hub cloud user token type.")
+    return payload
 
 
 def build_license_payload(installation) -> dict[str, Any]:

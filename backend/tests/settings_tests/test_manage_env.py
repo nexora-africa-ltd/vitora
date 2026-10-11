@@ -50,3 +50,27 @@ def test_load_sibling_env_does_not_override_existing_values(tmp_path, monkeypatc
 
     assert os.environ["DJANGO_ENV"] == "test"
     assert os.environ["HUB_DB_PATH"] == "from-shell.sqlite3"
+
+
+def test_management_commands_are_identified_before_django_loads(monkeypatch):
+    """Remote maintenance sessions need a distinct PostgreSQL application name."""
+    manage = _load_manage_module()
+    monkeypatch.setenv("DJANGO_ENV", "staging")
+    monkeypatch.setattr(manage.sys, "argv", ["manage.py", "migrate"])
+    monkeypatch.delenv("VITORA_DB_APPLICATION_NAME", raising=False)
+
+    manage.set_database_application_name()
+
+    assert os.environ["VITORA_DB_APPLICATION_NAME"] == "vitora-staging-migrations"
+
+
+def test_management_command_respects_explicit_database_application_name(monkeypatch):
+    """Callers can provide a more specific label for an operational command."""
+    manage = _load_manage_module()
+    monkeypatch.setenv("DJANGO_ENV", "staging")
+    monkeypatch.setenv("VITORA_DB_APPLICATION_NAME", "vitora-staging-restore")
+    monkeypatch.setattr(manage.sys, "argv", ["manage.py", "migrate"])
+
+    manage.set_database_application_name()
+
+    assert os.environ["VITORA_DB_APPLICATION_NAME"] == "vitora-staging-restore"

@@ -19,11 +19,16 @@
  */
 'use client';
 
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, useSyncExternalStore } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePatientJourneyStore } from '@/lib/stores/patient-journey';
 import { toast } from '@/lib/hooks/use-toast';
 import { clinicKeys } from './use-clinics';
+import {
+  getWebSocketRuntimeStatus,
+  resolveWebSocketUrl,
+  subscribeWebSocketRuntime,
+} from '@/lib/desktop/websocket-runtime';
 
 // =============================================================================
 // Types
@@ -262,24 +267,8 @@ export interface UseWebSocketReturn {
 /**
  * Get the WebSocket URL based on current environment
  */
-function getWebSocketUrl(path: string): string {
-  if (typeof window === 'undefined') {
-    return ''; // Server-side, return empty
-  }
-
-  // Use environment variable if set
-  const wsHost = process.env.NEXT_PUBLIC_WS_URL;
-  if (wsHost) {
-    return `${wsHost}${path}`;
-  }
-
-  // Otherwise, derive from current location
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const host = process.env.NEXT_PUBLIC_API_URL
-    ? new URL(process.env.NEXT_PUBLIC_API_URL).host
-    : window.location.host;
-
-  return `${protocol}//${host}${path}`;
+export function getWebSocketUrl(path: string): string | null {
+  return resolveWebSocketUrl(path);
 }
 
 // =============================================================================
@@ -290,9 +279,11 @@ function getWebSocketUrl(path: string): string {
  * Low-level WebSocket hook with reconnection logic
  */
 export function useWebSocket<TMessage = WebSocketMessage>(
-  url: string | null,
+  target: string | null,
   options: UseWebSocketOptions<TMessage> = {}
 ): UseWebSocketReturn {
+  useSyncExternalStore(subscribeWebSocketRuntime, getWebSocketRuntimeStatus, () => 'pending');
+  const url = target?.startsWith('/') ? resolveWebSocketUrl(target) : target;
   const {
     autoReconnect = true,
     reconnectDelay = 3000,
@@ -370,10 +361,18 @@ export function useWebSocket<TMessage = WebSocketMessage>(
         );
       };
 
-      ws.onclose = () => {
-        setConnectionState('disconnected');
+      ws.onclose = (event) => {
         wsRef.current = null;
         onDisconnectRef.current?.();
+
+        // Auth, authorization, and missing-resource closes cannot recover by retrying.
+        if ([4400, 4401, 4403, 4404, 4409].includes(event.code)) {
+          setConnectionState('error');
+          console.warn(`[WebSocket] Connection rejected (${event.code}) for ${url}; retry disabled.`);
+          return;
+        }
+
+        setConnectionState('disconnected');
         console.log('[WebSocket] Disconnected');
 
         // Auto-reconnect if enabled and not intentionally closed
@@ -469,7 +468,7 @@ export function useClinicQueueSocket(
   const { syncToJourneyStore = true, ...restOptions } = options;
 
   // Build WebSocket URL
-  const url = clinicId ? getWebSocketUrl(`/ws/clinics/${clinicId}/queue/`) : null;
+  const url = clinicId ? `/ws/clinics/${clinicId}/queue/` : null;
 
   // Event handler that integrates with React Query and Zustand
   const handleMessage = useCallback(
@@ -601,7 +600,7 @@ export function useLabEncounterSocket(
 ): UseWebSocketReturn {
   const queryClient = useQueryClient();
 
-  const url = encounterId ? getWebSocketUrl(`/ws/lab/encounters/${encounterId}/`) : null;
+  const url = encounterId ? `/ws/lab/encounters/${encounterId}/` : null;
 
   const handleMessage = useCallback(
     (message: WebSocketMessage) => {
@@ -651,7 +650,7 @@ export function useLabOrderSocket(
   const queryClient = useQueryClient();
   const { orderNumber, encounterId, ...wsOptions } = options;
 
-  const url = orderId ? getWebSocketUrl(`/ws/lab/orders/${orderId}/`) : null;
+  const url = orderId ? `/ws/lab/orders/${orderId}/` : null;
 
   const handleMessage = useCallback(
     (message: WebSocketMessage) => {
@@ -696,7 +695,7 @@ export function useLabOrderSocket(
 export function useLabClinicianSocket(options: UseLabWebSocketOptions = {}): UseWebSocketReturn {
   const queryClient = useQueryClient();
 
-  const url = getWebSocketUrl('/ws/lab/clinician/');
+  const url = '/ws/lab/clinician/';
 
   const handleMessage = useCallback(
     (message: WebSocketMessage) => {
@@ -747,7 +746,7 @@ export function useLabQueueSocket(options: UseLabWebSocketOptions = {}): UseWebS
   const queryClient = useQueryClient();
 
   // Queue-specific endpoint is not exposed by backend routing; use clinician feed.
-  const url = getWebSocketUrl('/ws/lab/clinician/');
+  const url = '/ws/lab/clinician/';
 
   const handleMessage = useCallback(
     (message: WebSocketMessage) => {
@@ -894,7 +893,7 @@ export function useEmergencySocket(
   } | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
-  const url = getWebSocketUrl('/ws/emergency/queue/');
+  const url = '/ws/emergency/queue/';
 
   const handleMessage = useCallback(
     (message: WebSocketMessage) => {
@@ -994,7 +993,7 @@ export function useLabourPartographSocket(
   const queryClient = useQueryClient();
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
-  const url = partographId ? getWebSocketUrl(`/ws/mch/partographs/${partographId}/`) : null;
+  const url = partographId ? `/ws/mch/partographs/${partographId}/` : null;
 
   const handleMessage = useCallback(
     (message: PartographWebSocketMessage) => {
@@ -1088,7 +1087,7 @@ export function useSchedulingSocket(
 ): UseWebSocketReturn {
   const queryClient = useQueryClient();
 
-  const url = facilityId ? getWebSocketUrl(`/ws/scheduling/${facilityId}/appointments/`) : null;
+  const url = facilityId ? `/ws/scheduling/${facilityId}/appointments/` : null;
 
   const handleMessage = useCallback(
     (message: SchedulingWebSocketMessage) => {
@@ -1242,7 +1241,7 @@ export function usePharmacySocket(
 ): UseWebSocketReturn {
   const queryClient = useQueryClient();
 
-  const url = facilityId ? getWebSocketUrl(`/ws/pharmacy/${facilityId}/queue/`) : null;
+  const url = facilityId ? `/ws/pharmacy/${facilityId}/queue/` : null;
 
   const handleMessage = useCallback(
     (message: PharmacyWebSocketMessage) => {
@@ -1385,7 +1384,7 @@ export function useBillingSocket(
 ): UseWebSocketReturn {
   const queryClient = useQueryClient();
 
-  const url = facilityId ? getWebSocketUrl(`/ws/billing/${facilityId}/invoices/`) : null;
+  const url = facilityId ? `/ws/billing/${facilityId}/invoices/` : null;
 
   const handleMessage = useCallback(
     (message: BillingWebSocketMessage) => {
@@ -1451,7 +1450,7 @@ export function useSHAClaimSocket(
 ): UseWebSocketReturn {
   const queryClient = useQueryClient();
 
-  const url = facilityId ? getWebSocketUrl(`/ws/billing/${facilityId}/sha-claims/`) : null;
+  const url = facilityId ? `/ws/billing/${facilityId}/sha-claims/` : null;
 
   const handleMessage = useCallback(
     (message: SHAClaimWebSocketMessage) => {
@@ -1535,7 +1534,7 @@ export function useImagingSocket(
 ): UseWebSocketReturn {
   const queryClient = useQueryClient();
 
-  const url = facilityId ? getWebSocketUrl(`/ws/imaging/${facilityId}/orders/`) : null;
+  const url = facilityId ? `/ws/imaging/${facilityId}/orders/` : null;
 
   const handleMessage = useCallback(
     (message: ImagingWebSocketMessage) => {
@@ -1634,7 +1633,7 @@ export function useImmunizationSocket(
 ): UseWebSocketReturn {
   const queryClient = useQueryClient();
 
-  const url = facilityId ? getWebSocketUrl(`/ws/immunizations/${facilityId}/records/`) : null;
+  const url = facilityId ? `/ws/immunizations/${facilityId}/records/` : null;
 
   const handleMessage = useCallback(
     (message: ImmunizationWebSocketMessage) => {
@@ -1748,7 +1747,7 @@ export function useMCHSocket(
 ): UseWebSocketReturn {
   const queryClient = useQueryClient();
 
-  const url = facilityId ? getWebSocketUrl(`/ws/mch/facility/${facilityId}/`) : null;
+  const url = facilityId ? `/ws/mch/facility/${facilityId}/` : null;
 
   const handleMessage = useCallback(
     (message: MCHWebSocketMessage) => {
@@ -1827,7 +1826,7 @@ export function useDashboardSocket(
 ): UseWebSocketReturn {
   const queryClient = useQueryClient();
 
-  const url = facilityId ? getWebSocketUrl(`/ws/dashboard/${facilityId}/`) : null;
+  const url = facilityId ? `/ws/dashboard/${facilityId}/` : null;
 
   const handleMessage = useCallback(
     (message: DashboardWebSocketMessage) => {
@@ -1926,8 +1925,7 @@ export function useCommentSocket(
 ): UseWebSocketReturn {
   const queryClient = useQueryClient();
 
-  const url =
-    entityType && entityId ? getWebSocketUrl(`/ws/comments/${entityType}/${entityId}/`) : null;
+  const url = entityType && entityId ? `/ws/comments/${entityType}/${entityId}/` : null;
 
   const handleMessage = useCallback(
     (message: WebSocketMessage) => {
@@ -1974,7 +1972,7 @@ interface NotificationWebSocketMessage {
 export function useNotificationSocket(options: UseWebSocketOptions = {}): UseWebSocketReturn {
   const queryClient = useQueryClient();
 
-  const url = getWebSocketUrl('/ws/notifications/');
+  const url = '/ws/notifications/';
 
   const handleMessage = useCallback(
     (message: WebSocketMessage) => {

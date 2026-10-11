@@ -5,6 +5,7 @@ use tauri::{AppHandle, Manager};
 
 const CONFIG_FILE: &str = "config.json";
 const DEFAULT_API_URL: &str = "https://api.vitora.digital";
+const DEFAULT_CLOUD_API_URL: &str = "https://staging-api.vitora.digital";
 const LEGACY_API_URL: &str =
     "https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io";
 
@@ -87,7 +88,7 @@ fn default_sync_interval() -> u64 {
 }
 
 fn default_cloud_api_url() -> String {
-    DEFAULT_API_URL.to_string()
+    DEFAULT_CLOUD_API_URL.to_string()
 }
 
 fn default_backup_interval() -> u64 {
@@ -320,12 +321,37 @@ struct KeyStore {
     /// License JWT token (RS256-signed, issued by Nexora license server).
     #[serde(default)]
     license_token: String,
+    /// Opaque RS256-signed cloud configuration envelope from activation.
+    #[serde(default)]
+    cloud_config_envelope: String,
     /// Saved username for "Remember Me" on login.
     #[serde(default)]
     saved_username: String,
     /// Saved password for "Remember Me" on login (desktop only, file perms 0o600).
     #[serde(default)]
     saved_password: String,
+}
+
+fn validate_cloud_config_envelope(envelope: &str) -> Result<(), String> {
+    if envelope.trim().is_empty() {
+        return Err("Cloud configuration envelope cannot be empty".to_string());
+    }
+    if envelope.len() > 64 * 1024 {
+        return Err("Cloud configuration envelope exceeds 64 KiB".to_string());
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod cloud_config_envelope_tests {
+    use super::validate_cloud_config_envelope;
+
+    #[test]
+    fn cloud_config_envelope_validation_keeps_valid_jwts_opaque() {
+        assert!(validate_cloud_config_envelope("header.payload.signature").is_ok());
+        assert!(validate_cloud_config_envelope("   ").is_err());
+        assert!(validate_cloud_config_envelope(&"a".repeat(64 * 1024 + 1)).is_err());
+    }
 }
 
 impl KeyStore {
@@ -435,6 +461,25 @@ pub fn store_license_token(app: AppHandle, token: String) -> Result<(), String> 
 #[tauri::command]
 pub fn get_license_token(app: AppHandle) -> String {
     KeyStore::load(&app).license_token
+}
+
+/// Tauri command: store the opaque cloud configuration envelope securely.
+/// Verification is intentionally performed by the consumer before any claims
+/// are used; native storage does not parse or trust envelope contents.
+#[tauri::command]
+pub fn store_cloud_config_envelope(app: AppHandle, envelope: String) -> Result<(), String> {
+    validate_cloud_config_envelope(&envelope)?;
+
+    let mut store = KeyStore::load(&app);
+    store.cloud_config_envelope = envelope;
+    store.save(&app)
+}
+
+/// Tauri command: retrieve the opaque cloud configuration envelope.
+/// Returns an empty string if activation has not supplied an envelope.
+#[tauri::command]
+pub fn get_cloud_config_envelope(app: AppHandle) -> String {
+    KeyStore::load(&app).cloud_config_envelope
 }
 
 /// Tauri command: clear the license token (used on revocation or reset).

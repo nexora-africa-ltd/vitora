@@ -25,6 +25,9 @@ BEGIN
 END
 $$;
 
+-- Default the external replication session label for database activity reviews.
+ALTER ROLE powersync_replicator SET application_name = 'vitora-powersync';
+
 -- 2. Grant SELECT on all tables in the public schema
 -- PowerSync needs to read table data for initial snapshots and ongoing replication
 GRANT USAGE ON SCHEMA public TO powersync_replicator;

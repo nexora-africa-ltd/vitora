@@ -15,6 +15,47 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Hub 1.0.36] - 2026-10-10
+
+### Hub
+
+- Return explicit WebSocket rejection codes for missing facilities/resources, unauthenticated users, and invalid targets so desktop clients can stop futile reconnect loops.
+- Refine hub routing metadata to keep local billing invoice sockets on the facility hub while routing SHA claim sockets to Cloud.
+
+## [Desktop 1.0.31] - 2026-10-10
+
+### Desktop
+
+- Resolve local WebSocket connections from runtime Tauri hub configuration instead of baked build-time API origins.
+- Stop WebSocket reconnect loops after permanent authentication, authorization, facility, resource, and conflict rejections.
+- Add credential-free login-origin diagnostics for hub versus build-time fallback troubleshooting.
+- Show supported imaging modalities only when a resource is assigned to an imaging or radiology department.
+
+## [Hub 1.0.35] - 2026-10-10
+
+### Hub
+
+- Provision Ed25519 installation signing keys through activation and reenrollment, storing private keys in protected Linux systemd credentials and Windows DPAPI hub secrets.
+- Issue signed environment-bound Cloud configuration envelopes and require hub proof-of-possession for short-lived, facility-bound delegated Cloud user tokens.
+- Add authenticated hub-to-Cloud exchange proxying so local passwords and hub license credentials never reach desktop clients.
+
+## [Desktop 1.0.30] - 2026-10-10
+
+### Desktop
+
+- Verify and persist signed Cloud configuration envelopes through the native keystore during activation.
+- Replace password reuse with passwordless hub-delegated Cloud session exchange.
+- Display Cloud configuration, connectivity, and session state in the desktop header, including successful connection feedback.
+- Hide Cloud-only navigation until both a delegated Cloud session and Cloud reachability are available.
+
+## [Desktop 1.0.29] - 2026-10-10
+
+### Desktop
+
+- Retain accepted cloud credential-reuse consent without repeatedly displaying the agreement at login.
+- Refresh TibaBot status after the desktop cloud session is established, preventing a stale unavailable indicator.
+- Keep cloud-only modules visible in desktop navigation and guide users through the cloud connection gate when needed.
+
 ## [Hub 1.0.34] - 2026-10-10
 
 ### Hub

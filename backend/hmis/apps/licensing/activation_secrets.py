@@ -15,6 +15,7 @@ from typing import Any
 
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
@@ -54,6 +55,18 @@ def _public_key(encoded: str) -> X25519PublicKey:
 def validate_device_public_key(encoded: str) -> str:
     """Validate a device public key before an activation code is consumed."""
     _public_key(encoded)
+    return encoded
+
+
+def validate_device_signing_public_key(encoded: str) -> str:
+    """Validate a base64-encoded raw Ed25519 key used for installation proofs."""
+    try:
+        raw = base64.b64decode(encoded, validate=True)
+        Ed25519PublicKey.from_public_bytes(raw)
+    except (ValueError, TypeError) as exc:
+        raise ValueError(
+            "device_signing_public_key must be base64-encoded raw Ed25519 public key"
+        ) from exc
     return encoded
 
 

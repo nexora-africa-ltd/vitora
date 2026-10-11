@@ -44,7 +44,7 @@ class ClinicQueueConsumer(AsyncJsonWebsocketConsumer):
         clinic_exists = await self._clinic_exists(self.clinic_id)
         if not clinic_exists:
             logger.warning("WebSocket connection rejected: clinic %s not found", self.clinic_id)
-            await self.close()
+            await self.close(code=4404)
             return
 
         # Join clinic-specific group

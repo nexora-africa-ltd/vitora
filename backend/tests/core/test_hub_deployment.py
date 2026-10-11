@@ -98,6 +98,8 @@ class TestHubHealthEndpoint:
         policies = {policy["key"]: policy for policy in data["routing_manifest"]["workflows"]}
         assert policies["cds"]["routing_policy"] == "CLOUD"
         assert "/api/cds/" in policies["cds"]["api_prefixes"]
+        assert "/ws/billing/" in policies["billing"]["websocket_prefixes"]
+        assert "/ws/billing/*/sha-claims/" in policies["insurance"]["websocket_prefixes"]
 
     @override_settings(ENVIRONMENT="hub")
     def test_hub_blocks_cloud_only_surveillance_routes(self, rf):

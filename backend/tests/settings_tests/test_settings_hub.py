@@ -3,6 +3,22 @@
 import importlib
 import os
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def assert_base_middleware_unchanged():
+    """Importing hub settings must not install hub guards in the test process."""
+    from django.conf import settings
+
+    from hmis.settings import base
+
+    original_base_middleware = list(base.MIDDLEWARE)
+    original_active_middleware = list(settings.MIDDLEWARE)
+    yield
+    assert original_base_middleware == base.MIDDLEWARE
+    assert original_active_middleware == settings.MIDDLEWARE
+
 
 def test_hub_settings_default_database_lives_under_data(monkeypatch):
     """Hub settings should not fall back to a root-level hub.sqlite3."""

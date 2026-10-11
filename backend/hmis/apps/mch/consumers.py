@@ -15,7 +15,7 @@ class LabourPartographConsumer(AsyncJsonWebsocketConsumer):
         self.room_group_name = f"mch_partograph_{self.partograph_id}"
 
         if not await self._partograph_exists(self.partograph_id):
-            await self.close()
+            await self.close(code=4404)
             return
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
@@ -69,7 +69,7 @@ class MCHFacilityConsumer(AsyncJsonWebsocketConsumer):
 
         facility_exists = await self._facility_exists(self.facility_id)
         if not facility_exists:
-            await self.close()
+            await self.close(code=4404)
             return
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)

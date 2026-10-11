@@ -483,6 +483,32 @@ export async function clearLicenseToken(): Promise<void> {
   await invoke('clear_license_token');
 }
 
+/**
+ * Store the opaque cloud configuration envelope in the native secure keystore.
+ * Claims must remain unavailable until independently signature-verified.
+ */
+export async function storeCloudConfigEnvelope(envelope: string): Promise<boolean> {
+  const invoke = getInvoke();
+  if (!invoke) return false;
+  try {
+    await invoke('store_cloud_config_envelope', { envelope });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Retrieve the opaque cloud configuration envelope from the native keystore.
+ * Returns null outside the desktop shell or before a successful activation.
+ */
+export async function getCloudConfigEnvelope(): Promise<string | null> {
+  const invoke = getInvoke();
+  if (!invoke) return null;
+  const envelope = await invoke<string>('get_cloud_config_envelope');
+  return envelope || null;
+}
+
 // ---------------------------------------------------------------------------
 // Saved Credentials (Remember Me — Desktop Only)
 // ---------------------------------------------------------------------------

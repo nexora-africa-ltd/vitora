@@ -32,7 +32,31 @@ function isHubMode(mode?: string): boolean {
 }
 
 function matchesPrefix(path: string, prefix: string): boolean {
+  if (prefix.includes('*')) {
+    const expression = new RegExp(
+      `^${prefix
+        .split('*')
+        .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+        .join('[^/]+')}`
+    );
+    return expression.test(path);
+  }
   return path === prefix.slice(0, -1) || path.startsWith(prefix);
+}
+
+function getLongestPrefixPolicy(
+  pathname: string,
+  prefixes: keyof Pick<HubWorkflowManifest, 'api_prefixes' | 'websocket_prefixes'>
+): HubRoutingPolicy | null {
+  let match: { prefix: string; policy: HubRoutingPolicy } | null = null;
+  for (const workflow of manifest?.workflows ?? []) {
+    for (const prefix of workflow[prefixes]) {
+      if (matchesPrefix(pathname, prefix) && (!match || prefix.length > match.prefix.length)) {
+        match = { prefix, policy: workflow.routing_policy };
+      }
+    }
+  }
+  return match?.policy ?? null;
 }
 
 function parseManifest(payload: unknown): HubRoutingManifest | null {
@@ -91,19 +115,11 @@ export function getHubRouteCapability(pathname: string): HubCapability | null {
 }
 
 export function getHubApiRoutingPolicy(pathname: string): HubRoutingPolicy | null {
-  return (
-    manifest?.workflows.find((workflow) =>
-      workflow.api_prefixes.some((prefix) => matchesPrefix(pathname, prefix))
-    )?.routing_policy ?? null
-  );
+  return getLongestPrefixPolicy(pathname, 'api_prefixes');
 }
 
 export function getHubWebSocketRoutingPolicy(pathname: string): HubRoutingPolicy | null {
-  return (
-    manifest?.workflows.find((workflow) =>
-      workflow.websocket_prefixes.some((prefix) => matchesPrefix(pathname, prefix))
-    )?.routing_policy ?? null
-  );
+  return getLongestPrefixPolicy(pathname, 'websocket_prefixes');
 }
 
 export function isCloudOnlyRoute(pathname: string): boolean {

@@ -44,7 +44,7 @@ class PharmacyQueueConsumer(AsyncJsonWebsocketConsumer):
         facility_exists = await self._facility_exists(self.facility_id)
         if not facility_exists:
             logger.warning("WebSocket connection rejected: facility %s not found", self.facility_id)
-            await self.close()
+            await self.close(code=4404)
             return
 
         # Join facility-specific pharmacy group

@@ -12,8 +12,12 @@ from hmis.apps.licensing.serializers import (
     ActivationRequestSerializer,
     ActivationResponseSerializer,
     CheckInRequestSerializer,
+    CloudUserTokenRequestSerializer,
+    CloudUserTokenResponseSerializer,
     DeviceReenrollmentSerializer,
     GenerateActivationCodeSerializer,
+    HubDatabaseKeyEscrowRecoverySerializer,
+    HubDatabaseKeyEscrowSubmissionSerializer,
     InstallationDetailSerializer,
     InstallationListSerializer,
     InstallationReenrollmentSerializer,
@@ -29,6 +33,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "activation_code",
                 "app_version",
                 "device_public_key",
+                "device_signing_public_key",
                 "eula_accepted",
                 "eula_version",
                 "installation_id",
@@ -78,10 +83,33 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
+        CloudUserTokenRequestSerializer,
+        frozenset(
+            {
+                "employee_id",
+                "nonce",
+                "signature",
+                "timestamp",
+                "username",
+            }
+        ),
+    ),
+    (
+        CloudUserTokenResponseSerializer,
+        frozenset(
+            {
+                "access_token",
+                "expires_in",
+                "token_type",
+            }
+        ),
+    ),
+    (
         DeviceReenrollmentSerializer,
         frozenset(
             {
                 "device_public_key",
+                "device_signing_public_key",
                 "protocol_version",
             }
         ),
@@ -93,6 +121,22 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "facility_id",
                 "name",
                 "organization_id",
+            }
+        ),
+    ),
+    (
+        HubDatabaseKeyEscrowRecoverySerializer,
+        frozenset(
+            {
+                "device_public_key",
+            }
+        ),
+    ),
+    (
+        HubDatabaseKeyEscrowSubmissionSerializer,
+        frozenset(
+            {
+                "hub_database_encryption_key",
             }
         ),
     ),
@@ -155,6 +199,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "device_public_key",
+                "device_signing_public_key",
                 "installation_id",
                 "protocol_version",
             }

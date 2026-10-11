@@ -342,6 +342,26 @@ print(base64.b64encode(key.public_key().public_bytes(Encoding.Raw, PublicFormat.
 PY
 )
 chmod 600 "$DEVICE_PRIVATE_KEY"
+# This key is distinct from the X25519 activation-envelope key. It proves a
+# hub-generated cloud-user exchange without entrusting signing to a desktop.
+HUB_DEVICE_SIGNING_PRIVATE_KEY=$(python3 - <<'PY'
+import base64
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat
+print(base64.b64encode(Ed25519PrivateKey.generate().private_bytes(Encoding.Raw, PrivateFormat.Raw, NoEncryption())).decode("ascii"))
+PY
+)
+HUB_DEVICE_SIGNING_PUBLIC_KEY=$(HUB_DEVICE_SIGNING_PRIVATE_KEY="$HUB_DEVICE_SIGNING_PRIVATE_KEY" python3 - <<'PY'
+import base64
+import os
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
+key = Ed25519PrivateKey.from_private_bytes(base64.b64decode(os.environ["HUB_DEVICE_SIGNING_PRIVATE_KEY"], validate=True))
+print(base64.b64encode(key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)).decode("ascii"))
+PY
+)
+export HUB_DEVICE_SIGNING_PRIVATE_KEY
 
 ACTIVATION_RESPONSE=$(mktemp)
 ACTIVATION_PAYLOAD=$(python3 - <<PY
@@ -353,6 +373,7 @@ print(json.dumps({
     "eula_version": "${EULA_VERSION}",
     "protocol_version": 2,
     "device_public_key": "${DEVICE_PUBLIC_KEY}",
+    "device_signing_public_key": "${HUB_DEVICE_SIGNING_PUBLIC_KEY}",
 }))
 PY
 )
@@ -676,6 +697,7 @@ secrets["hub_database_encryption_required"] = "true"
 secrets["hub_database_encryption_key"] = (
     existing_secrets.get("HUB_DATABASE_ENCRYPTION_KEY") or stdlib_secrets.token_urlsafe(64)
 )
+secrets["hub_device_signing_private_key"] = os.environ["HUB_DEVICE_SIGNING_PRIVATE_KEY"]
 pii_key_package = secrets.pop("organization_pii_key_package")
 with open(output, "w", encoding="utf-8") as secret_file:
     for name, value in secrets.items():

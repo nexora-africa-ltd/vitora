@@ -758,6 +758,18 @@ LOGGING = {
             "level": os.getenv("DJANGO_DB_LOG_LEVEL", "WARNING"),
             "propagate": False,
         },
+        # Azure SDK transport logs include successful request/response metadata.
+        # Keep warnings and failures without flooding Container Apps logs.
+        "azure": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "azure.core.pipeline.policies.http_logging_policy": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
         "hmis.apps.billing.services.dha_search": {
             "handlers": ["console"],
             "level": "INFO",

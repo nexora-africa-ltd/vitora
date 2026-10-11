@@ -45,14 +45,14 @@ class CommentConsumer(AsyncJsonWebsocketConsumer):
         # Validate entity type
         if self.entity_type not in ENTITY_TYPE_MAP:
             logger.warning("WebSocket rejected: invalid entity_type '%s'", self.entity_type)
-            await self.close()
+            await self.close(code=4400)
             return
 
         # Validate entity exists
         exists = await self._entity_exists(self.entity_type, self.entity_id)
         if not exists:
             logger.warning("WebSocket rejected: %s %s not found", self.entity_type, self.entity_id)
-            await self.close()
+            await self.close(code=4404)
             return
 
         # Build group name from content_type model name (e.g., comments_encounter_42)

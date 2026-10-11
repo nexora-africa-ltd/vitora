@@ -31,6 +31,8 @@ export interface ActivationResponse {
   hostname?: string;
   hardware_fingerprint?: string;
   binary_manifest_id?: string;
+  /** Opaque RS256 cloud config JWT. Do not consume claims before verification. */
+  cloud_config_envelope?: string;
 }
 
 export interface ActivationRequest {

@@ -19,6 +19,8 @@ from .base import *  # noqa: F401, F403
 
 DEBUG = False
 TESTING = True
+# Hub-only middleware must never leak into the normal API test process.
+ENVIRONMENT = "test"
 
 # MFA enforcement — disabled in tests by default
 MFA_ENFORCEMENT = os.getenv("MFA_ENFORCEMENT", "false").lower() == "true"

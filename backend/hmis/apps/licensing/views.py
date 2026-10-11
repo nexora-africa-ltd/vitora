@@ -273,6 +273,7 @@ def activate_installation(request: Request) -> Response:
     protocol_version = data["protocol_version"]
     if protocol_version == 2:
         installation.device_public_key = data["device_public_key"]
+        installation.device_signing_public_key = data["device_signing_public_key"]
 
     # Sign the license token
     payload = build_license_payload(installation)
@@ -1140,12 +1141,19 @@ def _reenroll_installation(request: Request, installation: Installation, data: d
         )
 
     installation.device_public_key = data["device_public_key"]
+    installation.device_signing_public_key = data["device_signing_public_key"]
     payload = build_license_payload(installation)
     token = sign_license_token(payload)
     installation.license_jwt = token
     installation.last_check_in = timezone.now()
     installation.save(
-        update_fields=["device_public_key", "license_jwt", "last_check_in", "updated_at"]
+        update_fields=[
+            "device_public_key",
+            "device_signing_public_key",
+            "license_jwt",
+            "last_check_in",
+            "updated_at",
+        ]
     )
 
     decoded = jwt.decode(token, options={"verify_signature": False})

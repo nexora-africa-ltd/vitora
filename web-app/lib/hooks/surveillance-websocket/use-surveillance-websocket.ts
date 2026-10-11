@@ -23,7 +23,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket, type UseWebSocketOptions } from '../use-websocket';
-import { getWebSocketUrl } from '../inpatient-websocket/use-ward-websocket';
 import { toast } from '../use-toast';
 import type {
   SurveillanceEventType,
@@ -100,7 +99,7 @@ export function useSurveillanceWebSocket(
   }, [onStatsUpdate, onNewCase, onImmediateAlert, onOutbreakAlert, onConnectionChange]);
 
   // Build WebSocket URL
-  const wsUrl = getWebSocketUrl(SURVEILLANCE_WS_PATH);
+  const wsUrl = SURVEILLANCE_WS_PATH;
 
   // Handle incoming WebSocket messages
   const handleMessage = useCallback(

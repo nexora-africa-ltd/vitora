@@ -7,6 +7,7 @@
 
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { aiApi } from '@/lib/api/ai';
 import { ENABLE_AI } from '@/lib/utils/constants';
@@ -135,8 +136,16 @@ export function useAIICD10Suggest() {
  * Only queries when the frontend flag is enabled.
  */
 export function useAIStatus() {
+  const [cloudSessionRevision, setCloudSessionRevision] = useState(0);
+
+  useEffect(() => {
+    const refreshStatus = () => setCloudSessionRevision((revision) => revision + 1);
+    window.addEventListener('vitora:cloud-session-changed', refreshStatus);
+    return () => window.removeEventListener('vitora:cloud-session-changed', refreshStatus);
+  }, []);
+
   return useQuery({
-    queryKey: aiKeys.status(),
+    queryKey: [...aiKeys.status(), cloudSessionRevision],
     queryFn: () => aiApi.getStatus(),
     enabled: ENABLE_AI,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
