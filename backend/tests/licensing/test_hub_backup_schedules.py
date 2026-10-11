@@ -58,6 +58,7 @@ def test_windows_backup_tasks_run_via_the_dpapi_launcher_without_secret_argument
         assert "HUB_BACKUP_ENCRYPTION_KEY=" not in script
 
     assert '[ValidateSet("api", "sync", "backup", "backup-upload", "backup-verify")]' in launcher
+    assert "Set-Location -LiteralPath $InstallDir" in launcher
     assert '$managePy = Join-Path $InstallDir "manage.py"' in launcher
     assert "& $pythonExe $managePy hub_backup --verify" in launcher
     assert "& $pythonExe $managePy hub_backup_upload" in launcher

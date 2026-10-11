@@ -52,7 +52,9 @@ async function getCloudConnectionState(): Promise<CloudConnectionState> {
   const session = hasCloudSession() ? 'connected' : 'required';
   try {
     const signal = typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(3_000) : undefined;
-    const response = await fetch(`${cloudApiUrl}/api/health/`, {
+    // Full health probes optional cloud dependencies and can exceed this UI's
+    // short deadline. The lightweight endpoint verifies cloud API availability.
+    const response = await fetch(`${cloudApiUrl}/api/health/?lite=1`, {
       signal,
     });
     return {

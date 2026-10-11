@@ -15,6 +15,18 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Hub 1.0.39] - 2026-10-11
+
+### Hub
+
+- Run Windows hub launcher commands from the installation directory so SYSTEM-scheduled backup, upload, and verification jobs resolve `manage.py` correctly.
+
+## [Desktop 1.0.34] - 2026-10-11
+
+### Desktop
+
+- Use the lightweight Cloud health probe for the desktop connectivity indicator, preventing optional dependency checks from incorrectly reporting Cloud as unavailable.
+
 ## [Hub 1.0.38] - 2026-10-11
 
 ### Hub

@@ -46,7 +46,10 @@ describe('useCloudConnection', () => {
         reachability: 'available',
       });
     });
-    expect(global.fetch).toHaveBeenCalledWith('https://cloud.test/api/health/', expect.anything());
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://cloud.test/api/health/?lite=1',
+      expect.anything()
+    );
   });
 
   it('refreshes session state after a cloud-session event without attempting a login', async () => {
