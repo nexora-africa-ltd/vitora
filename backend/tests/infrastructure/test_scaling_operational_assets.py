@@ -85,6 +85,12 @@ def test_daily_backup_uses_a_dedicated_container_apps_job():
         not in workflow.split("Run dedicated backup job", 1)[1].split("Prune old backups", 1)[0]
     )
 
+    deploy_workflow = (REPO_ROOT / ".github" / "workflows" / "deploy-backend.yml").read_text()
+    backup_job_update = deploy_workflow.split("Refresh backup Job image", 1)[1]
+    assert "az containerapp job update" in backup_job_update
+    assert "--set-env-vars" in backup_job_update
+    assert "--env-vars" not in backup_job_update.split("Run post-deploy maintenance", 1)[0]
+
 
 def test_locust_scenario_is_environment_configured_and_safe_by_default():
     """Load tests must use isolated credentials and never write unless opted in."""

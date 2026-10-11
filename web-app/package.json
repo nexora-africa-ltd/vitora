@@ -25,6 +25,7 @@
     "e2e:smoke": "NODE_ENV=production playwright test --grep @smoke --project=chromium",
     "e2e:prod": "NODE_ENV=production playwright test --project=chromium",
     "e2e:report": "playwright show-report",
+    "capture:dha-manual": "node ../scripts/capture-dha-manual-screenshots.js",
     "bdd": "cucumber-js",
     "bdd:smoke": "cucumber-js --profile smoke",
     "bdd:patients": "cucumber-js --profile patients",

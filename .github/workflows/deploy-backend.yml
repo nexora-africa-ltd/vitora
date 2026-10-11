@@ -381,7 +381,7 @@ jobs:
               --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
               --image "${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}" \
               --command bash /app/scripts/backup-db.sh \
-              --env-vars "AZURE_STORAGE_ACCOUNT=vitorabackupssa" "AZURE_STORAGE_CONTAINER=db-backups" "VITORA_ENV=production" "PGAPPNAME=vitora-production-backup-job" \
+              --set-env-vars "AZURE_STORAGE_ACCOUNT=vitorabackupssa" "AZURE_STORAGE_CONTAINER=db-backups" "VITORA_ENV=production" "PGAPPNAME=vitora-production-backup-job" \
               --output none
           fi
 
