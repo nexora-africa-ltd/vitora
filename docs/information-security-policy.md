@@ -62,6 +62,8 @@ Vitora security controls shall be designed and operated according to the followi
 | Facility Administrator | Maintains appropriate facility users, roles, departments, devices, and operational access reviews |
 | Authorized User | Uses only assigned credentials, protects devices, reports suspected incidents, and does not share accounts |
 
+This governance-responsibility table is not the application RBAC role catalogue. Application role codes, categories, and permission matrices are maintained in Vitora RBAC configuration and assigned by authorized facility administrators under the access-control policy.
+
 ## 5. Information Classification
 
 | Classification | Examples | Minimum handling requirement |
