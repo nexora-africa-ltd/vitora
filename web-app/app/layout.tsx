@@ -100,7 +100,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className={`${inter.variable} font-sans antialiased`}>
         <PWARegister />
         <UmamiAnalytics nonce={nonce} />
-        <Providers>{children}</Providers>
+        <Providers nonce={nonce}>{children}</Providers>
       </body>
     </html>
   );

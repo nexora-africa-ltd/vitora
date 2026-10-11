@@ -33,6 +33,7 @@ const isDev = process.env.NODE_ENV === 'development';
 
 interface ProvidersProps {
   children: ReactNode;
+  nonce?: string;
 }
 
 /**
@@ -44,7 +45,7 @@ interface ProvidersProps {
  * - NavigationProgress: Top progress bar for route transitions
  * - Toaster: Toast notifications
  */
-export function Providers({ children }: ProvidersProps) {
+export function Providers({ children, nonce }: ProvidersProps) {
   // Use centralized createQueryClient for consistent config and global error handling
   const [queryClient] = useState(() => createQueryClient());
   const desktopMode = isDesktop();
@@ -77,6 +78,7 @@ export function Providers({ children }: ProvidersProps) {
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
+          nonce={nonce}
         >
           <AuthProvider>
             <FacilityProvider>

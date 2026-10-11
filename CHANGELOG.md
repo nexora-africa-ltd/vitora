@@ -15,6 +15,20 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Hub 1.0.40] - 2026-10-11
+
+### Hub
+
+- Add an audited onboarding acceptance for encrypted offsite backup policy, automatic default destination provisioning, backup health visibility, and a staging-only destination backfill command.
+- Surface cloud exchange rejections to desktop clients with explicit diagnostics.
+
+## [Desktop 1.0.35] - 2026-10-11
+
+### Desktop
+
+- Apply the system color scheme before first paint under the strict nonce-based CSP, preventing the light-mode flash on dark systems.
+- Disable Umami unless explicitly enabled, preserve CSP nonce protection, correct the patient check-in route, and align insurance badge status filters with the API.
+
 ## [Hub 1.0.39] - 2026-10-11
 
 ### Hub
