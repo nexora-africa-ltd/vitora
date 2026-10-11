@@ -67,6 +67,10 @@ def test_windows_backup_tasks_run_via_the_dpapi_launcher_without_secret_argument
         assert "HUB_BACKUP_ENCRYPTION_KEY" in script
         assert "Fernet.generate_key" in script
 
+    for key in ("HUB_BACKUP_S3_URL", "HUB_BACKUP_S3_TOKEN", "HUB_BACKUP_S3_TOKEN_EXPIRES_AT"):
+        assert f'"{key}"' in updater
+        assert f'{key} = (Get-HubEnvValue "{key}")' in updater
+
     rotator = (REPO_ROOT / "backend/scripts/rotate-hub-secrets.ps1").read_text()
     assert "HUB_DATABASE_ENCRYPTION_KEY" in rotator
     assert "HUB_BACKUP_ENCRYPTION_KEY" in rotator
