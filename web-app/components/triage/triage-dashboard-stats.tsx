@@ -232,7 +232,7 @@ export function TriageDashboardStats({
           hasDurationData ? (
             <span className="text-xs text-muted-foreground">From {durationCount} completed</span>
           ) : (
-            <span className="text-xs text-muted-foreground">No completed today</span>
+            <span className="text-xs text-muted-foreground">None completed today</span>
           )
         }
       />
