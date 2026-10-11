@@ -13,12 +13,12 @@ on:
         type: choice
         options:
           - production
-          - staging
 
 env:
   AZURE_RESOURCE_GROUP: vitora-rg-sa
   STORAGE_ACCOUNT: vitorabackupssa
   STORAGE_CONTAINER: db-backups
+  BACKUP_JOB_NAME: vitora-db-backup-prod-sa
 
 jobs:
   backup:
@@ -43,47 +43,39 @@ jobs:
       - name: Ensure storage container exists
         run: |
           STORAGE_KEY="${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}"
-
-          if [[ -n "$STORAGE_KEY" ]]; then
-            az storage container create \
+          if [[ -z "$STORAGE_KEY" ]]; then
+            STORAGE_KEY=$(az storage account keys list \
               --account-name ${{ env.STORAGE_ACCOUNT }} \
-              --name ${{ env.STORAGE_CONTAINER }} \
-              --account-key "$STORAGE_KEY" \
-              --public-access off \
-              --output none
-          else
-            az storage container create \
-              --account-name ${{ env.STORAGE_ACCOUNT }} \
-              --name ${{ env.STORAGE_CONTAINER }} \
-              --auth-mode login \
-              --public-access off \
-              --output none
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --query '[0].value' \
+              --output tsv)
           fi
+          az storage container create \
+            --account-name ${{ env.STORAGE_ACCOUNT }} \
+            --name ${{ env.STORAGE_CONTAINER }} \
+            --account-key "$STORAGE_KEY" \
+            --public-access off \
+            --output none
 
       - name: Generate SAS token (24h write)
         id: sas
         run: |
           EXPIRY=$(date -u -d "+24 hours" +"%Y-%m-%dT%H:%MZ")
           STORAGE_KEY="${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}"
-
-          if [[ -n "$STORAGE_KEY" ]]; then
-            SAS=$(az storage container generate-sas \
+          if [[ -z "$STORAGE_KEY" ]]; then
+            STORAGE_KEY=$(az storage account keys list \
               --account-name ${{ env.STORAGE_ACCOUNT }} \
-              --name ${{ env.STORAGE_CONTAINER }} \
-              --permissions rcwdl \
-              --expiry "$EXPIRY" \
-              --account-key "$STORAGE_KEY" \
-              -o tsv)
-          else
-            SAS=$(az storage container generate-sas \
-              --account-name ${{ env.STORAGE_ACCOUNT }} \
-              --name ${{ env.STORAGE_CONTAINER }} \
-              --permissions rcwdl \
-              --expiry "$EXPIRY" \
-              --auth-mode login \
-              --as-user \
-              -o tsv)
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --query '[0].value' \
+              --output tsv)
           fi
+          SAS=$(az storage container generate-sas \
+            --account-name ${{ env.STORAGE_ACCOUNT }} \
+            --name ${{ env.STORAGE_CONTAINER }} \
+            --permissions rcwdl \
+            --expiry "$EXPIRY" \
+            --account-key "$STORAGE_KEY" \
+            -o tsv)
 
           if [[ -z "$SAS" ]]; then
             echo "ERROR: Failed to generate SAS token."
@@ -107,110 +99,65 @@ jobs:
           echo "timestamp=$TIMESTAMP" >> "$GITHUB_OUTPUT"
           echo "started_epoch=$STARTED_EPOCH" >> "$GITHUB_OUTPUT"
 
-      - name: Ensure container app replica is available
-        id: ensure_replica
-        run: |
-          ORIGINAL_MIN=$(az containerapp show \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --query "properties.template.scale.minReplicas" \
-            -o tsv)
-
-          if [[ -z "$ORIGINAL_MIN" || "$ORIGINAL_MIN" == "null" ]]; then
-            ORIGINAL_MIN=0
-          fi
-
-          echo "original_min=$ORIGINAL_MIN" >> "$GITHUB_OUTPUT"
-
-          REPLICA_COUNT=$(az containerapp replica list \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --query "length(@)" -o tsv 2>/dev/null || echo 0)
-
-          SCALE_UP=false
-          if [[ "$REPLICA_COUNT" -eq 0 ]]; then
-            echo "No active replicas found. Temporarily scaling min replicas to 1..."
-            az containerapp update \
-              --name ${{ env.CONTAINER_APP_NAME }} \
-              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-              --min-replicas 1 \
-              --output none
-            SCALE_UP=true
-          fi
-
-          echo "scaled_up=$SCALE_UP" >> "$GITHUB_OUTPUT"
-
-          echo "Waiting for at least one replica..."
-          for _ in $(seq 1 30); do
-            REPLICA_COUNT=$(az containerapp replica list \
-              --name ${{ env.CONTAINER_APP_NAME }} \
-              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-              --query "length(@)" -o tsv 2>/dev/null || echo 0)
-
-            if [[ "$REPLICA_COUNT" -gt 0 ]]; then
-              echo "Replica available."
-              exit 0
-            fi
-
-            sleep 10
-          done
-
-          echo "ERROR: No replica became available after waiting 5 minutes."
-          az containerapp show \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --query "{latestRevisionName:properties.latestRevisionName,runningStatus:properties.runningStatus,provisioningState:properties.provisioningState,scale:properties.template.scale}" \
-            -o json
-          exit 1
-
-      - name: Run backup in container
+      - name: Run dedicated backup job
         id: run_backup
         run: |
-          set -o pipefail
-          SAS_ESCAPED=$(printf '%q' "${{ steps.sas.outputs.token }}")
-          REMOTE_CMD="AZURE_STORAGE_ACCOUNT=${{ env.STORAGE_ACCOUNT }} AZURE_STORAGE_CONTAINER=${{ env.STORAGE_CONTAINER }} AZURE_STORAGE_SAS_TOKEN=${SAS_ESCAPED} VITORA_ENV=${{ steps.backup_context.outputs.environment }} VITORA_BACKUP_TIMESTAMP=${{ steps.backup_context.outputs.timestamp }} VITORA_BACKUP_RUN_ID=${{ steps.backup_context.outputs.run_id }} /app/scripts/backup-db.sh"
-          EXEC_OUTPUT=$(mktemp)
-          chmod 600 "$EXEC_OUTPUT"
-
-          set +e
-          if command -v script >/dev/null 2>&1; then
-            script -q -e -c "az containerapp exec --name ${{ env.CONTAINER_APP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --command \"$REMOTE_CMD\"" /dev/null >"$EXEC_OUTPUT" 2>&1
-            EXEC_STATUS=$?
-          else
-            az containerapp exec \
-              --name ${{ env.CONTAINER_APP_NAME }} \
-              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-              --command "$REMOTE_CMD" >"$EXEC_OUTPUT" 2>&1
-            EXEC_STATUS=$?
-          fi
-          set -e
-
-          cat "$EXEC_OUTPUT"
-          if [[ "$EXEC_STATUS" -ne 0 ]] || grep -Eq 'ClusterExecFailure|websocket: close [0-9]+|^ERROR:' "$EXEC_OUTPUT"; then
-            echo "ERROR: Container exec did not complete the backup command."
-            rm -f "$EXEC_OUTPUT"
+          JOB_IMAGE=$(az containerapp job show \
+            --name "${{ env.BACKUP_JOB_NAME }}" \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --query "properties.template.containers[0].image" \
+            --output tsv)
+          EXECUTION_NAME=$(az containerapp job start \
+            --name "${{ env.BACKUP_JOB_NAME }}" \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --image "$JOB_IMAGE" \
+            --command bash /app/scripts/backup-db.sh \
+            --cpu 1.0 \
+            --memory 2Gi \
+            --env-vars \
+              "DATABASE_URL=secretref:database-url" \
+              "AZURE_STORAGE_ACCOUNT=${{ env.STORAGE_ACCOUNT }}" \
+              "AZURE_STORAGE_CONTAINER=${{ env.STORAGE_CONTAINER }}" \
+              "VITORA_ENV=production" \
+              "PGAPPNAME=vitora-production-backup-job" \
+              "VITORA_BACKUP_TIMESTAMP=${{ steps.backup_context.outputs.timestamp }}" \
+              "VITORA_BACKUP_RUN_ID=${{ steps.backup_context.outputs.run_id }}" \
+            --query name \
+            --output tsv)
+          if [[ -z "$EXECUTION_NAME" ]]; then
+            echo "ERROR: Backup Job did not return an execution name."
             exit 1
           fi
 
-          ARTIFACT=$(tr -d '\r' <"$EXEC_OUTPUT" | sed -n 's/^BACKUP_ARTIFACT=//p' | tail -n 1)
-          EXPECTED_BASE="vitora-${{ steps.backup_context.outputs.environment }}-${{ steps.backup_context.outputs.timestamp }}-${{ steps.backup_context.outputs.run_id }}.sql.gz"
-          rm -f "$EXEC_OUTPUT"
+          echo "Started backup Job execution: $EXECUTION_NAME"
+          for _ in $(seq 1 240); do
+            STATUS=$(az containerapp job execution show \
+              --name "${{ env.BACKUP_JOB_NAME }}" \
+              --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+              --job-execution-name "$EXECUTION_NAME" \
+              --query properties.status \
+              --output tsv 2>/dev/null || true)
+            case "$STATUS" in
+              Succeeded) break ;;
+              Failed|Canceled)
+                az containerapp job execution show \
+                  --name "${{ env.BACKUP_JOB_NAME }}" \
+                  --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+                  --job-execution-name "$EXECUTION_NAME" \
+                  --output json
+                echo "ERROR: Backup Job execution finished with status $STATUS."
+                exit 1
+                ;;
+            esac
+            sleep 15
+          done
 
-          if [[ "$ARTIFACT" != "$EXPECTED_BASE" && "$ARTIFACT" != "${EXPECTED_BASE}.gpg" ]]; then
-            echo "ERROR: Backup did not confirm the expected run-scoped artifact."
+          if [[ "$STATUS" != "Succeeded" ]]; then
+            echo "ERROR: Timed out waiting for backup Job execution $EXECUTION_NAME."
             exit 1
           fi
 
-          echo "artifact=$ARTIFACT" >> "$GITHUB_OUTPUT"
-
-      - name: Restore original min replica setting
-        if: always() && steps.ensure_replica.outputs.scaled_up == 'true'
-        run: |
-          az containerapp update \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --min-replicas ${{ steps.ensure_replica.outputs.original_min }} \
-            --output none
+          echo "artifact=vitora-${{ steps.backup_context.outputs.environment }}-${{ steps.backup_context.outputs.timestamp }}-${{ steps.backup_context.outputs.run_id }}.sql.gz" >> "$GITHUB_OUTPUT"
 
       - name: Prune old backups (30-day retention)
         run: |

@@ -372,6 +372,19 @@ jobs:
             --set-env-vars VITORA_PROCESS=beat VITORA_DB_APPLICATION_NAME=vitora-${{ env.DEPLOY_ENV }}-beat REDIS_URL=secretref:redis-url CELERY_TASK_ALWAYS_EAGER=false \
             --output none
 
+      - name: Refresh backup Job image
+        if: env.DEPLOY_ENV == 'production'
+        run: |
+          if az containerapp job show --name "vitora-db-backup-prod-sa" --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" >/dev/null 2>&1; then
+            az containerapp job update \
+              --name "vitora-db-backup-prod-sa" \
+              --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+              --image "${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}" \
+              --command bash /app/scripts/backup-db.sh \
+              --env-vars "AZURE_STORAGE_ACCOUNT=vitorabackupssa" "AZURE_STORAGE_CONTAINER=db-backups" "VITORA_ENV=production" "PGAPPNAME=vitora-production-backup-job" \
+              --output none
+          fi
+
       - name: Run post-deploy maintenance
         run: |
           bash backend/scripts/aca-run-postdeploy.sh "${{ env.CONTAINER_APP_NAME }}" "${{ env.AZURE_RESOURCE_GROUP }}"

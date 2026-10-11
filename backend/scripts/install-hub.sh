@@ -674,6 +674,7 @@ import base64
 import json
 import secrets as stdlib_secrets
 import sys
+from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from hmis.apps.licensing.activation_secrets import decrypt_activation_secrets
 
@@ -696,6 +697,11 @@ if existing_secrets_path:
 secrets["hub_database_encryption_required"] = "true"
 secrets["hub_database_encryption_key"] = (
     existing_secrets.get("HUB_DATABASE_ENCRYPTION_KEY") or stdlib_secrets.token_urlsafe(64)
+)
+# Hub backup bundles use an independent local Fernet key. Preserve it across
+# reinstalls so historical backups remain recoverable.
+secrets["hub_backup_encryption_key"] = (
+    existing_secrets.get("HUB_BACKUP_ENCRYPTION_KEY") or Fernet.generate_key().decode("ascii")
 )
 secrets["hub_device_signing_private_key"] = os.environ["HUB_DEVICE_SIGNING_PRIVATE_KEY"]
 pii_key_package = secrets.pop("organization_pii_key_package")

@@ -27,6 +27,14 @@ def test_linux_backup_jobs_use_the_hub_credential_context_and_expected_schedules
         assert "OnCalendar=weekly" in script
         assert "EnvironmentFile=${HUB_SECRETS_FILE}" not in script
 
+    launcher = (REPO_ROOT / "backend/scripts/start-hub-linux.sh").read_text()
+    assert '"$APP_DIR/manage.py" hub_backup' in launcher
+    assert '"$APP_DIR/manage.py" hub_backup_upload' in launcher
+
+    for script in (installer, updater):
+        assert "hub_backup_encryption_key" in script
+        assert "Fernet.generate_key" in script
+
 
 def test_windows_backup_tasks_run_via_the_dpapi_launcher_without_secret_arguments():
     """Tasks execute the launcher as SYSTEM and do not persist key material in task args."""
@@ -47,11 +55,20 @@ def test_windows_backup_tasks_run_via_the_dpapi_launcher_without_secret_argument
         assert "New-TimeSpan -Minutes 30" in script
         assert "New-ScheduledTaskTrigger -Weekly" in script
         assert '-UserId "SYSTEM" -RunLevel Highest -LogonType ServiceAccount' in script
-        assert "HUB_BACKUP_ENCRYPTION_KEY" not in script
+        assert "HUB_BACKUP_ENCRYPTION_KEY=" not in script
 
     assert '[ValidateSet("api", "sync", "backup", "backup-upload", "backup-verify")]' in launcher
-    assert "manage.py hub_backup --verify" in launcher
-    assert "manage.py hub_backup_upload" in launcher
+    assert '$managePy = Join-Path $InstallDir "manage.py"' in launcher
+    assert "& $pythonExe $managePy hub_backup --verify" in launcher
+    assert "& $pythonExe $managePy hub_backup_upload" in launcher
+
+    for script in (installer, updater):
+        assert "HUB_BACKUP_ENCRYPTION_KEY" in script
+        assert "Fernet.generate_key" in script
+
+    rotator = (REPO_ROOT / "backend/scripts/rotate-hub-secrets.ps1").read_text()
+    assert "HUB_DATABASE_ENCRYPTION_KEY" in rotator
+    assert "HUB_BACKUP_ENCRYPTION_KEY" in rotator
 
 
 def test_hub_backup_command_supports_post_snapshot_verification():

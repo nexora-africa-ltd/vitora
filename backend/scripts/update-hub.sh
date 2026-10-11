@@ -285,6 +285,7 @@ import json
 import os
 import secrets as stdlib_secrets
 import sys
+from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from hmis.apps.licensing.activation_secrets import decrypt_activation_secrets
 
@@ -298,6 +299,9 @@ package = secrets.pop("organization_pii_key_package")
 # been converted and the key has been verified below.
 secrets["hub_database_encryption_required"] = "false"
 secrets["hub_database_encryption_key"] = os.environ.get("HUB_DATABASE_ENCRYPTION_KEY") or ""
+secrets["hub_backup_encryption_key"] = (
+    os.environ.get("HUB_BACKUP_ENCRYPTION_KEY") or Fernet.generate_key().decode("ascii")
+)
 secrets["hub_device_signing_private_key"] = os.environ["HUB_DEVICE_SIGNING_PRIVATE_KEY"]
 temporary = f"{output}.new"
 with open(temporary, "w", encoding="utf-8") as secret_file:

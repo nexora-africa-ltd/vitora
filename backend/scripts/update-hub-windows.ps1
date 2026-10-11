@@ -866,6 +866,16 @@ if (Test-Path $databasePath) {
     Write-Info "No existing hub database found; a new encrypted database will be created by migrations."
 }
 $env:HUB_DATABASE_ENCRYPTION_REQUIRED = "true"
+$backupEncryptionKey = Get-HubEnvValue "HUB_BACKUP_ENCRYPTION_KEY"
+if (-not $backupEncryptionKey) {
+    # Older hubs predate encrypted backup bundles. Generate the local Fernet
+    # key once and retain it in DPAPI across every later update.
+    $backupEncryptionKey = & $pythonExe -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    if ($LASTEXITCODE -ne 0 -or -not $backupEncryptionKey) {
+        throw "Failed to generate the local hub backup encryption key."
+    }
+}
+[Environment]::SetEnvironmentVariable("HUB_BACKUP_ENCRYPTION_KEY", $backupEncryptionKey, "Process")
 $envFileContent = Get-Content $envFile | Where-Object {
     $_ -notmatch '^(DJANGO_SECRET_KEY|ENCRYPTION_KEY|PII_HMAC_KEY|LICENSE_TOKEN)='
 }
@@ -893,6 +903,7 @@ $dpapiSecrets = @{
     SHA_CLIENT_SECRET = (Get-HubEnvValue "SHA_CLIENT_SECRET")
     HUB_DATABASE_ENCRYPTION_REQUIRED = (Get-HubEnvValue "HUB_DATABASE_ENCRYPTION_REQUIRED" "true")
     HUB_DATABASE_ENCRYPTION_KEY = (Get-HubEnvValue "HUB_DATABASE_ENCRYPTION_KEY")
+    HUB_BACKUP_ENCRYPTION_KEY = (Get-HubEnvValue "HUB_BACKUP_ENCRYPTION_KEY")
     HUB_DEVICE_SIGNING_PRIVATE_KEY = (Get-HubEnvValue "HUB_DEVICE_SIGNING_PRIVATE_KEY")
 }
 Write-DpapiSecretsBundle -Secrets $dpapiSecrets -Path $hubSecretsFile

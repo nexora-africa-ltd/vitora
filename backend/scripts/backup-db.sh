@@ -164,7 +164,7 @@ if [[ -n "${AZURE_STORAGE_SAS_TOKEN:-}" ]]; then
     --data-binary "@/tmp/${BACKUP_BASE}.sql.gz.sha256" \
     "https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}/${BACKUP_BASE}.sql.gz.sha256?${AZURE_STORAGE_SAS_TOKEN}" >/dev/null 2>&1 || true
 
-elif command -v az &>/dev/null; then
+elif [[ "${AZURE_STORAGE_USE_AZ_CLI:-false}" == "true" ]] && command -v az &>/dev/null; then
   # Upload using Azure CLI (managed identity)
   az storage blob upload \
     --account-name "${AZURE_STORAGE_ACCOUNT}" \
@@ -183,8 +183,30 @@ elif command -v az &>/dev/null; then
     --file "/tmp/${BACKUP_BASE}.sql.gz.sha256" \
     --auth-mode login \
     --overwrite 2>/dev/null || true
+elif python -c "from azure.identity import DefaultAzureCredential; from azure.storage.blob import BlobServiceClient" 2>/dev/null; then
+  # Container Apps Jobs use their system-managed identity rather than retaining
+  # a long-lived Blob SAS token in the Job template.
+  python - "$AZURE_STORAGE_ACCOUNT" "$AZURE_STORAGE_CONTAINER" "$BACKUP_FILE" "$UPLOAD_FILE" \
+    "${BACKUP_BASE}.sql.gz.sha256" "/tmp/${BACKUP_BASE}.sql.gz.sha256" <<'PY'
+import sys
+
+from azure.identity import DefaultAzureCredential
+from azure.storage.blob import BlobServiceClient
+
+account, container, backup_name, backup_path, checksum_name, checksum_path = sys.argv[1:]
+client = BlobServiceClient(
+    account_url=f"https://{account}.blob.core.windows.net",
+    credential=DefaultAzureCredential(),
+)
+container_client = client.get_container_client(container)
+with open(backup_path, "rb") as backup_file:
+    container_client.upload_blob(name=backup_name, data=backup_file, overwrite=True)
+with open(checksum_path, "rb") as checksum_file:
+    container_client.upload_blob(name=checksum_name, data=checksum_file, overwrite=True)
+PY
+  echo "    Uploaded via managed identity"
 else
-  alert_failure "No upload method available. Set AZURE_STORAGE_SAS_TOKEN or install Azure CLI."
+  alert_failure "No upload method available. Set AZURE_STORAGE_SAS_TOKEN, install Azure CLI, or enable Azure SDK managed identity support."
   rm -f "${UPLOAD_FILE}" "/tmp/${BACKUP_BASE}.sql.gz.sha256"
   exit 1
 fi
