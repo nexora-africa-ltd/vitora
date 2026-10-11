@@ -51,6 +51,18 @@ def test_backend_workflow_supports_a_redis_free_single_replica_budget_mode():
     assert "Disable distributed async processes for budget mode" in workflow
 
 
+def test_daily_backup_requires_a_new_artifact_from_a_successful_container_exec():
+    """A stale backup must not hide a failed ACA exec session."""
+    workflow = (REPO_ROOT / ".github" / "workflows" / "daily-backup.yml").read_text()
+    backup_script = (REPO_ROOT / "backend" / "scripts" / "backup-db.sh").read_text()
+
+    assert "ClusterExecFailure" in workflow
+    assert "BACKUP_ARTIFACT=" in backup_script
+    assert "steps.run_backup.outputs.artifact" in workflow
+    assert "VITORA_BACKUP_RUN_ID" in workflow
+    assert "az storage blob show" in workflow
+
+
 def test_locust_scenario_is_environment_configured_and_safe_by_default():
     """Load tests must use isolated credentials and never write unless opted in."""
     scenario = (REPO_ROOT / "backend" / "tests" / "integration" / "locustfile.py").read_text()

@@ -18,6 +18,8 @@
 #   ALERT_EMAIL              — Email address for failure alerts
 #   VITORA_ENV               — Environment label (default: production)
 #   VITORA_DB_APPLICATION_NAME — PostgreSQL session label (default: vitora-<env>-backup)
+#   VITORA_BACKUP_TIMESTAMP  — UTC artifact timestamp (default: current time)
+#   VITORA_BACKUP_RUN_ID     — Unique artifact suffix (recommended for CI runs)
 #
 # Usage:
 #   bash scripts/backup-db.sh
@@ -27,10 +29,15 @@
 set -euo pipefail
 
 # ─── Configuration ──────────────────────────────────────────────────────────
-TIMESTAMP=$(date -u +"%Y-%m-%d_%H%M%S")
+TIMESTAMP="${VITORA_BACKUP_TIMESTAMP:-$(date -u '+%Y-%m-%d_%H%M%S')}"
 ENVIRONMENT="${VITORA_ENV:-production}"
 export PGAPPNAME="${VITORA_DB_APPLICATION_NAME:-vitora-${ENVIRONMENT}-backup}"
-BACKUP_BASE="vitora-${ENVIRONMENT}-${TIMESTAMP}"
+BACKUP_RUN_ID="${VITORA_BACKUP_RUN_ID:-}"
+if [[ -n "$BACKUP_RUN_ID" && ! "$BACKUP_RUN_ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$ ]]; then
+  echo "ERROR: VITORA_BACKUP_RUN_ID may only contain letters, digits, dots, underscores, and hyphens."
+  exit 64
+fi
+BACKUP_BASE="vitora-${ENVIRONMENT}-${TIMESTAMP}${BACKUP_RUN_ID:+-${BACKUP_RUN_ID}}"
 BACKUP_FILE="${BACKUP_BASE}.sql.gz"
 RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-30}
 ENCRYPTION_ENABLED=false
@@ -216,3 +223,4 @@ FINAL_SIZE=$(echo "${FILESIZE}" | numfmt --to=iec 2>/dev/null || echo "${FILESIZ
 SUMMARY="Backup complete: ${BACKUP_FILE} (${FINAL_SIZE}, encrypted=${ENCRYPTION_ENABLED})"
 echo "==> ${SUMMARY}"
 alert_success "${SUMMARY}"
+echo "BACKUP_ARTIFACT=${BACKUP_FILE}"
