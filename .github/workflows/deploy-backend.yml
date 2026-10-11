@@ -147,7 +147,7 @@ jobs:
             PAYSTACK_WEBHOOK_URL=${{ vars.PAYSTACK_WEBHOOK_URL || (env.DEPLOY_ENV == 'production' && 'https://api.vitora.digital/api/payments/paystack/webhook/' || 'https://staging-api.vitora.digital/api/payments/paystack/webhook/') }} \
             HUB_BACKUP_CREDENTIAL_SIGNER=${{ vars.HUB_BACKUP_CREDENTIAL_SIGNER || 'hmis.apps.licensing.backup_credentials.sign_azure_blob_backup_credentials' }} \
             HUB_BACKUP_ALLOWED_RESIDENCY_COUNTRIES=${{ vars.HUB_BACKUP_ALLOWED_RESIDENCY_COUNTRIES || 'KE' }} \
-            AZURE_HUB_BACKUP_STORAGE_ACCOUNT=${{ vars.AZURE_HUB_BACKUP_STORAGE_ACCOUNT || '' }} \
+            AZURE_HUB_BACKUP_STORAGE_ACCOUNT=${{ vars.AZURE_HUB_BACKUP_STORAGE_ACCOUNT || 'vitorabackupssa' }} \
             AZURE_HUB_BACKUP_STORAGE_ACCOUNT_KEY=secretref:azure-hub-backup-storage-account-key \
             AZURE_HUB_BACKUP_STORAGE_CONTAINER=${{ vars.AZURE_HUB_BACKUP_STORAGE_CONTAINER || 'hub-backups' }} \
             AZURE_HUB_BACKUP_SAS_EXPIRY_MINUTES=${{ vars.AZURE_HUB_BACKUP_SAS_EXPIRY_MINUTES || '60' }} \
