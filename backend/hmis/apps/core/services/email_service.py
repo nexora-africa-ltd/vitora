@@ -288,7 +288,7 @@ def send_invitation_email(
             "role_name": role_name,
             "department_name": department_name,
             "expires_hours": expires_hours,
-            "support_email": getattr(settings, "SUPPORT_EMAIL", "hello@nexora.africa"),
+            "support_email": getattr(settings, "SUPPORT_EMAIL", "admin@vitora.digital"),
         },
     )
 
@@ -354,7 +354,7 @@ def send_password_reset_email(
         {
             "reset_url": reset_url,
             "full_name": full_name,
-            "support_email": getattr(settings, "SUPPORT_EMAIL", "hello@nexora.africa"),
+            "support_email": getattr(settings, "SUPPORT_EMAIL", "admin@vitora.digital"),
         },
     )
 
@@ -479,7 +479,7 @@ def send_org_pending_review_email(
             "admin_name": admin_name,
             "facility_name": facility_name,
             "facility_mfl_code": facility_mfl_code,
-            "support_email": getattr(settings, "SUPPORT_EMAIL", "hello@nexora.africa"),
+            "support_email": getattr(settings, "SUPPORT_EMAIL", "admin@vitora.digital"),
         },
     )
 
@@ -510,7 +510,7 @@ def send_org_activated_email(
             "facility_name": facility_name,
             "facility_mfl_code": facility_mfl_code,
             "login_url": login_url,
-            "support_email": getattr(settings, "SUPPORT_EMAIL", "hello@nexora.africa"),
+            "support_email": getattr(settings, "SUPPORT_EMAIL", "admin@vitora.digital"),
         },
     )
 
@@ -542,7 +542,7 @@ def send_activation_code_email(
             "activation_code": activation_code,
             "installation_name": installation_name,
             "facility_name": facility_name,
-            "support_email": getattr(settings, "SUPPORT_EMAIL", "hello@nexora.africa"),
+            "support_email": getattr(settings, "SUPPORT_EMAIL", "admin@vitora.digital"),
         },
     )
 
