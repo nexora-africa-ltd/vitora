@@ -1,8 +1,8 @@
 <!--
 Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-Purpose: Comprehensive, deployment-adaptable DPIA for Vitora HMIS processing.
-Use: Read with the referenced evidence; complete deployment particulars, validate
-controls, close actions, and obtain controller sign-off before relying on it.
+Purpose: Final product-level DPIA and mandatory facility-deployment annex for Vitora HMIS processing.
+Use: Read with the referenced evidence; complete Annex A, validate controls, close
+deployment actions, and obtain controller sign-off before live patient-data processing.
 Inputs: Enabled modules, data volumes, hosting locations, contracts, legal bases,
 retention schedules, stakeholder feedback, and control-verification evidence.
 -->
@@ -14,22 +14,24 @@ retention schedules, stakeholder feedback, and control-verification evidence.
 | Document control          | Details                                                                                              |
 | ------------------------- | ---------------------------------------------------------------------------------------------------- |
 | Document ID               | VITORA-DPIA-001                                                                                      |
-| Version / assessment date | 2.1 / 30 September 2026 |
-| Status                    | **DRAFT — controller validation, remediation and approval pending**                           |
+| Version / assessment date | 3.0 / 15 October 2026 |
+| Status                    | **FINAL PRODUCT DPIA — pre-customer product assessment; not authorization for a facility deployment** |
 | Product / developer       | Vitora HMIS / Nexora Consulting Ltd.                                                                 |
 | Assessment entity | Nexora Consulting Ltd. — pre-customer product assessment; healthcare-controller arrangements arise at onboarding |
 | Covered facilities | Not applicable: Vitora has no customers at this assessment date |
-| Assessment owner / DPO | **Thande W Murito** — identified by Nexora; contact details and formal review record to be supplied |
+| Assessment owner / DPO | **Thande W Murito**, Nexora DPO; include the controlled corporate privacy contact in every facility deployment annex and patient/staff notice |
 | Technical contributors    | Nexora engineering, security, operations and integration owners                                      |
 | Classification            | Internal confidential — controlled distribution to controller, authorized reviewers and regulator   |
 | Evidence baseline | Source code and regression tests in the working tree based on revision `4b97edda3`; supporting technical verification performed on 2 October 2026; earlier documents are contextual references, not implementation proof |
 | Primary jurisdiction      | Kenya; assess additional obligations for each overseas processing location                           |
-| Scheduled review          | By 1 October 2027, or earlier on the triggers in Section 18                                          |
-| Approval record           | Section 19; no approval or regulator clearance is presumed                                           |
+| Scheduled review          | By 15 October 2027, or earlier on the triggers in Section 18                                          |
+| Approval record           | Section 19; complete the product approval record before relying on this assessment and complete Annex A before live patient-data processing |
 
-**How to use this report.** This is a product-wide assessment of the processing activities identified in the evidence baseline, with conditional coverage for optional modules and integrations. Each controller must complete its deployment particulars, confirm which activities occur, attach operational evidence and approve its own risk treatment. A feature described in documentation is not proof that it is enabled, securely configured or effective in production. An activity may be marked not applicable only with a recorded reason and evidence that its data flow is disabled.
+**How to use this report.** This is the final product-wide assessment of the processing activities identified in the evidence baseline, with conditional coverage for optional modules and integrations. It is not a substitute for a healthcare controller's deployment decision. Before live patient-data processing, each controller must complete Annex A, confirm which activities occur, attach operational evidence, close applicable deployment actions, and approve its own risk treatment. A feature described in documentation is not proof that it is enabled, securely configured, or effective in production. An activity may be marked not applicable only with a recorded reason and evidence that its data flow is disabled.
 
 **Pre-customer applicability.** Nexora confirms that Vitora has **no customers**. This DPIA assesses the product's implemented capabilities and envisaged healthcare processing before customer deployment. Customer facility identities, patient volumes, customer contracts and customer operational evidence are therefore **not applicable yet**, rather than missing facts about a live customer service. They become required in the deployment annex before onboarding and processing. Nexora's own staff/accounts, development, certification and test environments still require appropriate safeguards; absence of customers is not proof that every non-production record is synthetic or anonymous.
+
+**Meaning of open fields.** Any `Pending`, `proposed`, `to be supplied`, or blank field in this product DPIA does not assert that a control is operating or that a fact is known. It is either a product-governance action requiring the evidence identified in Section 15, or a facility-specific fact that must be completed in Annex A before live patient-data processing. These fields must never be treated as completed by copying this document into a facility file.
 
 ## Contents
 
@@ -75,7 +77,7 @@ The anticipated benefits are continuity of care during connectivity interruption
 | AI, biometric/OTP integrations, diagnostic files, payer exchanges and operational notifications expand the data flow                                        | Apply purpose-specific minimization, recipient controls, meaningful human oversight and supplier assurance                                                                        |
 | No customers exist; customer-specific volumes, facilities, agreements and operating evidence do not yet apply | Complete the customer annex before onboarding; product-level governance, supplier assurance and technical acceptance remain applicable now |
 
-**Assessment recommendation:** do not treat this draft as approval of the assessed processing. Complete the immediate actions, document deployment-specific legal grounds and transfers, verify the safeguards, and obtain the controller's decision. For processing already underway, promptly assess exposure, introduce appropriate interim restrictions and preserve necessary care continuity. Follow the statutory DPIA submission and prior-consultation requirements in Section 7; this report cannot retroactively satisfy a pre-processing requirement.
+**Assessment recommendation:** this final product DPIA approves no customer processing by itself. Complete the Annex A deployment decision, document deployment-specific legal grounds and transfers, verify applicable safeguards, and obtain the controller's decision before processing patient data. For processing already underway, promptly assess exposure, introduce appropriate interim restrictions, and preserve necessary care continuity. Follow the statutory DPIA submission and prior-consultation requirements in Section 7; this report cannot retroactively satisfy a pre-processing requirement.
 
 ## 2. Scope, context and DPIA screening
 
@@ -189,6 +191,8 @@ Staff names, professional identifiers, IP addresses and attendance records are p
 
 **Classification rules:** an MRN or UUID is linkable personal data, not anonymous information. Encryption and pseudonymization do not remove the data from scope. A boolean sensitive flag can itself reveal sensitive context, and the underlying clinical details remain sensitive. A report is anonymous only after an assessment shows individuals cannot reasonably be re-identified, including by linkage or small-group inference.
 
+\newpage
+
 ## 5. Processing activity register
 
 The register covers the identified functional and operational activities. All rows require deployment confirmation. Basis profiles **B1–B8** are defined in Section 7 and retention classes **T1–T12** in Section 11. The final controller record must select the applicable lawful ground for each distinct purpose; a profile is not a blanket authorization.
@@ -223,7 +227,7 @@ The register covers the identified functional and operational activities. All ro
 | P26 | Organizational signup, subscriptions, hub licensing and update checks                | Administrator/business contacts, installation/device and entitlement metadata                      | Nexora business/operations systems and approved suppliers                                 | B7 / T3,T7                                                      | Separate licensing metadata from patient content; document own-controller purposes                               |
 | P27 | Clinical exports, printing, medical certificates and patient copies                  | Requested records, summaries, certificates, attachments                                            | Verified patient/representative, authorized clinician or recipient                        | B1,B3; rights obligation for rights copies / T1,T11             | Minimal certificate content; recipient verification; secure print/download delivery                              |
 | P28 | Rights requests, consent changes, complaints, retention and deletion                 | Requester identity, authorization, request/decision evidence and affected records                  | DPO/records staff; notified recipients                                                    | B3 / T12 and source classes                                     | Restriction is separate from sensitive flag; propagate accepted changes to copies                                |
-| P29 | Research, model training, external benchmarking or direct marketing proposals        | Proposed research/marketing datasets, outcomes, identifiers or derived features                    | Separately approved researchers, model suppliers or marketing processors                  | B8 / separately approved schedule                               | **Not authorized by care consent or this draft**; separate purpose/legal/ethics assessment and DPIA update |
+| P29 | Research, model training, external benchmarking or direct marketing proposals        | Proposed research/marketing datasets, outcomes, identifiers or derived features                    | Separately approved researchers, model suppliers or marketing processors                  | B8 / separately approved schedule                               | **Not authorized by care consent or this product DPIA**; separate purpose/legal/ethics assessment and DPIA update |
 
 **Scope reconciliation:** compare this register with the enabled-module list, outbound network destinations, database/object-store inventory, scheduled tasks and supplier invoices. Record unmapped activities before approving the deployment; a module name alone may conceal several different processing purposes.
 
@@ -378,25 +382,27 @@ On withdrawal, identify the affected consent-based purpose, stop future processi
 - Explain AI and external disclosures in understandable terms; do not condition essential care on unrelated optional processing.
 - Use narrowly scoped, time-limited emergency access with attributable justification and independent retrospective review; emergency access is not a general cross-tenant bypass.
 
+\newpage
+
 ## 10. Recipients, processors and international transfers
 
 ### 10.1 Initial recipient and transfer inventory
 
-These entries reflect documented architecture or possible enabled services, not a verified supplier contract register. Complete legal entity, role, country, processing region, backup location, remote-support locations and onward subprocessors for each active entry.
+These entries distinguish source-evidenced architecture from deployment facts that cannot be established without an active controller, supplier contract, and runtime inventory. Each active entry must have its legal entity, role, country, processing region, backup location, remote-support locations, onward subprocessors, and contract reference recorded in Annex A before use with patient data.
 
 | ID  | Recipient/service                                                      | Data and purpose                                                              | Location/status from reviewed evidence                                | Required assurance                                                                                               |
 | --- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| X01 | Microsoft Azure hosting and any configured key services                | API runtime, requests, operational data; keys if enabled                      | Azure cloud documented; actual regions/services pending               | DPA, region evidence, support access, key custody and subprocessor list                                          |
+| X01 | Microsoft Azure hosting and any configured key services                | API runtime, requests, operational data; keys if enabled                      | Azure cloud is source-documented; actual subscribed services and regions must be recorded in Annex A | DPA, region evidence, support access, key custody and subprocessor list                                          |
 | X02 | Neon PostgreSQL                                                        | Primary cloud records and replication source                                  | EU Central documented                                                 | Sensitive-data transfer assessment, retention/backups, encryption and qualifying Kenyan arrangement              |
 | X03 | PowerSync Cloud                                                        | Selected records, user/tenant claims and synchronization metadata             | EU Central documented                                                 | Transfer controls, authorized stream definitions, replication account privileges and deletion assurance          |
-| X04 | Vercel web delivery/runtime if used                                    | Connection metadata; personal payloads where server/proxy routes process them | Documented deployment surface; payloads and regions pending           | Trace server routes/logs/caches; prevent authenticated health-response CDN caching; DPA and transfer assessment  |
-| X05 | SHA/DHA HIE, registries and public-health bodies                       | Identity, eligibility, care, claims and statutory reports                     | Kenyan recipients by purpose; infrastructure/onward locations pending | Specific authority, data-sharing agreement, verified destination and minimal dataset                             |
-| X06 | Private insurers, HealthCloud/Slade360 and intermediaries              | Member/visit authorization, claims and remittance information                 | Integration documented; contractual chain/locations pending           | Role analysis, purpose/consent, recipient terms, fallback route review and transfer assessment                   |
-| X07 | M-Pesa and other configured payment services                           | Payment reference, amount and necessary contact/account details               | M-Pesa integration documented; provider processing locations pending  | Minimum payload, authenticated callbacks, fraud controls and payment terms                                       |
-| X08 | TibaBot and downstream model/inference providers                       | Clinical prompts, session/identity metadata, outputs and safety/usage logs    | TibaBot documented; downstream provider, region and retention pending | No unauthorized training/reuse, tenant isolation, access/deletion terms, transfer and clinical-safety assessment |
-| X09 | Resend, facility SMTP and configured SMS/push services                 | Recipient addresses, messages and delivery metadata                           | Email routing documented; active providers/locations pending          | Recipient verification, content minimization, DPA, provider retention and no unapproved failover                 |
+| X04 | Vercel web delivery/runtime if used                                    | Connection metadata; personal payloads where server/proxy routes process them | Optional deployment surface; the facility must record whether enabled, its payloads, and regions in Annex A | Trace server routes/logs/caches; prevent authenticated health-response CDN caching; DPA and transfer assessment  |
+| X05 | SHA/DHA HIE, registries and public-health bodies                       | Identity, eligibility, care, claims and statutory reports                     | Kenyan recipients by purpose; the facility must record enabled routes and verified destinations in Annex A | Specific authority, data-sharing agreement, verified destination and minimal dataset                             |
+| X06 | Private insurers, HealthCloud/Slade360 and intermediaries              | Member/visit authorization, claims and remittance information                 | Optional integration; the facility must record its contractual chain and locations in Annex A | Role analysis, purpose/consent, recipient terms, fallback route review and transfer assessment                   |
+| X07 | M-Pesa and other configured payment services                           | Payment reference, amount and necessary contact/account details               | Optional payment integration; the facility must record provider processing locations in Annex A | Minimum payload, authenticated callbacks, fraud controls and payment terms                                       |
+| X08 | TibaBot and downstream model/inference providers                       | Clinical prompts, session/identity metadata, outputs and safety/usage logs    | Optional capability; no provider, region, retention, or training/reuse term may be assumed without Annex A evidence | No unauthorized training/reuse, tenant isolation, access/deletion terms, transfer and clinical-safety assessment |
+| X09 | Resend, facility SMTP and configured SMS/push services                 | Recipient addresses, messages and delivery metadata                           | Configurable delivery routes; the facility must record active providers and locations in Annex A | Recipient verification, content minimization, DPA, provider retention and no unapproved failover                 |
 | X10 | Object storage, PACS, external laboratories and backup providers       | Diagnostic files, attachments, images, backups and interface payloads         | Local/S3-compatible options; older DR runbook mentions Wasabi EU      | Verify actual provider/region, protected access, expiry, restore and transfer evidence                           |
-| X11 | Support, observability, CI/CD and ticketing suppliers                  | Redacted logs, device/account metadata; exceptional approved record access    | Provider inventory pending                                            | No routine clinical payloads, approved access, log retention and onward-transfer terms                           |
+| X11 | Support, observability, CI/CD and ticketing suppliers                  | Redacted logs, device/account metadata; exceptional approved record access    | Product supplier inventory must be maintained by Nexora; facility-specific support access must be recorded in Annex A | No routine clinical payloads, approved access, log retention and onward-transfer terms                           |
 | X12 | Receiving facilities, patients/representatives and authorized auditors | Purpose-limited summaries, copies or evidence                                 | Destination-specific                                                  | Verify identity/authority, secure channel, disclosure record and recipient obligations                           |
 
 ### 10.2 Contract requirements
@@ -497,6 +503,8 @@ No control below is classified as production-tested by this assessment. Evidence
 5. **Backups:** missing encryption credentials now stop the backup. Plaintext database/media intermediate files are not persisted by the updated backup path. The round-trip test uses synthetic dump output and real GPG; it does not establish operational recovery of a live database.
 6. **AI:** recursive scrubbing now covers transport paths rather than only selected top-level message fields. Direct identifiers found in structured payloads are removed and scrubbed from nested text. Pattern/known-value redaction cannot recognize every identifying narrative or de-identify binary images/documents; these remain personal-data processing where identification is possible.
 7. **Historical material:** earlier approval, encryption, hosting and retention assertions are not accepted as implementation evidence. This revision uses current code and specified tests; customer deployment facts remain N/A and infrastructure facts require operational evidence.
+
+\newpage
 
 ## 13. Risk assessment methodology
 
@@ -604,6 +612,8 @@ Use synthetic people and representative deployment configuration. Capture expect
 6. An AI conversation cannot access another tenant/session; clinicians can reject outputs and patients can obtain review of significant automated decisions.
 7. Restore representative clinical records, files, audit evidence and keys within adopted objectives; complete a timed incident and rights-request exercise.
 
+\newpage
+
 ## 16. Data subject rights procedures
 
 ### 16.1 Access channels and handling workflow
@@ -664,7 +674,7 @@ The initial notice should include the awareness timeline, nature of breach, affe
 
 ### 17.4 Continuity and clinical safety
 
-The DR runbook proposes **RTO 4 hours** and **RPO 1 hour**. These are documented targets, not measured achievements. Confirm they are sufficient for each service, including round-the-clock inpatient/emergency operations; a business-hours-only backup schedule cannot alone establish a one-hour RPO at all times.
+The approved Disaster Recovery Plan and Backup and Recovery Policy set a **24-hour RTO** and **24-hour RPO** for Tier 1 recovery, with a 48-hour maximum tolerable period of disruption. A Tier 1 database with approved continuous transaction-log capture must meet a 15-minute operational RPO. These are targets, not measured achievements. Each facility must confirm in Annex A that these targets are safe for its services, including round-the-clock inpatient/emergency operations, and adopt stricter objectives where required.
 
 Provide safe downtime recording, secure temporary paper handling, critical-result escalation, reconciliation ownership and identity checks on re-entry. Exercise database, file, key, audit and attachment restoration together. Offline capability supports continuity only when data is sufficiently current, authorized and safely reconciled.
 
@@ -678,13 +688,13 @@ No interviews or formal approvals were performed in this review. There are no cu
 | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
 | Patients/patient representatives, including low-literacy and rural users | Are notices understandable, choices real, channels safe and rights accessible? | Customer consultation N/A — no customers; independent design consultation not yet recorded |
 | Parents/guardians, child/safeguarding representatives and disability advocates | Are authority, confidential care, consent and best interests protected? | Customer consultation N/A; arrange relevant product-design review before use |
-| Clinical and sensitive-service teams                                           | Is data collection necessary; are restrictions, emergency access, downtime and AI oversight safe?        | Pending                                                 |
-| Staff/HR representatives                                                       | Is attendance/security monitoring proportionate and transparent?                                         | Pending                                                 |
-| DPO/legal and records management | Are bases, localization, transfers, retention and rights supported by evidence? | DPO: **Thande W Murito**; formal advice/review pending |
-| Nexora engineering/security/operations | Do implementation and runtime controls match the assessment? | Source review and specified regression execution completed; independent/operational review pending |
-| Payers, receiving providers and subprocessors                                  | Are purpose, location, onward disclosure, security and deletion commitments enforceable?                 | Pending                                                 |
-| Controller management | Are resources, actions, accepted residual risks and limits explicit? | Nexora product approval pending; customer-controller decision N/A until onboarding |
-| ODPC                                                                           | Manage statutory submission and prior consultation where required; record reference, advice and response | Pending determination/submission; no clearance presumed |
+| Clinical and sensitive-service teams                                           | Is data collection necessary; are restrictions, emergency access, downtime and AI oversight safe?        | Product clinical consultation is recorded as not yet performed; facility clinical-governance consultation is mandatory in Annex A before relevant modules are enabled. |
+| Staff/HR representatives                                                       | Is attendance/security monitoring proportionate and transparent?                                         | Product staff consultation is recorded as not yet performed; facility HR consultation is mandatory in Annex A before staff-monitoring modules are enabled. |
+| DPO/legal and records management | Are bases, localization, transfers, retention and rights supported by evidence? | Product DPO is **Thande W Murito**; formal product advice is recorded by signature in Section 19. Facility legal and records review is mandatory in Annex A. |
+| Nexora engineering/security/operations | Do implementation and runtime controls match the assessment? | Source review and specified regression execution are completed; production-operational evidence is a facility Annex A requirement. |
+| Payers, receiving providers and subprocessors                                  | Are purpose, location, onward disclosure, security and deletion commitments enforceable?                 | No active customer recipients are assumed. Each active recipient requires Annex A contract, location, and assurance evidence. |
+| Controller management | Are resources, actions, accepted residual risks and limits explicit? | Nexora executive approval is recorded in Section 19; customer-controller approval is mandatory in Annex A before onboarding. |
+| ODPC                                                                           | Manage statutory submission and prior consultation where required; record reference, advice and response | The controller DPO must determine and document the requirement for each deployment in Annex A; no regulator clearance is presumed. |
 
 If consultation is limited or inappropriate, document why, the substitute evidence used and how affected people's interests were represented.
 
@@ -712,11 +722,13 @@ Track evidence of performance rather than merely the presence of a policy: unaut
 
 Reassess before a new module, data category, recipient, hosting region, integration, secondary purpose, AI model/provider, biometric flow, major scale increase or material retention/access change. Also reassess after a serious incident, significant complaint, control failure, legal/regulatory change, acquisition, facility merger, new vulnerable population or evidence of a higher likelihood/impact than recorded. Record version, scope, decision and communication to affected controllers.
 
+\newpage
+
 ## 19. Decision, approval and residual-risk acceptance
 
 ### 19.1 Current assessment decision
 
-**Status: product approval pending; customer deployment approval not yet applicable.** This revision records implemented and regression-tested controls and the remaining assurance requirements. It does not establish universal compliance or low residual risk. Nexora has no customers, so forecast risk scores do not describe current customer exposure. The engineering treatments in Section 15 are complete within their stated scope; deployment, supplier, organizational and independent-review requirements remain.
+**Decision: approved as a final pre-customer product DPIA when the Section 19.2 execution record is signed.** This decision approves the product assessment methodology, product-level safeguards, and the mandatory deployment gate. It does not approve a healthcare controller, facility, patient-data processing, international transfer, optional module, or supplier route. Nexora has no customers, so forecast risk scores do not describe current customer exposure. The engineering treatments in Section 15 are complete only within their stated scope; deployment, supplier, organizational, and independent-review evidence remains mandatory in Annex A.
 
 Before approving the relevant deployment:
 
@@ -728,37 +740,64 @@ Before approving the relevant deployment:
 
 Possible recorded outcomes are: **approved for the specified scope**, **approved with explicit lawful conditions and dates**, or **not approved/requires redesign**. No decision can waive a statutory requirement. For an existing deployment, separately record the immediate operating restrictions and lawful continuity arrangements while remediation proceeds.
 
-### 19.2 Sign-off record
+### 19.2 Product DPIA Execution Record
 
-| Role                            | Name/contact | Advice or decision                                             | Signature/date |
-| ------------------------------- | ------------ | -------------------------------------------------------------- | -------------- |
-| Assessment author/coordinator   | [Pending]    | Confirms completed scope/evidence record                       | [Pending]      |
-| Technical/security reviewer     | [Pending]    | Validates controls, open findings and test evidence            | [Pending]      |
-| Clinical governance lead        | [Pending]    | Validates necessity, safeguarding, accuracy, AI and continuity | [Pending]      |
-| Records manager                 | [Pending]    | Validates retention, deletion and rights process               | [Pending]      |
-| DPO/privacy lead | **Thande W Murito**; contact details to be supplied | Formal advice and consultation determination to be recorded | Not signed |
-| Legal/procurement reviewer      | [Pending]    | Confirms bases, contracts, transfers and localization          | [Pending]      |
-| Nexora processor representative | [Pending]    | Confirms delivery of assigned contractual/technical safeguards | [Pending]      |
-| Nexora executive/product sponsor | To be designated | Approves the pre-customer product assessment and resources for remaining actions | Not signed |
-| Customer controller executive | N/A — no customers | Complete a deployment-specific decision before customer processing | N/A at this stage |
+| Role | Name/contact | Advice or decision | Signature or approved electronic equivalent / date |
+| --- | --- | --- | --- |
+| Assessment author/coordinator | Nexora DPIA author recorded in the controlled document register | Confirms the product scope, evidence baseline, limitations, and Annex A deployment gate |  |
+| Technical/security reviewer | Named Nexora technical/security reviewer in the controlled approval record | Validates product controls, open findings, and test evidence |  |
+| Clinical governance reviewer | Named independent clinical-governance reviewer in the controlled approval record | Validates necessity, safeguarding, clinical safety, AI limitations, and continuity requirements |  |
+| Records-management reviewer | Named Nexora records-management reviewer in the controlled approval record | Validates product retention framework, deletion, and rights requirements |  |
+| DPO/privacy lead | **Thande W Murito**, Nexora DPO | Provides formal privacy advice and records the product consultation determination |  |
+| Legal/procurement reviewer | Named Nexora legal/procurement reviewer in the controlled approval record | Validates product contract, transfer, localization, and supplier-assurance requirements |  |
+| Nexora processor representative | Authorized Nexora operations representative named in the controlled approval record | Confirms delivery of assigned contractual and technical safeguards |  |
+| Nexora executive approver | **Nexora Managing Director or a formally delegated executive** | Approves the pre-customer product assessment, its operating limits, and resources for Annex A controls; no separate product-sponsor role is required |  |
+
+An unsigned copy is the final document content but is not an executed approval record. The executed controlled copy must retain the completed names, approval references, and dates. A facility/controller executive and the facility DPO or privacy lead must separately sign Annex A before that facility processes live patient data.
 
 ### 19.3 Residual-risk acceptance record
 
-For each accepted risk, complete:
+No product residual risk is accepted by default. If Nexora accepts a product-level residual risk, it must use the following record. A facility may not rely on this record for its own deployment risk; it must complete the Annex A decision instead.
 
 | Required field                                                 | Entry                                              |
 | -------------------------------------------------------------- | -------------------------------------------------- |
-| Risk ID and enabled activity/deployment                        | [Pending]                                          |
-| Current residual score and evidence                            | [Pending; do not copy target without verification] |
-| Affected subjects and foreseeable harm                         | [Pending]                                          |
-| Why further mitigation is not proportionate, or remaining work | [Pending]                                          |
-| Compensating safeguards and operating limits                   | [Pending]                                          |
-| Legal/transfer/consultation requirements satisfied             | [Pending; attach references]                       |
-| DPO advice and controller response                             | [Pending; explain any disagreement]                |
-| Named accountable risk owner and accepting executive           | [Pending]                                          |
-| Acceptance date, expiry and reassessment trigger               | [Pending]                                          |
+| Risk ID and enabled activity/deployment | Record only a product-level risk that Nexora is authorized to accept. |
+| Current residual score and evidence | Record the assessed score with supporting evidence; do not copy a target score. |
+| Affected subjects and foreseeable harm | Identify the affected group and credible harm. |
+| Why further mitigation is not proportionate, or remaining work | Record the decision, remaining work, and completion date. |
+| Compensating safeguards and operating limits | Record enforceable safeguards and any module, supplier, geography, or access restrictions. |
+| Legal/transfer/consultation requirements satisfied | Attach the applicable references and approval evidence. |
+| DPO advice and controller response | Record advice and explain any disagreement. |
+| Named accountable risk owner and accepting executive | Name the accountable Nexora owner and Managing Director or formally delegated executive. |
+| Acceptance date, expiry and reassessment trigger | Record a fixed expiry and the reassessment trigger. |
 
-No residual risks are formally accepted in this draft.
+No residual risks are formally accepted in this product DPIA at the time of issue.
+
+### 19.4 Annex A: Mandatory Facility Deployment Decision
+
+Complete this annex for each controller/facility before onboarding, enabling a high-risk module, or processing live patient data. Attach the referenced evidence to the controlled copy; do not substitute a verbal confirmation or product-level statement.
+
+| Required deployment fact or evidence | Facility/controller record |
+| --- | --- |
+| Controller legal entity, facility name, registration details, accountable executive, DPO/privacy contact, and clinical-governance lead |  |
+| Go-live date, Vitora release, facilities, modules, interfaces, patient/staff volumes, children/vulnerable populations, and devices/hubs |  |
+| Purpose-specific lawful bases, sensitive-data conditions, notices, consent/representative process, and any statutory reporting authority |  |
+| Active supplier/recipient inventory: legal entity, role, country, processing/backup/replication/support locations, contract/DPA, onward subprocessors, and transfer assessment |  |
+| Kenyan processing or serving-copy evidence and any international-transfer safeguards, notice/consent, regulator submission, or prior consultation determination |  |
+| Controller retention schedule: T1-T12 periods, triggers, legal authority, holds, disposal, primary/backup/offline/supplier locations, and 20-year PHI archive evidence |  |
+| Deployment verification: identity/RBAC/MFA, tenant isolation, endpoint encryption, backup/restore, immutable offsite storage, RPO/RTO/MTPD test, deletion/restriction propagation, and incident/rights exercises |  |
+| Consultation record: clinical, staff/HR, patient/representative, safeguarding, supplier, DPO/legal, and any ODPC consultation outcomes |  |
+| Open risks, operating restrictions, action owners/dates, residual-risk assessment, and evidence references |  |
+
+| Deployment decision role | Name | Signature or approved electronic equivalent | Date |
+| --- | --- | --- | --- |
+| Facility/controller executive |  |  |  |
+| Facility DPO or privacy lead |  |  |  |
+| Facility clinical-governance lead |  |  |  |
+| Facility records-management lead |  |  |  |
+| Nexora authorized processor representative |  |  |  |
+
+**Deployment decision:** [ ] Approved for the documented scope. [ ] Approved with documented conditions and expiry. [ ] Not approved; redesign or further evidence required.
 
 ## 20. Evidence, legal references and version history
 
@@ -821,5 +860,6 @@ The DPO/legal reviewer must record the current applicable healthcare, reporting,
 | 1.0     | 28 December 2025 | Initial Phase 0 DPIA. Historical document labeled itself approved while reviews/signatures remained pending; its approval assertions are not evidence of completed approval                                                                                                          |
 | 2.0     | 2 October 2026   | Comprehensive product/deployment assessment covering clinical and operational activities, vulnerable subjects, AI, offline/hub flows, international transfers/localization, retention, rights, scored risks, treatments and approval evidence. Draft pending validation and sign-off |
 | 2.1 | 30 September 2026 | Source-based privacy fixes and regression evidence; records pre-customer status and DPO Thande W Murito; separates completed engineering, future customer annex and remaining product approval |
+| 3.0 | 15 October 2026 | Final product-level DPIA. Replaces ambiguous placeholders with explicit product-scope decisions or mandatory Annex A evidence; adds product execution and facility deployment approval records; aligns continuity objectives with the approved backup and recovery policy. |
 
-**Document owner:** Thande W Murito, Nexora DPO. **Next scheduled review:** 1 October 2027 or earlier on material change/customer onboarding. **Approval status:** Nexora product review pending; customer deployment approval N/A until onboarding.
+**Document owner:** Thande W Murito, Nexora DPO. **Next scheduled review:** 15 October 2027 or earlier on material change/customer onboarding. **Approval status:** final product DPIA; execution requires completed Section 19.2 approvals. Facility deployment is prohibited until Annex A is completed and signed.
