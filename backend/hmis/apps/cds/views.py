@@ -541,7 +541,7 @@ class CDSAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         )
         return Response(
             {
-                "capability": "FUNC-CDS-001",
+                "resource_type": "CDSEvidenceReport",
                 "encounter_id": encounter.id,
                 "patient_id": encounter.patient_id,
                 "intervention_count": len(interventions),

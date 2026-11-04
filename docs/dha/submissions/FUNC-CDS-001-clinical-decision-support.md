@@ -19,7 +19,7 @@ Vitora evaluates active clinical rules against encounter context and persists th
 
 ```text
 GET /api/cds/alerts/evidence/?encounter_id=<ENCOUNTER_ID>
-Authorization: Bearer {{vitora_dha_access_token}}
+Authorization: Bearer {{vitora_dha_clinician_access_token}}
 X-Facility-ID: 13
 ```
 

@@ -785,7 +785,8 @@ class TestCDSAlertAPI:
         )
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data["capability"] == "FUNC-CDS-001"
+        assert response.data["resource_type"] == "CDSEvidenceReport"
+        assert "capability" not in response.data
         assert response.data["interventions"][0]["rule_code"] == "TEST-VITAL-001"
         assert response.data["interventions"][0]["evidence_level"] == "A"
         assert response.data["interventions"][0]["references"][0]["title"] == (
