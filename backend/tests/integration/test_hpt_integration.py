@@ -479,21 +479,32 @@ class TestDrugViewSetHPTActions:
 
     @patch("hmis.apps.billing.services.terminology.TerminologyService")
     def test_hpt_search_returns_results(self, mock_service_cls, authenticated_client):
-        """Should delegate to TerminologyService and return formatted results."""
-        from hmis.apps.billing.services.terminology import DrugProduct
+        """Should return normalized Clinical Concepts instead of legacy product fields."""
+        from hmis.apps.billing.services.terminology import TerminologyConcept
 
         mock_service = MagicMock()
         mock_service_cls.return_value = mock_service
-        mock_service.search_drug_products.return_value = [
-            DrugProduct.from_api_response(SAMPLE_DHA_PRODUCT_RESPONSE["Data"]["products"][0])
+        mock_service.search_hpt_concepts.return_value = [
+            TerminologyConcept(
+                code="PH11949",
+                display="Amoxicillin",
+                owner="MOH-PPB",
+                source="HPT",
+                system="https://example.test/HPT/",
+            )
         ]
 
         response = authenticated_client.get("/api/pharmacy/drugs/hpt-search/?q=Metformin")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == 1
-        assert response.data["results"][0]["knhts_concept_id"] == "10-03913-01"
-        assert response.data["results"][0]["generic_name"] == "Metformin"
+        assert response.data["results"][0] == {
+            "code": "PH11949",
+            "display": "Amoxicillin",
+            "owner": "MOH-PPB",
+            "source": "HPT",
+            "system": "https://example.test/HPT/",
+        }
 
     def test_hpt_search_unauthenticated_fails(self, api_client):
         """Should reject unauthenticated requests."""

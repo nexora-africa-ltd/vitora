@@ -24,6 +24,30 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 
+@dataclass(frozen=True)
+class TerminologyConcept:
+    """Normalized concept returned by DHA Clinical Concepts sources."""
+
+    code: str
+    display: str
+    owner: str
+    source: str
+    system: str = ""
+    raw_data: dict = field(default_factory=dict)
+
+    @classmethod
+    def from_api_response(cls, data: dict, *, owner: str, source: str) -> "TerminologyConcept":
+        """Normalize the shared DHA Clinical Concepts response shape."""
+        return cls(
+            code=str(data.get("code", "")),
+            display=str(data.get("display") or data.get("name") or ""),
+            owner=owner,
+            source=source,
+            system=str(data.get("system", "")),
+            raw_data=data,
+        )
+
+
 @dataclass
 class InterventionCode:
     """

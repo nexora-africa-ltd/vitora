@@ -682,7 +682,7 @@ def get_tenant_context(
     instance, _visited: set[tuple[str, object]] | None = None
 ) -> tuple[object | None, object | None]:
     """Resolve tenant context through direct fields or a workflow parent chain."""
-    if instance is None:
+    if instance is None or not hasattr(instance, "_meta"):
         return None, None
 
     visited = _visited if _visited is not None else set()

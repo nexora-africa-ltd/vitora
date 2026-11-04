@@ -319,6 +319,7 @@ CUSTOM_ACTIONS: set[str] = {
     "submit_sha_claim",
     "approve_sha_claim",
     "appeal_sha_claim",
+    "verify_sha_eligibility",
     "view_ccc_clinic",
     "view_mental_health_clinic",
     "manage_clinic_staff",

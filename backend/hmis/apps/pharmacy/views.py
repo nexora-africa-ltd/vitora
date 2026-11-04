@@ -222,9 +222,10 @@ class DrugViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="hpt-search")
     def hpt_search(self, request):
         """
-        Search DHA HPT Registry for drug products.
+        Search DHA KNHTS HPT concepts.
 
-        Delegates to TerminologyService.search_drug_products().
+        Delegates to TerminologyService.search_hpt_concepts(). Clinical Concepts
+        results are intentionally normalized; they are not legacy product records.
         GET /api/pharmacy/drugs/hpt-search/?q=Metformin
         """
         from hmis.apps.billing.services.terminology import TerminologyError, TerminologyService
@@ -236,33 +237,19 @@ class DrugViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        product_id = request.query_params.get("product_id")
-        generic_concept_id = request.query_params.get("generic_concept_id")
-
         try:
             service = TerminologyService()
-            results = service.search_drug_products(
-                query,
-                product_id=int(product_id) if product_id else None,
-                generic_concept_id=int(generic_concept_id) if generic_concept_id else None,
-            )
+            results = service.search_hpt_concepts(query)
             return Response(
                 {
                     "count": len(results),
                     "results": [
                         {
-                            "product_id": r.product_id,
-                            "brand_name": r.brand_name,
-                            "generic_name": r.generic_name,
-                            "brand_display_name": r.brand_display_name,
-                            "generic_display_name": r.generic_display_name,
-                            "generic_concept_id": r.generic_concept_id,
-                            "strength_amount": r.strength_amount,
-                            "strength_unit": r.strength_unit,
-                            "route_description": r.route_description,
-                            "form_description": r.form_description,
-                            "ppb_registration_code": r.ppb_registration_code,
-                            "knhts_concept_id": r.knhts_concept_id,
+                            "code": r.code,
+                            "display": r.display,
+                            "owner": r.owner,
+                            "source": r.source,
+                            "system": r.system,
                         }
                         for r in results
                     ],
