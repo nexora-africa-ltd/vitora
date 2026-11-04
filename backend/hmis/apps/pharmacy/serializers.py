@@ -178,6 +178,13 @@ class DrugSerializer(serializers.ModelSerializer):
             "hpt_code",
             "hpt_product_id",
             "hpt_last_synced",
+            "hpt_system",
+            "hpt_owner",
+            "hpt_source",
+            "hpt_display",
+            "hpt_retrieved_at",
+            "hpt_version",
+            "hpt_checksum",
             "ppb_code",
             "requires_prescription",
             "is_controlled",
@@ -649,13 +656,25 @@ class PrescriptionCreateSerializer(serializers.ModelSerializer):
             # HPT-enhanced check: if drug has an hpt_code, check against
             # allergies with ATC-coded substances for deterministic matching
             if not matching_allergies and getattr(drug, "hpt_code", ""):
+                # Terminology-first matching is deterministic when the allergy
+                # and prescribed drug carry the same HPT/SNOMED concept code.
+                matching_allergies = list(
+                    Allergy.objects.filter(
+                        patient_id=patient.id,
+                        status="active",
+                        substance_code=drug.hpt_code,
+                    )
+                )
+
+            # Free-text fallback preserves safety for historical records that
+            # predate coded terminology selection.
+            if not matching_allergies and getattr(drug, "hpt_code", ""):
                 matching_allergies = list(
                     Allergy.objects.filter(
                         patient_id=patient.id,
                         status="active",
                         substance__icontains=drug.generic_name,
-                        substance_code__isnull=False,
-                    ).exclude(substance_code="")
+                    )
                 )
 
             for allergy in matching_allergies:

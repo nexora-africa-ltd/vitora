@@ -25,6 +25,7 @@ from hmis.apps.core.mixins import (
     TenantScopedViewMixin,
     resolve_request_tenant,
 )
+from hmis.apps.core.models import AuditLog, TerminologyBinding
 from hmis.apps.core.openapi import SchemaFallbackSerializer
 from hmis.apps.core.permissions import (
     ReadRequiresModelPermission,
@@ -240,6 +241,23 @@ class DrugViewSet(viewsets.ModelViewSet):
         try:
             service = TerminologyService()
             results = service.search_hpt_concepts(query)
+            local_drugs = {
+                drug.hpt_code: drug
+                for drug in Drug.objects.filter(hpt_code__in=[result.code for result in results])
+            }
+            facility_id = getattr(
+                getattr(request.user, "staff_profile", None), "primary_facility_id", None
+            )
+            stocked_ids = set()
+            if facility_id:
+                stocked_ids = set(
+                    StockBatch.objects.filter(
+                        facility_id=facility_id,
+                        status="AVAILABLE",
+                        quantity_available__gt=0,
+                        drug_id__in=[drug.id for drug in local_drugs.values()],
+                    ).values_list("drug_id", flat=True)
+                )
             return Response(
                 {
                     "count": len(results),
@@ -250,6 +268,15 @@ class DrugViewSet(viewsets.ModelViewSet):
                             "owner": r.owner,
                             "source": r.source,
                             "system": r.system,
+                            "retrieved_at": r.retrieved_at.isoformat() if r.retrieved_at else None,
+                            "local_drug_id": local_drugs[r.code].id
+                            if r.code in local_drugs
+                            else None,
+                            "is_stocked": (
+                                local_drugs[r.code].id in stocked_ids
+                                if r.code in local_drugs
+                                else False
+                            ),
                         }
                         for r in results
                     ],
@@ -267,12 +294,19 @@ class DrugViewSet(viewsets.ModelViewSet):
         Map a specific drug to an HPT code.
 
         POST /api/pharmacy/drugs/{id}/map-hpt/
-        Body: { "hpt_code": "10-03913-01", "hpt_product_id": 4855, "ppb_code": "77" }
+        Body: { "code", "display", "owner", "source", "system" } from HPT lookup.
         """
-        from django.utils import timezone
+        from hmis.apps.billing.services.terminology import TerminologyConcept
+        from hmis.apps.billing.services.terminology_source_registry import get_terminology_source
 
         drug = self.get_object()
-        hpt_code = request.data.get("hpt_code", "").strip()
+        if not request.user.has_perm("pharmacy.change_drug"):
+            return Response(
+                {"detail": "You do not have permission to manage the drug catalogue."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        hpt_code = str(request.data.get("code") or request.data.get("hpt_code") or "").strip()
         hpt_product_id = request.data.get("hpt_product_id")
         ppb_code = request.data.get("ppb_code", "").strip()
 
@@ -282,13 +316,54 @@ class DrugViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        drug.hpt_code = hpt_code
+        source = get_terminology_source("hpt")
+        owner = str(request.data.get("owner") or source.owner)
+        hpt_source = str(request.data.get("source") or source.source or "")
+        if owner != source.owner or hpt_source != source.source:
+            return Response(
+                {"detail": "Only the approved MOH-PPB/HPT source can be mapped."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        concept = TerminologyConcept.from_api_response(
+            {
+                "code": hpt_code,
+                "display": str(request.data.get("display") or drug.generic_name),
+                "system": str(request.data.get("system") or ""),
+                "version": str(request.data.get("version") or ""),
+            },
+            owner=owner,
+            source=hpt_source,
+        )
+        drug.hpt_code = concept.code
+        drug.hpt_system = concept.system
+        drug.hpt_owner = concept.owner
+        drug.hpt_source = concept.source
+        drug.hpt_display = concept.display
+        drug.hpt_retrieved_at = concept.retrieved_at
+        drug.hpt_version = concept.version
         if hpt_product_id is not None:
             drug.hpt_product_id = int(hpt_product_id)
         if ppb_code:
             drug.ppb_code = ppb_code
         drug.hpt_last_synced = timezone.now()
-        drug.save(update_fields=["hpt_code", "hpt_product_id", "ppb_code", "hpt_last_synced"])
+        drug.save()
+        binding = TerminologyBinding.record(
+            drug,
+            concept=concept,
+            terminology_key="hpt",
+            field_name="hpt_code",
+            user=request.user,
+        )
+        drug.hpt_checksum = binding.concept.checksum
+        drug.save(update_fields=["hpt_checksum"])
+        AuditLog.log(
+            action="terminology_binding_create",
+            user=request.user,
+            resource_type="Drug",
+            resource_id=drug.id,
+            details={"terminology_key": "hpt", "code": concept.code, "source": concept.source},
+            request=request,
+        )
 
         serializer = self.get_serializer(drug)
         return Response(serializer.data)

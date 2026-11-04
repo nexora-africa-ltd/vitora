@@ -433,6 +433,13 @@ Convention: `<domain>.<aggregate>.<action>`
 | `REMITTANCE_RECEIVED` | `insurance.remittance.received` | `insurance/signals.py` |
 | `REMITTANCE_RECONCILED` | `insurance.remittance.reconciled` | `insurance/signals.py` |
 
+### TerminologyEvents (2 constants)
+
+| Constant | Event Type | Source |
+|----------|------------|--------|
+| `CONCEPT_SELECTED` | `terminology.concept.selected` | Reserved for direct selection telemetry |
+| `BINDING_CREATED` | `terminology.binding.created` | `core/signals.py` |
+
 ### Summary
 
 | Class | Defined | Wired | Coverage |
@@ -451,6 +458,7 @@ Convention: `<domain>.<aggregate>.<action>`
 | TheatreEvents | 13 | 13 | 100% |
 | ReferralEvents | 7 | 7 | 100% |
 | InsuranceEvents | 28 | 26 | 93% |
+| TerminologyEvents | 2 | 1 | 50% |
 | **Total** | **138** | **115** | **83%** |
 
 ---
@@ -476,6 +484,12 @@ Convention: `<domain>.<aggregate>.<action>`
 | `broadcast_prescription_on_create` | `post_save` | `Prescription` | `PRESCRIPTION_CREATED` | `prescription_number`, `patient_id`, `encounter_id` |
 | `broadcast_dispensing_on_create` | `post_save` | `Dispensing` | `DISPENSING_COMPLETED` | `drug_id`, `drug_name`, `quantity_dispensed`, `patient_id` |
 | `broadcast_stock_level_change` | `post_save` | `StockBatch` | `STOCK_CRITICAL` / `STOCK_LOW_WARNING` | `drug_name`, `remaining_quantity`, `reorder_level` |
+
+### Core terminology (`hmis/apps/core/signals.py`)
+
+| Handler | Signal | Model | Event(s) Published | Payload |
+|---------|--------|-------|--------------------|---------|
+| `publish_terminology_binding_event` | `post_save` | `TerminologyBinding` | `BINDING_CREATED` | binding ID, local target, terminology key, code, tenant IDs |
 
 ### Pharmacy Standalone (`hmis/apps/pharmacy/standalone/signals.py`)
 

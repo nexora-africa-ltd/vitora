@@ -468,6 +468,14 @@ class FHIRMedicationView(PublicFHIRReadAPIView):
                     "display": drug.generic_name,
                 }
             )
+        if drug.hpt_code:
+            coding.append(
+                {
+                    "system": drug.hpt_system or "urn:kenya:knhts:hpt",
+                    "code": drug.hpt_code,
+                    "display": drug.hpt_display or drug.generic_name,
+                }
+            )
 
         return {
             "resourceType": "Medication",

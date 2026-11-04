@@ -213,6 +213,13 @@ export interface Drug {
   hpt_product_id?: number | null;
   /** When HPT data was last synced from DHA */
   hpt_last_synced?: string | null;
+  hpt_system?: string;
+  hpt_owner?: string;
+  hpt_source?: string;
+  hpt_display?: string;
+  hpt_retrieved_at?: string | null;
+  hpt_version?: string;
+  hpt_checksum?: string;
   /** Kenya Pharmacy and Poisons Board registration code */
   ppb_code?: string | null;
   default_reorder_level: number;
@@ -706,18 +713,14 @@ export interface DispensingReportSummary {
  * Returned by GET /api/pharmacy/drugs/hpt-search/?q={query}
  */
 export interface HptSearchResult {
-  product_id: number;
-  brand_name: string;
-  generic_name: string;
-  brand_display_name: string;
-  generic_display_name: string;
-  generic_concept_id: number;
-  strength_amount: string;
-  strength_unit: string;
-  route_description: string;
-  form_description: string;
-  ppb_registration_code: string;
-  knhts_concept_id: string;
+  code: string;
+  display: string;
+  owner: string;
+  source: string;
+  system: string;
+  retrieved_at: string | null;
+  local_drug_id: number | null;
+  is_stocked: boolean;
 }
 
 /**
@@ -725,7 +728,9 @@ export interface HptSearchResult {
  * Sent to POST /api/pharmacy/drugs/{id}/map-hpt/
  */
 export interface HptMapData {
-  hpt_code: string;
-  hpt_product_id: number;
-  ppb_code?: string;
+  code: string;
+  display: string;
+  owner: string;
+  source: string;
+  system: string;
 }

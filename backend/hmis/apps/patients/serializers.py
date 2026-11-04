@@ -479,11 +479,18 @@ class AllergySerializer(serializers.ModelSerializer):
             "substance",
             "substance_code",
             "substance_code_system",
+            "terminology_owner",
+            "terminology_source",
+            "terminology_retrieved_at",
+            "terminology_version",
+            "terminology_checksum",
             "substance_type",
             "substance_type_display",
             # Drug link
             "drug",
             "drug_name",
+            "terminology_retrieved_at",
+            "terminology_checksum",
             # Reaction
             "reaction_type",
             "reaction_type_display",
@@ -494,6 +501,8 @@ class AllergySerializer(serializers.ModelSerializer):
             "criticality_display",
             # Dates
             "onset_date",
+            "substance_code",
+            "substance_code_system",
             "last_occurrence",
             # Status
             "status",
@@ -560,6 +569,50 @@ class AllergySerializer(serializers.ModelSerializer):
             )
 
         return data
+
+    def _record_terminology_binding(self, allergy):
+        """Persist provenance only for a coded, DHA-selected allergy substance."""
+        if not (
+            allergy.substance_code
+            and allergy.substance_code_system
+            and allergy.terminology_owner
+            and allergy.terminology_source
+        ):
+            return
+        from hmis.apps.billing.services.terminology import TerminologyConcept
+        from hmis.apps.core.models import TerminologyBinding
+
+        concept = TerminologyConcept(
+            code=allergy.substance_code,
+            display=allergy.substance,
+            owner=allergy.terminology_owner,
+            source=allergy.terminology_source,
+            system=allergy.substance_code_system,
+            retrieved_at=allergy.terminology_retrieved_at,
+            version=allergy.terminology_version,
+        )
+        binding = TerminologyBinding.record(
+            allergy,
+            concept=concept,
+            terminology_key="hpt",
+            field_name="substance_code",
+            user=self.context["request"].user if self.context.get("request") else None,
+        )
+        if allergy.terminology_checksum != binding.concept.checksum:
+            allergy.terminology_checksum = binding.concept.checksum
+            allergy.save(update_fields=["terminology_checksum"])
+
+    def create(self, validated_data):
+        """Create an allergy and persist selected terminology provenance."""
+        allergy = super().create(validated_data)
+        self._record_terminology_binding(allergy)
+        return allergy
+
+    def update(self, instance, validated_data):
+        """Update an allergy and refresh its provenance binding when coded."""
+        allergy = super().update(instance, validated_data)
+        self._record_terminology_binding(allergy)
+        return allergy
 
 
 class AllergyListSerializer(serializers.ModelSerializer):

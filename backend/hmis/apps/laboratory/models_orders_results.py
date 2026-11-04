@@ -105,6 +105,12 @@ class TestCatalog(FacilityScopedModel):
     loinc_code = models.CharField(
         max_length=20, null=True, blank=True, help_text="LOINC code for interoperability"
     )
+    loinc_system = models.CharField(max_length=255, blank=True, default="")
+    loinc_owner = models.CharField(max_length=100, blank=True, default="")
+    loinc_source = models.CharField(max_length=100, blank=True, default="")
+    loinc_retrieved_at = models.DateTimeField(null=True, blank=True)
+    loinc_version = models.CharField(max_length=100, blank=True, default="")
+    loinc_checksum = models.CharField(max_length=64, blank=True, default="")
 
     # Classification
     category = models.CharField(max_length=30, choices=TEST_CATEGORIES)
@@ -1041,6 +1047,8 @@ class LabResult(models.Model):
         default="",
         help_text="LOINC code for this specific result observation (for FHIR/SHA interoperability)",
     )
+    result_loinc_system = models.CharField(max_length=255, blank=True, default="")
+    result_loinc_retrieved_at = models.DateTimeField(null=True, blank=True)
 
     # External results
     is_external_result = models.BooleanField(default=False)

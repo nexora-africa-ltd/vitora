@@ -28,8 +28,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/utils/format';
-import { terminologyApi } from '@/lib/terminology';
-import type { DrugSelectValue, DrugProduct, DrugSearchParams } from '@/lib/terminology';
+import type { DrugSelectValue } from '@/lib/terminology';
+import { pharmacyApi } from '@/lib/api/pharmacy';
+import type { HptSearchResult } from '@/lib/types/pharmacy';
 
 // ============================================================================
 // Types
@@ -69,14 +70,12 @@ export function DrugProductSelect({
   disabled = false,
   className,
   showPrice = true,
-  dosageForm,
-  isControlled,
   minSearchLength = 2,
   debounceMs = 300,
 }: DrugProductSelectProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [results, setResults] = useState<DrugProduct[]>([]);
+  const [results, setResults] = useState<HptSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout>();
 
@@ -94,13 +93,7 @@ export function DrugProductSelect({
     debounceRef.current = setTimeout(async () => {
       setIsLoading(true);
       try {
-        const params: DrugSearchParams = {
-          search: searchQuery,
-          page_size: 20,
-          dosage_form: dosageForm,
-          is_controlled: isControlled,
-        };
-        const response = await terminologyApi.searchDrugs(params);
+        const response = await pharmacyApi.hptSearch(searchQuery);
         setResults(response.results);
       } catch (error) {
         console.error('Drug search failed:', error);
@@ -115,13 +108,16 @@ export function DrugProductSelect({
         clearTimeout(debounceRef.current);
       }
     };
-  }, [searchQuery, dosageForm, isControlled, minSearchLength, debounceMs]);
+  }, [searchQuery, minSearchLength, debounceMs]);
 
-  const handleSelect = (drug: DrugProduct) => {
+  const handleSelect = (drug: HptSearchResult) => {
+    if (!drug.local_drug_id || !drug.is_stocked) return;
     onSelect({
       code: drug.code,
-      name: drug.name,
-      price: drug.price,
+      name: drug.display,
+      localDrugId: drug.local_drug_id,
+      isStocked: drug.is_stocked,
+      system: drug.system,
     });
     setOpen(false);
     setSearchQuery('');
@@ -160,7 +156,7 @@ export function DrugProductSelect({
           <div className="flex items-center border-b px-3">
             <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
             <input
-              placeholder="Search drugs..."
+              placeholder="Search DHA HPT concepts..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
@@ -185,9 +181,10 @@ export function DrugProductSelect({
                 <ScrollArea className="h-[300px]">
                   {results.map((drug) => (
                     <CommandItem
-                      key={drug.id}
-                      value={`${drug.code}-${drug.name}`}
+                      key={drug.code}
+                      value={`${drug.code}-${drug.display}`}
                       onSelect={() => handleSelect(drug)}
+                      disabled={!drug.local_drug_id || !drug.is_stocked}
                       className="flex items-start gap-2 py-2"
                     >
                       <Check
@@ -198,17 +195,17 @@ export function DrugProductSelect({
                       />
                       <div className="min-w-0 flex-1">
                         <span className="font-mono text-xs text-muted-foreground">{drug.code}</span>
-                        <p className="text-sm font-medium">{drug.name}</p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          {drug.generic_name && <span>{drug.generic_name}</span>}
-                          {drug.dosage_form && <span>• {drug.dosage_form}</span>}
-                          {drug.strength && <span>• {drug.strength}</span>}
-                        </div>
-                        {showPrice && drug.price && (
-                          <span className="text-xs font-medium text-green-600">
-                            {formatCurrency(drug.price)}
-                          </span>
-                        )}
+                          <p className="text-sm font-medium">{drug.display}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{drug.owner} • {drug.source}</span>
+                          </div>
+                        <span className="text-xs font-medium text-muted-foreground">
+                          {drug.is_stocked
+                            ? 'Stocked locally'
+                            : drug.local_drug_id
+                              ? 'Catalogued, not stocked'
+                              : 'Not in local catalog'}
+                        </span>
                       </div>
                     </CommandItem>
                   ))}

@@ -200,6 +200,13 @@ export const DrugSchema = z.object({
   hpt_code: z.string().optional().nullable(),
   hpt_product_id: z.number().optional().nullable(),
   hpt_last_synced: z.string().optional().nullable(),
+  hpt_system: z.string().optional(),
+  hpt_owner: z.string().optional(),
+  hpt_source: z.string().optional(),
+  hpt_display: z.string().optional(),
+  hpt_retrieved_at: z.string().optional().nullable(),
+  hpt_version: z.string().optional(),
+  hpt_checksum: z.string().optional(),
   ppb_code: z.string().optional().nullable(),
   default_reorder_level: z.number(),
   default_reorder_quantity: z.number(),
@@ -641,18 +648,14 @@ export const StockMovementReportSchema = z.object({
 // =============================================================================
 
 export const HptSearchResultSchema = z.object({
-  product_id: z.number(),
-  brand_name: z.string(),
-  generic_name: z.string(),
-  brand_display_name: z.string(),
-  generic_display_name: z.string(),
-  generic_concept_id: z.number(),
-  strength_amount: z.string(),
-  strength_unit: z.string(),
-  route_description: z.string(),
-  form_description: z.string(),
-  ppb_registration_code: z.string(),
-  knhts_concept_id: z.string(),
+  code: z.string(),
+  display: z.string(),
+  owner: z.string(),
+  source: z.string(),
+  system: z.string(),
+  retrieved_at: z.string().nullable(),
+  local_drug_id: z.number().nullable(),
+  is_stocked: z.boolean(),
 });
 
 export const HptSearchResponseSchema = z.object({

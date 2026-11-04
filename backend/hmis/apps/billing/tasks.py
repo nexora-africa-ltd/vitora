@@ -35,6 +35,14 @@ def _billing_task_handled_exceptions() -> tuple[type[Exception], ...]:
 logger = logging.getLogger(__name__)
 
 
+@shared_task(name="hmis.apps.billing.tasks.refresh_selected_terminology_concepts")
+def refresh_selected_terminology_concepts():
+    """Refresh only locally selected DHA terminology concepts and provenance."""
+    from hmis.apps.billing.services.terminology_operations import refresh_selected_concepts
+
+    return refresh_selected_concepts()
+
+
 def _mask_sha_number(value: str | None) -> str:
     text = (value or "").strip()
     if len(text) <= 4:

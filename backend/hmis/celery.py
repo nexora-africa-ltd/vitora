@@ -212,6 +212,11 @@ app.conf.beat_schedule = {
         "task": "hmis.apps.billing.tasks.refresh_sha_interventions",
         "schedule": crontab(minute=0, hour=3, day_of_week="sunday"),
     },
+    # Terminology: refresh selected HPT/ICD-11/LOINC/ICHI concepts nightly.
+    "billing-refresh-selected-terminology-concepts": {
+        "task": "hmis.apps.billing.tasks.refresh_selected_terminology_concepts",
+        "schedule": crontab(minute=30, hour=2),
+    },
     # Billing: Fetch and reconcile SHA remittances daily at 6 AM
     "billing-fetch-reconcile-remittances": {
         "task": "hmis.apps.billing.tasks.fetch_and_reconcile_remittances",

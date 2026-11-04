@@ -56,16 +56,12 @@ def test_search_hpt_concepts_uses_registry_endpoint_and_normalizes_results(mocke
 
     results = TerminologyService().search_hpt_concepts("Amoxicillin", limit=5)
 
-    assert results == [
-        TerminologyConcept(
-            code="PH11949",
-            display="Amoxicillin",
-            owner="MOH-PPB",
-            source="HPT",
-            system="",
-            raw_data={"code": "PH11949", "display": "Amoxicillin"},
-        )
-    ]
+    assert len(results) == 1
+    assert results[0].code == "PH11949"
+    assert results[0].display == "Amoxicillin"
+    assert results[0].owner == "MOH-PPB"
+    assert results[0].source == "HPT"
+    assert results[0].retrieved_at is not None
     get.assert_called_once_with(
         "https://ilm-dev.dha.go.ke/uat-middleware/api/v1/clinical/concepts",
         params={"owner": "MOH-PPB", "source": "HPT", "search": "Amoxicillin", "limit": 5},

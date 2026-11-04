@@ -631,6 +631,27 @@ class TestFHIRAllergyIntolerance:
         assert "reaction" in response.data
         assert response.data["reaction"][0]["severity"] == "moderate"
 
+    def test_fhir_allergy_emits_selected_hpt_provenance(
+        self, authenticated_client, sample_patient, db, sample_organization
+    ):
+        """A coded HPT allergy is exported with the DHA terminology system."""
+        from hmis.apps.patients.models import Allergy
+
+        allergy = Allergy.objects.create(
+            patient=sample_patient,
+            substance="Penicillin",
+            substance_code="PH11254",
+            substance_code_system="https://ilm-dev.dha.go.ke/ocl/orgs/MOH-PPB/sources/HPT/",
+            terminology_owner="MOH-PPB",
+            terminology_source="HPT",
+            organization=sample_organization,
+        )
+
+        response = authenticated_client.get(f"/fhir/AllergyIntolerance/{allergy.id}")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["code"]["coding"][0]["code"] == "PH11254"
+
 
 class TestPrescriptionAllergyCheck:
     """Tests for drug-allergy checking during prescription creation."""

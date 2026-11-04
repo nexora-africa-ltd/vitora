@@ -33,6 +33,8 @@ class TerminologyConcept:
     owner: str
     source: str
     system: str = ""
+    retrieved_at: datetime | None = None
+    version: str = ""
     raw_data: dict = field(default_factory=dict)
 
     @classmethod
@@ -44,6 +46,8 @@ class TerminologyConcept:
             owner=owner,
             source=source,
             system=str(data.get("system", "")),
+            retrieved_at=datetime.now().astimezone(),
+            version=str(data.get("version") or data.get("version_url") or ""),
             raw_data=data,
         )
 

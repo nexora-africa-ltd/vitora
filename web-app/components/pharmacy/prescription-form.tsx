@@ -430,31 +430,22 @@ MEDICATIONS
     setShowCustomDosage(false);
   }, []);
 
-  // Select SHA drug
+  // A DHA HPT concept can only be prescribed once it maps to an in-stock
+  // local catalog item; remote search never auto-creates a product record.
   const handleSelectSHADrug = useCallback(
-    (drug: { code: string; name: string; price?: number }) => {
-      const shaDrug: SHADrugSelection = {
-        code: drug.code,
-        name: drug.name,
-        price: drug.price,
-      };
-      setSelectedSHADrug(shaDrug);
-      setSelectedDrug(null);
-
-      setCurrentItem((prev) => ({
-        ...prev,
-        drug: undefined,
-        drug_name: drug.name,
-        drug_strength: '',
-        drug_form: '',
-        route: 'PO',
-        dosage: '',
-        sha_code: drug.code,
-      }));
-      setDrugSearch(drug.name);
-      setShowDrugSearch(false);
+    (concept: { code: string; name: string; localDrugId?: number | null }) => {
+      const localDrug = stockedDrugs.find((drug) => drug.id === concept.localDrugId);
+      if (!localDrug) {
+        toast({
+          title: 'Not available locally',
+          description: 'This DHA HPT concept is not stocked at the current facility.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      handleSelectDrug(localDrug);
     },
-    []
+    [handleSelectDrug, stockedDrugs, toast]
   );
 
   const handleApplyPpbCode = useCallback(

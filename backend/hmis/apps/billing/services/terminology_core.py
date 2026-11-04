@@ -66,9 +66,11 @@ class TerminologyService(
         terminology_module = import_module("hmis.apps.billing.services.terminology")
         self.auth_service = terminology_module.SHAAuthService()
 
-    def search_hpt_concepts(self, query: str, *, limit: int = 50) -> list[TerminologyConcept]:
-        """Search the KNHTS HPT source using the normalized Clinical Concepts API."""
-        source = get_terminology_source("hpt")
+    def search_concepts(
+        self, terminology_key: str, query: str, *, limit: int = 50
+    ) -> list[TerminologyConcept]:
+        """Search one approved DHA Clinical Concepts source in a normalized form."""
+        source = get_terminology_source(terminology_key)
         params = {**source.query_params(), "search": query, "limit": limit}
         try:
             response = requests.get(
@@ -82,7 +84,8 @@ class TerminologyService(
             from .terminology_models import TerminologyError
 
             raise TerminologyError(
-                f"Failed to search HPT clinical concepts: {exc}", terminology_type="HPT"
+                f"Failed to search {terminology_key} clinical concepts: {exc}",
+                terminology_type=terminology_key.upper(),
             ) from exc
 
         payload = response.json()
@@ -96,6 +99,10 @@ class TerminologyService(
             for record in records
             if isinstance(record, dict)
         ]
+
+    def search_hpt_concepts(self, query: str, *, limit: int = 50) -> list[TerminologyConcept]:
+        """Search the KNHTS HPT source using the normalized Clinical Concepts API."""
+        return self.search_concepts("hpt", query, limit=limit)
 
     # =========================================================================
     # Response Helpers

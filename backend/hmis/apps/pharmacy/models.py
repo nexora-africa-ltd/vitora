@@ -177,6 +177,13 @@ class Drug(models.Model):
         blank=True,
         help_text="When HPT data was last fetched from DHA",
     )
+    hpt_system = models.CharField(max_length=255, blank=True, default="")
+    hpt_owner = models.CharField(max_length=100, blank=True, default="")
+    hpt_source = models.CharField(max_length=100, blank=True, default="")
+    hpt_display = models.CharField(max_length=500, blank=True, default="")
+    hpt_retrieved_at = models.DateTimeField(null=True, blank=True)
+    hpt_version = models.CharField(max_length=100, blank=True, default="")
+    hpt_checksum = models.CharField(max_length=64, blank=True, default="")
     ppb_code = models.CharField(
         max_length=20,
         blank=True,

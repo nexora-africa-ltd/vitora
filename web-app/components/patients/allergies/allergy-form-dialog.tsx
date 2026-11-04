@@ -62,6 +62,9 @@ const allergyFormSchema = z.object({
   substance: z.string().min(1, 'Substance is required'),
   substance_code: z.string().optional(),
   substance_code_system: z.string().optional(),
+  terminology_owner: z.string().optional(),
+  terminology_source: z.string().optional(),
+  terminology_retrieved_at: z.string().optional(),
   substance_type: z.enum(['medication', 'food', 'environmental', 'biological', 'other']),
   drug: z.number().nullable().optional(),
   reaction_type: z
@@ -158,6 +161,9 @@ export function AllergyFormDialog({
         substance: existingAllergy.substance,
         substance_code: existingAllergy.substance_code ?? '',
         substance_code_system: existingAllergy.substance_code_system ?? '',
+        terminology_owner: existingAllergy.terminology_owner ?? '',
+        terminology_source: existingAllergy.terminology_source ?? '',
+        terminology_retrieved_at: existingAllergy.terminology_retrieved_at ?? '',
         substance_type: existingAllergy.substance_type,
         drug: existingAllergy.drug,
         reaction_type: existingAllergy.reaction_type,
@@ -188,6 +194,9 @@ export function AllergyFormDialog({
     form.setValue('substance', result.substance);
     form.setValue('substance_code', result.code);
     form.setValue('substance_code_system', result.code_system);
+    form.setValue('terminology_owner', result.terminology_owner ?? '');
+    form.setValue('terminology_source', result.terminology_source ?? '');
+    form.setValue('terminology_retrieved_at', result.terminology_retrieved_at ?? '');
     if (result.drug_id) {
       form.setValue('drug', result.drug_id);
     }

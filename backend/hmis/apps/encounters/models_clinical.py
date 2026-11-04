@@ -105,6 +105,12 @@ class Diagnosis(HistoryMixin, models.Model):
         default="",
         help_text="ICD-11 display text/title from WHO ICD-11 API",
     )
+    icd11_system = models.CharField(max_length=255, blank=True, default="")
+    icd11_owner = models.CharField(max_length=100, blank=True, default="")
+    icd11_source = models.CharField(max_length=100, blank=True, default="")
+    icd11_retrieved_at = models.DateTimeField(null=True, blank=True)
+    icd11_version = models.CharField(max_length=100, blank=True, default="")
+    icd11_checksum = models.CharField(max_length=64, blank=True, default="")
     # SNOMED CT support (supplementary coding for FHIR interoperability)
     snomed_code = models.CharField(
         max_length=20,

@@ -12,6 +12,8 @@ Supported inputs/args:
 - Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
+import logging
+
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
@@ -40,6 +42,8 @@ from .serializers import (
     DeathRecordVoidSerializer,
     EmergencyContactSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class EmergencyContactViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
@@ -332,18 +336,62 @@ class AllergyViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         results = []
 
         if substance_type == "medication":
-            # Search drugs from pharmacy
+            # DHA HPT is the terminology authority. Local catalog results add
+            # operational links only; they do not replace the selected concept.
+            try:
+                from hmis.apps.billing.services.terminology import TerminologyService
+
+                hpt_concepts = TerminologyService().search_hpt_concepts(query, limit=20)
+                local_drugs_by_hpt = {
+                    drug.hpt_code: drug
+                    for drug in Drug.objects.filter(
+                        is_active=True,
+                        hpt_code__in=[concept.code for concept in hpt_concepts],
+                    )
+                }
+                results.extend(
+                    {
+                        "substance": concept.display,
+                        "code": concept.code,
+                        "code_system": concept.system,
+                        "terminology_owner": concept.owner,
+                        "terminology_source": concept.source,
+                        "terminology_retrieved_at": (
+                            concept.retrieved_at.isoformat() if concept.retrieved_at else None
+                        ),
+                        "drug_id": local_drugs_by_hpt[concept.code].id
+                        if concept.code in local_drugs_by_hpt
+                        else None,
+                        "type": "medication",
+                        "display": concept.display,
+                    }
+                    for concept in hpt_concepts
+                )
+            except Exception:  # noqa: BLE001 - terminology outage must not block allergy entry
+                logger.warning(
+                    "HPT allergy lookup failed; returning local catalog fallback", exc_info=True
+                )
+
+            # Local results are a safety fallback for uncoded legacy catalog items.
             drugs = Drug.objects.filter(
                 is_active=True,
                 generic_name__icontains=query,
             )[:20]
 
+            existing_codes = {result["code"] for result in results}
             for drug in drugs:
+                if drug.hpt_code and drug.hpt_code in existing_codes:
+                    continue
                 results.append(
                     {
                         "substance": drug.generic_name,
-                        "code": drug.code,
-                        "code_system": "local_drug_code",
+                        "code": drug.hpt_code or drug.code,
+                        "code_system": drug.hpt_system if drug.hpt_code else "urn:vitora:drug",
+                        "terminology_owner": drug.hpt_owner if drug.hpt_code else "",
+                        "terminology_source": drug.hpt_source if drug.hpt_code else "",
+                        "terminology_retrieved_at": (
+                            drug.hpt_retrieved_at.isoformat() if drug.hpt_retrieved_at else None
+                        ),
                         "drug_id": drug.id,
                         "type": "medication",
                         "display": f"{drug.generic_name} ({drug.strength})",

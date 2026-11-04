@@ -158,6 +158,9 @@ export interface DrugSelectValue {
   code: string;
   name: string;
   price?: number;
+  localDrugId?: number | null;
+  isStocked?: boolean;
+  system?: string;
 }
 
 // ============================================================================

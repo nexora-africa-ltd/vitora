@@ -12,10 +12,41 @@ from django.contrib.auth.signals import user_logged_in, user_logged_out, user_lo
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
-from hmis.apps.core.events import ClinicalEvents, CoreEvents, OrganizationEvents, publish_event
+from hmis.apps.core.events import (
+    ClinicalEvents,
+    CoreEvents,
+    OrganizationEvents,
+    TerminologyEvents,
+    publish_event,
+)
 from hmis.apps.core.sync_context import is_sync_materialization_active
 
 logger = logging.getLogger(__name__)
+
+
+@receiver(post_save, sender="core.TerminologyBinding")
+def publish_terminology_binding_event(sender, instance, created, **kwargs):
+    """Publish selected terminology bindings for audit projections and sync observers."""
+    if not created or is_sync_materialization_active():
+        return
+    publish_event(
+        TerminologyEvents.BINDING_CREATED,
+        "TerminologyBinding",
+        instance.pk,
+        {
+            "binding_id": instance.pk,
+            "terminology_key": instance.concept.terminology_key,
+            "code": instance.concept.code,
+            "content_type": instance.content_type.model,
+            "object_id": instance.object_id,
+            "field_name": instance.field_name,
+            "organization_id": instance.organization_id,
+            "facility_id": instance.facility_id,
+        },
+        user_id=instance.selected_by_id,
+        facility_id=instance.facility_id,
+        organization_id=instance.organization_id,
+    )
 
 
 @receiver(pre_save, sender="core.StaffProfile")

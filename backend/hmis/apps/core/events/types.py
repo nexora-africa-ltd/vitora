@@ -9,6 +9,13 @@ Convention: <domain>.<aggregate>.<action>
 """
 
 
+class TerminologyEvents:
+    """Events for controlled terminology selections and bindings."""
+
+    CONCEPT_SELECTED = "terminology.concept.selected"
+    BINDING_CREATED = "terminology.binding.created"
+
+
 class BillingEvents:
     """Billing domain event types."""
 
