@@ -51,7 +51,7 @@ Replace every `<...>` placeholder with an ID from DHA-only synthetic data. Do no
 | 2 | `FUNC-CPOE-001` CPOE | Retrieve encounter and computerized orders | `/api/encounters/<ENCOUNTER_ID>/` | Medication, lab, imaging, vitals, and billing screenshots; encounter/order response samples. |
 | 3 | `FUNC-PROB-001` Problem list | Retrieve coded patient problem list | `/api/encounters/<ENCOUNTER_ID>/diagnoses/` | ICD-11/KENHDD lookup screenshot; diagnosis-history response. |
 | 4 | `FUNC-MED-001` Medication/allergy/HPT | Retrieve patient allergy and medication safety data | `/api/patients/402/allergies/` | Current-medications response; allergy-warning screenshot; HPT registry evidence. |
-| 5 | `FUNC-CDS-001` CDS | Retrieve stored clinical decision-support result | `/api/ai/results/cds/?encounter_id=<ENCOUNTER_ID>` | CDS alert screenshot showing allergy, lab, or vital trigger; stored CDS response. |
+| 5 | `FUNC-CDS-001` CDS | Retrieve evidence-based CDS interventions | `/api/cds/alerts/evidence/?encounter_id=<ENCOUNTER_ID>` | CDS alert screenshot showing trigger, intervention, evidence level, and clinical reference; endpoint response. |
 | 6 | `FUNC-SUMM-001` Clinical summary | Retrieve FHIR clinical patient summary | `/fhir/Patient/402/$summary` | Human-readable summary screenshot; exported FHIR Bundle. |
 | 7 | `FUNC-EPRES-001` E-prescribing | Retrieve electronic prescription and status | `/api/pharmacy/prescriptions/?patient_id=402` | Prescription and pharmacy-receipt screenshots; prescription-status response. |
 | 8 | `FUNC-QUAL-001` Clinical quality measures | Retrieve clinical quality dashboard metrics | `/api/quality/dashboard/` | Quality dashboard screenshot; PDF/Excel export; calculation test report. |

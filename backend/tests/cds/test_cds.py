@@ -767,6 +767,43 @@ class TestCDSAlertAPI:
         assert "pending_alerts" in response.data
         assert "alerts_by_category" in response.data
 
+    def test_evidence_endpoint_returns_evidence_based_intervention(
+        self, authenticated_client, cds_alert, sample_encounter
+    ):
+        """DHA evidence endpoint links a triggered intervention to its clinical source."""
+        cds_alert.rule.references = [
+            {
+                "title": "WHO guideline for fever management",
+                "url": "https://www.who.int/publications/",
+                "citation": "WHO, 2023",
+            }
+        ]
+        cds_alert.rule.save(update_fields=["references"])
+
+        response = authenticated_client.get(
+            f"/api/cds/alerts/evidence/?encounter_id={sample_encounter.id}"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["capability"] == "FUNC-CDS-001"
+        assert response.data["interventions"][0]["rule_code"] == "TEST-VITAL-001"
+        assert response.data["interventions"][0]["evidence_level"] == "A"
+        assert response.data["interventions"][0]["references"][0]["title"] == (
+            "WHO guideline for fever management"
+        )
+
+    def test_evidence_endpoint_requires_encounter_id(self, authenticated_client):
+        """The evidence endpoint requires one clinical context."""
+        response = authenticated_client.get("/api/cds/alerts/evidence/")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_evidence_endpoint_requires_authentication(self, api_client):
+        """Certification evidence cannot expose clinical alert data anonymously."""
+        response = api_client.get("/api/cds/alerts/evidence/?encounter_id=1")
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
     def test_direct_create_not_allowed(self, authenticated_client):
         """Should reject direct alert creation."""
         response = authenticated_client.post(
