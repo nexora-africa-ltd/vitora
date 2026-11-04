@@ -759,6 +759,34 @@ class TestCDSAlertAPI:
         assert "rules_evaluated" in response.data
         assert "rules_triggered" in response.data
 
+    @pytest.mark.django_db
+    def test_evaluate_encounter_requires_cds_alert_change_permission_when_rbac_enabled(
+        self, api_client, test_user, cds_rule, sample_encounter, settings
+    ):
+        """Manual evaluation is a CDS clinical action, not generic alert creation."""
+        from django.contrib.auth.models import Permission
+
+        settings.RBAC_CDS_ENFORCEMENT = True
+        api_client.force_authenticate(user=test_user)
+
+        denied = api_client.post(
+            "/api/cds/alerts/evaluate_encounter/",
+            {"encounter_id": sample_encounter.id},
+            format="json",
+        )
+        assert denied.status_code == status.HTTP_403_FORBIDDEN
+
+        test_user.user_permissions.add(Permission.objects.get(codename="change_cdsalert"))
+        test_user = type(test_user).objects.get(pk=test_user.pk)
+        api_client.force_authenticate(user=test_user)
+        allowed = api_client.post(
+            "/api/cds/alerts/evaluate_encounter/",
+            {"encounter_id": sample_encounter.id},
+            format="json",
+        )
+
+        assert allowed.status_code == status.HTTP_200_OK
+
     def test_dashboard(self, authenticated_client, cds_alert, cds_rule):
         """Should return dashboard statistics."""
         response = authenticated_client.get("/api/cds/alerts/dashboard/")

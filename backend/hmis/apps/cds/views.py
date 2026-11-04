@@ -117,7 +117,9 @@ class CDSAlertPermission(permissions.BasePermission):
         if action in {"acknowledge", "accept", "override", "dismiss"}:
             return user.has_perm("cds.change_cdsalert")
         if action == "evaluate_encounter":
-            return user.has_perm("cds.add_cdsalert")
+            # Evaluation can create a persisted alert, but it is a clinician
+            # workflow action rather than unrestricted alert creation.
+            return user.has_perm("cds.change_cdsalert")
         if action == "create":
             return user.has_perm("cds.add_cdsalert")
         if action in {"update", "partial_update"}:
