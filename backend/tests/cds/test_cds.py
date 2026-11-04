@@ -17,7 +17,6 @@ from unittest.mock import patch
 
 import pytest  # type: ignore
 from django.core.management import call_command
-from django.test import override_settings
 from django.utils import timezone
 from rest_framework import status
 
@@ -805,17 +804,6 @@ class TestCDSAlertAPI:
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    @override_settings(RBAC_CDS_ENFORCEMENT=True)
-    def test_evidence_endpoint_allows_dedicated_authenticated_reader(
-        self, api_client, test_user, cds_alert, sample_encounter
-    ):
-        """DHA evidence readers need no CDS mutation or rule-management permission."""
-        api_client.force_authenticate(user=test_user)
-
-        response = api_client.get(f"/api/cds/alerts/evidence/?encounter_id={sample_encounter.id}")
-
-        assert response.status_code == status.HTTP_200_OK
-
     def test_direct_create_not_allowed(self, authenticated_client):
         """Should reject direct alert creation."""
         response = authenticated_client.post(
@@ -834,6 +822,40 @@ class TestCDSAlertAPI:
         """Should filter alerts by priority."""
         response = authenticated_client.get("/api/cds/alerts/?priority=HIGH")
         assert response.status_code == status.HTTP_200_OK
+
+
+class TestSeedDHACDSEvidenceCommand:
+    """Tests for the synthetic-only DHA CDS evidence seed command."""
+
+    def test_creates_evidence_backed_alert_for_synthetic_encounter(
+        self, sample_encounter, sample_organization, sample_facility
+    ):
+        """The command seeds one active, referenced intervention without patient mutations."""
+        call_command(
+            "seed_dha_cds_evidence",
+            encounter_id=sample_encounter.id,
+            confirm_synthetic=True,
+        )
+
+        alert = CDSAlert.objects.get(
+            encounter=sample_encounter,
+            rule__code="DHA-SYNTHETIC-CDS-FEVER-001",
+        )
+        assert alert.rule.status == CDSRuleStatus.ACTIVE
+        assert alert.rule.evidence_level == "A"
+        assert alert.rule.references
+        assert alert.facility == sample_facility
+        assert alert.organization == sample_organization
+
+
+class TestGrantCDSEvidenceAccessCommand:
+    """Tests for explicit read-only CDS evidence access grants."""
+
+    def test_grants_cds_alert_view_permission(self, test_user):
+        """A dedicated integration account receives only the CDS alert read permission."""
+        call_command("grant_cds_evidence_access", username=test_user.username)
+
+        assert test_user.has_perm("cds.view_cdsalert")
 
 
 # ──────────────────────────── Seed Command Tests ────────────────────────────

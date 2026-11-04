@@ -23,7 +23,14 @@ Authorization: Bearer {{vitora_dha_access_token}}
 X-Facility-ID: 13
 ```
 
-The request requires a DHA synthetic encounter ID and authenticated CDS alert access. It returns only alerts scoped to the requesting facility or organization.
+The request requires a DHA synthetic encounter ID and `cds.view_cdsalert`. It returns only alerts scoped to the requesting facility or organization. The dedicated `dha_lab_api` account must receive this **read-only** Django permission; do not relax the endpoint to all authenticated users.
+
+Grant the permission once on staging after deployment:
+
+```bash
+cd backend
+poetry run python manage.py grant_cds_evidence_access --username dha_lab_api
+```
 
 ## Required synthetic scenario
 
@@ -35,6 +42,17 @@ Use patient `402` and its DHA synthetic encounter. Create or evaluate one active
 - A clinical trigger such as a critical vital, lab result, drug allergy, or drug-drug interaction
 
 Do not use real patient, clinician, or facility data in screenshots or submitted payloads.
+
+For the standard DHA field-lab fixture, seed the controlled synthetic alert after deployment:
+
+```bash
+cd backend
+poetry run python manage.py seed_dha_cds_evidence \
+  --encounter-id 402 \
+  --confirm-synthetic
+```
+
+This command is idempotent and creates only `DHA-SYNTHETIC-CDS-FEVER-001` and its alert for the supplied encounter. The mandatory confirmation flag prevents accidental use against non-test data.
 
 ## Expected response evidence
 
