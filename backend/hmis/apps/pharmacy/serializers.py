@@ -10,6 +10,7 @@ from django.apps import apps
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from hmis.apps.core.models import Facility
 from hmis.apps.core.qr_utils import generate_document_signature, get_verification_base_url
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.pharmacy.models import (
@@ -777,6 +778,14 @@ class PrescriptionCreateSerializer(serializers.ModelSerializer):
             prescription.save(update_fields=["clinical_notes"])
 
         return prescription
+
+
+class PrescriptionTransmissionSerializer(serializers.Serializer):
+    """Validate an in-network recipient pharmacy for electronic transmission."""
+
+    recipient_facility = serializers.PrimaryKeyRelatedField(
+        queryset=Facility.objects.filter(has_pharmacy=True, is_active=True)
+    )
 
 
 class DispensingSerializer(serializers.ModelSerializer):

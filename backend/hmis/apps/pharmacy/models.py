@@ -891,6 +891,52 @@ class PrescriptionItem(models.Model):
         return self.quantity - self.quantity_dispensed
 
 
+class PrescriptionTransmission(FacilityScopedModel, TimeStampedModel):
+    """Auditable electronic handoff of a prescription to an in-network pharmacy."""
+
+    class Status(models.TextChoices):
+        RECEIVED = "RECEIVED", "Received by pharmacy"
+        ACCEPTED = "ACCEPTED", "Accepted by pharmacy"
+        REJECTED = "REJECTED", "Rejected by pharmacy"
+        DISPENSED = "DISPENSED", "Dispensed"
+
+    prescription = models.ForeignKey(
+        Prescription, on_delete=models.CASCADE, related_name="transmissions"
+    )
+    recipient_facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.PROTECT,
+        related_name="received_prescription_transmissions",
+    )
+    recipient_request = models.OneToOneField(
+        "pharmacy.ExternalPrescriptionRequest",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="source_transmission",
+    )
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.RECEIVED)
+    transmitted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="prescription_transmissions",
+    )
+    transmitted_at = models.DateTimeField(auto_now_add=True)
+    received_at = models.DateTimeField(auto_now_add=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    rejected_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-transmitted_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["prescription", "recipient_facility"],
+                name="unique_prescription_recipient_facility",
+            )
+        ]
+
+
 class Dispensing(FacilityScopedModel):
     """Drug dispensing record."""
 

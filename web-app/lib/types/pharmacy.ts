@@ -81,6 +81,22 @@ export type PrescriptionStatus = 'PENDING' | 'PARTIAL' | 'DISPENSED' | 'CANCELLE
 // Dispensing type: where the prescription is filled
 export type DispensingType = 'INTERNAL' | 'EXTERNAL';
 
+export type PrescriptionTransmissionStatus = 'RECEIVED' | 'ACCEPTED' | 'REJECTED' | 'DISPENSED';
+
+export interface RecipientPharmacy {
+  id: number;
+  name: string;
+  mfl_code: string;
+}
+
+export interface PrescriptionTransmission {
+  id: number;
+  status: PrescriptionTransmissionStatus;
+  recipient_facility: number;
+  recipient_request: number;
+  transmitted_at: string;
+}
+
 // Dispensing status
 export type DispensingStatus = 'COMPLETED' | 'RETURNED' | 'CANCELLED';
 

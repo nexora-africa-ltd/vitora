@@ -26,6 +26,23 @@ import type { PrescriptionRow } from '@/lib/powersync/schema';
 import type { PaginatedResponse } from '@/lib/types';
 import type { Prescription, PrescriptionListResponse } from '@/lib/types/pharmacy';
 
+export function useRecipientPharmacies(enabled = true) {
+  return useQuery({
+    queryKey: ['prescriptions', 'recipient-pharmacies'],
+    queryFn: pharmacyApi.listRecipientPharmacies,
+    enabled,
+  });
+}
+
+export function useTransmitPrescription() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, recipientFacility }: { id: number; recipientFacility: number }) =>
+      pharmacyApi.transmitPrescription(id, recipientFacility),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['prescriptions'] }),
+  });
+}
+
 // ============ Drug Hooks ============
 
 /**

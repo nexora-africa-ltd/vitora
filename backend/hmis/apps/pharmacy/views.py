@@ -639,6 +639,36 @@ class PrescriptionViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.M
         serializer = self.get_serializer(prescription)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["post"])
+    def transmit(self, request, pk=None):
+        """Electronically transmit a prescription to an in-network pharmacy."""
+        from django.core.exceptions import ValidationError
+
+        from hmis.apps.pharmacy.serializers import PrescriptionTransmissionSerializer
+        from hmis.apps.pharmacy.transmissions import transmit_prescription
+
+        prescription = self.get_object()
+        serializer = PrescriptionTransmissionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            transmission = transmit_prescription(
+                prescription=prescription,
+                recipient_facility=serializer.validated_data["recipient_facility"],
+                user=request.user,
+            )
+        except ValidationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {
+                "id": transmission.id,
+                "status": transmission.status,
+                "recipient_facility": transmission.recipient_facility_id,
+                "recipient_request": transmission.recipient_request_id,
+                "transmitted_at": transmission.transmitted_at,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
     @action(detail=False, methods=["get"])
     def by_patient(self, request):
         """Get prescriptions for a specific patient."""
@@ -652,6 +682,23 @@ class PrescriptionViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.M
         prescriptions = self.queryset.filter(patient_id=patient_id)
         serializer = self.get_serializer(prescriptions, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=["get"], url_path="recipient-pharmacies")
+    def recipient_pharmacies(self, request):
+        """List same-organization pharmacy-enabled facilities for routing."""
+        from hmis.apps.core.models import Facility
+
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        organization = getattr(request, "organization", None)
+        if not facility or not organization:
+            return Response([])
+        recipients = Facility.objects.filter(
+            organization=organization, has_pharmacy=True, is_active=True
+        ).exclude(pk=facility.pk)
+        return Response(
+            [{"id": item.id, "name": item.name, "mfl_code": item.mfl_code} for item in recipients]
+        )
 
 
 class DispensingViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.ModelViewSet):

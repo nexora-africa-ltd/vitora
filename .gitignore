@@ -173,6 +173,7 @@ $RECYCLE.BIN/
 # Test outputs
 test-results/
 playwright-report/
+.playwright-mcp/
 test-output/
 
 # Build artifacts

@@ -29,6 +29,8 @@ import {
   HptMapData,
   PharmacyBootstrap,
   PrescriptionListResponse,
+  RecipientPharmacy,
+  PrescriptionTransmission,
 } from '@/lib/types/pharmacy';
 
 type IdParam = string | number;
@@ -76,6 +78,28 @@ export interface DrugCategoryCreateData {
 }
 
 export const pharmacyApi = {
+  async listRecipientPharmacies(): Promise<RecipientPharmacy[]> {
+    const response = await apiClient.get('/api/pharmacy/prescriptions/recipient-pharmacies/');
+    return parseResponse(
+      z.array(z.object({ id: z.number(), name: z.string(), mfl_code: z.string() })),
+      response.data,
+      { context: 'pharmacyApi.listRecipientPharmacies' }
+    );
+  },
+
+  async transmitPrescription(id: number, recipientFacility: number): Promise<PrescriptionTransmission> {
+    const response = await apiClient.post(`/api/pharmacy/prescriptions/${id}/transmit/`, {
+      recipient_facility: recipientFacility,
+    });
+    return parseResponse(
+      z.object({
+        id: z.number(), status: z.enum(['RECEIVED', 'ACCEPTED', 'REJECTED', 'DISPENSED']),
+        recipient_facility: z.number(), recipient_request: z.number(), transmitted_at: z.string(),
+      }),
+      response.data,
+      { context: 'pharmacyApi.transmitPrescription' }
+    );
+  },
   async getBootstrap(): Promise<PharmacyBootstrap> {
     const response = await apiClient.get('/api/pharmacy/bootstrap/');
     return parseResponse(PharmacyBootstrapSchema, response.data, {
