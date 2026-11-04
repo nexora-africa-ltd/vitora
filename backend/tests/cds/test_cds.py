@@ -17,6 +17,7 @@ from unittest.mock import patch
 
 import pytest  # type: ignore
 from django.core.management import call_command
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework import status
 
@@ -803,6 +804,17 @@ class TestCDSAlertAPI:
         response = api_client.get("/api/cds/alerts/evidence/?encounter_id=1")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @override_settings(RBAC_CDS_ENFORCEMENT=True)
+    def test_evidence_endpoint_allows_dedicated_authenticated_reader(
+        self, api_client, test_user, cds_alert, sample_encounter
+    ):
+        """DHA evidence readers need no CDS mutation or rule-management permission."""
+        api_client.force_authenticate(user=test_user)
+
+        response = api_client.get(f"/api/cds/alerts/evidence/?encounter_id={sample_encounter.id}")
+
+        assert response.status_code == status.HTTP_200_OK
 
     def test_direct_create_not_allowed(self, authenticated_client):
         """Should reject direct alert creation."""

@@ -315,6 +315,18 @@ class CDSAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     # Disable creation via API — alerts are created by the engine
     http_method_names = ["get", "head", "options", "post"]
 
+    def get_permissions(self):
+        """Allow the dedicated DHA evidence reader to retrieve scoped evidence.
+
+        The evidence action exposes only alert records attached to an encounter
+        after tenant filtering. It is intentionally read-only and is used by
+        the dedicated, authenticated DHA certification reader account, which
+        does not receive broader CDS rule or alert management permissions.
+        """
+        if self.action == "evidence":
+            return [permissions.IsAuthenticated()]
+        return super().get_permissions()
+
     def get_queryset(self):
         """Return tenant-scoped alerts, including legacy rows missing tenant FKs.
 
