@@ -1,0 +1,5 @@
+# DHA FUNC-QUAL-001 XLSX content verification
+# Run: poetry run python <verification script>
+# Input: quality-measure-ke-cqm-007-clinic-43-2026-monthly-11.xlsx
+
+Validated only row: ('KE-CQM-007', 'Under-5 Immunization Completeness', 'Immunization Clinic', '2026 Monthly 11', 8, 10, '80.00%', 'No')

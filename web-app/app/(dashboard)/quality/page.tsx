@@ -8,6 +8,7 @@ import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
@@ -18,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { qualityApi } from '@/lib/api/quality';
+import { clinicsApi } from '@/lib/api/clinics';
 import { toast } from 'sonner';
 import { CircularProgress } from '@/components/ui/circular-progress';
 import {
@@ -33,10 +35,26 @@ import {
   Download,
   FileSpreadsheet,
 } from 'lucide-react';
-import type { QualityDashboardData, QualityDomainSummary } from '@/lib/types/quality';
+import type {
+  QualityDashboardData,
+  QualityDomainSummary,
+  ReportingPeriod,
+} from '@/lib/types/quality';
 
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
+const months = Array.from({ length: 12 }, (_, index) => ({
+  value: index + 1,
+  label: new Intl.DateTimeFormat('en', { month: 'long' }).format(new Date(2026, index, 1)),
+}));
+
+function periodOptions(periodType: ReportingPeriod) {
+  if (periodType === 'ANNUAL') return [{ value: 0, label: 'Annual' }];
+  if (periodType === 'QUARTERLY') {
+    return [1, 2, 3, 4].map((value) => ({ value, label: `Quarter ${value}` }));
+  }
+  return months;
+}
 
 function StatCard({
   title,
@@ -159,12 +177,28 @@ export default function QualityDashboardPage() {
   const queryClient = useQueryClient();
   const { refresh, isRefreshing } = usePageRefresh();
   const [year, setYear] = useState<number>(currentYear);
+  const [clinicId, setClinicId] = useState<number | undefined>();
+  const [measureId, setMeasureId] = useState<number | undefined>();
+  const [periodType, setPeriodType] = useState<ReportingPeriod>('MONTHLY');
+  const [period, setPeriod] = useState<number>(new Date().getMonth() + 1);
   const [evaluationTaskId, setEvaluationTaskId] = useState<string | null>(null);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['quality-dashboard', year],
-    queryFn: () => qualityApi.getDashboard({ year }),
+    queryKey: ['quality-dashboard', year, clinicId],
+    queryFn: () => qualityApi.getDashboard({ year, clinic_id: clinicId }),
     staleTime: 60_000,
+  });
+
+  const { data: clinicsData } = useQuery({
+    queryKey: ['quality-export-clinics'],
+    queryFn: () => clinicsApi.list({ page_size: 100 }),
+    staleTime: 5 * 60_000,
+  });
+
+  const { data: measuresData } = useQuery({
+    queryKey: ['quality-export-measures'],
+    queryFn: () => qualityApi.listMeasures({ status: 'ACTIVE', page_size: 100 }),
+    staleTime: 5 * 60_000,
   });
 
   const seedMutation = useMutation({
@@ -175,7 +209,12 @@ export default function QualityDashboardPage() {
   });
 
   const evaluateMutation = useMutation({
-    mutationFn: () => qualityApi.evaluateMeasures({ year }),
+    mutationFn: () => qualityApi.evaluateMeasures({
+      clinic_id: clinicId,
+      year,
+      period,
+      period_type: periodType,
+    }),
     onSuccess: (evaluation) => {
       if (evaluation.task_id) {
         setEvaluationTaskId(evaluation.task_id);
@@ -206,12 +245,22 @@ export default function QualityDashboardPage() {
   }, [evaluationComplete, queryClient]);
 
   const handleDownload = async (format: 'pdf' | 'xlsx') => {
+    if (!clinicId || !measureId) {
+      toast.error('Select a clinic and quality measure before exporting.');
+      return;
+    }
     try {
-      const blob = await qualityApi.exportResults(format, year);
+      const blob = await qualityApi.exportResults(format, {
+        year,
+        clinic: clinicId,
+        measure: measureId,
+        period,
+        period_type: periodType,
+      });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `quality-measure-results-${year}.${format}`;
+      link.download = `quality-measure-${measureId}-clinic-${clinicId}-${year}-${periodType}-${period}.${format}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -225,6 +274,11 @@ export default function QualityDashboardPage() {
   const handleRefresh = async () => {
     await refresh();
   };
+
+  const selectedPeriodOptions = periodOptions(periodType);
+  const exportReady = clinicId !== undefined && measureId !== undefined;
+  const clinics = clinicsData?.results ?? [];
+  const measures = measuresData?.results ?? [];
 
   if (isLoading) {
     return (
@@ -317,18 +371,6 @@ export default function QualityDashboardPage() {
           helpContent="Monitor clinical quality measures (CQM) compliance across domains. Track trends, identify underperforming areas, and generate reports."
           actions={
             <div className="flex flex-wrap items-center justify-end gap-2">
-              <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
-                <SelectTrigger className="w-28">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {years.map((y) => (
-                    <SelectItem key={y} value={String(y)}>
-                      {y}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               <Button
                 size="sm"
                 variant="outline"
@@ -340,17 +382,114 @@ export default function QualityDashboardPage() {
                 />
                 Evaluate
               </Button>
-              <Button size="sm" variant="outline" onClick={() => handleDownload('xlsx')}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleDownload('xlsx')}
+                disabled={!exportReady}
+                title={exportReady ? 'Download the filtered XLSX report' : 'Select a clinic and measure first'}
+              >
                 <FileSpreadsheet className="mr-1 h-4 w-4" />
                 <span className="hidden sm:inline">XLSX</span>
               </Button>
-              <Button size="sm" variant="outline" onClick={() => handleDownload('pdf')}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleDownload('pdf')}
+                disabled={!exportReady}
+                title={exportReady ? 'Download the filtered PDF report' : 'Select a clinic and measure first'}
+              >
                 <Download className="mr-1 h-4 w-4" />
                 <span className="hidden sm:inline">PDF</span>
               </Button>
             </div>
           }
         />
+
+        <Card>
+          <CardContent className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+            <div className="space-y-1.5">
+              <Label htmlFor="quality-export-clinic">Clinic</Label>
+              <Select value={clinicId?.toString()} onValueChange={(value) => setClinicId(Number(value))}>
+                <SelectTrigger id="quality-export-clinic">
+                  <SelectValue placeholder="Select clinic" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clinics.map((clinic) => (
+                    <SelectItem key={clinic.id} value={String(clinic.id)}>
+                      {clinic.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="quality-export-measure">Quality measure</Label>
+              <Select value={measureId?.toString()} onValueChange={(value) => setMeasureId(Number(value))}>
+                <SelectTrigger id="quality-export-measure">
+                  <SelectValue placeholder="Select measure" />
+                </SelectTrigger>
+                <SelectContent>
+                  {measures.map((measure) => (
+                    <SelectItem key={measure.id} value={String(measure.id)}>
+                      {measure.code} — {measure.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="quality-export-period-type">Period type</Label>
+              <Select
+                value={periodType}
+                onValueChange={(value) => {
+                  const nextPeriodType = value as ReportingPeriod;
+                  setPeriodType(nextPeriodType);
+                  setPeriod(periodOptions(nextPeriodType)[0]?.value ?? 0);
+                }}
+              >
+                <SelectTrigger id="quality-export-period-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MONTHLY">Monthly</SelectItem>
+                  <SelectItem value="QUARTERLY">Quarterly</SelectItem>
+                  <SelectItem value="ANNUAL">Annual</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="quality-export-period">Reporting period</Label>
+              <Select value={String(period)} onValueChange={(value) => setPeriod(Number(value))}>
+                <SelectTrigger id="quality-export-period">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {selectedPeriodOptions.map((option) => (
+                    <SelectItem key={option.value} value={String(option.value)}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="quality-export-year">Year</Label>
+              <Select value={String(year)} onValueChange={(value) => setYear(Number(value))}>
+                <SelectTrigger id="quality-export-year">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {years.map((option) => (
+                    <SelectItem key={option} value={String(option)}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
 
         {evaluationTaskId && (
           <Card className="border-primary/20 bg-primary/5 p-3">

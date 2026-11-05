@@ -1,0 +1,98 @@
+{
+  "clinic_id": 43,
+  "year": 2026,
+  "period": 11,
+  "period_type": "MONTHLY",
+  "results": [
+    {
+      "measure_code": "KE-CQM-007",
+      "measure_name": "Under-5 Immunization Completeness",
+      "numerator": 8,
+      "denominator": 10,
+      "percentage": "80.00",
+      "meets_target": false,
+      "notes": "Patients complete for due immunization doses",
+      "evaluation_status": "EVALUATED",
+      "is_evaluable": true,
+      "data_quality_summary": {
+        "eligible_records": 10,
+        "missing_required_data": 0,
+        "completeness_percentage": "100.00"
+      },
+      "evaluation_details": {
+        "vaccine_program": "KEPI",
+        "eligible_children": 10,
+        "complete_children": 8,
+        "incomplete_children": 2,
+        "due_doses": 10,
+        "administered_doses": 8
+      },
+      "recommendations": [
+        "Follow up eligible children with due KEPI doses not yet administered."
+      ],
+      "created": false
+    },
+    {
+      "measure_code": "KE-CQM-010",
+      "measure_name": "IDSR Timely Reporting",
+      "numerator": 0,
+      "denominator": 6,
+      "percentage": "0.00",
+      "meets_target": false,
+      "notes": "IDSR reports submitted by weekly deadline",
+      "evaluation_status": "EVALUATED",
+      "is_evaluable": true,
+      "data_quality_summary": {
+        "eligible_records": 6,
+        "missing_required_data": 0,
+        "completeness_percentage": "100.00"
+      },
+      "evaluation_details": {
+        "expected_weeks": [
+          "2026-W44",
+          "2026-W45",
+          "2026-W46",
+          "2026-W47",
+          "2026-W48",
+          "2026-W49"
+        ],
+        "missing_weeks": [
+          "2026-W44",
+          "2026-W45",
+          "2026-W46",
+          "2026-W47",
+          "2026-W48",
+          "2026-W49"
+        ],
+        "late_weeks": [],
+        "deadline_days_after_week_end": 1
+      },
+      "recommendations": [
+        "Submit missing IDSR reports and record the DHIS2 submission timestamp."
+      ],
+      "created": false
+    },
+    {
+      "measure_code": "KE-CQM-011",
+      "measure_name": "Medicine Stock-Out Rate",
+      "numerator": 0,
+      "denominator": 0,
+      "percentage": "0.00",
+      "meets_target": false,
+      "notes": "No tracked stock items",
+      "evaluation_status": "NOT_EVALUABLE",
+      "is_evaluable": false,
+      "data_quality_summary": {
+        "eligible_records": 0,
+        "missing_required_data": 0,
+        "completeness_percentage": null
+      },
+      "evaluation_details": {},
+      "recommendations": [
+        "Record the required source data before evaluating this measure."
+      ],
+      "created": false
+    }
+  ],
+  "total_evaluated": 3
+}

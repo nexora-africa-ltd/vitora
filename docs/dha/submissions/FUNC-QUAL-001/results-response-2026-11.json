@@ -1,0 +1,60 @@
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 262,
+      "measure": 7,
+      "measure_code": "KE-CQM-007",
+      "measure_name": "Under-5 Immunization Completeness",
+      "clinic": 43,
+      "clinic_name": "Immunization Clinic",
+      "year": 2026,
+      "period": 11,
+      "period_type": "MONTHLY",
+      "period_type_display": "Monthly",
+      "numerator": 8,
+      "denominator": 10,
+      "percentage": "80.00",
+      "meets_target": false,
+      "evaluation_status": "EVALUATED",
+      "performance_summary": {
+        "is_evaluable": true,
+        "percentage": "80.00",
+        "target_percentage": "90.00",
+        "target_direction": "AT_LEAST",
+        "gap_to_target": "-10.00"
+      },
+      "data_quality_summary": {
+        "eligible_records": 10,
+        "missing_required_data": 0,
+        "completeness_percentage": "100.00"
+      },
+      "evaluation_details": {
+        "due_doses": 10,
+        "vaccine_program": "KEPI",
+        "complete_children": 8,
+        "eligible_children": 10,
+        "administered_doses": 8,
+        "incomplete_children": 2
+      },
+      "recommendations": [
+        "Follow up eligible children with due KEPI doses not yet administered."
+      ],
+      "rule_snapshot": {
+        "type": "immunization_completeness",
+        "params": {
+          "vaccine_program": "KEPI",
+          "strict_due_in_period": true,
+          "max_patient_age_years": 5
+        }
+      },
+      "calculation_notes": "Patients complete for due immunization doses",
+      "calculated_at": "2026-11-05T23:22:35.593388+03:00",
+      "calculated_by": null,
+      "created_at": "2026-11-05T23:02:48.602148+03:00",
+      "updated_at": "2026-11-05T23:22:35.593379+03:00"
+    }
+  ]
+}

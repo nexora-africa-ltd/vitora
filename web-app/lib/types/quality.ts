@@ -311,6 +311,7 @@ export interface QualityMeasureResultListParams {
   measure__domain?: QualityMeasureDomain;
   clinic?: number;
   year?: number;
+  period?: number;
   period_type?: ReportingPeriod;
   meets_target?: boolean;
   ordering?: string;
@@ -337,6 +338,14 @@ export interface QualityMeasureImportResult {
 export interface QualityMeasureExportData {
   format: ExportFormat;
   measures?: number[];
+}
+
+export interface QualityResultExportParams {
+  year: number;
+  clinic?: number;
+  measure?: number;
+  period?: number;
+  period_type?: ReportingPeriod;
 }
 
 export interface QualityEvaluationTask {

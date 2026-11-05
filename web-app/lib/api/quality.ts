@@ -43,6 +43,7 @@ import type {
   QualityMeasureResultListParams,
   QualityMeasureResultTrendParams,
   QualityMeasureExportData,
+  QualityResultExportParams,
   QualityEvaluationTask,
   QualityMeasureImportResult,
   QualityDashboardData,
@@ -487,9 +488,12 @@ export const qualityApi = {
     });
   },
 
-  exportResults: async (format: 'pdf' | 'xlsx', year: number): Promise<Blob> => {
+  exportResults: async (
+    format: 'pdf' | 'xlsx',
+    { year, clinic, measure, period, period_type }: QualityResultExportParams
+  ): Promise<Blob> => {
     const response = await apiClient.get(`${BASE}/results/export/`, {
-      params: { export_format: format, year },
+      params: { export_format: format, year, clinic, measure, period, period_type },
       responseType: 'blob',
     });
     return response.data as Blob;

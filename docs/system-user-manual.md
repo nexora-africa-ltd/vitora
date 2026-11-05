@@ -572,6 +572,13 @@ KHIS/DHIS2 availability and accepted submission are dependent on the external pl
 
 Where enabled, the Quality module supports quality measures, benchmarks, domain views, quarterly/annual reports, and improvement tracking. Authorized users should validate source data, reporting period, numerator/denominator definitions, and governance approval before publishing, exporting, or acting on performance information.
 
+#### Clinical quality measure workflow
+
+1. Capture source clinical data in the relevant workflow. For vaccination coverage, record each due KEPI dose for an eligible child, then mark the dose administered when it is given.
+2. Open **Quality → Quality Measures**, select the reporting year, and select **Evaluate**. For a vaccination measure, use a CWC or Immunization clinic rather than General OPD.
+3. Review the measure result: confirm its numerator, denominator, percentage, evaluation status, source-data summary, and recommendations. A result with no eligible source records is `Not evaluable`; it is not a failed zero-percent measure.
+4. Select **XLSX** or **PDF** to download the tenant-scoped quality-measure report. Before sharing the report, confirm the reporting period, facility context, and source-data totals.
+
 Population and operational analytics are decision-support tools. Do not use aggregate dashboards to identify or make care decisions about an individual without returning to the authorized clinical record.
 
 ## 9. Scheduling, Facilities, Documents, Reporting, and Administration

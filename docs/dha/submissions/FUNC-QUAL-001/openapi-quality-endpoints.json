@@ -1,0 +1,311 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Vitora HMIS API",
+    "version": "0.1.0",
+    "description": "Hospital Management Information System for Kenya"
+  },
+  "paths": {
+    "/api/quality/dashboard/": {
+      "get": {
+        "operationId": "api_quality_dashboard_retrieve",
+        "description": "Quality dashboard summary view.\n\nReturns aggregate statistics across all quality measures.",
+        "summary": "Get quality dashboard data",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "clinic_id",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "year",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "tags": [
+          "api"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "cookieJwtAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QualityDashboard"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/quality/results/": {
+      "get": {
+        "operationId": "api_quality_results_list",
+        "description": "ViewSet for quality measure results.",
+        "summary": "List quality measure results",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "clinic",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "measure",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "measure__domain",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "CARE_COORDINATION",
+                "CLINICAL",
+                "EFFICIENCY",
+                "PATIENT_EXPERIENCE",
+                "PATIENT_SAFETY",
+                "PUBLIC_HEALTH"
+              ]
+            },
+            "description": "* `CLINICAL` - Clinical Quality\n* `PATIENT_SAFETY` - Patient Safety\n* `EFFICIENCY` - Efficiency\n* `PATIENT_EXPERIENCE` - Patient Experience\n* `PUBLIC_HEALTH` - Public Health\n* `CARE_COORDINATION` - Care Coordination"
+          },
+          {
+            "in": "query",
+            "name": "meets_target",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "ordering",
+            "required": false,
+            "in": "query",
+            "description": "Which field to use when ordering the results.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "A page number within the paginated result set.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "page_size",
+            "required": false,
+            "in": "query",
+            "description": "Number of results to return per page.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ANNUAL",
+                "MONTHLY",
+                "QUARTERLY"
+              ]
+            },
+            "description": "* `MONTHLY` - Monthly\n* `QUARTERLY` - Quarterly\n* `ANNUAL` - Annual"
+          },
+          {
+            "in": "query",
+            "name": "year",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "tags": [
+          "api"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "cookieJwtAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedQualityMeasureResultList"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "api_quality_results_create",
+        "description": "ViewSet for quality measure results.",
+        "summary": "Create a quality measure result",
+        "tags": [
+          "api"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QualityMeasureResultRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/QualityMeasureResultRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/QualityMeasureResultRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "cookieJwtAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QualityMeasureResult"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/quality/results/evaluate/": {
+      "post": {
+        "operationId": "api_quality_results_evaluate_create",
+        "description": "Trigger CQM evaluation for a single clinic or all active clinics.",
+        "summary": "Evaluate quality measures for a clinic",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "clinic_id",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_type",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "year",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "tags": [
+          "api"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "cookieJwtAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/quality/results/export/": {
+      "get": {
+        "operationId": "api_quality_results_export_retrieve",
+        "description": "Download the current tenant's filtered quality results as PDF or XLSX.",
+        "summary": "Export facility quality measure results as PDF or XLSX",
+        "tags": [
+          "api"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "cookieJwtAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QualityMeasureResult"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    }
+  }
+}

@@ -54,7 +54,18 @@ Replace every `<...>` placeholder with an ID from DHA-only synthetic data. Do no
 | 5 | `FUNC-CDS-001` CDS | Retrieve evidence-based CDS interventions | `/api/cds/alerts/evidence/?encounter_id=<ENCOUNTER_ID>` | CDS alert screenshot showing trigger, intervention, evidence level, and clinical reference; endpoint response. |
 | 6 | `FUNC-SUMM-001` Clinical summary | Retrieve FHIR clinical patient summary | `/fhir/Patient/402/$summary` | Human-readable summary screenshot; exported FHIR Bundle. |
 | 7 | `FUNC-EPRES-001` E-prescribing | Retrieve electronic prescription and status | `/api/pharmacy/prescriptions/?patient_id=402` | Prescription and pharmacy-receipt screenshots; prescription-status response. |
-| 8 | `FUNC-QUAL-001` Clinical quality measures | Retrieve clinical quality dashboard metrics | `/api/quality/dashboard/` | Quality dashboard screenshot; PDF/Excel export; calculation test report. |
+| 8 | `FUNC-QUAL-001` Clinical quality measures | Retrieve clinical quality dashboard metrics | `/api/quality/dashboard/?year=2026&clinic_id=<IMMUNIZATION_CLINIC_ID>` | Immunization source-record screenshot; evaluation response for `KE-CQM-007`; tenant-scoped dashboard screenshot; PDF and XLSX result exports; calculation test report. |
+
+### FUNC-QUAL-001 — Clinical quality measures evidence procedure
+
+Use DHA-only synthetic data. The vaccination demonstration uses the canonical **KE-CQM-007 — Under-5 Immunization Completeness** measure and a clinic whose type is `CWC` or `IMMUNIZATION`; it must not be run against a General OPD clinic.
+
+1. Capture source records for eligible children under five through the immunization workflow. For each child, create the due KEPI dose at `POST /api/immunizations/records/`; record completion with `POST /api/immunizations/records/{id}/administer/`.
+2. For the selected reporting period, submit `POST /api/quality/results/evaluate/` with `clinic_id`, `year`, `period`, and `period_type`. Retain the response showing the numerator, denominator, calculated percentage, and evaluation status.
+3. Confirm the persisted calculation using `GET /api/quality/results/?clinic=<id>&year=<year>&period_type=MONTHLY`, then open `GET /api/quality/dashboard/?year=<year>&clinic_id=<id>` while using the facility context header.
+4. Download `GET /api/quality/results/export/?export_format=xlsx&year=<year>` and the equivalent `pdf` export. Confirm both include the vaccination measure, reporting period, numerator, denominator, percentage, and target result.
+
+For the standard audit cohort, ten children with due doses and eight children complete produce **8 / 10 = 80.00%**. A period with no due KEPI records must be labelled `NOT_EVALUABLE`, rather than reported as a zero-performance rate.
 | 9 | `REP-IMM-001` Immediate disease reporting | Retrieve immediate-notification record | `/api/surveillance/notifications/?patient_id=402` | Cholera notification screenshot; outbound-notification/audit record; MoH payload sample. |
 | 10 | `REP-IDSR-001` IDSR weekly reports | Retrieve weekly IDSR report | `/api/surveillance/idsr-reports/<IDSR_REPORT_ID>/` | Weekly report screenshot; DHIS2 submission confirmation; export sample. |
 | 11 | `REP-PHE-001` Public-health event detection | Retrieve detected outbreak alert | `/api/surveillance/outbreak-alerts/<ALERT_ID>/` | Five-case outbreak screenshot; configured threshold; generated event report. |
