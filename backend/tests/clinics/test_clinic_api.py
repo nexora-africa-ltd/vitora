@@ -382,6 +382,20 @@ class TestClinicViewSet:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["code"] == "DENT-001"
 
+    def test_seed_default_clinics_generates_codes_within_model_limit(
+        self, admin_client, sample_facility
+    ):
+        """Facility-specific default clinic codes must fit the database column."""
+        response = admin_client.post(
+            "/api/clinics/seed-defaults/",
+            {"facility_id": sample_facility.id},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["created"]
+        assert all(len(clinic["code"]) <= 20 for clinic in response.data["created"])
+
     def test_create_clinic_duplicate_code_fails(self, admin_client, sample_clinic, clinic_data):
         """Cannot create clinic with duplicate code."""
         clinic_data["code"] = "OPD-001"  # Same as sample_clinic

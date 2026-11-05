@@ -596,7 +596,8 @@ class ClinicViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         created = []
         skipped = 0
         for clinic_data in default_clinics:
-            code = f"{clinic_data['code']}-F{facility.pk}"
+            facility_suffix = f"-F{facility.pk}"
+            code = f"{clinic_data['code'][: 20 - len(facility_suffix)]}{facility_suffix}"
             if Clinic.objects.filter(code=code, facility=facility).exists():
                 skipped += 1
                 continue
