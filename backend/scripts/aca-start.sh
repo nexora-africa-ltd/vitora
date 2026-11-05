@@ -15,7 +15,8 @@ case "${VITORA_PROCESS:-api}" in
         ;;
     worker)
         echo "==> Starting Celery worker for all configured queues..."
-        exec celery -A hmis worker --loglevel=INFO
+        exec celery -A hmis worker --loglevel=INFO \
+            --queues sync,monitoring,maintenance,reporting,billing,laboratory
         ;;
     beat)
         echo "==> Starting singleton Celery Beat scheduler..."

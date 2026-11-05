@@ -17,6 +17,7 @@ def test_aca_start_supports_isolated_api_worker_and_beat_processes():
     assert "VITORA_PROCESS" in script
     assert "daphne" in script
     assert "celery -A hmis worker" in script
+    assert "--queues sync,monitoring,maintenance,reporting,billing,laboratory" in script
     assert "celery -A hmis beat" in script
     assert "Unknown VITORA_PROCESS" in script
 
