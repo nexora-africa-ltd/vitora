@@ -51,6 +51,15 @@ def test_backend_workflow_supports_a_redis_free_single_replica_budget_mode():
     assert "Disable distributed async processes for budget mode" in workflow
 
 
+def test_staging_uses_redis_for_shared_cache_when_configured():
+    """CQM task ownership must survive API replica routing in staging."""
+    settings = (REPO_ROOT / "backend" / "hmis" / "settings" / "staging.py").read_text()
+
+    assert 'REDIS_URL = os.getenv("REDIS_URL", "")' in settings
+    assert '"BACKEND": "django.core.cache.backends.redis.RedisCache"' in settings
+    assert '"LOCATION": REDIS_URL' in settings
+
+
 def test_daily_backup_requires_a_new_artifact_from_a_successful_job_execution():
     """A stale backup must not hide a failed backup Job execution."""
     workflow = (REPO_ROOT / ".github" / "workflows" / "daily-backup.yml").read_text()

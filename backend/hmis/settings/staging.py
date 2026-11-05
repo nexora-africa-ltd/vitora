@@ -217,6 +217,34 @@ ICD11_USE_LOCAL = os.getenv("ICD11_USE_LOCAL", "false").lower() == "true"
 CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "true").lower() == "true"
 CELERY_TASK_EAGER_PROPAGATES = CELERY_TASK_ALWAYS_EAGER
 
+# Redis is shared by Celery, Channels, and Django cache when staging runs more
+# than one API replica. The shared cache preserves CQM task ownership while a
+# polling request can be routed to a different replica.
+REDIS_URL = os.getenv("REDIS_URL", "")
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+            "TIMEOUT": 300,
+            "OPTIONS": {
+                "health_check_interval": 30,
+            },
+        }
+    }
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [REDIS_URL],
+                "capacity": 1500,
+                "expiry": 60,
+            },
+        }
+    }
+    CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", REDIS_URL)
+    CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", REDIS_URL)
+
 # =============================================================================
 # Email - Console backend for staging (no real emails)
 # =============================================================================
