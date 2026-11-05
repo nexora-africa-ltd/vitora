@@ -14,6 +14,7 @@ import {
   LogOut,
   Settings2,
   ShieldCheck,
+  FileText,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth/context';
 import { onboardingChecklistApi } from '@/lib/api/onboarding';
@@ -987,6 +988,15 @@ export default function OnboardingPage() {
               <p className="text-sm text-muted-foreground">
                 Accept the Kenya-residency backup policy to enable encrypted, installation-scoped offsite backups.
               </p>
+              <a
+                href="/policies/backup-and-recovery-policy.pdf"
+                target="_blank"
+                rel="noreferrer"
+                className="flex w-fit items-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline"
+              >
+                <FileText className="h-4 w-4" />
+                Read the backup and recovery policy (PDF)
+              </a>
               <Button className="w-full" disabled={stepsStatus.backup} onClick={handleAcceptBackupPolicy}>
                 {stepsStatus.backup ? 'Backup policy accepted' : 'Accept backup policy'}
               </Button>

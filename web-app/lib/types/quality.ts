@@ -276,6 +276,18 @@ export interface QualityMeasureResult {
   denominator: number;
   percentage: string;
   meets_target: boolean;
+  evaluation_status: 'EVALUATED' | 'NOT_EVALUABLE' | 'DATA_QUALITY_ISSUE' | 'ERROR';
+  performance_summary: {
+    is_evaluable: boolean;
+    percentage: string | null;
+    target_percentage: string | null;
+    target_direction: 'AT_LEAST';
+    gap_to_target: string | null;
+  };
+  data_quality_summary: Record<string, unknown>;
+  evaluation_details: Record<string, unknown>;
+  recommendations: string[];
+  rule_snapshot: QualityEvaluationRule | Record<string, unknown>;
   calculation_notes: string;
   calculated_at: string;
   calculated_by: number | null;

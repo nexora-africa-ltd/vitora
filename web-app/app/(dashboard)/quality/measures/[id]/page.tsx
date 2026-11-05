@@ -29,6 +29,7 @@ import type {
   QualityMeasureDomain,
   QualityMeasureStatus,
   QualityRulePreviewResponse,
+  QualityMeasureResult,
 } from '@/lib/types/quality';
 
 type RuleDraft = {
@@ -258,6 +259,12 @@ export default function QualityMeasureDetailPage() {
 
   const { data: clinicsData } = useClinics({ page_size: 200, status: 'ACTIVE' });
   const availableClinics = useMemo(() => clinicsData?.results ?? [], [clinicsData?.results]);
+  const { data: resultsData } = useQuery({
+    queryKey: ['quality-measure-results', measureId],
+    queryFn: () => qualityApi.listResults({ measure: measureId, page_size: 10 }),
+    enabled: Number.isFinite(measureId),
+  });
+  const recentResults = resultsData?.results ?? [];
 
   const { mutateAsync: saveMeasureRule, isPending: isSavingRule } = useMutation({
     mutationFn: (payload: { evaluation_rule: QualityEvaluationRule | null }) =>
@@ -636,6 +643,61 @@ export default function QualityMeasureDetailPage() {
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base sm:text-lg">Recent Evaluation Results</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {recentResults.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No evaluated periods recorded yet.</p>
+          ) : (
+            recentResults.map((result: QualityMeasureResult) => {
+              const isEvaluable = result.performance_summary.is_evaluable;
+              const statusLabel = result.evaluation_status.replaceAll('_', ' ');
+              const details = result.evaluation_details;
+              const missingWeeks = Array.isArray(details.missing_weeks)
+                ? details.missing_weeks.filter((week): week is string => typeof week === 'string')
+                : [];
+              return (
+                <div key={result.id} className="rounded-lg border p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="font-medium">{result.clinic_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {result.year} · {result.period_type_display} {result.period}
+                      </p>
+                    </div>
+                    <Badge variant={isEvaluable && result.meets_target ? 'default' : 'secondary'}>
+                      {statusLabel}
+                    </Badge>
+                  </div>
+                  <p className="mt-2 text-sm">
+                    {isEvaluable
+                      ? `${result.performance_summary.percentage}% (${result.numerator}/${result.denominator})`
+                      : 'Not evaluable — insufficient eligible source data.'}
+                  </p>
+                  {result.calculation_notes && (
+                    <p className="mt-1 text-xs text-muted-foreground">{result.calculation_notes}</p>
+                  )}
+                  {missingWeeks.length > 0 && (
+                    <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                      Missing IDSR weeks: {missingWeeks.join(', ')}
+                    </p>
+                  )}
+                  {result.recommendations.length > 0 && (
+                    <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+                      {result.recommendations.map((recommendation) => (
+                        <li key={recommendation}>{recommendation}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </CardContent>
+      </Card>
 
       {/* Detail Cards */}
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">

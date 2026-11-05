@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 
+from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Count
 from django.http import HttpResponse
@@ -715,6 +716,24 @@ class QualityMeasureResultViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet)
                 )
             from .tasks import evaluate_quality_measures_task
 
+            if getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False):
+                result = evaluate_quality_measures_task(
+                    year=year,
+                    period=period,
+                    period_type=period_type,
+                    facility_id=facility.id,
+                )
+                return Response(
+                    {
+                        "year": year,
+                        "period": period,
+                        "period_type": period_type,
+                        "facility_id": facility.id,
+                        "status": "SUCCESS",
+                        "result": result,
+                    }
+                )
+
             task = evaluate_quality_measures_task.delay(
                 year=year,
                 period=period,
@@ -845,12 +864,13 @@ class QualityDashboardView(APIView):
         if clinic_id:
             results_qs = results_qs.filter(clinic_id=int(clinic_id))
 
-        total_results = results_qs.count()
-        meeting_target = results_qs.filter(meets_target=True).count()
+        evaluable_results = results_qs.filter(evaluation_status="EVALUATED")
+        total_results = evaluable_results.count()
+        meeting_target = evaluable_results.filter(meets_target=True).count()
 
         # Count measures below low threshold
         below_threshold = 0
-        for result in results_qs.select_related("measure"):
+        for result in evaluable_results.select_related("measure"):
             if (
                 result.measure.low_threshold is not None
                 and result.percentage < result.measure.low_threshold
@@ -865,7 +885,7 @@ class QualityDashboardView(APIView):
         domain_summary = []
         for domain_code, domain_label in QualityMeasure.DOMAIN_CHOICES:
             domain_measures = QualityMeasure.objects.filter(domain=domain_code, status="ACTIVE")
-            domain_results = results_qs.filter(measure__domain=domain_code)
+            domain_results = evaluable_results.filter(measure__domain=domain_code)
             domain_meeting = domain_results.filter(meets_target=True).count()
             domain_total = domain_results.count()
 
@@ -887,7 +907,7 @@ class QualityDashboardView(APIView):
         if year:
             y = int(year)
             for q in range(1, 5):
-                q_results = results_qs.filter(year=y, period=q, period_type="QUARTERLY")
+                q_results = evaluable_results.filter(year=y, period=q, period_type="QUARTERLY")
                 q_total = q_results.count()
                 q_meeting = q_results.filter(meets_target=True).count()
                 trend_data.append(

@@ -460,6 +460,7 @@ class QualityMeasureResultSerializer(serializers.ModelSerializer):
     measure_name = serializers.CharField(source="measure.name", read_only=True)
     clinic_name = serializers.CharField(source="clinic.name", read_only=True)
     period_type_display = serializers.CharField(source="get_period_type_display", read_only=True)
+    performance_summary = serializers.JSONField(read_only=True)
 
     class Meta:
         model = QualityMeasureResult
@@ -478,6 +479,12 @@ class QualityMeasureResultSerializer(serializers.ModelSerializer):
             "denominator",
             "percentage",
             "meets_target",
+            "evaluation_status",
+            "performance_summary",
+            "data_quality_summary",
+            "evaluation_details",
+            "recommendations",
+            "rule_snapshot",
             "calculation_notes",
             "calculated_at",
             "calculated_by",
@@ -492,6 +499,12 @@ class QualityMeasureResultSerializer(serializers.ModelSerializer):
             "period_type_display",
             "percentage",
             "meets_target",
+            "evaluation_status",
+            "performance_summary",
+            "data_quality_summary",
+            "evaluation_details",
+            "recommendations",
+            "rule_snapshot",
             "calculated_at",
             "created_at",
             "updated_at",

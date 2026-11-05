@@ -20,6 +20,7 @@ from io import BytesIO
 
 import pytest  # type: ignore
 from django.core.management import call_command
+from django.test import override_settings
 from rest_framework import status
 
 from hmis.apps.clinics.models import Clinic, MonthlyClinicReport
@@ -459,7 +460,7 @@ class TestQualityMeasureResultModel:
         assert result.meets_target is False  # 50% < 80% target
 
     def test_zero_denominator(self, sample_quality_measure, sample_clinic):
-        """Should handle zero denominator gracefully."""
+        """A zero denominator is not evaluable, rather than a failed performance score."""
         result = QualityMeasureResult.objects.create(
             measure=sample_quality_measure,
             clinic=sample_clinic,
@@ -471,6 +472,8 @@ class TestQualityMeasureResultModel:
         )
         assert result.percentage == Decimal("0.00")
         assert result.meets_target is False
+        assert result.evaluation_status == "NOT_EVALUABLE"
+        assert result.data_quality_summary["eligible_records"] == 0
 
     def test_unique_constraint(self, sample_quality_measure, sample_clinic):
         """Should enforce unique_together constraint."""
@@ -493,6 +496,36 @@ class TestQualityMeasureResultModel:
                 numerator=90,
                 denominator=100,
             )
+
+
+class TestQualityEvaluationPerformance:
+    """Regression tests for bounded-query CQM evaluation."""
+
+    def test_evaluation_loads_clinic_once_for_applicable_measures(self, sample_clinic, mocker):
+        """Applicable-measure filtering must not re-query the clinic for every measure."""
+        from hmis.apps.quality.services.evaluation import (
+            EvaluationResult,
+            evaluate_all_measures_for_clinic,
+        )
+
+        QualityMeasure.objects.create(
+            code="KE-PERF-001",
+            name="Applicable test measure",
+            numerator_logic="n",
+            denominator_logic="d",
+            status="ACTIVE",
+            applicable_clinic_types=[sample_clinic.clinic_type],
+            evaluation_rule={"type": "visit_count", "params": {}},
+        )
+        mocker.patch(
+            "hmis.apps.quality.services.evaluation.evaluate_measure",
+            return_value=EvaluationResult(1, 1),
+        )
+        clinic_get = mocker.patch("hmis.apps.clinics.models.Clinic.objects.get")
+
+        evaluate_all_measures_for_clinic(sample_clinic.id, 2026, 11, "MONTHLY")
+
+        clinic_get.assert_not_called()
 
 
 # =============================================================================
@@ -848,6 +881,9 @@ class TestQualityMeasureResultAPI:
         assert response.data["measure_code"] == "KE-TEST-001"
         assert response.data["measure_name"] == "Test Quality Measure"
         assert response.data["clinic_name"] == "General OPD"
+        assert response.data["evaluation_status"] == "EVALUATED"
+        assert response.data["performance_summary"]["target_direction"] == "AT_LEAST"
+        assert response.data["data_quality_summary"]["eligible_records"] == 100
 
     def test_list_results(self, authenticated_client, sample_quality_measure, sample_clinic):
         """Should list measure results."""
@@ -904,6 +940,7 @@ class TestQualityMeasureResultAPI:
         response = authenticated_client.get("/api/quality/results/trends/")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=False)
     def test_facility_evaluation_queues_a_task_and_returns_task_id(
         self, authenticated_client, sample_clinic, mocker
     ):
@@ -923,6 +960,39 @@ class TestQualityMeasureResultAPI:
         assert response.data["task_id"] == "quality-task-123"
         assert response.data["facility_id"] == sample_clinic.facility_id
         delay.assert_called_once_with(
+            year=2026,
+            period=1,
+            period_type="MONTHLY",
+            facility_id=sample_clinic.facility_id,
+        )
+
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
+    def test_facility_evaluation_returns_completed_summary_in_eager_mode(
+        self, authenticated_client, sample_clinic, mocker
+    ):
+        """Staging without workers completes facility-wide evaluation in the request process."""
+        evaluate_task = mocker.patch("hmis.apps.quality.tasks.evaluate_quality_measures_task")
+        evaluate_task.return_value = {
+            "year": 2026,
+            "period": 1,
+            "period_type": "MONTHLY",
+            "clinics_evaluated": 1,
+            "results_created_or_updated": 3,
+            "facility_id": sample_clinic.facility_id,
+        }
+
+        response = authenticated_client.post(
+            "/api/quality/results/evaluate/",
+            {"year": 2026, "period": 1, "period_type": "MONTHLY"},
+            format="json",
+            HTTP_X_FACILITY_ID=str(sample_clinic.facility_id),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["status"] == "SUCCESS"
+        assert response.data["result"]["results_created_or_updated"] == 3
+        assert "task_id" not in response.data
+        evaluate_task.assert_called_once_with(
             year=2026,
             period=1,
             period_type="MONTHLY",
