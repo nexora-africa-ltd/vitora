@@ -9,6 +9,29 @@ from hmis.apps.quality.models import QualityMeasure
 
 KENYA_QUALITY_MEASURES = [
     {
+        "code": "KE-CQM-IMM-001",
+        "name": "Under-Five Vaccination Coverage",
+        "description": (
+            "Percentage of children under five with all KEPI doses due in the reporting "
+            "period recorded as administered."
+        ),
+        "domain": "PUBLIC_HEALTH",
+        "numerator_logic": "Under-five children complete for all KEPI doses due in period",
+        "denominator_logic": "Under-five children with one or more KEPI doses due in period",
+        "target_percentage": 90,
+        "low_threshold": 70,
+        "reporting_period": "MONTHLY",
+        "applicable_clinic_types": [],
+        "evaluation_rule": {
+            "type": "immunization_completeness",
+            "params": {
+                "vaccine_program": "KEPI",
+                "max_patient_age_years": 5,
+                "strict_due_in_period": True,
+            },
+        },
+    },
+    {
         "code": "KE-CQM-001",
         "name": "ANC 4+ Visits Coverage",
         "description": (

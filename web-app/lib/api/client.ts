@@ -282,6 +282,12 @@ apiClient.interceptors.response.use(
         }
         return Promise.reject(error);
       }
+      if (data && data.code === 'onboarding_pending_contact_admin') {
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/onboarding/pending')) {
+          window.location.href = '/onboarding/pending';
+        }
+        return Promise.reject(error);
+      }
       if (data && data.code === 'lis_onboarding_required') {
         if (
           typeof window !== 'undefined' &&

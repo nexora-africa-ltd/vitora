@@ -65,7 +65,9 @@ class IsAdminOrReadOnly(permissions.BasePermission):
         """Check if user has permission."""
         if request.method in permissions.SAFE_METHODS:
             return True
-        return request.user and request.user.is_staff
+        return request.user and (
+            request.user.is_staff or request.user.has_perm("clinics.add_clinic")
+        )
 
 
 class CanManageClinicStaff(permissions.BasePermission):

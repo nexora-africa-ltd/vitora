@@ -704,8 +704,16 @@ class QualityMeasureResultViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet)
         else:
             # Evaluate all active clinics
             from hmis.apps.clinics.models import Clinic
+            from hmis.apps.core.mixins import resolve_request_tenant
 
-            clinics = Clinic.objects.filter(status="ACTIVE")
+            resolve_request_tenant(request)
+            facility = getattr(request, "facility", None)
+            if not facility:
+                return Response(
+                    {"detail": "A facility context is required to evaluate all clinics."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            clinics = Clinic.objects.filter(status="ACTIVE", facility=facility)
             all_results = []
             for clinic in clinics:
                 clinic_results = evaluate_all_measures_for_clinic(

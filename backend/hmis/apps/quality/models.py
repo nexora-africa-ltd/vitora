@@ -355,7 +355,7 @@ class QualityMeasure(TimeStampedModel):
             "Structured rule for automated evaluation. Format: "
             '{"type": "rule_type", "params": {...}}. '
             "Supported types: bp_control, lab_threshold, wait_time, "
-            "visit_count, enrollment_active, stock_availability."
+            "visit_count, enrollment_active, stock_availability, immunization_completeness."
         ),
     )
 

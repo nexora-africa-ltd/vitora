@@ -10,7 +10,6 @@ multi-tenant request scoping.
 
 import logging
 import time
-from datetime import timedelta
 from urllib.parse import quote
 
 from django.conf import settings
@@ -434,19 +433,22 @@ class OnboardingEnforcementMiddleware:
         ):
             return self.get_response(request)
 
-        # Check grace period
-        grace_days = getattr(django_settings, "ONBOARDING_GRACE_PERIOD_DAYS", 7)
-        grace_deadline = org.created_at + timedelta(days=grace_days)
-
-        if timezone.now() <= grace_deadline:
-            # Still in grace period — allow access
-            return self.get_response(request)
-
-        # Only block admin roles after grace period
         admin_codes = {"ADMIN", "ORG-ADMIN", "OWNER"}
         role_code = profile.primary_role.code if profile.primary_role else None
         if role_code not in admin_codes:
-            return self.get_response(request)
+            return HttpResponse(
+                json.dumps(
+                    {
+                        "detail": (
+                            "Onboarding has not been completed yet. "
+                            "Contact your organization administrator for more information."
+                        ),
+                        "code": "onboarding_pending_contact_admin",
+                    }
+                ),
+                content_type="application/json",
+                status=403,
+            )
 
         return HttpResponse(
             json.dumps(
