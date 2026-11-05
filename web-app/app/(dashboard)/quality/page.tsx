@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/shared/page-header';
@@ -182,6 +182,7 @@ export default function QualityDashboardPage() {
   const [periodType, setPeriodType] = useState<ReportingPeriod>('MONTHLY');
   const [period, setPeriod] = useState<number>(new Date().getMonth() + 1);
   const [evaluationTaskId, setEvaluationTaskId] = useState<string | null>(null);
+  const [evaluationNotice, setEvaluationNotice] = useState<string | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['quality-dashboard', year, clinicId],
@@ -217,10 +218,13 @@ export default function QualityDashboardPage() {
     }),
     onSuccess: (evaluation) => {
       if (evaluation.task_id) {
+        setEvaluationNotice(null);
         setEvaluationTaskId(evaluation.task_id);
         toast.info('Quality evaluation started. Results will refresh when it completes.');
       } else {
         queryClient.invalidateQueries({ queryKey: ['quality-dashboard'] });
+        setEvaluationNotice('Evaluation complete. Dashboard results have been refreshed.');
+        toast.success('Quality evaluation complete.');
       }
     },
     onError: () => toast.error('Unable to start quality evaluation.'),
@@ -241,8 +245,20 @@ export default function QualityDashboardPage() {
   const evaluationFailed = evaluationTask?.status === 'FAILURE';
   useEffect(() => {
     if (!evaluationComplete) return;
+    const updatedResults = evaluationTask?.result?.results_created_or_updated ?? 0;
     queryClient.invalidateQueries({ queryKey: ['quality-dashboard'] });
-  }, [evaluationComplete, queryClient]);
+    setEvaluationNotice(`Evaluation complete: ${updatedResults} result(s) updated.`);
+    toast.success('Quality evaluation complete.', { description: `${updatedResults} result(s) updated.` });
+    setEvaluationTaskId(null);
+  }, [evaluationComplete, evaluationTask?.result?.results_created_or_updated, queryClient]);
+
+  useEffect(() => {
+    if (!evaluationFailed) return;
+    const detail = evaluationTask?.detail || 'Quality evaluation failed. Please try again.';
+    setEvaluationNotice(detail);
+    toast.error(detail);
+    setEvaluationTaskId(null);
+  }, [evaluationFailed, evaluationTask?.detail]);
 
   const handleDownload = async (format: 'pdf' | 'xlsx') => {
     if (!clinicId || !measureId) {
@@ -276,9 +292,12 @@ export default function QualityDashboardPage() {
   };
 
   const selectedPeriodOptions = periodOptions(periodType);
-  const exportReady = clinicId !== undefined && measureId !== undefined;
-  const clinics = clinicsData?.results ?? [];
-  const measures = measuresData?.results ?? [];
+  const clinics = useMemo(() => clinicsData?.results ?? [], [clinicsData?.results]);
+  const measures = useMemo(() => measuresData?.results ?? [], [measuresData?.results]);
+  const selectedMeasure = useMemo(
+    () => measures.find((measure) => measure.id === measureId),
+    [measureId, measures]
+  );
 
   if (isLoading) {
     return (
@@ -386,8 +405,7 @@ export default function QualityDashboardPage() {
                 size="sm"
                 variant="outline"
                 onClick={() => handleDownload('xlsx')}
-                disabled={!exportReady}
-                title={exportReady ? 'Download the filtered XLSX report' : 'Select a clinic and measure first'}
+                title="Download quality results for the selected year; optional fields narrow the report."
               >
                 <FileSpreadsheet className="mr-1 h-4 w-4" />
                 <span className="hidden sm:inline">XLSX</span>
@@ -396,8 +414,7 @@ export default function QualityDashboardPage() {
                 size="sm"
                 variant="outline"
                 onClick={() => handleDownload('pdf')}
-                disabled={!exportReady}
-                title={exportReady ? 'Download the filtered PDF report' : 'Select a clinic and measure first'}
+                title="Download quality results for the selected year; optional fields narrow the report."
               >
                 <Download className="mr-1 h-4 w-4" />
                 <span className="hidden sm:inline">PDF</span>
@@ -426,13 +443,26 @@ export default function QualityDashboardPage() {
             <div className="space-y-1.5">
               <Label htmlFor="quality-export-measure">Quality measure</Label>
               <Select value={measureId?.toString()} onValueChange={(value) => setMeasureId(Number(value))}>
-                <SelectTrigger id="quality-export-measure">
-                  <SelectValue placeholder="Select measure" />
+                <SelectTrigger id="quality-export-measure" className="min-w-0">
+                  <SelectValue placeholder="Select measure">
+                    {selectedMeasure ? (
+                      <span className="block truncate" title={`${selectedMeasure.code} — ${selectedMeasure.name}`}>
+                        {selectedMeasure.code} — {selectedMeasure.name}
+                      </span>
+                    ) : undefined}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {measures.map((measure) => (
-                    <SelectItem key={measure.id} value={String(measure.id)}>
-                      {measure.code} — {measure.name}
+                    <SelectItem
+                      key={measure.id}
+                      value={String(measure.id)}
+                      textValue={`${measure.code} — ${measure.name}`}
+                      className="min-w-0"
+                    >
+                      <span className="block truncate" title={`${measure.code} — ${measure.name}`}>
+                        {measure.code} — {measure.name}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -491,14 +521,10 @@ export default function QualityDashboardPage() {
           </CardContent>
         </Card>
 
-        {evaluationTaskId && (
+        {(evaluationTaskId || evaluationNotice) && (
           <Card className="border-primary/20 bg-primary/5 p-3">
             <p className="text-sm">
-              {evaluationComplete
-                ? `Evaluation complete: ${evaluationTask?.result?.results_created_or_updated ?? 0} result(s) updated.`
-                : evaluationFailed
-                  ? evaluationTask?.detail || 'Quality evaluation failed. Please try again.'
-                  : 'Evaluating quality measures… this page will refresh automatically.'}
+              {evaluationNotice || 'Evaluating quality measures… this page will refresh automatically.'}
             </p>
           </Card>
         )}

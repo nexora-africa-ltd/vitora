@@ -52,6 +52,14 @@ def test_backend_workflow_supports_a_redis_free_single_replica_budget_mode():
     assert "Disable distributed async processes for budget mode" in workflow
 
 
+def test_make_test_removes_incompatible_stale_coverage_data():
+    """Coverage runs must not combine prior statement-mode data with branch data."""
+    makefile = (REPO_ROOT / "backend" / "Makefile").read_text()
+    test_target = makefile.split("test:", 1)[1].split("test-fast:", 1)[0]
+
+    assert "rm -f .coverage .coverage.*" in test_target
+
+
 def test_staging_uses_redis_for_shared_cache_when_configured():
     """CQM task ownership must survive API replica routing in staging."""
     settings = (REPO_ROOT / "backend" / "hmis" / "settings" / "staging.py").read_text()
