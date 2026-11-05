@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/shared/page-header';
@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { qualityApi } from '@/lib/api/quality';
+import { toast } from 'sonner';
 import { CircularProgress } from '@/components/ui/circular-progress';
 import {
   Activity,
@@ -29,6 +30,8 @@ import {
   ChevronRight,
   ClipboardList,
   Loader2,
+  Download,
+  FileSpreadsheet,
 } from 'lucide-react';
 import type { QualityDashboardData, QualityDomainSummary } from '@/lib/types/quality';
 
@@ -156,6 +159,7 @@ export default function QualityDashboardPage() {
   const queryClient = useQueryClient();
   const { refresh, isRefreshing } = usePageRefresh();
   const [year, setYear] = useState<number>(currentYear);
+  const [evaluationTaskId, setEvaluationTaskId] = useState<string | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['quality-dashboard', year],
@@ -169,6 +173,54 @@ export default function QualityDashboardPage() {
       queryClient.invalidateQueries({ queryKey: ['quality-dashboard'] });
     },
   });
+
+  const evaluateMutation = useMutation({
+    mutationFn: () => qualityApi.evaluateMeasures({ year }),
+    onSuccess: (evaluation) => {
+      if (evaluation.task_id) {
+        setEvaluationTaskId(evaluation.task_id);
+        toast.info('Quality evaluation started. Results will refresh when it completes.');
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['quality-dashboard'] });
+      }
+    },
+    onError: () => toast.error('Unable to start quality evaluation.'),
+  });
+
+  const { data: evaluationTask } = useQuery({
+    queryKey: ['quality-evaluation-task', evaluationTaskId],
+    queryFn: () => qualityApi.getEvaluationStatus(evaluationTaskId!),
+    enabled: evaluationTaskId !== null,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === 'SUCCESS' || status === 'FAILURE' ? false : 2_000;
+    },
+    refetchIntervalInBackground: false,
+  });
+
+  const evaluationComplete = evaluationTask?.status === 'SUCCESS';
+  const evaluationFailed = evaluationTask?.status === 'FAILURE';
+  useEffect(() => {
+    if (!evaluationComplete) return;
+    queryClient.invalidateQueries({ queryKey: ['quality-dashboard'] });
+  }, [evaluationComplete, queryClient]);
+
+  const handleDownload = async (format: 'pdf' | 'xlsx') => {
+    try {
+      const blob = await qualityApi.exportResults(format, year);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `quality-measure-results-${year}.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success(`${format.toUpperCase()} report downloaded.`);
+    } catch {
+      toast.error(`Unable to download the ${format.toUpperCase()} report.`);
+    }
+  };
 
   const handleRefresh = async () => {
     await refresh();
@@ -264,20 +316,53 @@ export default function QualityDashboardPage() {
           title="Quality Measures"
           helpContent="Monitor clinical quality measures (CQM) compliance across domains. Track trends, identify underperforming areas, and generate reports."
           actions={
-            <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
-              <SelectTrigger className="w-28">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {years.map((y) => (
-                  <SelectItem key={y} value={String(y)}>
-                    {y}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
+                <SelectTrigger className="w-28">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {years.map((y) => (
+                    <SelectItem key={y} value={String(y)}>
+                      {y}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => evaluateMutation.mutate()}
+                disabled={evaluateMutation.isPending || (!!evaluationTaskId && !evaluationComplete && !evaluationFailed)}
+              >
+                <Loader2
+                  className={`mr-1 h-4 w-4 ${evaluateMutation.isPending || (!!evaluationTaskId && !evaluationComplete && !evaluationFailed) ? 'animate-spin' : 'hidden'}`}
+                />
+                Evaluate
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => handleDownload('xlsx')}>
+                <FileSpreadsheet className="mr-1 h-4 w-4" />
+                <span className="hidden sm:inline">XLSX</span>
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => handleDownload('pdf')}>
+                <Download className="mr-1 h-4 w-4" />
+                <span className="hidden sm:inline">PDF</span>
+              </Button>
+            </div>
           }
         />
+
+        {evaluationTaskId && (
+          <Card className="border-primary/20 bg-primary/5 p-3">
+            <p className="text-sm">
+              {evaluationComplete
+                ? `Evaluation complete: ${evaluationTask?.result?.results_created_or_updated ?? 0} result(s) updated.`
+                : evaluationFailed
+                  ? evaluationTask?.detail || 'Quality evaluation failed. Please try again.'
+                  : 'Evaluating quality measures… this page will refresh automatically.'}
+            </p>
+          </Card>
+        )}
 
         {/* KPI Cards */}
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">

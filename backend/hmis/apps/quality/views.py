@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 
+from django.core.cache import cache
 from django.db.models import Count
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
@@ -703,7 +704,6 @@ class QualityMeasureResultViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet)
             )
         else:
             # Evaluate all active clinics
-            from hmis.apps.clinics.models import Clinic
             from hmis.apps.core.mixins import resolve_request_tenant
 
             resolve_request_tenant(request)
@@ -713,30 +713,101 @@ class QualityMeasureResultViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet)
                     {"detail": "A facility context is required to evaluate all clinics."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            clinics = Clinic.objects.filter(status="ACTIVE", facility=facility)
-            all_results = []
-            for clinic in clinics:
-                clinic_results = evaluate_all_measures_for_clinic(
-                    clinic.id, year, period, period_type
-                )
-                all_results.append(
-                    {
-                        "clinic_id": clinic.id,
-                        "clinic_name": clinic.name,
-                        "results": clinic_results,
-                        "total_evaluated": len(clinic_results),
-                    }
-                )
+            from .tasks import evaluate_quality_measures_task
 
+            task = evaluate_quality_measures_task.delay(
+                year=year,
+                period=period,
+                period_type=period_type,
+                facility_id=facility.id,
+            )
+            cache.set(
+                f"quality-evaluation-task:{task.id}",
+                {
+                    "facility_id": facility.id,
+                    "user_id": request.user.id,
+                    "year": year,
+                    "period": period,
+                    "period_type": period_type,
+                },
+                timeout=60 * 60,
+            )
             return Response(
                 {
                     "year": year,
                     "period": period,
                     "period_type": period_type,
-                    "clinics_evaluated": len(all_results),
-                    "clinic_results": all_results,
-                }
+                    "facility_id": facility.id,
+                    "task_id": task.id,
+                    "status": "PENDING",
+                },
+                status=status.HTTP_202_ACCEPTED,
             )
+
+    @action(detail=False, methods=["get"], url_path=r"evaluate/status/(?P<task_id>[\w-]+)")
+    def evaluate_status(self, request: Request, task_id=None) -> Response:
+        """Return the state and result of a facility-scoped CQM evaluation task."""
+        from celery.result import AsyncResult
+
+        from hmis.apps.core.mixins import resolve_request_tenant
+
+        resolve_request_tenant(request)
+        task_scope = cache.get(f"quality-evaluation-task:{task_id}")
+        if (
+            not task_scope
+            or task_scope["user_id"] != request.user.id
+            or task_scope["facility_id"] != getattr(getattr(request, "facility", None), "id", None)
+        ):
+            return Response(
+                {"detail": "Evaluation task not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        task = AsyncResult(task_id)
+        payload = {
+            "task_id": task_id,
+            "status": task.status,
+            "year": task_scope["year"],
+            "period": task_scope["period"],
+            "period_type": task_scope["period_type"],
+            "facility_id": task_scope["facility_id"],
+        }
+        if task.successful():
+            payload["result"] = task.result
+        elif task.failed():
+            payload["detail"] = "Quality evaluation task failed."
+        return Response(payload)
+
+    @extend_schema(summary="Export facility quality measure results as PDF or XLSX")
+    @action(detail=False, methods=["get"], url_path="export")
+    def export(self, request: Request) -> HttpResponse | Response:
+        """Download the current tenant's filtered quality results as PDF or XLSX."""
+        export_format = request.query_params.get("export_format", "xlsx")
+        if export_format not in {"pdf", "xlsx"}:
+            return Response(
+                {"detail": "export_format must be pdf or xlsx."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            year = int(request.query_params.get("year", ""))
+        except (TypeError, ValueError):
+            return Response({"detail": "year is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        results = self.filter_queryset(self.get_queryset().filter(year=year)).order_by(
+            "measure__code", "clinic__name", "period_type", "period"
+        )
+        from .services.result_exports import export_results_to_pdf, export_results_to_xlsx
+
+        if export_format == "pdf":
+            content = export_results_to_pdf(results, year)
+            content_type = "application/pdf"
+        else:
+            content = export_results_to_xlsx(results, year)
+            content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+        response = HttpResponse(content, content_type=content_type)
+        response["Content-Disposition"] = (
+            f'attachment; filename="quality_measure_results_{year}.{export_format}"'
+        )
+        return response
 
 
 # =============================================================================

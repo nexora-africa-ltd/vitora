@@ -42,7 +42,11 @@ from hmis.apps.quality.services.reporting import (
     generate_annual_report,
     generate_quarterly_report,
 )
-from hmis.apps.quality.tasks import generate_annual_reports_task, generate_quarterly_reports_task
+from hmis.apps.quality.tasks import (
+    evaluate_quality_measures_task,
+    generate_annual_reports_task,
+    generate_quarterly_reports_task,
+)
 
 # =============================================================================
 # Fixtures
@@ -332,6 +336,52 @@ class TestCeleryTasks:
         count = generate_quarterly_reports_task()
         assert count >= 1
 
+    def test_quality_evaluation_task_limits_work_to_requested_facility(
+        self,
+        mocker,
+        sample_clinic,
+        sample_quality_measure,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
+    ):
+        """A facility-wide evaluation must not process clinics in another tenant."""
+        from hmis.apps.core.models import Facility
+
+        other_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Other Health Centre",
+            mfl_code="99998",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        other_clinic = Clinic.objects.create(
+            name="Other Facility OPD",
+            clinic_type="GENERAL_OPD",
+            code="OTHER001",
+            status="ACTIVE",
+            facility=other_facility,
+            organization=sample_clinic.organization,
+        )
+        evaluator = mocker.patch(
+            "hmis.apps.quality.services.evaluation.evaluate_all_measures_for_clinic"
+        )
+        evaluator.return_value = [{"measure_code": sample_quality_measure.code}]
+
+        result = evaluate_quality_measures_task(
+            year=2026,
+            period=1,
+            period_type="MONTHLY",
+            facility_id=sample_clinic.facility_id,
+        )
+
+        assert result["facility_id"] == sample_clinic.facility_id
+        assert result["clinics_evaluated"] == 1
+        evaluator.assert_called_once_with(sample_clinic.id, 2026, 1, "MONTHLY")
+        assert other_clinic.id != sample_clinic.id
+
 
 # =============================================================================
 # QualityMeasure Model Tests (Item 21)
@@ -581,6 +631,21 @@ class TestSeedQualityMeasures:
         call_command("seed_quality_measures")
         active_count = QualityMeasure.objects.filter(status="ACTIVE").count()
         assert active_count >= 12
+
+    def test_seed_includes_the_shipped_vaccination_coverage_measure(self):
+        """The onboarding release's KEPI measure remains seedable with its rule intact."""
+        call_command("seed_quality_measures")
+
+        measure = QualityMeasure.objects.get(code="KE-CQM-IMM-001")
+        assert measure.status == "ACTIVE"
+        assert measure.evaluation_rule == {
+            "type": "immunization_completeness",
+            "params": {
+                "vaccine_program": "KEPI",
+                "max_patient_age_years": 5,
+                "strict_due_in_period": True,
+            },
+        }
 
 
 # =============================================================================
@@ -839,6 +904,72 @@ class TestQualityMeasureResultAPI:
         response = authenticated_client.get("/api/quality/results/trends/")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_facility_evaluation_queues_a_task_and_returns_task_id(
+        self, authenticated_client, sample_clinic, mocker
+    ):
+        """Facility-wide evaluation is asynchronous so it does not block the UI."""
+        queued_task = mocker.Mock(id="quality-task-123")
+        delay = mocker.patch("hmis.apps.quality.tasks.evaluate_quality_measures_task.delay")
+        delay.return_value = queued_task
+
+        response = authenticated_client.post(
+            "/api/quality/results/evaluate/",
+            {"year": 2026, "period": 1, "period_type": "MONTHLY"},
+            format="json",
+            HTTP_X_FACILITY_ID=str(sample_clinic.facility_id),
+        )
+
+        assert response.status_code == status.HTTP_202_ACCEPTED
+        assert response.data["task_id"] == "quality-task-123"
+        assert response.data["facility_id"] == sample_clinic.facility_id
+        delay.assert_called_once_with(
+            year=2026,
+            period=1,
+            period_type="MONTHLY",
+            facility_id=sample_clinic.facility_id,
+        )
+
+    def test_evaluation_status_returns_completed_task_result(
+        self, authenticated_client, sample_clinic, mocker
+    ):
+        """The status endpoint returns the summary only to the user who queued it."""
+        from django.core.cache import cache
+
+        cache.set(
+            "quality-evaluation-task:quality-task-123",
+            {
+                "facility_id": sample_clinic.facility_id,
+                "user_id": authenticated_client.handler._force_user.id,
+                "year": 2026,
+                "period": 1,
+                "period_type": "MONTHLY",
+            },
+            timeout=3600,
+        )
+        task = mocker.Mock(status="SUCCESS")
+        task.successful.return_value = True
+        task.failed.return_value = False
+        task.result = {"clinics_evaluated": 1, "results_created_or_updated": 3}
+        mocker.patch("celery.result.AsyncResult", return_value=task)
+
+        response = authenticated_client.get(
+            "/api/quality/results/evaluate/status/quality-task-123/",
+            HTTP_X_FACILITY_ID=str(sample_clinic.facility_id),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["status"] == "SUCCESS"
+        assert response.data["result"]["results_created_or_updated"] == 3
+
+    def test_evaluation_status_hides_unowned_tasks(self, authenticated_client, sample_clinic):
+        """Task identifiers cannot expose another user's evaluation state or result."""
+        response = authenticated_client.get(
+            "/api/quality/results/evaluate/status/not-owned/",
+            HTTP_X_FACILITY_ID=str(sample_clinic.facility_id),
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
 
 # =============================================================================
 # API Endpoint Tests — Import/Export (Item 22)
@@ -931,6 +1062,44 @@ class TestQualityMeasureImportExportAPI:
         )
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 1
+
+    @pytest.mark.parametrize(
+        ("export_format", "content_type", "suffix"),
+        [
+            ("xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xlsx"),
+            ("pdf", "application/pdf", ".pdf"),
+        ],
+    )
+    def test_export_quality_results_as_downloadable_report(
+        self,
+        authenticated_client,
+        sample_quality_measure,
+        sample_clinic,
+        export_format,
+        content_type,
+        suffix,
+    ):
+        """Quality result exports provide downloadable PDF and XLSX reports."""
+        QualityMeasureResult.objects.create(
+            measure=sample_quality_measure,
+            clinic=sample_clinic,
+            year=2026,
+            period=1,
+            period_type="MONTHLY",
+            numerator=85,
+            denominator=100,
+        )
+
+        response = authenticated_client.get(
+            "/api/quality/results/export/",
+            {"export_format": export_format, "year": 2026},
+            HTTP_X_FACILITY_ID=str(sample_clinic.facility_id),
+        )
+
+        assert response.status_code == status.HTTP_200_OK, response.data
+        assert response["Content-Type"].startswith(content_type)
+        assert response["Content-Disposition"].endswith(f'quality_measure_results_2026{suffix}"')
+        assert len(response.content) > 0
 
 
 # =============================================================================

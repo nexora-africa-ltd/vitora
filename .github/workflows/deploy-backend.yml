@@ -162,7 +162,7 @@ jobs:
             DEMO_MODE=${{ env.DEPLOY_ENV == 'staging' && 'true' || 'false' }} \
             ACTIVE_SHIFT_ENFORCEMENT=${{ env.DEPLOY_ENV == 'production' && 'true' || 'false' }} \
             ONBOARDING_ENFORCEMENT=${{ env.DEPLOY_ENV == 'production' && 'true' || 'false' }} \
-            ALLOWED_HOSTS=${{ vars.ALLOWED_HOSTS || (env.DEPLOY_ENV == 'production' && 'api.vitora.digital,app.vitora.digital,vitora-navy.vercel.app' || 'staging-api.vitora.digital,staging.vitora.digital') }} \
+            ALLOWED_HOSTS=${{ vars.ALLOWED_HOSTS || (env.DEPLOY_ENV == 'production' && 'api.vitora.digital,app.vitora.digital,vitora-navy.vercel.app,vitora-api-prod-private-sa.wittysmoke-66276dae.southafricanorth.azurecontainerapps.io' || 'staging-api.vitora.digital,staging.vitora.digital,vitora-api-private-sa.wittysmoke-66276dae.southafricanorth.azurecontainerapps.io') }} \
             SECURE_SSL_REDIRECT=true \
             CORS_ALLOWED_ORIGINS=${{ vars.CORS_ALLOWED_ORIGINS || (env.DEPLOY_ENV == 'production' && 'https://app.vitora.digital,https://api.vitora.digital,https://vitora-navy.vercel.app' || 'https://staging.vitora.digital,http://localhost:3009') }} \
             CSRF_TRUSTED_ORIGINS=${{ vars.CSRF_TRUSTED_ORIGINS || (env.DEPLOY_ENV == 'production' && 'https://app.vitora.digital,https://api.vitora.digital,https://vitora-navy.vercel.app' || 'https://staging.vitora.digital') }} \

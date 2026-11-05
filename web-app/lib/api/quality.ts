@@ -43,6 +43,7 @@ import type {
   QualityMeasureResultListParams,
   QualityMeasureResultTrendParams,
   QualityMeasureExportData,
+  QualityEvaluationTask,
   QualityMeasureImportResult,
   QualityDashboardData,
   QualityDashboardParams,
@@ -95,6 +96,9 @@ const EvaluateMeasureResultSchema = z.object({
 });
 
 const EvaluateMeasuresResponseSchema = z.object({
+  task_id: z.string().optional(),
+  status: z.string().optional(),
+  facility_id: z.number().optional(),
   clinic_id: z.number().optional(),
   year: z.number(),
   period: z.number(),
@@ -112,6 +116,26 @@ const EvaluateMeasuresResponseSchema = z.object({
       })
     )
     .optional(),
+});
+
+const QualityEvaluationTaskSchema = z.object({
+  task_id: z.string(),
+  status: z.string(),
+  year: z.number(),
+  period: z.number(),
+  period_type: z.string(),
+  facility_id: z.number().nullable().optional(),
+  result: z
+    .object({
+      year: z.number(),
+      period: z.number(),
+      period_type: z.string(),
+      clinics_evaluated: z.number(),
+      results_created_or_updated: z.number(),
+      facility_id: z.number().nullable(),
+    })
+    .optional(),
+  detail: z.string().optional(),
 });
 
 // =============================================================================
@@ -410,6 +434,9 @@ export const qualityApi = {
     period?: number;
     period_type?: string;
   }): Promise<{
+    task_id?: string;
+    status?: string;
+    facility_id?: number;
     clinic_id?: number;
     year: number;
     period: number;
@@ -451,6 +478,21 @@ export const qualityApi = {
     return parseResponse(EvaluateMeasuresResponseSchema, response.data, {
       context: 'qualityApi.evaluateMeasures',
     });
+  },
+
+  getEvaluationStatus: async (taskId: string): Promise<QualityEvaluationTask> => {
+    const response = await apiClient.get(`${BASE}/results/evaluate/status/${taskId}/`);
+    return parseResponse(QualityEvaluationTaskSchema, response.data, {
+      context: 'qualityApi.getEvaluationStatus',
+    });
+  },
+
+  exportResults: async (format: 'pdf' | 'xlsx', year: number): Promise<Blob> => {
+    const response = await apiClient.get(`${BASE}/results/export/`, {
+      params: { export_format: format, year },
+      responseType: 'blob',
+    });
+    return response.data as Blob;
   },
 };
 

@@ -368,6 +368,20 @@ class TestClinicViewSet:
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
+    def test_create_clinic_with_add_permission(self, authenticated_client, clinic_data):
+        """Onboarding administrators can create their first clinic without Django staff access."""
+        from django.contrib.auth.models import Permission
+
+        user = authenticated_client.handler._force_user
+        user.user_permissions.add(Permission.objects.get(codename="add_clinic"))
+        user = User.objects.get(pk=user.pk)
+        authenticated_client.force_authenticate(user=user)
+
+        response = authenticated_client.post(reverse("clinic-list"), clinic_data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["code"] == "DENT-001"
+
     def test_create_clinic_duplicate_code_fails(self, admin_client, sample_clinic, clinic_data):
         """Cannot create clinic with duplicate code."""
         clinic_data["code"] = "OPD-001"  # Same as sample_clinic

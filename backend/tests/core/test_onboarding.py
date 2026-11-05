@@ -10,6 +10,8 @@ Covers:
 - onboarding_complete in _build_user_info login response
 """
 
+import json
+
 import pytest  # type: ignore
 from django.utils import timezone
 from rest_framework import status
@@ -84,6 +86,38 @@ def test_org_onboarding_uses_active_facility_not_completed_primary(settings):
     )
     response = OnboardingEnforcementMiddleware(lambda request: HttpResponse("OK"))(request)
     assert response.status_code == 403
+
+
+def test_org_onboarding_blocks_non_admin_with_actionable_contact_code(settings):
+    """Non-admin staff cannot bypass incomplete setup and receive the UI redirect code."""
+    from types import SimpleNamespace
+
+    from django.http import HttpResponse
+    from django.test import RequestFactory
+
+    from hmis.apps.core.middleware import OnboardingEnforcementMiddleware
+
+    settings.ONBOARDING_ENFORCEMENT = True
+    org = SimpleNamespace(onboarding_complete=False)
+    facility = SimpleNamespace(operating_mode="FULL_HMIS", lis_onboarding_complete=False)
+    request = RequestFactory().get("/api/quality/dashboard/")
+    request.organization = org
+    request.facility = facility
+    request.user = SimpleNamespace(
+        id=123,
+        is_authenticated=True,
+        is_superuser=False,
+        staff_profile=SimpleNamespace(
+            organization=org,
+            primary_facility=facility,
+            primary_role=SimpleNamespace(code="NURSE"),
+        ),
+    )
+
+    response = OnboardingEnforcementMiddleware(lambda request: HttpResponse("OK"))(request)
+
+    assert response.status_code == 403
+    assert json.loads(response.content)["code"] == "onboarding_pending_contact_admin"
 
 
 # ============================================================================

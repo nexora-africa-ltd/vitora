@@ -327,6 +327,24 @@ export interface QualityMeasureExportData {
   measures?: number[];
 }
 
+export interface QualityEvaluationTask {
+  task_id: string;
+  status: string;
+  year: number;
+  period: number;
+  period_type: string;
+  facility_id?: number | null;
+  result?: {
+    year: number;
+    period: number;
+    period_type: string;
+    clinics_evaluated: number;
+    results_created_or_updated: number;
+    facility_id: number | null;
+  };
+  detail?: string;
+}
+
 // =============================================================================
 // QUALITY DASHBOARD
 // =============================================================================
