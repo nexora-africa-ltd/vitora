@@ -13,6 +13,7 @@ Covers:
 import json
 
 import pytest  # type: ignore
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework import status
 
@@ -118,6 +119,25 @@ def test_org_onboarding_blocks_non_admin_with_actionable_contact_code(settings):
 
     assert response.status_code == 403
     assert json.loads(response.content)["code"] == "onboarding_pending_contact_admin"
+
+
+@override_settings(ONBOARDING_ENFORCEMENT=True)
+def test_incomplete_org_non_admin_cannot_obtain_login_session(
+    api_client, test_user, test_staff_profile
+):
+    """Non-admin staff are rejected at login until their organization onboarding is complete."""
+    assert test_staff_profile.organization.onboarding_complete is False
+
+    response = api_client.post(
+        "/api/auth/login/",
+        {"username": test_user.username, "password": "testpassword123"},
+        format="json",
+    )
+
+    assert response.status_code == 403
+    assert response.data["code"] == "onboarding_pending_contact_admin"
+    assert "access" not in response.data
+    assert "refresh" not in response.data
 
 
 # ============================================================================

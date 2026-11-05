@@ -161,7 +161,7 @@ jobs:
             MEDIA_BLOB_BASE_URL=${{ vars.MEDIA_BLOB_BASE_URL || 'https://vitoramediasa.blob.core.windows.net/vitora-media' }} \
             DEMO_MODE=${{ env.DEPLOY_ENV == 'staging' && 'true' || 'false' }} \
             ACTIVE_SHIFT_ENFORCEMENT=${{ env.DEPLOY_ENV == 'production' && 'true' || 'false' }} \
-            ONBOARDING_ENFORCEMENT=${{ env.DEPLOY_ENV == 'production' && 'true' || 'false' }} \
+            ONBOARDING_ENFORCEMENT=true \
             ALLOWED_HOSTS=${{ vars.ALLOWED_HOSTS || (env.DEPLOY_ENV == 'production' && 'api.vitora.digital,app.vitora.digital,vitora-navy.vercel.app,vitora-api-prod-private-sa.wittysmoke-66276dae.southafricanorth.azurecontainerapps.io' || 'staging-api.vitora.digital,staging.vitora.digital,vitora-api-private-sa.wittysmoke-66276dae.southafricanorth.azurecontainerapps.io') }} \
             SECURE_SSL_REDIRECT=true \
             CORS_ALLOWED_ORIGINS=${{ vars.CORS_ALLOWED_ORIGINS || (env.DEPLOY_ENV == 'production' && 'https://app.vitora.digital,https://api.vitora.digital,https://vitora-navy.vercel.app' || 'https://staging.vitora.digital,http://localhost:3009') }} \

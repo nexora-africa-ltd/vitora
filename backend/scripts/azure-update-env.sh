@@ -153,7 +153,7 @@ az containerapp update \
     "MEDIA_BLOB_BASE_URL=${MEDIA_BLOB_BASE_URL:-https://vitorareleasessa.blob.core.windows.net/vitora-media}" \
     "DEMO_MODE=${DEMO_MODE:-true}" \
     "ACTIVE_SHIFT_ENFORCEMENT=${ACTIVE_SHIFT_ENFORCEMENT:-false}" \
-    "ONBOARDING_ENFORCEMENT=${ONBOARDING_ENFORCEMENT:-false}" \
+    "ONBOARDING_ENFORCEMENT=${ONBOARDING_ENFORCEMENT:-true}" \
     "ALLOWED_HOSTS=${FQDN},staging.vitora.digital,staging-api.vitora.digital,localhost" \
     "SECURE_SSL_REDIRECT=true" \
     "CORS_ALLOWED_ORIGINS=https://staging.vitora.digital,http://localhost:3009" \

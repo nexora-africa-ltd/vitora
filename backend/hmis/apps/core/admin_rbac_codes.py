@@ -385,8 +385,8 @@ class StaffProfileAdmin(admin.ModelAdmin):
 
     @admin.display(description="HWR National ID")
     def hwr_national_id_display(self, obj):
-        """Display HWR national ID from encrypted property."""
-        return obj.hwr_national_id or ""
+        """Show only whether an encrypted HWR national ID is stored."""
+        return "Stored securely" if obj.hwr_national_id_encrypted else "Not set"
 
     @admin.action(description="Activate selected staff")
     def activate_staff(self, request, queryset):

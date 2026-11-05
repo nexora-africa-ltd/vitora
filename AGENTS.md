@@ -1512,6 +1512,34 @@ def test_delete_with_permission(self, authenticated_client):
 - Do not wrap hook calls in conditionals, loops, nested functions, or branches.
 - During review, run targeted lint for touched pages: `npx eslint "app/(dashboard)/**/new/page.tsx"` and ensure zero `react-hooks/rules-of-hooks` errors.
 
+### 17. Django Admin Change-Page Timeout Guardrail
+
+> ⚠️ **CRITICAL**: A Django admin change page must never make remote KMS calls or execute per-option database queries while rendering a form. Either issue can leave the synchronous ASGI handler blocked until Azure Container Apps terminates the request with a `stream timeout`.
+
+**Symptoms and first checks:**
+
+- ACA/Daphne logs show `Application instance ... took too long to shut down and was killed` for an `/admin/.../change/` request. This is a cancellation symptom, not the original cause.
+- Use a bounded stack dump or request timing to find the blocking frame before changing ingress timeouts or migrating databases.
+- If the traceback contains `ModelChoiceField`, `label_from_instance`, or a model `__str__`, inspect form choice querysets for N+1 related-object access.
+
+**Required admin implementation patterns:**
+
+1. **Do not eagerly decrypt PII to prefill admin fields.** Never call `encrypted_pii_property()` getters from a form `__init__`, `list_display`, `readonly_field`, or `__str__` merely to render an edit page. Show a non-sensitive status such as “Stored securely”; use an explicit replace/clear workflow to modify the encrypted value while preserving it when the replacement field is blank.
+2. **Eager-load every relation used by choice labels.** If a model `__str__` traverses a relation, assign an optimized queryset in the form, for example:
+
+   ```python
+   self.fields["sub_county"].queryset = SubCounty.objects.select_related("county").order_by("name")
+   self.fields["ward"].queryset = Ward.objects.select_related("sub_county__county").order_by("name")
+   ```
+
+   Prefer `autocomplete_fields` for high-cardinality relations when practical. Do not render large unoptimized `<select>` lists.
+3. **Regression-test rendering without external work.** Patch encrypted properties to raise if accessed and verify the admin change page still returns 200. For relation selectors, assert labels render with bounded query counts using `CaptureQueriesContext`.
+
+**Operational validation:**
+
+- Verify the active ACA revision has `minReplicas >= 1`, the correct `ALLOWED_HOSTS`, and working Key Vault health before attributing an admin timeout to infrastructure.
+- A healthy Key Vault does not justify decrypting PII on every page render; avoid the call in the first place.
+
 ## 🔐 Security & Compliance
 
 ### Kenya Data Protection Act 2019 Compliance

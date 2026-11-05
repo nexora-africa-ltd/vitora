@@ -712,6 +712,27 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
                             status=status.HTTP_403_FORBIDDEN,
                         )
 
+                    # Non-admin staff must not receive a session until their
+                    # organization has completed setup. Admin roles remain able
+                    # to sign in so they can finish the onboarding checklist.
+                    admin_codes = {"ADMIN", "ORG-ADMIN", "OWNER"}
+                    role_code = profile.primary_role.code if profile.primary_role else None
+                    if (
+                        getattr(django_settings, "ONBOARDING_ENFORCEMENT", False)
+                        and not org.onboarding_complete
+                        and role_code not in admin_codes
+                    ):
+                        return Response(
+                            {
+                                "detail": (
+                                    "Onboarding has not been completed yet. "
+                                    "Contact your organization administrator for more information."
+                                ),
+                                "code": "onboarding_pending_contact_admin",
+                            },
+                            status=status.HTTP_403_FORBIDDEN,
+                        )
+
                 # Check if MFA is enabled for this user
                 mfa_enabled = is_mfa_enabled(user)
                 mfa_required = is_mfa_required(user)
