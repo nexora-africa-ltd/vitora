@@ -227,6 +227,7 @@ if REDIS_URL:
             "BACKEND": "django.core.cache.backends.redis.RedisCache",
             "LOCATION": REDIS_URL,
             "TIMEOUT": 300,
+            "KEY_PREFIX": "vitora:staging:cache",
             "OPTIONS": {
                 "health_check_interval": 30,
             },
@@ -237,6 +238,7 @@ if REDIS_URL:
             "BACKEND": "channels_redis.core.RedisChannelLayer",
             "CONFIG": {
                 "hosts": [REDIS_URL],
+                "prefix": "vitora:staging:channels",
                 "capacity": 1500,
                 "expiry": 60,
             },
@@ -244,6 +246,8 @@ if REDIS_URL:
     }
     CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", REDIS_URL)
     CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", REDIS_URL)
+    CELERY_BROKER_TRANSPORT_OPTIONS = {"global_keyprefix": "vitora:staging:broker:"}
+    CELERY_RESULT_BACKEND_TRANSPORT_OPTIONS = {"global_keyprefix": "vitora:staging:result:"}
 
 # =============================================================================
 # Email - Console backend for staging (no real emails)

@@ -177,15 +177,29 @@ if REDIS_URL:
             "BACKEND": "channels_redis.core.RedisChannelLayer",
             "CONFIG": {
                 "hosts": [REDIS_URL],
+                "prefix": "vitora:production:channels",
                 "capacity": 1500,  # Max messages per channel before oldest dropped
                 "expiry": 60,  # Message TTL in seconds
             },
         },
     }
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+            "TIMEOUT": 300,
+            "KEY_PREFIX": "vitora:production:cache",
+            "OPTIONS": {
+                "health_check_interval": 30,
+            },
+        }
+    }
 
     # Use the same Redis for Celery broker in production
     CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", REDIS_URL)
     CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", REDIS_URL)
+    CELERY_BROKER_TRANSPORT_OPTIONS = {"global_keyprefix": "vitora:production:broker:"}
+    CELERY_RESULT_BACKEND_TRANSPORT_OPTIONS = {"global_keyprefix": "vitora:production:result:"}
 
 # =============================================================================
 # Encryption — MUST be set via environment (no defaults in production)

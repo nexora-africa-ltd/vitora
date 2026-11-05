@@ -58,6 +58,19 @@ def test_staging_uses_redis_for_shared_cache_when_configured():
     assert 'REDIS_URL = os.getenv("REDIS_URL", "")' in settings
     assert '"BACKEND": "django.core.cache.backends.redis.RedisCache"' in settings
     assert '"LOCATION": REDIS_URL' in settings
+    assert '"KEY_PREFIX": "vitora:staging:cache"' in settings
+    assert '"prefix": "vitora:staging:channels"' in settings
+    assert '"global_keyprefix": "vitora:staging:broker:"' in settings
+
+
+def test_production_redis_uses_a_distinct_namespace_from_staging():
+    """One Azure Managed Redis database must not mix staging and production keys."""
+    settings = (REPO_ROOT / "backend" / "hmis" / "settings" / "production.py").read_text()
+
+    assert '"BACKEND": "django.core.cache.backends.redis.RedisCache"' in settings
+    assert '"KEY_PREFIX": "vitora:production:cache"' in settings
+    assert '"prefix": "vitora:production:channels"' in settings
+    assert '"global_keyprefix": "vitora:production:broker:"' in settings
 
 
 def test_daily_backup_requires_a_new_artifact_from_a_successful_job_execution():
