@@ -665,11 +665,17 @@ class TestSeedQualityMeasures:
         active_count = QualityMeasure.objects.filter(status="ACTIVE").count()
         assert active_count >= 12
 
-    def test_seed_includes_the_shipped_vaccination_coverage_measure(self):
-        """The onboarding release's KEPI measure remains seedable with its rule intact."""
+    def test_seed_excludes_the_duplicate_vaccination_coverage_measure(self):
+        """The duplicate KEPI coverage measure must not be added to new installations."""
         call_command("seed_quality_measures")
 
-        measure = QualityMeasure.objects.get(code="KE-CQM-IMM-001")
+        assert not QualityMeasure.objects.filter(code="KE-CQM-IMM-001").exists()
+
+    def test_seed_includes_the_canonical_immunization_completeness_measure(self):
+        """The established KEPI completeness measure remains seedable with its rule intact."""
+        call_command("seed_quality_measures")
+
+        measure = QualityMeasure.objects.get(code="KE-CQM-007")
         assert measure.status == "ACTIVE"
         assert measure.evaluation_rule == {
             "type": "immunization_completeness",
