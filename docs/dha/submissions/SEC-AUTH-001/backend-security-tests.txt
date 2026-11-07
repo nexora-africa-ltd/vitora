@@ -1,0 +1,25 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+django: version: 5.2.17, settings: hmis.settings.test (from ini)
+rootdir: /home/azureuser/vitora/backend
+configfile: pyproject.toml
+plugins: asyncio-1.4.0, django-4.12.0, Faker-22.7.0, xdist-3.8.0, mock-3.15.1, locust-2.46.5, anyio-4.14.1, cov-4.1.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 231 items
+
+tests/core/test_auth_session_security.py .....                           [  2%]
+tests/core/test_admin_security.py ........................               [ 12%]
+tests/core/test_authentication.py ................                       [ 19%]
+tests/core/test_auth_backend.py ...................                      [ 27%]
+tests/core/test_auth_response_facility.py .............                  [ 33%]
+tests/core/test_mfa.py ................................................. [ 54%]
+.............................................                            [ 74%]
+tests/core/test_emergency_access.py .................................... [ 89%]
+..........                                                               [ 93%]
+tests/core/test_cookie_refresh_privacy.py ....                           [ 95%]
+tests/core/test_upload_security.py ..........                            [100%]
+
+============================= 231 passed in 19.24s =============================
+
+Command: poetry run pytest --no-cov -q [SEC-AUTH-001 auth, MFA, RBAC, emergency-access, session, cookie-refresh, and core upload-validation suites]
+Exit status: 0

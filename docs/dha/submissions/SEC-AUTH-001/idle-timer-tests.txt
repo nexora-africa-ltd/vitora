@@ -1,0 +1,23 @@
+
+> vitora-web@0.1.0 test
+> jest --runInBand __tests__/lib/hooks/use-idle-timer.test.ts
+
+PASS __tests__/lib/hooks/use-idle-timer.test.ts
+  useIdleTimer
+    ✓ should initialize with warning state as false (43 ms)
+    ✓ should trigger warning after configured timeout (15 ms)
+    ✓ should trigger logout after logout timeout (9 ms)
+    ✓ should reset timer when resetTimer is called (14 ms)
+    ✓ should persist last activity to localStorage for cross-tab sync (20 ms)
+  formatCountdown
+    ✓ should format seconds correctly (6 ms)
+    ✓ should handle edge cases (1 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       7 passed, 7 total
+Snapshots:   0 total
+Time:        2.83 s
+Ran all test suites matching /__tests__\/lib\/hooks\/use-idle-timer.test.ts/i.
+
+Command: npm test -- --runInBand __tests__/lib/hooks/use-idle-timer.test.ts
+Exit status: 0

@@ -1,0 +1,31 @@
+{
+  "evidence": "Sanitized live emergency-access invocation and review record",
+  "http_status": 200,
+  "record": {
+    "reason": "MASS_CASUALTY",
+    "reason_display": "Mass casualty incident",
+    "scope_type": "SYSTEM",
+    "access_mode": "READ_ONLY",
+    "duration_minutes": 15,
+    "status": "REVIEWED",
+    "reviewed_at": null,
+    "has_reviewer": true,
+    "review_notes_recorded": false,
+    "patient_scope_used": false
+  },
+  "redacted_fields": [
+    "id",
+    "user",
+    "user_username",
+    "user_full_name",
+    "patient",
+    "patient_mrn",
+    "patient_name",
+    "approver",
+    "approver_username",
+    "ip_address",
+    "user_agent",
+    "reason_details",
+    "review_notes"
+  ]
+}
