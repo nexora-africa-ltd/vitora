@@ -212,6 +212,7 @@ class CookieRefreshView(CookieAuthSchemaMixin, APIView):
     authentication_classes = []
 
     def post(self, request):
+        User = get_user_model()
         raw_refresh = request.COOKIES.get(REFRESH_COOKIE)
         if not raw_refresh:
             return Response(
@@ -220,17 +221,18 @@ class CookieRefreshView(CookieAuthSchemaMixin, APIView):
             )
 
         try:
+            from hmis.apps.core.session_security import validate_session
+
+            # Validate the unrotated token first. TokenRefreshSerializer blacklists
+            # it during rotation, so parsing it afterwards always rejects a valid
+            # refresh as a replay.
+            token = RefreshToken(raw_refresh)
+            user = User.objects.get(pk=token["user_id"])
+            validate_session(user, token.get("session_id"), request)
+
             serializer = TokenRefreshSerializer(data={"refresh": raw_refresh})
             serializer.is_valid(raise_exception=True)
             tokens = serializer.validated_data
-            from rest_framework_simplejwt.tokens import RefreshToken
-
-            from hmis.apps.core.session_security import validate_session
-
-            token = RefreshToken(raw_refresh)
-            User = get_user_model()
-            user = User.objects.get(pk=token["user_id"])
-            validate_session(user, token.get("session_id"), request)
         except (TokenError, AuthenticationFailed, User.DoesNotExist):
             response = Response(
                 {"error": "Refresh token expired or invalid"},

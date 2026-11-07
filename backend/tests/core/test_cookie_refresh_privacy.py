@@ -10,6 +10,13 @@ from rest_framework.test import APIRequestFactory
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from hmis.apps.core.cookie_auth import CookieRefreshView
+from hmis.apps.core.session_security import create_token_pair
+
+
+def session_refresh_token(user):
+    """Issue a refresh token that carries the required server-side session ID."""
+    _, refresh = create_token_pair(user)
+    return str(refresh)
 
 
 def refresh_cookie(token):
@@ -20,7 +27,7 @@ def refresh_cookie(token):
 
 @pytest.mark.django_db
 def test_refresh_rotates_cookie_and_rejects_replay(test_user):
-    original = str(RefreshToken.for_user(test_user))
+    original = session_refresh_token(test_user)
     response = refresh_cookie(original)
     assert response.status_code == 200
     assert response.data == {"refreshed": True}
@@ -33,7 +40,7 @@ def test_refresh_rotates_cookie_and_rejects_replay(test_user):
 
 @pytest.mark.django_db
 def test_disabled_user_cannot_refresh_existing_cookie(test_user):
-    original = str(RefreshToken.for_user(test_user))
+    original = session_refresh_token(test_user)
     test_user.is_active = False
     test_user.save(update_fields=["is_active"])
     response = refresh_cookie(original)
@@ -54,7 +61,7 @@ def test_rotation_disabled_does_not_extend_refresh_cookie(test_user, mocker):
     # SimpleJWT serializers retain their imported settings object; configure
     # that object rather than override_settings replacing the module global.
     mocker.patch("rest_framework_simplejwt.serializers.api_settings.ROTATE_REFRESH_TOKENS", False)
-    original = str(RefreshToken.for_user(test_user))
+    original = session_refresh_token(test_user)
     response = refresh_cookie(original)
     assert response.status_code == 200
     assert "vitora_access" in response.cookies
