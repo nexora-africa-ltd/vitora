@@ -15,6 +15,8 @@ import { useAuth } from '@/lib/auth/context';
 import { mfaApi } from '@/lib/api/mfa';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HelpPopover } from '@/components/shared/help-popover';
@@ -46,6 +48,7 @@ export function MFAVerification({
   const [isExpired, setIsExpired] = useState(false);
   const [secondsRemaining, setSecondsRemaining] = useState(MFA_TOKEN_LIFETIME_SECONDS);
   const [webAuthnError, setWebAuthnError] = useState<string | null>(null);
+  const [tokenError, setTokenError] = useState<string | null>(null);
   const { verifyMFA, verifyMFAWithWebAuthn } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -120,13 +123,13 @@ export function MFAVerification({
             ? 'text-orange-600 dark:text-orange-400'
             : 'text-red-600 dark:text-red-400';
 
-  const handleVerify = async (method: 'token' | 'backup') => {
+  const handleVerify = async (method: 'token' | 'backup', submittedToken?: string) => {
     setIsLoading(true);
 
     try {
       const options =
         method === 'token'
-          ? { token: token.replace(/\s/g, '') }
+          ? { token: (submittedToken ?? token).replace(/\s/g, '') }
           : { backupCode: backupCode.replace(/\s/g, '') };
 
       const result = await verifyMFA(mfaToken, options);
@@ -145,6 +148,10 @@ export function MFAVerification({
       router.replace(resolvePostLoginPath());
     } catch (err) {
       mfaToast.error(err);
+      if (method === 'token') {
+        setTokenError('That code is invalid or has expired. Try the current code from your authenticator app.');
+        setToken('');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -155,6 +162,11 @@ export function MFAVerification({
     if (token.length === 6) {
       handleVerify('token');
     }
+  };
+
+  const handleTokenChange = (value: string) => {
+    setTokenError(null);
+    setToken(value);
   };
 
   const handleBackupSubmit = (e: React.FormEvent) => {
@@ -338,26 +350,37 @@ export function MFAVerification({
                       size="sm"
                     />
                   </label>
-                  <Input
+                  <InputOTP
                     id="token"
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="• • • • • •"
                     value={token}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-                      setToken(value);
-                    }}
-                    className={cn(
-                      'h-14 text-center font-mono text-xl tracking-[0.4em] sm:text-2xl',
-                      'border-2 focus:border-primary focus:ring-2 focus:ring-primary/20',
-                      'transition-all duration-200',
-                      token.length === 6 && 'border-green-500/50 bg-green-500/5'
-                    )}
+                    onChange={handleTokenChange}
+                    onComplete={(code) => void handleVerify('token', code)}
                     disabled={isLoading}
-                    autoFocus
-                    autoComplete="one-time-code"
-                  />
+                    maxLength={6}
+                    pattern="^[0-9]+$"
+                    pushPasswordManagerStrategy="none"
+                    aria-invalid={Boolean(tokenError)}
+                    containerClassName="justify-center"
+                  >
+                    <InputOTPGroup>
+                      {Array.from({ length: 6 }, (_, index) => (
+                        <InputOTPSlot
+                          key={index}
+                          index={index}
+                          className={cn(
+                            'h-12 w-10 text-xl font-semibold sm:h-14 sm:w-12 sm:text-2xl',
+                            tokenError && 'border-destructive text-destructive',
+                            token.length === 6 && !tokenError && 'border-green-500/60 bg-green-500/5'
+                          )}
+                        />
+                      ))}
+                    </InputOTPGroup>
+                  </InputOTP>
+                  {tokenError && (
+                    <Alert variant="destructive">
+                      <AlertDescription>{tokenError}</AlertDescription>
+                    </Alert>
+                  )}
                 </div>
 
                 <Button

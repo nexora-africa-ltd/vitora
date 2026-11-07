@@ -280,7 +280,6 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
               </div>
 
               <Button
-                variant="outline"
                 size="sm"
                   onClick={async () => {
                     if (await copyToClipboard(backupCodes.join('\n'))) setBackupCodesCopied(true);
