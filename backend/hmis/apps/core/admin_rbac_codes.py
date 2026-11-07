@@ -149,10 +149,11 @@ class RoleAdmin(admin.ModelAdmin):
         "category",
         "hierarchy_level",
         "requires_license",
+        "requires_mfa",
         "license_body",
         "is_active",
     ]
-    list_filter = ["category", "requires_license", "is_active", "hierarchy_level"]
+    list_filter = ["category", "requires_license", "requires_mfa", "is_active", "hierarchy_level"]
     search_fields = ["name", "code", "license_body"]
     ordering = ["hierarchy_level", "name"]
     readonly_fields = ["created_at", "updated_at"]
@@ -186,6 +187,13 @@ class RoleAdmin(admin.ModelAdmin):
                     "permissions_matrix",
                     "django_group",
                 )
+            },
+        ),
+        (
+            "MFA Requirement",
+            {
+                "fields": ("requires_mfa",),
+                "classes": ("collapse",),
             },
         ),
         (
@@ -245,6 +253,7 @@ class StaffProfileAdmin(admin.ModelAdmin):
         "employment_type",
         "is_license_valid_display",
         "mfa_disabled",
+        "mfa_required",
         "mfa_grace_deadline",
     ]
     list_filter = [
@@ -255,6 +264,7 @@ class StaffProfileAdmin(admin.ModelAdmin):
         "employment_status",
         "employment_type",
         "primary_role__requires_license",
+        "primary_role__requires_mfa",
         "license_verified",
     ]
     search_fields = [
@@ -310,6 +320,17 @@ class StaffProfileAdmin(admin.ModelAdmin):
             },
         ),
         (
+            "MFA Requirement",
+            {
+                "fields": (
+                    "mfa_required",
+                    "mfa_disabled",
+                    "mfa_grace_deadline",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
             "Facility Assignment",
             {
                 "fields": (
@@ -352,8 +373,6 @@ class StaffProfileAdmin(admin.ModelAdmin):
                     "date_joined",
                     "date_left",
                     "supervisor",
-                    "mfa_disabled",
-                    "mfa_grace_deadline",
                 )
             },
         ),

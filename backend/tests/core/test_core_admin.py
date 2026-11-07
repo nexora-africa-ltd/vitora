@@ -162,7 +162,9 @@ class TestUserAdminForms:
         fieldsets = model_admin.get_fieldsets(request, obj=test_user)
 
         assert "mfa_disabled_toggle" in form_class.base_fields
+        assert "mfa_required_toggle" in form_class.base_fields
         assert any("mfa_disabled_toggle" in fields["fields"] for _, fields in fieldsets)
+        assert any("mfa_required_toggle" in fields["fields"] for _, fields in fieldsets)
 
     def test_user_change_page_renders_without_decrypting_staff_pii(
         self, client, test_user, test_staff_profile, mocker
@@ -187,3 +189,29 @@ class TestUserAdminForms:
         response = client.get(f"/admin/auth/user/{test_user.pk}/change/")
 
         assert response.status_code == 200
+
+    def test_user_permission_choices_avoid_content_type_n_plus_one(self, test_user):
+        """Permission labels must be eager-loaded before the admin change form renders."""
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        from hmis.apps.core.admin_user_audit import UserAdmin
+
+        User = get_user_model()
+        model_admin = UserAdmin(User, admin.site)
+        request = RequestFactory().get(f"/admin/auth/user/{test_user.pk}/change/")
+        request.user = User.objects.create_superuser(
+            username="permission_choices_admin",
+            email="permission-choices-admin@example.com",
+            password="SuperSecure1!",
+        )
+        form_class = model_admin.get_form(request, obj=test_user, change=True)
+
+        with CaptureQueriesContext(connection) as queries:
+            labels = [
+                str(permission)
+                for permission in form_class.base_fields["user_permissions"].queryset
+            ]
+
+        assert labels
+        assert len(queries) == 1

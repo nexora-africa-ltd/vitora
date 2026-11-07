@@ -23,6 +23,7 @@ from django import forms
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import Permission
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
@@ -90,6 +91,11 @@ class MFAUserChangeForm(forms.ModelForm):
             "Existing devices are preserved and become active if unticked."
         ),
     )
+    mfa_required_toggle = forms.BooleanField(
+        required=False,
+        label="MFA required",
+        help_text="Require this user to complete MFA regardless of assigned role.",
+    )
 
     class Meta:
         model = User
@@ -130,6 +136,11 @@ class UserAdmin(BaseUserAdmin):
         profile = getattr(obj, "staff_profile", None)
         if profile:
             form.base_fields["mfa_disabled_toggle"].initial = profile.mfa_disabled
+            form.base_fields["mfa_required_toggle"].initial = profile.mfa_required
+        if "user_permissions" in form.base_fields:
+            form.base_fields["user_permissions"].queryset = Permission.objects.select_related(
+                "content_type"
+            ).order_by("content_type__app_label", "content_type__model", "codename")
         return form
 
     def get_fieldsets(self, request, obj=None):
@@ -137,7 +148,7 @@ class UserAdmin(BaseUserAdmin):
         if obj is None:
             return fieldsets
 
-        extra = ("MFA", {"fields": ("mfa_info", "mfa_disabled_toggle")})
+        extra = ("MFA", {"fields": ("mfa_info", "mfa_required_toggle", "mfa_disabled_toggle")})
         return fieldsets[:-1] + (extra,) + fieldsets[-1:]
 
     def get_readonly_fields(self, request, obj=None):
@@ -203,7 +214,8 @@ class UserAdmin(BaseUserAdmin):
             profile = getattr(obj, "staff_profile", None)
             if profile is not None:
                 profile.mfa_disabled = bool(form.cleaned_data["mfa_disabled_toggle"])
-                profile.save(update_fields=["mfa_disabled"])
+                profile.mfa_required = bool(form.cleaned_data.get("mfa_required_toggle", False))
+                profile.save(update_fields=["mfa_disabled", "mfa_required"])
 
     def disable_mfa_for_users(self, request, queryset):
         """Set mfa_disabled=True and clear grace deadline for selected users."""

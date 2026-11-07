@@ -791,6 +791,28 @@ class TestMFARoleEnforcement:
         user = self._create_user_with_role(db, regular_role, sample_department, "regular1")
         assert is_mfa_required(user) is False
 
+    def test_admin_can_require_mfa_for_a_role(self, db, regular_role, sample_department):
+        """Role-level admin setting should make MFA mandatory for assigned staff."""
+        from hmis.apps.core.mfa.utils import is_mfa_required
+
+        regular_role.requires_mfa = True
+        regular_role.save(update_fields=["requires_mfa"])
+        user = self._create_user_with_role(db, regular_role, sample_department, "role_mfa_required")
+
+        assert is_mfa_required(user) is True
+
+    def test_admin_can_require_mfa_for_an_individual_user(
+        self, db, regular_role, sample_department
+    ):
+        """User-level admin setting should require MFA without modifying the role."""
+        from hmis.apps.core.mfa.utils import is_mfa_required
+
+        user = self._create_user_with_role(db, regular_role, sample_department, "user_mfa_required")
+        user.staff_profile.mfa_required = True
+        user.staff_profile.save(update_fields=["mfa_required"])
+
+        assert is_mfa_required(user) is True
+
     def test_superuser_requires_mfa(self, db):
         """Superusers should require MFA."""
         from hmis.apps.core.mfa.utils import is_mfa_required

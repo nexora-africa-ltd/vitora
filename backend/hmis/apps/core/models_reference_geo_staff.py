@@ -363,6 +363,10 @@ class Role(models.Model):
         default=False,
         help_text="Whether this role requires a medical license",
     )
+    requires_mfa = models.BooleanField(
+        default=False,
+        help_text="Whether users assigned this role must complete multi-factor authentication.",
+    )
     license_body = models.CharField(
         max_length=100,
         blank=True,
@@ -653,6 +657,10 @@ class StaffProfile(SyncOriginMixin, models.Model):
         default=False,
         help_text="When True, MFA is administratively disabled for this user. "
         "Existing devices are NOT deleted — they remain dormant until re-enabled.",
+    )
+    mfa_required = models.BooleanField(
+        default=False,
+        help_text="When True, this user must complete MFA regardless of assigned role.",
     )
 
     # Employment
