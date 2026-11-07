@@ -6,6 +6,7 @@ import { mfaApi } from '@/lib/api/mfa';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -88,18 +89,19 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
   if (step === 'setup') {
     return (
       <Dialog open={true} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent
+          aria-describedby={undefined}
+          className="gap-3 overflow-hidden p-4 sm:max-w-md sm:p-5"
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
               Set Up Two-Factor Authentication
+              <HelpPopover content="Add an extra layer of security to your account by enabling two-factor authentication." />
             </DialogTitle>
-            <DialogDescription>
-              Add an extra layer of security to your account by enabling two-factor authentication.
-            </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin" />
@@ -108,18 +110,18 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
             ) : setupData ? (
               <>
                 <div className="text-center">
-                  <p className="mb-4 text-sm text-muted-foreground">
+                    <p className="mb-3 text-sm text-muted-foreground">
                     Scan this QR code with your authenticator app (Google Authenticator, Authy,
                     etc.)
                   </p>
 
                   {setupData.qr_code && (
-                    <div className="mb-4 flex justify-center">
+                    <div className="mb-3 flex justify-center">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={`data:image/png;base64,${setupData.qr_code}`}
                         alt="QR Code for MFA setup"
-                        className="rounded-lg border"
+                          className="size-40 rounded-lg border sm:size-44"
                       />
                     </div>
                   )}
@@ -133,6 +135,7 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
                       <Button
                         variant="outline"
                         size="sm"
+                        aria-label="Copy setup secret"
                         onClick={() => void copyToClipboard(setupData.secret)}
                       >
                         <Copy className="h-4 w-4" />
@@ -174,7 +177,7 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
   if (step === 'verify') {
     return (
       <Dialog open={true} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="gap-3 overflow-hidden p-4 sm:max-w-md sm:p-5">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Key className="h-5 w-5" />
@@ -185,7 +188,7 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="space-y-2">
               <label htmlFor="token" className="text-sm font-medium">
                 6-digit code
@@ -255,7 +258,7 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
   if (step === 'backup') {
     return (
       <Dialog open={true} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="gap-3 overflow-hidden p-4 sm:max-w-md sm:p-5">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-600" />
@@ -267,7 +270,7 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>

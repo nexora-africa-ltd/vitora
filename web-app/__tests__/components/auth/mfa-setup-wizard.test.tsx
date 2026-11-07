@@ -88,6 +88,10 @@ describe('MFASetupWizard', () => {
 
       // Should show secret key
       expect(screen.getByText(mockSetupData.secret)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Help' })).toBeInTheDocument();
+      expect(
+        screen.queryByText('Add an extra layer of security to your account by enabling two-factor authentication.')
+      ).not.toBeInTheDocument();
     });
 
     it('renders the authenticator deep link only for mobile layouts', async () => {
@@ -141,12 +145,7 @@ describe('MFASetupWizard', () => {
         expect(screen.getByText(mockSetupData.secret)).toBeInTheDocument();
       });
 
-      // Find and click the copy button (has Copy icon)
-      const copyButtons = screen.getAllByRole('button');
-      const copyButton = copyButtons.find((btn) => btn.querySelector('svg'));
-      if (copyButton) {
-        fireEvent.click(copyButton);
-      }
+      fireEvent.click(screen.getByRole('button', { name: /copy setup secret/i }));
 
       expect(navigator.clipboard.writeText).toHaveBeenCalled();
     });
