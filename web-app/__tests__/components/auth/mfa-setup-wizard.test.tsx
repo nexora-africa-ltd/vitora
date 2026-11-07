@@ -230,7 +230,7 @@ describe('MFASetupWizard', () => {
       expect(verifyButton).toBeDisabled();
     });
 
-    it('should call API and proceed to backup step on successful verification', async () => {
+    it('should auto-verify and proceed to backup step when the OTP is complete', async () => {
       const user = userEvent.setup();
       render(<MFASetupWizard onComplete={mockOnComplete} onCancel={mockOnCancel} />);
 
@@ -246,9 +246,6 @@ describe('MFASetupWizard', () => {
 
       const input = screen.getByLabelText('6-digit code');
       await user.type(input, '123456');
-
-      const verifyButton = screen.getByText('Verify & Continue');
-      fireEvent.click(verifyButton);
 
       await waitFor(() => {
         expect(mfaApi.confirmTOTPSetup).toHaveBeenCalledWith('123456');
@@ -278,10 +275,8 @@ describe('MFASetupWizard', () => {
       const input = screen.getByLabelText('6-digit code');
       await user.type(input, '000000');
 
-      const verifyButton = screen.getByText('Verify & Continue');
-      fireEvent.click(verifyButton);
-
       await waitFor(() => {
+        expect(mfaApi.confirmTOTPSetup).toHaveBeenCalledWith('000000');
         expect(screen.getByText('Invalid token')).toBeInTheDocument();
       });
     });
@@ -325,7 +320,6 @@ describe('MFASetupWizard', () => {
       });
       const input = screen.getByLabelText('6-digit code');
       await user.type(input, '123456');
-      fireEvent.click(screen.getByText('Verify & Continue'));
 
       // Wait for backup codes step
       await waitFor(() => {

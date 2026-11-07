@@ -54,13 +54,13 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
     startSetup();
   }, []);
 
-  const handleVerifyToken = async () => {
-    if (!setupData || token.length !== 6) return;
+  const handleVerifyToken = async (submittedToken = token) => {
+    if (!setupData || submittedToken.length !== 6 || isLoading) return;
 
     setIsLoading(true);
     setError(null);
     try {
-      const result = await mfaApi.confirmTOTPSetup(token);
+      const result = await mfaApi.confirmTOTPSetup(submittedToken);
       setBackupCodes(result.backup_codes);
       setStep('backup');
     } catch (err) {
@@ -201,6 +201,7 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
                   setError(null);
                   setToken(value.replace(/\D/g, '').slice(0, 6));
                 }}
+                onComplete={(value) => void handleVerifyToken(value)}
                 maxLength={6}
                 pattern="^[0-9]+$"
                 pushPasswordManagerStrategy="none"
@@ -236,7 +237,7 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
                 Back
               </Button>
               <Button
-                onClick={handleVerifyToken}
+                onClick={() => void handleVerifyToken()}
                 disabled={token.length !== 6 || isLoading}
                 className="flex-1"
               >
