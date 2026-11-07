@@ -125,6 +125,14 @@ from .views_audit_reference import (
 
 logger = logging.getLogger(__name__)
 
+SELF_SERVICE_STAFF_PROFILE_FIELDS = frozenset(
+    {
+        "phone_number",
+        "emergency_contact_name",
+        "emergency_contact_phone",
+    }
+)
+
 
 class DepartmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
@@ -762,15 +770,31 @@ class StaffProfileViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             return Response(data)
 
         elif request.method == "PATCH":
-            # Limit fields that can be updated by staff themselves
-            allowed_fields = [
-                "phone_number",
-                "emergency_contact_name",
-                "emergency_contact_phone",
-            ]
-            data = {k: v for k, v in request.data.items() if k in allowed_fields}
+            # Self-service edits are deliberately restricted to contact details.
+            # Reject rather than silently discard privileged fields so callers cannot
+            # mistake a no-op for a successful authorization change.
+            submitted_fields = set(request.data.keys())
+            forbidden_fields = sorted(submitted_fields - SELF_SERVICE_STAFF_PROFILE_FIELDS)
+            if forbidden_fields:
+                return Response(
+                    {
+                        "detail": "You cannot update those profile fields.",
+                        "code": "self_profile_field_forbidden",
+                        "fields": forbidden_fields,
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
 
-            serializer = self.get_serializer(staff_profile, data=data, partial=True)
+            if not submitted_fields:
+                return Response(
+                    {
+                        "detail": "Provide at least one editable profile field.",
+                        "code": "self_profile_empty_update",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            serializer = self.get_serializer(staff_profile, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
             return Response(serializer.data)

@@ -90,6 +90,14 @@ describe('MFASetupWizard', () => {
       expect(screen.getByText(mockSetupData.secret)).toBeInTheDocument();
     });
 
+    it('renders the authenticator deep link only for mobile layouts', async () => {
+      render(<MFASetupWizard onComplete={mockOnComplete} onCancel={mockOnCancel} />);
+
+      const deepLink = await screen.findByRole('link', { name: /open authenticator app/i });
+      expect(deepLink).toHaveAttribute('href', mockSetupData.provisioning_uri);
+      expect(deepLink).toHaveClass('md:hidden');
+    });
+
     it('should show loading state while fetching setup data', async () => {
       // Delay the API response
       (mfaApi.startTOTPSetup as jest.Mock).mockImplementation(

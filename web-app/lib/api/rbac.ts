@@ -42,6 +42,7 @@ import type {
   StaffLookup,
   StaffProfileCreateData,
   StaffProfileUpdateData,
+  SelfServiceStaffProfileUpdateData,
   StaffPasswordResetData,
   OrgMembership,
   OrgMembershipCreateData,
@@ -214,6 +215,11 @@ export const staffApi = {
       }
       throw error;
     }
+  },
+
+  updateMe: async (data: SelfServiceStaffProfileUpdateData): Promise<StaffProfile> => {
+    const response = await apiClient.patch<StaffProfile>('/api/staff/me/', data);
+    return parseResponse(StaffProfileSchema, response.data, { context: 'staffApi.updateMe' });
   },
 
   get: async (id: number): Promise<StaffProfile> => {

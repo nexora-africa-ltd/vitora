@@ -29,6 +29,7 @@ import type {
   RoleListParams,
   StaffProfileCreateData,
   StaffProfileUpdateData,
+  SelfServiceStaffProfileUpdateData,
   StaffPasswordResetData,
   StaffListParams,
   LicenseListParams,
@@ -202,6 +203,16 @@ export function useMyStaffProfile() {
     queryKey: ['staff-profile', 'me'],
     queryFn: () => staffApi.getMe(),
     retry: false,
+  });
+}
+
+export function useUpdateMyStaffProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: SelfServiceStaffProfileUpdateData) => staffApi.updateMe(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff-profile', 'me'] });
+    },
   });
 }
 

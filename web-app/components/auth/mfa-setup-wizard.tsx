@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import { Shield, Key, CheckCircle, AlertCircle, Loader2, Copy, Eye, EyeOff } from 'lucide-react';
 import { mfaApi } from '@/lib/api/mfa';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { cn } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -140,7 +141,8 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
                     {setupData.provisioning_uri && (
                       <a
                         href={setupData.provisioning_uri}
-                        className="mt-1 inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                        className="mt-1 inline-flex items-center gap-1.5 text-xs text-primary hover:underline md:hidden"
+                        aria-label="Open authenticator app"
                       >
                         Open in Authenticator App →
                       </a>
@@ -188,19 +190,34 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
               <label htmlFor="token" className="text-sm font-medium">
                 6-digit code
               </label>
-              <Input
+              <InputOTP
                 id="token"
-                type="text"
-                placeholder="000000"
+                aria-label="6-digit code"
                 value={token}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-                  setToken(value);
+                onChange={(value) => {
+                  setError(null);
+                  setToken(value.replace(/\D/g, '').slice(0, 6));
                 }}
-                className="text-center text-lg tracking-widest"
+                maxLength={6}
+                pattern="^[0-9]+$"
+                pushPasswordManagerStrategy="none"
                 disabled={isLoading}
-                autoFocus
-              />
+                aria-invalid={Boolean(error)}
+                containerClassName="justify-center"
+              >
+                <InputOTPGroup>
+                  {Array.from({ length: 6 }, (_, index) => (
+                    <InputOTPSlot
+                      key={index}
+                      index={index}
+                      className={cn(
+                        'h-12 w-10 text-xl font-semibold sm:h-14 sm:w-12 sm:text-2xl',
+                        error && 'border-destructive text-destructive'
+                      )}
+                    />
+                  ))}
+                </InputOTPGroup>
+              </InputOTP>
             </div>
 
             {error && (
