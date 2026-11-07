@@ -7,6 +7,7 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { MFASetupWizard } from '@/components/auth/mfa-setup-wizard';
 import { mfaApi } from '@/lib/api/mfa';
+import { AxiosError } from 'axios';
 
 // Mock the MFA API
 jest.mock('@/lib/api/mfa', () => ({
@@ -258,7 +259,15 @@ describe('MFASetupWizard', () => {
 
     it('should show error on verification failure', async () => {
       const user = userEvent.setup();
-      (mfaApi.confirmTOTPSetup as jest.Mock).mockRejectedValue(new Error('Invalid token'));
+      const error = new AxiosError('Request failed with status code 400');
+      error.response = {
+        data: { error: 'Invalid token. Please try again.' },
+        status: 400,
+        statusText: 'Bad Request',
+        headers: {},
+        config: { headers: {} },
+      };
+      (mfaApi.confirmTOTPSetup as jest.Mock).mockRejectedValue(error);
 
       render(<MFASetupWizard onComplete={mockOnComplete} onCancel={mockOnCancel} />);
 
@@ -277,7 +286,7 @@ describe('MFASetupWizard', () => {
 
       await waitFor(() => {
         expect(mfaApi.confirmTOTPSetup).toHaveBeenCalledWith('000000');
-        expect(screen.getByText('Invalid token')).toBeInTheDocument();
+        expect(screen.getByText('Invalid token. Please try again.')).toBeInTheDocument();
       });
     });
 

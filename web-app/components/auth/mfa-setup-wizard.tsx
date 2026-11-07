@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Shield, Key, CheckCircle, AlertCircle, Loader2, Copy, Eye, EyeOff } from 'lucide-react';
 import { mfaApi } from '@/lib/api/mfa';
+import { getApiErrorMessage } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
@@ -64,7 +65,7 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
       setBackupCodes(result.backup_codes);
       setStep('backup');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invalid token. Please try again.');
+      setError(getApiErrorMessage(err) || 'Invalid token. Please try again.');
     } finally {
       setIsLoading(false);
     }
