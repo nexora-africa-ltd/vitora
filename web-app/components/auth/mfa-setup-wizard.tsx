@@ -204,6 +204,7 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
                 maxLength={6}
                 pattern="^[0-9]+$"
                 pushPasswordManagerStrategy="none"
+                autoFocus
                 disabled={isLoading}
                 aria-invalid={Boolean(error)}
                 containerClassName="justify-center"

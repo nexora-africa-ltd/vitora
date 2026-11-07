@@ -182,6 +182,7 @@ describe('MFASetupWizard', () => {
       });
 
       const input = screen.getByLabelText('6-digit code');
+      expect(input).toHaveFocus();
       await user.type(input, '123456');
 
       expect(input).toHaveValue('123456');

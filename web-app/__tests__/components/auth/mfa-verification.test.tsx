@@ -148,6 +148,7 @@ describe('MFAVerification', () => {
       render(<MFAVerification mfaToken={mockMfaToken} onCancel={mockOnCancel} />);
 
       const input = screen.getByRole('textbox');
+      expect(input).toHaveFocus();
       await user.type(input, '123456');
 
       expect(input).toHaveValue('123456');

@@ -359,6 +359,7 @@ export function MFAVerification({
                     maxLength={6}
                     pattern="^[0-9]+$"
                     pushPasswordManagerStrategy="none"
+                    autoFocus
                     aria-invalid={Boolean(tokenError)}
                     containerClassName="justify-center"
                   >
