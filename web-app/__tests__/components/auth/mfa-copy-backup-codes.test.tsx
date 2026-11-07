@@ -25,7 +25,10 @@ describe('MFA backup-code copy confirmation', () => {
     render(<MFASetupWizard onComplete={jest.fn()} onCancel={jest.fn()} />);
     await user.click(await screen.findByText('Next: Enter Code'));
     await user.type(screen.getByLabelText('6-digit code'), '123456');
-    await user.click(screen.getByText('Verify & Continue'));
+
+    await waitFor(() => {
+      expect(mfaApi.confirmTOTPSetup).toHaveBeenCalledWith('123456');
+    });
 
     const copyButton = await screen.findByRole('button', { name: /copy all codes/i });
     fireEvent.click(copyButton);
