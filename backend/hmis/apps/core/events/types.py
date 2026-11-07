@@ -259,6 +259,9 @@ class CoreEvents:
     USER_LOGGED_IN = "core.user.logged_in"
     USER_LOGGED_OUT = "core.user.logged_out"
     USER_LOGIN_FAILED = "core.user.login_failed"
+    USER_ACCOUNT_LOCKED = "core.user.account_locked"
+    USER_ACCOUNT_UNLOCKED = "core.user.account_unlocked"
+    USER_SESSION_IDLE_REVOKED = "core.user.session_idle_revoked"
     PATIENT_CREATED = "core.patient.created"
     PATIENT_UPDATED = "core.patient.updated"
 

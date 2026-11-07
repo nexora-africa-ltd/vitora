@@ -24,6 +24,67 @@ from hmis.apps.core.models_reference import Department, Role
 from hmis.apps.core.pii import encrypted_pii_property
 
 
+class LoginSecurityState(models.Model):
+    """Per-account failed-login counter and temporary lock state."""
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    failed_attempts = models.PositiveSmallIntegerField(default=0)
+    locked_until = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Login security state"
+        verbose_name_plural = "Login security states"
+
+    def __str__(self) -> str:
+        return f"Login security state for {self.user.username}"
+
+
+class AuthenticationSecuritySettings(models.Model):
+    """Singleton, administrator-managed controls for login and session security."""
+
+    SINGLETON_PK = 1
+    max_failed_login_attempts = models.PositiveSmallIntegerField(default=5)
+    lockout_duration_minutes = models.PositiveSmallIntegerField(default=15)
+    idle_session_timeout_seconds = models.PositiveIntegerField(default=1800)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Authentication security settings"
+        verbose_name_plural = "Authentication security settings"
+
+    @classmethod
+    def load(cls):
+        instance, _ = cls.objects.get_or_create(pk=cls.SINGLETON_PK)
+        return instance
+
+    def save(self, *args, **kwargs):
+        self.pk = self.SINGLETON_PK
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return "Authentication security settings"
+
+
+class AuthSession(models.Model):
+    """Server-side lifecycle record for a browser or bearer JWT session."""
+
+    session_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="auth_sessions"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_activity_at = models.DateTimeField(default=timezone.now)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["user", "revoked_at"])]
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"Auth session for {self.user.username} ({self.session_id})"
+
+
 class DHIS2Config(OrganizationScopedModel, TimeStampedModel):
     """
     DHIS2/KHIS connection configuration scoped to an Organization.

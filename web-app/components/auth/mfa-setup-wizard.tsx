@@ -30,6 +30,7 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
   const [token, setToken] = useState('');
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
   const [showBackupCodes, setShowBackupCodes] = useState(false);
+  const [backupCodesCopied, setBackupCodesCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,9 +73,15 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
     onComplete();
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success('Copied to clipboard');
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Copied to clipboard');
+      return true;
+    } catch {
+      toast.error('Unable to copy to clipboard');
+      return false;
+    }
   };
 
   if (step === 'setup') {
@@ -125,7 +132,7 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => copyToClipboard(setupData.secret)}
+                        onClick={() => void copyToClipboard(setupData.secret)}
                       >
                         <Copy className="h-4 w-4" />
                       </Button>
@@ -275,11 +282,18 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => copyToClipboard(backupCodes.join('\n'))}
-                className="w-full"
-              >
-                <Copy className="mr-2 h-4 w-4" />
-                Copy All Codes
+                  onClick={async () => {
+                    if (await copyToClipboard(backupCodes.join('\n'))) setBackupCodesCopied(true);
+                  }}
+                  className="w-full"
+                  variant={backupCodesCopied ? 'default' : 'outline'}
+                >
+                  {backupCodesCopied ? (
+                    <CheckCircle className="mr-2 h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <Copy className="mr-2 h-4 w-4" aria-hidden="true" />
+                  )}
+                  {backupCodesCopied ? 'Codes Copied' : 'Copy All Codes'}
               </Button>
             </div>
 

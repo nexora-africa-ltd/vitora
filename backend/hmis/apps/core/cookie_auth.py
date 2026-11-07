@@ -19,6 +19,7 @@ the Next.js web frontend.
 import logging
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.permissions import AllowAny
@@ -222,7 +223,15 @@ class CookieRefreshView(CookieAuthSchemaMixin, APIView):
             serializer = TokenRefreshSerializer(data={"refresh": raw_refresh})
             serializer.is_valid(raise_exception=True)
             tokens = serializer.validated_data
-        except (TokenError, AuthenticationFailed):
+            from rest_framework_simplejwt.tokens import RefreshToken
+
+            from hmis.apps.core.session_security import validate_session
+
+            token = RefreshToken(raw_refresh)
+            User = get_user_model()
+            user = User.objects.get(pk=token["user_id"])
+            validate_session(user, token.get("session_id"), request)
+        except (TokenError, AuthenticationFailed, User.DoesNotExist):
             response = Response(
                 {"error": "Refresh token expired or invalid"},
                 status=status.HTTP_401_UNAUTHORIZED,
@@ -258,7 +267,14 @@ class CookieLogoutView(CookieAuthSchemaMixin, APIView):
     def post(self, request):
         # Attempt to blacklist the refresh token to prevent reuse
         refresh_token = request.COOKIES.get(REFRESH_COOKIE)
+        if not refresh_token:
+            authorization = request.headers.get("Authorization", "")
+            if authorization.startswith("Bearer "):
+                refresh_token = authorization.removeprefix("Bearer ")
         if refresh_token:
+            from hmis.apps.core.session_security import revoke_session_from_token
+
+            revoke_session_from_token(refresh_token, request)
             try:
                 token = RefreshToken(refresh_token)
                 token.blacklist()

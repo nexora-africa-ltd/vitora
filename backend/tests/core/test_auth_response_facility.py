@@ -288,6 +288,17 @@ class TestStaffMeFacility:
         assert "permissions" in user_info
         assert isinstance(user_info["permissions"], list)
 
+    def test_me_does_not_require_staffprofile_view_permission(self, api_client, user_with_facility):
+        """A user can always retrieve their own canonical access profile."""
+        user_with_facility.user_permissions.clear()
+        user_with_facility.groups.clear()
+        assert not user_with_facility.has_perm("core.view_staffprofile")
+        api_client.force_authenticate(user=user_with_facility)
+
+        response = api_client.get("/api/staff/me/")
+
+        assert response.status_code == status.HTTP_200_OK
+
 
 # ============================================================================
 # _build_user_info unit tests

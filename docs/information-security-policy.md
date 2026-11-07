@@ -82,7 +82,8 @@ This governance-responsibility table is not the application RBAC role catalogue.
 3. Access tokens are configured for a 30-minute lifetime. Refresh tokens are configured for a one-day lifetime, rotate on refresh, and are blacklisted after rotation.
 4. Cookie authentication uses `HttpOnly`, `Secure` in production, and `SameSite=Lax` settings. CSRF protection applies to cookie-authenticated mutation requests.
 5. Password reset, change-password, email verification, invitation, and account activation workflows shall use authenticated or time-limited token controls as implemented by the relevant service.
-6. The web client provides an inactivity warning after 15 minutes and invokes logout after 30 minutes of inactivity. This is a client-side control; server-enforced inactivity expiry remains a required enhancement before it is relied on as a sole session-security measure.
+6. The web client provides an inactivity warning after 15 minutes and invokes logout after 30 minutes of inactivity. Every JWT is also bound to a server-side session that is revoked after the Django-admin-managed idle-session timeout (30 minutes by default), so a stolen or stale token cannot continue to access APIs after the configured limit.
+7. Five consecutive failed password attempts lock the account for the Django-admin-managed lockout duration (15 minutes by default). Account lock and automatic unlock events are retained in the audit trail.
 
 ### 6.2 Multi-Factor Authentication
 

@@ -286,7 +286,7 @@ AUTHENTICATION_BACKENDS = [
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "hmis.apps.core.oauth.authentication.SMARTOAuth2Authentication",
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "hmis.apps.core.authentication.SessionAwareJWTAuthentication",
         "hmis.apps.core.cookie_auth_backend.CookieJWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
@@ -343,6 +343,7 @@ ADMIN_SESSION_TIMEOUT_SECONDS = 15 * 60
 # Grace period (hours) for new users to set up MFA before it becomes mandatory.
 # Set to 0 to require immediate MFA setup (no grace period).
 MFA_GRACE_PERIOD_HOURS = 72
+
 
 # Onboarding enforcement — when True, org admins whose organization has not
 # completed onboarding are blocked from most API endpoints after the grace period.

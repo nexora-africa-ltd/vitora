@@ -315,13 +315,16 @@ Convention: `<domain>.<aggregate>.<action>`
 | `NOTIFIABLE_DISEASE_DETECTED` | `surveillance.disease.detected` | `surveillance/signals.py` |
 | `ALERT_CREATED` | `surveillance.alert.created` | — (defined, not yet wired) |
 
-### CoreEvents (5 constants)
+### CoreEvents (8 constants)
 
 | Constant | Value | Published From |
 |----------|-------|---------------|
 | `USER_LOGGED_IN` | `core.user.logged_in` | `core/signals.py` |
 | `USER_LOGGED_OUT` | `core.user.logged_out` | `core/signals.py` |
 | `USER_LOGIN_FAILED` | `core.user.login_failed` | — (defined, not yet wired) |
+| `USER_ACCOUNT_LOCKED` | `core.user.account_locked` | `core/session_security.py` |
+| `USER_ACCOUNT_UNLOCKED` | `core.user.account_unlocked` | `core/session_security.py` |
+| `USER_SESSION_IDLE_REVOKED` | `core.user.session_idle_revoked` | `core/session_security.py` |
 | `PATIENT_CREATED` | `core.patient.created` | `core/signals.py` |
 | `PATIENT_UPDATED` | `core.patient.updated` | — (defined, not yet wired) |
 

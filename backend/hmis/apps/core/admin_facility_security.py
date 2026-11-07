@@ -34,6 +34,7 @@ from .models import (
     SKU,
     ActivityFeed,
     AuditLog,
+    AuthenticationSecuritySettings,
     Bundle,
     CertificateAuthority,
     CertificateRevocation,
@@ -69,6 +70,25 @@ from .models import (
     UserCertificate,
     Ward,
 )
+
+
+@admin.register(AuthenticationSecuritySettings)
+class AuthenticationSecuritySettingsAdmin(admin.ModelAdmin):
+    """Admin-only runtime controls for account lockout and idle session expiry."""
+
+    fields = (
+        "max_failed_login_attempts",
+        "lockout_duration_minutes",
+        "idle_session_timeout_seconds",
+        "updated_at",
+    )
+    readonly_fields = ("updated_at",)
+
+    def has_add_permission(self, request):
+        return not AuthenticationSecuritySettings.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):  # noqa: ARG002
+        return False
 
 
 class FacilityStaffInline(admin.TabularInline):

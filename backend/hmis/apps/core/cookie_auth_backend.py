@@ -53,6 +53,10 @@ class CookieJWTAuthentication(BaseAuthentication):
         if not user.is_active:
             raise exceptions.AuthenticationFailed("User is inactive")
 
+        from hmis.apps.core.session_security import validate_session
+
+        validate_session(user, validated_token.get("session_id"), request)
+
         return (user, validated_token)
 
     def authenticate_header(self, _request):

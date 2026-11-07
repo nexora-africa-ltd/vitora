@@ -600,7 +600,7 @@ class StaffProfileViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     def get_permissions(self):
         """Set permissions based on action."""
-        if self.action == "lookup":
+        if self.action in {"lookup", "me"}:
             permission_classes = [IsAuthenticated]
         elif self.action in ["create", "destroy", "reset_password"]:
             permission_classes = [FacilityAdminPermission]

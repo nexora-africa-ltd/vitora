@@ -32,6 +32,7 @@ from drf_spectacular.utils import (
 )
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.mixins import ListModelMixin, RetrieveModelMixin
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
@@ -663,17 +664,46 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
     )
     def post(self, request, *args, **kwargs):
         """Handle token obtain request with audit logging and MFA."""
-        response = super().post(request, *args, **kwargs)
+        from django.contrib.auth import get_user_model
+
+        from hmis.apps.core.session_security import (
+            check_account_lock,
+            clear_failed_logins,
+            record_failed_login,
+        )
+
+        login_identifier = str(request.data.get("username") or "").strip()
+        User = get_user_model()
+        login_user = (
+            User.objects.filter(
+                models.Q(username__iexact=login_identifier)
+                | models.Q(email__iexact=login_identifier)
+            )
+            .select_related("staff_profile")
+            .first()
+        )
+        if login_user and check_account_lock(login_user, request):
+            return Response(
+                {
+                    "detail": "Account is temporarily locked. Please try again later.",
+                    "code": "account_locked",
+                },
+                status=status.HTTP_423_LOCKED,
+            )
+
+        try:
+            response = super().post(request, *args, **kwargs)
+        except AuthenticationFailed:
+            if login_user:
+                record_failed_login(login_user, request)
+            raise
 
         if response.status_code == 200:
             # Login successful - check for MFA
-            from django.contrib.auth import get_user_model
-
             from hmis.apps.core.mfa.models import MFAToken
             from hmis.apps.core.mfa.utils import get_client_ip, is_mfa_enabled, is_mfa_required
 
-            User = get_user_model()
-            login_identifier = str(request.data.get("username") or "").strip()
+            clear_failed_logins(login_user)
             try:
                 user = (
                     User.objects.filter(
@@ -792,6 +822,15 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
                     user_logged_in.send(sender=self.__class__, request=request, user=user)
                     response.data["mfa_required"] = False
 
+                # Replace SimpleJWT's default pair with a pair carrying the
+                # server-side session identifier. MFA responses return above
+                # and issue their own session-bound pair after verification.
+                from hmis.apps.core.session_security import create_token_pair
+
+                _, refresh = create_token_pair(user)
+                response.data["access"] = str(refresh.access_token)
+                response.data["refresh"] = str(refresh)
+
                 # Check must_change_password flag
                 if hasattr(user, "staff_profile") and user.staff_profile.must_change_password:
                     response.data["must_change_password"] = True
@@ -806,6 +845,8 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
             except User.DoesNotExist:
                 pass
         else:
+            if login_user:
+                record_failed_login(login_user, request)
             # Login failed - fire user_login_failed signal
             user_login_failed.send(
                 sender=self.__class__,

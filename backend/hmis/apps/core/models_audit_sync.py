@@ -109,6 +109,10 @@ class AuditLog(models.Model):
         # Authentication actions
         ("login_success", "Login Success"),
         ("login_failed", "Login Failed"),
+        ("account_locked", "Account Locked"),
+        ("account_unlocked", "Account Unlocked"),
+        ("session_idle_revoked", "Session Idle Revoked"),
+        ("session_revoked", "Session Revoked"),
         ("logout", "Logout"),
         ("token_refresh", "Token Refresh"),
         # Patient actions
