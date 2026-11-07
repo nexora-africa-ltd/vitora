@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/context';
 import { useIdleTimer } from '@/lib/hooks/use-idle-timer';
 import { IdleWarningModal } from '@/components/shared/idle-warning-modal';
@@ -9,6 +8,16 @@ import { IdleWarningModal } from '@/components/shared/idle-warning-modal';
 // Default timeout values (can be overridden)
 const WARNING_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 const LOGOUT_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
+/** Build the full-page navigation target used after an idle logout. */
+export function buildIdleLogoutUrl(pathname: string, search: string): string {
+  const currentPath = `${pathname}${search}`;
+  const params = new URLSearchParams({ reason: 'idle' });
+  if (currentPath && currentPath !== '/' && currentPath !== '/login') {
+    params.set('callbackUrl', currentPath);
+  }
+  return `/login?${params.toString()}`;
+}
 
 interface IdleTimerProviderProps {
   children: React.ReactNode;
@@ -45,19 +54,16 @@ export function IdleTimerProvider({
   logoutTimeout = LOGOUT_TIMEOUT_MS,
   enabled = true,
 }: IdleTimerProviderProps) {
-  const router = useRouter();
   const { logout, isAuthenticated } = useAuth();
 
   // Handle auto-logout — preserve current path so login can redirect back
   const handleLogout = useCallback(() => {
-    const currentPath = window.location.pathname + window.location.search;
+    const target = buildIdleLogoutUrl(window.location.pathname, window.location.search);
     logout();
-    const params = new URLSearchParams({ reason: 'idle' });
-    if (currentPath && currentPath !== '/' && currentPath !== '/login') {
-      params.set('callbackUrl', currentPath);
-    }
-    router.push(`/login?${params.toString()}`);
-  }, [logout, router]);
+    // AuthGuard can react to local logout state before a Next.js client-side
+    // transition commits. A document navigation preserves the idle reason.
+    window.location.assign(target);
+  }, [logout]);
 
   // Only enable timer when user is authenticated
   const timerEnabled = enabled && isAuthenticated;

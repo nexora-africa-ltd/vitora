@@ -250,8 +250,26 @@ def log_user_login_failed(sender, credentials, request, **kwargs):
     if is_sync_materialization_active():
         return
 
+    from django.contrib.auth import get_user_model
+    from django.db.models import Q
+
     from .models import AuditLog
     from .permissions import get_client_ip
+
+    identifier = credentials.get("username", "")
+    failed_user = None
+    if identifier:
+        # Keep the actor anonymous for failed authentication, but preserve the
+        # tenant context for a known account so facility admins can review the
+        # security event without exposing it to other facilities.
+        User = get_user_model()
+        failed_user = (
+            User.objects.filter(Q(username__iexact=identifier) | Q(email__iexact=identifier))
+            .select_related("staff_profile__organization", "staff_profile__primary_facility")
+            .first()
+        )
+
+    profile = getattr(failed_user, "staff_profile", None)
 
     AuditLog.log(
         action="login_failed",
@@ -259,7 +277,9 @@ def log_user_login_failed(sender, credentials, request, **kwargs):
         resource_type="User",
         ip_address=get_client_ip(request) if request else None,
         user_agent=request.META.get("HTTP_USER_AGENT", "") if request else "",
-        details={"username": credentials.get("username", "unknown")},
+        details={"username": identifier or "unknown"},
+        organization=getattr(profile, "organization", None),
+        facility=getattr(profile, "primary_facility", None),
     )
 
 

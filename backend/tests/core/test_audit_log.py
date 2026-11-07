@@ -343,6 +343,31 @@ class TestAuthenticationAuditLogs:
 
         log = AuditLog.objects.filter(action="login_failed").latest("timestamp")
         assert log.details.get("username") == "audituser"
+        assert log.organization == test_user.staff_profile.organization
+        assert log.facility == test_user.staff_profile.primary_facility
+
+        from hmis.apps.core.models import Role
+
+        admin_role, _ = Role.objects.get_or_create(
+            code="ORG-ADMIN",
+            defaults={
+                "name": "Organization Administrator",
+                "hierarchy_level": 1,
+                "is_active": True,
+            },
+        )
+        test_user.staff_profile.primary_role = admin_role
+        test_user.staff_profile.save(update_fields=["primary_role"])
+        api_client.force_authenticate(user=test_user)
+
+        audit_response = api_client.get(
+            "/api/auditlogs/?action=login_failed",
+            HTTP_X_FACILITY_ID=str(test_user.staff_profile.primary_facility_id),
+        )
+
+        assert audit_response.status_code == status.HTTP_200_OK
+        entries = audit_response.data.get("results", audit_response.data)
+        assert any(entry["id"] == log.id for entry in entries)
 
     def test_nonexistent_user_login_attempt_is_logged(self, api_client, db):
         """
