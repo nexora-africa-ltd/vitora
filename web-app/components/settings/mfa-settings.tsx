@@ -43,6 +43,8 @@ import { Badge } from '@/components/ui/badge';
 import { MFASetupWizard } from '@/components/auth/mfa-setup-wizard';
 import { toast } from 'sonner';
 
+const MFA_GRACE_KEY = 'vitora_mfa_grace_deadline';
+
 export function MFASettingsTab() {
   const [status, setStatus] = useState<MFAStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -408,6 +410,8 @@ export function MFASettingsTab() {
       {showSetupWizard && (
         <MFASetupWizard
           onComplete={() => {
+            localStorage.removeItem(MFA_GRACE_KEY);
+            window.dispatchEvent(new Event('vitora:mfa-enabled'));
             setShowSetupWizard(false);
             loadStatus();
           }}
