@@ -14,13 +14,14 @@ The IDSR Weekly Reporting module automates the generation and submission of week
 
 ### Key Features
 
-- **Automated weekly aggregation** via Celery task (runs Sunday midnight)
+- **Automated weekly aggregation** via Celery task at 00:05 Monday, Africa/Nairobi, after the ISO reporting week closes
 - **Epidemiological week calculation** using ISO 8601 standard
 - **Per-disease summaries** with age group breakdown (under 5, 5+)
 - **Outbreak detection** based on configured thresholds
 - **DHIS2 submission** with payload preview and status tracking
 - **Hybrid data element mapping**: JSON file + Django admin with multi-environment support (local/staging/production)
 - **Report workflow**: Draft → Pending Review → Approved → Submitted
+- **Optional automated submission**: controlled by the Django Admin core feature flag `idsr_auto_submission`; disabled by default
 
 ---
 
@@ -179,14 +180,14 @@ Returns:
 
 **Task**: `hmis.apps.surveillance.tasks.generate_idsr_weekly_report`
 
-**Schedule**: Sunday at midnight (Kenya time)
+**Schedule**: Monday at 00:05 (Africa/Nairobi), after the Monday–Sunday ISO reporting week closes.
 
 **Configuration** (in `hmis/celery.py`):
 
 ```python
 "generate-idsr-weekly-report": {
     "task": "hmis.apps.surveillance.tasks.generate_idsr_weekly_report",
-    "schedule": crontab(minute=0, hour=0, day_of_week="sunday"),
+        "schedule": crontab(minute=5, hour=0, day_of_week="monday"),
 },
 ```
 
@@ -297,6 +298,16 @@ Set via environment variable:
 ```bash
 DHIS2_ENVIRONMENT=staging  # Options: local, staging, production
 ```
+
+### Automated submission safety gate
+
+When the Django Admin **Core → Feature Flags → `idsr_auto_submission`** flag is enabled,
+scheduled reports are automatically approved and queued for submission. Before a write, Vitora
+requires configured endpoint credentials and facility organisation-unit UID, complete active MOH
+505 mappings, and no unmapped positive value. It posts a DHIS2 `dryRun=true` validation request
+before the final import, persists both outcomes, and marks a report submitted only when the import
+summary reports success with no conflicts or rejected values. Transient automated failures are
+recorded and retried every 15 minutes, up to three attempts.
 
 ---
 

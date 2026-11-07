@@ -14,6 +14,7 @@ from hmis.apps.core.mixins import TenantScopedAdminMixin
 from .models import (
     DHIS2DataElementMapping,
     IDSRDiseaseSummary,
+    IDSRSubmissionAttempt,
     IDSRWeeklyReport,
     IHRNotification,
     IHRNotificationStatus,
@@ -436,6 +437,25 @@ class IDSRWeeklyReportAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
         return "-"
 
     outbreak_badge.short_description = "Outbreak"
+
+
+@admin.register(IDSRSubmissionAttempt)
+class IDSRSubmissionAttemptAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
+    """Read-only operational evidence for IDSR DHIS2/KHIS submissions."""
+
+    list_display = ["report", "attempt_number", "trigger", "status", "http_status", "attempted_at"]
+    list_filter = ["status", "trigger", "organization", "facility"]
+    search_fields = ["report__facility_name", "report__facility_code", "error_message"]
+    raw_id_fields = ["report", "organization", "facility"]
+    readonly_fields = [field.name for field in IDSRSubmissionAttempt._meta.fields]
+
+    def has_add_permission(self, request):
+        """Submission attempts are created by the reporting service only."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Submission evidence must remain immutable."""
+        return False
 
 
 @admin.register(DHIS2DataElementMapping)

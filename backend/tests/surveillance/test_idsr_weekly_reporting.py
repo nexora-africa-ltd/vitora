@@ -494,6 +494,75 @@ class TestIDSRReportingService:
         age = IDSRReportingService._calculate_age(None, date(2026, 2, 20))
         assert age == 0
 
+    def test_submission_validation_failure_is_persisted(self, db, sample_facility):
+        """Missing KHIS configuration must leave durable, inspectable failure evidence."""
+        from hmis.apps.surveillance.models import (
+            IDSRReportStatus,
+            IDSRSubmissionAttempt,
+            IDSRWeeklyReport,
+        )
+        from hmis.apps.surveillance.services import IDSRReportingService
+
+        report = IDSRWeeklyReport.objects.create(
+            epi_year=2026,
+            epi_week=8,
+            week_start_date=date(2026, 2, 16),
+            week_end_date=date(2026, 2, 22),
+            facility_ref=sample_facility,
+            status=IDSRReportStatus.APPROVED,
+        )
+
+        result = IDSRReportingService.submit_to_dhis2(report, trigger="automated")
+
+        assert result["status"] == "error"
+        attempt = IDSRSubmissionAttempt.objects.get(report=report)
+        assert attempt.status == "VALIDATION_FAILED"
+        assert attempt.validation_response["errors"]
+
+    @patch("requests.post")
+    @patch("hmis.apps.surveillance.services.IDSRReportingService.validate_dhis2_submission")
+    @patch("hmis.apps.core.dhis2.resolve_dhis2_credentials")
+    def test_submission_requires_successful_dhis2_import_summary(
+        self, mock_credentials, mock_validate, mock_post, db, sample_facility
+    ):
+        """A HTTP 2xx response with a rejected DHIS2 import must not mark a report submitted."""
+        from hmis.apps.core.dhis2 import DHIS2Credentials
+        from hmis.apps.surveillance.models import IDSRReportStatus, IDSRWeeklyReport
+        from hmis.apps.surveillance.services import IDSRReportingService
+
+        report = IDSRWeeklyReport.objects.create(
+            epi_year=2026,
+            epi_week=8,
+            week_start_date=date(2026, 2, 16),
+            week_end_date=date(2026, 2, 22),
+            facility_ref=sample_facility,
+            status=IDSRReportStatus.APPROVED,
+        )
+        mock_credentials.return_value = DHIS2Credentials(
+            base_url="https://khis-staging.example",
+            username="user",
+            password="secret",
+            org_unit="org",
+            environment="staging",
+            source="db",
+        )
+        mock_validate.return_value = {
+            "valid": True,
+            "errors": [],
+            "mapping_validation": {"valid": True},
+            "payload": {"dataValues": [{"value": 1}]},
+        }
+        dry_run = MagicMock(ok=True, status_code=200, text="{}")
+        dry_run.json.return_value = {"status": "SUCCESS", "importCount": {"rejected": 0}}
+        rejected = MagicMock(ok=True, status_code=200, text="{}")
+        rejected.json.return_value = {"status": "ERROR", "importCount": {"rejected": 1}}
+        mock_post.side_effect = [dry_run, rejected]
+
+        IDSRReportingService.submit_to_dhis2(report)
+
+        report.refresh_from_db()
+        assert report.status == IDSRReportStatus.FAILED
+
 
 # ============================================================================
 # Celery Tasks Tests
@@ -515,6 +584,35 @@ class TestIDSRCeleryTasks:
         assert result["report_count"] == 1
         assert result["reports"][0]["facility_id"] == sample_facility.id
         assert result["epi_week"] == 8
+
+    def test_automatic_submission_requires_feature_flag(self, db, sample_facility):
+        """Scheduled generation must preserve review when automation is disabled."""
+        from hmis.apps.core.models import FeatureFlag
+        from hmis.apps.surveillance.tasks import generate_idsr_weekly_report
+
+        sample_facility.has_surveillance = True
+        sample_facility.save(update_fields=["has_surveillance"])
+        FeatureFlag.objects.create(name="idsr_auto_submission", is_enabled=False)
+
+        result = generate_idsr_weekly_report(epi_year=2026, epi_week=8)
+
+        assert result["reports"][0]["status"] == "DRAFT"
+
+    @patch("hmis.apps.surveillance.tasks.submit_idsr_to_dhis2.delay")
+    def test_automatic_submission_is_queued_when_feature_flag_enabled(
+        self, mock_submit, db, sample_facility
+    ):
+        """The scheduled report should queue automated submission only when explicitly enabled."""
+        from hmis.apps.core.models import FeatureFlag
+        from hmis.apps.surveillance.tasks import generate_idsr_weekly_report
+
+        sample_facility.has_surveillance = True
+        sample_facility.save(update_fields=["has_surveillance"])
+        FeatureFlag.objects.create(name="idsr_auto_submission", is_enabled=True)
+
+        result = generate_idsr_weekly_report(epi_year=2026, epi_week=8)
+
+        mock_submit.assert_called_once_with(result["reports"][0]["report_id"], trigger="automated")
 
     @patch("hmis.apps.surveillance.services.SurveillanceService.check_overdue_cases")
     def test_check_overdue_notifications_task(self, mock_check, db):

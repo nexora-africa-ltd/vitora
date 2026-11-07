@@ -1660,6 +1660,7 @@ from .models_contact_tracing import (  # noqa: E402,F401
     FollowUpMethod,
     FollowUpOutcome,
 )
+from .models_idsr import IDSRSubmissionAttempt, IDSRSubmissionAttemptStatus  # noqa: E402,F401
 from .models_notifications import (  # noqa: E402,F401
     CountyNotificationChannel,
     CountyNotificationDelivery,

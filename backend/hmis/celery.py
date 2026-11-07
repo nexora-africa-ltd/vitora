@@ -48,6 +48,7 @@ app.conf.task_routes = {
     "hmis.apps.surveillance.tasks.check_overdue_notifications": {"queue": "monitoring"},
     "hmis.apps.surveillance.tasks.check_outbreak_thresholds": {"queue": "monitoring"},
     "hmis.apps.surveillance.tasks.submit_idsr_to_dhis2": {"queue": "reporting"},
+    "hmis.apps.surveillance.tasks.retry_idsr_dhis2_submissions": {"queue": "reporting"},
     # Billing tasks
     "hmis.apps.billing.tasks.poll_sha_claim_statuses": {"queue": "billing"},
     "hmis.apps.billing.tasks.submit_pending_sha_claims": {"queue": "billing"},
@@ -122,10 +123,15 @@ app.conf.beat_schedule = {
         "task": "hmis.apps.clinics.tasks.generate_monthly_clinic_reports",
         "schedule": crontab(minute=0, hour=1, day_of_month=1),
     },
-    # IDSR Weekly Report - runs Sunday at midnight (Kenya time)
+    # IDSR reporting weeks are Monday-Sunday (ISO 8601). Generate after the
+    # reporting week closes: Monday 00:05 Africa/Nairobi.
     "generate-idsr-weekly-report": {
         "task": "hmis.apps.surveillance.tasks.generate_idsr_weekly_report",
-        "schedule": crontab(minute=0, hour=0, day_of_week="sunday"),
+        "schedule": crontab(minute=5, hour=0, day_of_week="monday"),
+    },
+    "retry-idsr-dhis2-submissions": {
+        "task": "hmis.apps.surveillance.tasks.retry_idsr_dhis2_submissions",
+        "schedule": 900.0,
     },
     # Check for overdue notifications - every 4 hours
     "check-overdue-notifications": {

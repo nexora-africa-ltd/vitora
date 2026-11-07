@@ -225,6 +225,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "approved_at",
                 "approved_by",
                 "approved_by_name",
+                "auto_submission_enabled",
                 "can_edit",
                 "county",
                 "county_name",

@@ -57,6 +57,15 @@ FEATURE_FLAGS = [
         "description": ("Enable HealthCloud credit-note submission actions in claims workflow."),
         "default_enabled": True,
     },
+    {
+        "name": "idsr_auto_submission",
+        "description": (
+            "Automatically validate and submit scheduled IDSR weekly reports to DHIS2/KHIS. "
+            "Disabled by default so facilities retain the review-and-approval workflow until "
+            "their KHIS staging integration is verified."
+        ),
+        "default_enabled": False,
+    },
 ]
 
 
