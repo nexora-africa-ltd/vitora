@@ -674,7 +674,7 @@ The initial notice should include the awareness timeline, nature of breach, affe
 
 ### 17.4 Continuity and clinical safety
 
-The approved Disaster Recovery Plan and Backup and Recovery Policy set a **24-hour RTO** and **24-hour RPO** for Tier 1 recovery, with a 48-hour maximum tolerable period of disruption. A Tier 1 database with approved continuous transaction-log capture must meet a 15-minute operational RPO. These are targets, not measured achievements. Each facility must confirm in Annex A that these targets are safe for its services, including round-the-clock inpatient/emergency operations, and adopt stricter objectives where required.
+The approved Disaster Recovery Plan and Backup and Recovery Policy set a **4-hour RTO** and **24-hour RPO** for Tier 1 recovery, with a 48-hour maximum tolerable period of disruption. A Tier 1 database with approved continuous transaction-log capture must meet a 15-minute operational RPO. These are targets, not measured achievements. Each facility must confirm in Annex A that these targets are safe for its services, including round-the-clock inpatient/emergency operations, and adopt stricter objectives where required.
 
 Provide safe downtime recording, secure temporary paper handling, critical-result escalation, reconciliation ownership and identity checks on re-entry. Exercise database, file, key, audit and attachment restoration together. Offline capability supports continuity only when data is sufficiently current, authorized and safely reconciled.
 

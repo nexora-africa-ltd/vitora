@@ -140,6 +140,37 @@ def test_daily_backup_uses_a_dedicated_container_apps_job():
     assert '"$AZURE_BACKUP_ENCRYPTION_KEY" != "$BACKUP_ENCRYPTION_KEY"' in backup_job_update
 
 
+def test_staging_backup_and_restore_workflows_are_isolated_from_production():
+    """Staging certification drills must not read production backup data or secrets."""
+    staging_backup = (REPO_ROOT / ".github" / "workflows" / "staging-daily-backup.yml").read_text()
+    staging_restore = (
+        REPO_ROOT / ".github" / "workflows" / "staging-restore-drill.yml"
+    ).read_text()
+    provisioner = (REPO_ROOT / "backend" / "scripts" / "azure-provision-backup-job.sh").read_text()
+
+    assert "environment: staging" in staging_backup
+    assert "vitora-db-backup-staging-sa" in staging_backup
+    assert "staging-db-backups" in staging_backup
+    assert "VITORA_ENV=staging" in staging_backup
+    assert "az containerapp show" in staging_backup
+    assert '--image "$IMAGE"' in provisioner
+    assert "environment: staging" in staging_restore
+    assert "STORAGE_CONTAINER: staging-db-backups" in staging_restore
+    assert "BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}" in staging_restore
+    assert "BACKUP_ENV" in provisioner
+    assert '"VITORA_ENV=$BACKUP_ENV"' in provisioner
+
+
+def test_backup_recovery_endpoint_documents_pending_staging_validation():
+    """The certification endpoint must not imply a staging drill before one succeeds."""
+    view = (
+        REPO_ROOT / "backend" / "hmis" / "apps" / "core" / "views_backup_recovery_status.py"
+    ).read_text()
+
+    assert '"staging_validation"' in view
+    assert '"status": "pending_first_successful_drill"' in view
+
+
 def test_backend_image_contains_gpg_for_mandatory_encrypted_backups():
     """The backup job uses the backend image and must include its encryption binary."""
     dockerfile = (REPO_ROOT / "backend" / "Dockerfile").read_text()

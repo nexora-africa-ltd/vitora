@@ -1,0 +1,26 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
+# Purpose: Sanitized SEC-BCK-001 metadata for the most recent encrypted production backup artifact.
+# Use: Attach for DHA document review; excludes the payload, storage identifiers, credentials, and passphrases.
+# Inputs: Azure Blob metadata and successful daily workflow run 43084310258.
+
+SEC-BCK-001 — Encrypted Backup Artifact Evidence
+Evidence environment: production
+
+Daily backup workflow
+- GitHub Actions run: 43084310258
+- Result: success
+- Completed: 2026-11-11T19:09:04Z
+
+Encrypted backup artifact
+- Name: vitora-production-2026-11-11_190814-43084310258-1.sql.gz.gpg
+- Created: 2026-11-11T19:08:45Z
+- Size: 1,313,795 bytes
+- Encryption before upload: GPG AES-256
+- Azure Blob server-side encryption: true
+
+Paired integrity artifact
+- Name: vitora-production-2026-11-11_190814-43084310258-1.sql.gz.sha256
+- SHA-256: dd560d3e18f14c5234e88f9c389931332ba4868db73fd973535d6b2724f8655e
+- Azure Blob server-side encryption: true
+
+The object is retained in the private off-site backup container. No payload, passphrase, account key, SAS token, connection string, or personal data is included.

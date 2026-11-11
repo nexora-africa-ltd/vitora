@@ -81,7 +81,7 @@ Gaps are categorized into four tiers:
 - **Action**:
   - [x] Configure automated PostgreSQL backups (pg_dump daily)
   - [x] Set up off-site backup (S3/Wasabi encrypted)
-  - [x] Define RTO: 4 hours, RPO: 1 hour
+  - [x] Define RTO: 4 hours, RPO: 24 hours
   - [x] Document DR runbook
   - [x] Test backup restoration (restore.sh with verification)
   - [x] Add backup monitoring alerts

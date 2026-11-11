@@ -2,7 +2,7 @@
 """Expose a restricted, non-secret encryption posture for certification review.
 
 Use via ``GET /api/core/security/encryption-status/`` with an authenticated
-platform administrator session. The response deliberately excludes keys,
+DHA evidence-reader session granted the dedicated permission. The response deliberately excludes keys,
 connection strings, certificate material, and patient data.
 """
 

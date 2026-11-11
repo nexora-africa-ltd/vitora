@@ -1,0 +1,129 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
+# Purpose: Create an encrypted daily backup of the isolated staging database for DHA validation.
+# Use: Runs daily or manually from the GitHub Actions UI; requires staging environment Azure/OIDC and BACKUP_ENCRYPTION_KEY secrets.
+# Inputs: GitHub staging environment secrets and the vitora-api-private-sa Container App database secret.
+name: Staging Daily Database Backup
+
+on:
+  schedule:
+    - cron: '30 1 * * *'
+  workflow_dispatch:
+
+env:
+  AZURE_RESOURCE_GROUP: vitora-rg-sa
+  STORAGE_ACCOUNT: vitorabackupssa
+  STORAGE_CONTAINER: staging-db-backups
+  BACKUP_JOB_NAME: vitora-db-backup-staging-sa
+  SOURCE_APP: vitora-api-private-sa
+
+jobs:
+  backup:
+    name: Backup staging database
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: staging
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Log in to Azure (OIDC)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_SA_CLIENT_ID != '' && secrets.AZURE_SA_CLIENT_ID || secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_SA_TENANT_ID != '' && secrets.AZURE_SA_TENANT_ID || secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SA_SUBSCRIPTION_ID != '' && secrets.AZURE_SA_SUBSCRIPTION_ID || secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Provision isolated staging backup job and container
+        env:
+          BACKUP_ENV: staging
+          BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+          BACKUP_JOB_NAME: ${{ env.BACKUP_JOB_NAME }}
+          SOURCE_APP: ${{ env.SOURCE_APP }}
+          STORAGE_ACCOUNT: ${{ env.STORAGE_ACCOUNT }}
+          STORAGE_CONTAINER: ${{ env.STORAGE_CONTAINER }}
+        run: |
+          set -euo pipefail
+          test -n "$BACKUP_ENCRYPTION_KEY"
+          BACKUP_IMAGE=$(az containerapp show \
+            --name "$SOURCE_APP" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --query "properties.template.containers[0].image" \
+            --output tsv)
+          test -n "$BACKUP_IMAGE"
+          export BACKUP_IMAGE
+          az storage container create \
+            --account-name "$STORAGE_ACCOUNT" \
+            --name "$STORAGE_CONTAINER" \
+            --public-access off \
+            --auth-mode login \
+            --output none
+          bash backend/scripts/azure-provision-backup-job.sh
+      - name: Prepare unique backup artifact
+        id: backup_context
+        run: |
+          echo "run_id=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
+          echo "timestamp=$(date -u +'%Y-%m-%d_%H%M%S')" >> "$GITHUB_OUTPUT"
+          echo "started_epoch=$(date -u +%s)" >> "$GITHUB_OUTPUT"
+      - name: Run dedicated staging backup job
+        id: run_backup
+        run: |
+          set -euo pipefail
+          JOB_IMAGE=$(az containerapp job show \
+            --name "$BACKUP_JOB_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --query "properties.template.containers[0].image" \
+            --output tsv)
+          EXECUTION_NAME=$(az containerapp job start \
+            --name "$BACKUP_JOB_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --image "$JOB_IMAGE" \
+            --command bash /app/scripts/backup-db.sh \
+            --cpu 1.0 \
+            --memory 2Gi \
+            --env-vars \
+              "DATABASE_URL=secretref:database-url" \
+              "BACKUP_ENCRYPTION_KEY=secretref:backup-encryption-key" \
+              "AZURE_STORAGE_ACCOUNT=$STORAGE_ACCOUNT" \
+              "AZURE_STORAGE_CONTAINER=$STORAGE_CONTAINER" \
+              "VITORA_ENV=staging" \
+              "PGAPPNAME=vitora-staging-backup-job" \
+              "VITORA_BACKUP_TIMESTAMP=${{ steps.backup_context.outputs.timestamp }}" \
+              "VITORA_BACKUP_RUN_ID=${{ steps.backup_context.outputs.run_id }}" \
+            --query name \
+            --output tsv)
+          test -n "$EXECUTION_NAME"
+          for _ in $(seq 1 120); do
+            STATUS=$(az containerapp job execution show \
+              --name "$BACKUP_JOB_NAME" \
+              --resource-group "$AZURE_RESOURCE_GROUP" \
+              --job-execution-name "$EXECUTION_NAME" \
+              --query properties.status --output tsv 2>/dev/null || true)
+            case "$STATUS" in
+              Succeeded) break ;;
+              Failed|Canceled) echo "Backup job status: $STATUS"; exit 1 ;;
+            esac
+            sleep 15
+          done
+          test "$STATUS" = "Succeeded"
+          echo "artifact=vitora-staging-${{ steps.backup_context.outputs.timestamp }}-${{ steps.backup_context.outputs.run_id }}.sql.gz.gpg" >> "$GITHUB_OUTPUT"
+      - name: Verify encrypted staging artifact
+        run: |
+          set -euo pipefail
+          ARTIFACT="${{ steps.run_backup.outputs.artifact }}"
+          CREATED_AT=$(az storage blob show \
+            --account-name "$STORAGE_ACCOUNT" \
+            --container-name "$STORAGE_CONTAINER" \
+            --name "$ARTIFACT" \
+            --auth-mode login \
+            --query properties.creationTime --output tsv)
+          test -n "$CREATED_AT"
+          test "$(date -u -d "$CREATED_AT" +%s)" -ge "${{ steps.backup_context.outputs.started_epoch }}"
+          SIZE_BYTES=$(az storage blob show \
+            --account-name "$STORAGE_ACCOUNT" \
+            --container-name "$STORAGE_CONTAINER" \
+            --name "$ARTIFACT" \
+            --auth-mode login \
+            --query properties.contentLength --output tsv)
+          test "$SIZE_BYTES" -ge 1024

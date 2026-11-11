@@ -24,7 +24,7 @@ The attached package includes live TLS scans, Neon provider evidence, Azure Key 
 | Endpoint title | Retrieve active encryption control posture — SEC-ENC-001 |
 | HTTP method | `GET` |
 | URL | `https://staging-api.vitora.digital/api/core/security/encryption-status/` |
-| Authentication | DHA staging security-evidence administrator bearer JWT with `core.view_encryption_evidence` |
+| Authentication | DHA staging evidence-reader bearer JWT with `core.view_encryption_evidence` |
 | Required header | `X-Facility-ID: 13` |
 | Expected result | `200 OK`; active KMS provider/health, encryption algorithms, TLS requirements, encrypted-backup requirement, and media-storage posture |
 
