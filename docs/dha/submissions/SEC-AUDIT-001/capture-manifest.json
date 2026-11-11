@@ -12,6 +12,11 @@
   "sanitization": "Only seeded audit entries and the controlled village version diff are retained.",
   "screenshots": [
     {
+      "file": "04-audit-log-viewer-patient-402.png",
+      "viewport": "1440x1024",
+      "description": "Authenticated DHA auditor audit-log viewer filtered to the synthetic patient-update event for patient 402."
+    },
+    {
       "file": "04-audit-chain-integrity-dashboard.png",
       "viewport": "1440x1024",
       "description": "Authenticated DHA auditor read-only audit-chain dashboard."
