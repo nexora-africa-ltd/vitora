@@ -76,13 +76,13 @@
     },
     {
       "file": "07-encrypted-backup-artifact.txt",
-      "status": "pending",
-      "purpose": "Current Azure identity lacks Storage Blob Data Reader; capture after role assignment or from the backup operator."
+      "status": "complete",
+      "purpose": "Successful daily backup run 43084310258 produced a GPG-encrypted .sql.gz.gpg blob with paired checksum metadata."
     },
     {
       "file": "08-backup-checksum-and-restore-drill.txt",
-      "status": "pending",
-      "purpose": "Requires a completed encrypted backup and isolated restore drill."
+      "status": "complete",
+      "purpose": "Successful restore-drill run 43084560711 decrypted, checksum-verified, and restored the encrypted backup into isolated PostgreSQL."
     },
     {
       "file": "09-key-management-approval.pdf",

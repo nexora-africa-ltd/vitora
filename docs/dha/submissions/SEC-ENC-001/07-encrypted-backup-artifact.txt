@@ -1,0 +1,33 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
+# Purpose: Sanitized Azure Blob evidence for the SEC-ENC-001 encrypted database-backup artifact.
+# Use: Attach to DHA submission; contains metadata and checksum only, never backup contents or passphrases.
+# Inputs: Azure Blob properties and checksum captured 11 November 2026.
+
+SEC-ENC-001 — Encrypted Backup Artifact Evidence
+Evidence date: 11 November 2026
+Storage account: [redacted]
+Container: db-backups
+
+Daily backup workflow
+- GitHub Actions run: 43084310258
+- Result: success
+- URL: https://github.com/nexora-africa-ltd/vitora/actions/runs/43084310258
+- Completed: 2026-11-11T19:09:04Z
+
+Encrypted database backup blob
+- Name: vitora-production-2026-11-11_190814-43084310258-1.sql.gz.gpg
+- Created / last modified: 2026-11-11T19:08:45Z
+- Size: 1,313,795 bytes
+- Content type: application/octet-stream
+- Azure Blob server-side encryption: true
+
+Associated checksum blob
+- Name: vitora-production-2026-11-11_190814-43084310258-1.sql.gz.sha256
+- Created: 2026-11-11T19:08:45Z
+- Size: 123 bytes
+- Azure Blob server-side encryption: true
+- SHA-256 of decrypted/compressed database dump:
+  dd560d3e18f14c5234e88f9c389931332ba4868db73fd973535d6b2724f8655e
+
+The .gpg suffix demonstrates application-layer GPG AES-256 encryption before upload.
+No backup payload, passphrase, account key, SAS token, or connection string is included.
