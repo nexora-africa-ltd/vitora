@@ -112,6 +112,8 @@ def test_daily_backup_uses_a_dedicated_container_apps_job():
     assert "vitora-db-backup-prod-sa" in provisioner
     assert "DefaultAzureCredential" in backup_script
     assert "BACKUP_ENCRYPTION_KEY must be set" in backup_script
+    assert "GNUPGHOME=$(mktemp -d /tmp/vitora-gpg.XXXXXX)" in backup_script
+    assert "trap 'rm -rf \"$GNUPGHOME\"' EXIT" in backup_script
     assert '"BACKUP_ENCRYPTION_KEY=secretref:backup-encryption-key"' in workflow
     assert '"backup-encryption-key=$BACKUP_ENCRYPTION_KEY"' in provisioner
     assert '"BACKUP_ENCRYPTION_KEY=secretref:backup-encryption-key"' in provisioner

@@ -41,6 +41,10 @@ BACKUP_BASE="vitora-${ENVIRONMENT}-${TIMESTAMP}${BACKUP_RUN_ID:+-${BACKUP_RUN_ID
 BACKUP_FILE="${BACKUP_BASE}.sql.gz"
 RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-30}
 ENCRYPTION_ENABLED=false
+GNUPGHOME=$(mktemp -d /tmp/vitora-gpg.XXXXXX)
+export GNUPGHOME
+chmod 700 "$GNUPGHOME"
+trap 'rm -rf "$GNUPGHOME"' EXIT
 
 # ─── Alert Functions ────────────────────────────────────────────────────────
 send_slack() {
