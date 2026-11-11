@@ -1,0 +1,8 @@
+73db5d187f52f851f572e97891041833e44f73668f8e8e154d0ec125a4ff992e  docs/dha/submissions/SEC-AUDIT-001/README.md
+68ce21ea7f7e997ee2948847caeae9c330883a3f80c1ad14ad4a6b53eb412b87  docs/dha/submissions/SEC-AUDIT-001/automated-test-report.txt
+1d24b8d1f2ec9ef087612d8313e966ff913fdca8fa4ab3c0655b0cf03c9c447c  docs/dha/submissions/SEC-AUDIT-001/01-patient-402-audit-log-response.json
+1d6efee43fe0ea71e9fb84b49bfbd7b6477013cc32befb35e91aa73fa23bc442  docs/dha/submissions/SEC-AUDIT-001/02-patient-402-version-history-response.json
+6648c1a1ce450e784321348daee4e81395de84adcadedc7dd1651aace9b61ad4  docs/dha/submissions/SEC-AUDIT-001/04-audit-chain-integrity-dashboard.png
+7bb40d204929e0cbbf88119862322bd36e05305a4a75a935013ba1a3e10148e9  docs/dha/submissions/SEC-AUDIT-001/06-patient-history-402.png
+92f08226cf44ba2e6b08a562fb310abba9a16dcf4a85e99402b3d7c95d5d13b3  docs/dha/submissions/SEC-AUDIT-001/capture-manifest.json
+2b98c9d67ef4d2f97550430c5367c3808b4c5d22166506369021f285f1069616  docs/dha/submissions/SEC-AUDIT-001-audit-logging-trail.md

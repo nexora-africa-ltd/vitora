@@ -302,6 +302,10 @@ class AuditLogAdmin(admin.ModelAdmin):
         """Prevent modification of audit logs."""
         return False
 
+    def has_delete_permission(self, request, obj=None):
+        """Prevent deletion of audit evidence, including by superusers."""
+        return False
+
 
 @admin.register(FeatureFlag)
 class FeatureFlagAdmin(admin.ModelAdmin):
@@ -312,10 +316,6 @@ class FeatureFlagAdmin(admin.ModelAdmin):
     search_fields = ["name", "description"]
     list_editable = ["is_enabled"]
     readonly_fields = ["created_at", "updated_at"]
-
-    def has_delete_permission(self, request, obj=None):
-        """Prevent deletion of audit logs."""
-        return False
 
 
 @admin.register(County)

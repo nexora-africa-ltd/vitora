@@ -633,6 +633,57 @@ class TestAuditLogAPI:
             status.HTTP_405_METHOD_NOT_ALLOWED,
         ]
 
+    def test_audit_logs_filter_by_patient_id(self, api_client, test_user, sample_facility):
+        """Audit reviewers can isolate evidence for a specific patient."""
+        from hmis.apps.core.models import AuditLog
+
+        expected_log = AuditLog.log(
+            action="patient_update",
+            user=test_user,
+            resource_type="Patient",
+            resource_id=402,
+            patient_id=402,
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+        AuditLog.log(
+            action="patient_update",
+            user=test_user,
+            resource_type="Patient",
+            resource_id=403,
+            patient_id=403,
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+
+        api_client.force_authenticate(user=test_user)
+        response = api_client.get(
+            "/api/auditlogs/?patient_id=402",
+            HTTP_X_FACILITY_ID=str(sample_facility.id),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        entries = response.data["results"]
+        assert [entry["id"] for entry in entries] == [expected_log.id]
+
+    def test_superuser_cannot_delete_audit_logs_in_django_admin(self, rf, db):
+        """Django admin must not expose deletion of audit evidence to superusers."""
+        from django.contrib import admin
+
+        from hmis.apps.core.models import AuditLog
+
+        superuser = User.objects.create_superuser(
+            username="auditadmin-no-delete",
+            email="auditadmin-no-delete@example.com",
+            password="adminpassword123",
+        )
+        request = rf.post("/admin/core/auditlog/1/delete/")
+        request.user = superuser
+
+        audit_log_admin = admin.site._registry[AuditLog]
+
+        assert audit_log_admin.has_delete_permission(request) is False
+
 
 # ============================================================================
 # Kenya Data Protection Act Compliance Tests
@@ -712,3 +763,71 @@ class TestKenyaDPACompliance:
         assert AuditLog.objects.filter(id=log.id).exists()
 
         # Note: Actual retention enforcement would be via management command
+
+    def test_organization_cannot_configure_audit_retention_below_seven_years(
+        self, sample_organization
+    ):
+        """The regulatory minimum must be enforced at application validation."""
+        from django.core.exceptions import ValidationError
+
+        sample_organization.data_retention_years = 6
+
+        with pytest.raises(ValidationError, match="at least 7 years"):
+            sample_organization.full_clean()
+
+    def test_database_rejects_retention_below_seven_years(self, sample_organization):
+        """Bulk updates must not bypass the seven-year retention minimum."""
+        from django.db import IntegrityError
+
+        from hmis.apps.core.models import Organization
+
+        with pytest.raises(IntegrityError):
+            Organization.objects.filter(pk=sample_organization.pk).update(data_retention_years=6)
+
+    def test_tenant_admin_cannot_update_retention_policy(
+        self, api_client, test_user, sample_organization, sample_facility
+    ):
+        """Retention policy changes are reserved for Nexora platform staff."""
+        from hmis.apps.core.models import Role
+
+        tenant_admin_role, _ = Role.objects.get_or_create(
+            code="ORG-ADMIN",
+            defaults={"name": "Organization Administrator", "hierarchy_level": 1},
+        )
+        test_user.staff_profile.primary_role = tenant_admin_role
+        test_user.staff_profile.save(update_fields=["primary_role"])
+        api_client.force_authenticate(user=test_user)
+
+        response = api_client.patch(
+            f"/api/organizations/{sample_organization.id}/",
+            {"data_retention_years": 8},
+            format="json",
+            HTTP_X_FACILITY_ID=str(sample_facility.id),
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        sample_organization.refresh_from_db()
+        assert sample_organization.data_retention_years == 7
+
+    def test_platform_staff_can_extend_retention_policy(
+        self, api_client, sample_organization, sample_facility
+    ):
+        """Nexora platform staff can set a compliant, longer retention period."""
+        platform_user = User.objects.create_user(
+            username="platform-staff",
+            email="platform-staff@example.com",
+            password="staffpassword123",
+            is_staff=True,
+        )
+        api_client.force_authenticate(user=platform_user)
+
+        response = api_client.patch(
+            f"/api/organizations/{sample_organization.id}/",
+            {"data_retention_years": 8},
+            format="json",
+            HTTP_X_FACILITY_ID=str(sample_facility.id),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        sample_organization.refresh_from_db()
+        assert sample_organization.data_retention_years == 8

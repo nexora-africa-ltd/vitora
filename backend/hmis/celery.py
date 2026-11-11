@@ -87,6 +87,7 @@ app.conf.task_routes = {
     "hmis.apps.scheduling.tasks.send_shift_reminders": {"queue": "monitoring"},
     # HWR license verification
     "hmis.apps.core.tasks.verify_staff_hwr_licenses": {"queue": "monitoring"},
+    "core.verify_audit_chain_integrity": {"queue": "monitoring"},
     # Laboratory analyzer tasks
     "laboratory.analyzers.check_channel_health": {"queue": "monitoring"},
     "laboratory.analyzers.retry_failed_messages": {"queue": "maintenance"},
@@ -117,6 +118,10 @@ app.conf.beat_schedule = {
     },
     "retry-failed-entries-hourly": {
         "task": "hmis.apps.core.tasks.retry_failed_entries",
+        "schedule": 3600.0,  # Every hour
+    },
+    "verify-audit-chain-integrity-hourly": {
+        "task": "core.verify_audit_chain_integrity",
         "schedule": 3600.0,  # Every hour
     },
     "generate-monthly-clinic-reports": {

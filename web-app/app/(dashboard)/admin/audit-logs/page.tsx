@@ -36,6 +36,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { useAuditLogs, type AuditAction } from '@/lib/hooks/use-rbac';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { useFacility } from '@/lib/context/facility-context';
 import { AdminStatCard } from '@/components/admin/admin-stat-card';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -78,13 +79,17 @@ export default function AuditLogsPage() {
   const [actionFilter, setActionFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
   const { refresh, isRefreshing } = usePageRefresh();
+  const { facility } = useFacility();
 
-  const { data, isLoading, error, refetch } = useAuditLogs({
-    page,
-    page_size: PAGE_SIZE,
-    search: search || undefined,
-    action: actionFilter !== 'all' ? (actionFilter as AuditAction) : undefined,
-  });
+  const { data, isLoading, error, refetch } = useAuditLogs(
+    {
+      page,
+      page_size: PAGE_SIZE,
+      search: search || undefined,
+      action: actionFilter !== 'all' ? (actionFilter as AuditAction) : undefined,
+    },
+    facility?.id
+  );
 
   const totalPages = data ? Math.ceil(data.count / PAGE_SIZE) : 0;
   const hasNext = !!data?.next;

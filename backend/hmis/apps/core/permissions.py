@@ -414,6 +414,23 @@ class AuditLogPermission(permissions.BasePermission):
         )
 
 
+class AuditIntegrityPermission(permissions.BasePermission):
+    """Allow audit-chain operations only to platform or tenant administrators."""
+
+    ADMIN_ROLE_CODES = {"ADMIN", "ORG-ADMIN", "OWNER"}
+
+    def has_permission(self, request, view):
+        """Require an authenticated user with an administrative role."""
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser or user.is_staff:
+            return True
+        profile = getattr(user, "staff_profile", None)
+        role = getattr(profile, "primary_role", None) if profile else None
+        return bool(role and getattr(role, "code", "") in self.ADMIN_ROLE_CODES)
+
+
 class PatientPermission(permissions.BasePermission):
     """
     Permission class for patient access with sensitive data filtering.

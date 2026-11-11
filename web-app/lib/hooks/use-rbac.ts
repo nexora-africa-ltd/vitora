@@ -338,9 +338,16 @@ export function useDeleteOrgMembership() {
 // Audit Log Hooks
 // =============================================================================
 
-export function useAuditLogs(params?: AuditLogListParams) {
+/** Build a facility-scoped cache key for the audit-log list. */
+export function getAuditLogsQueryKey(params?: AuditLogListParams, facilityId?: number | null) {
+  return ['audit-logs', facilityId ?? null, params] as const;
+}
+
+export function useAuditLogs(params?: AuditLogListParams, facilityId?: number | null) {
   return useQuery({
-    queryKey: ['audit-logs', params],
+    // Audit records are facility-scoped. Including the active facility prevents
+    // an early/unscoped request from being rendered after facility context loads.
+    queryKey: getAuditLogsQueryKey(params, facilityId),
     queryFn: () => auditLogsApi.list(params),
   });
 }

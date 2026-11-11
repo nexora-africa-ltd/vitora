@@ -11,6 +11,7 @@ Supported inputs/args:
 - Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -194,6 +195,9 @@ class Organization(TimeStampedModel):
 
     data_retention_years = models.PositiveIntegerField(
         default=7,
+        validators=[
+            MinValueValidator(7, message="Audit records must be retained for at least 7 years.")
+        ],
         help_text="Minimum data retention period in years (Kenya DPA default: 7).",
     )
 
@@ -254,6 +258,12 @@ class Organization(TimeStampedModel):
         verbose_name = "Organization"
         verbose_name_plural = "Organizations"
         ordering = ["name"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(data_retention_years__gte=7),
+                name="organization_audit_retention_minimum_seven_years",
+            )
+        ]
 
     def __str__(self) -> str:
         """Return the organization name."""

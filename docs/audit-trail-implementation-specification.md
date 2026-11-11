@@ -31,7 +31,7 @@ Source-controlled settings establish a default seven-year retention period. The 
 | Unauthorized API mutation prevention | Audit-log API exposes list/retrieve only; mutation methods are not exposed | Application API |
 | Integrity verification | On-demand verification, diagnostics, management commands, and verification task | Global chain; facility views validate entry hashes in scope |
 | Tamper notification | Critical in-app notifications for active superusers when verification detects a mismatch | Configured asynchronous execution environment |
-| Retention | Organization default `data_retention_years=7` | Audit-trail retention policy |
+| Retention | Organization retention configuration defaults to, and is database-constrained to, a minimum `data_retention_years=7` | Audit-trail retention policy |
 
 ## 3. Audit-Record Architecture
 
@@ -191,7 +191,7 @@ If an integrity result is invalid:
 
 ### 7.1 Minimum retention period
 
-`Organization.data_retention_years` defaults to **7 years** and is described by the application as the Kenya DPA default minimum. For this specification, AuditLog records and integrity-verification evidence must be retained for at least seven years from the applicable event date, unless a longer legal, contractual, clinical, tax, litigation-hold, or investigation requirement applies.
+`Organization.data_retention_years` defaults to **7 years** and is protected by application validation and a database constraint from being reduced below that minimum. For this specification, AuditLog records and integrity-verification evidence must be retained for at least seven years from the applicable event date, unless a longer legal, contractual, clinical, tax, litigation-hold, or investigation requirement applies.
 
 The retention period applies to:
 

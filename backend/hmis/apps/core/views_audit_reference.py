@@ -34,7 +34,7 @@ from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.mixins import ListModelMixin, RetrieveModelMixin
-from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -67,6 +67,7 @@ from .models import (
 )
 from .openapi import SchemaFallbackSerializer
 from .permissions import (
+    AuditIntegrityPermission,
     AuditLogPermission,
     FacilityAdminPermission,
     ReadRequiresModelPermission,
@@ -322,7 +323,7 @@ class AuditLogViewSet(
     queryset = AuditLog.objects.all()
     serializer_class = AuditLogSerializer
     permission_classes = [AuditLogPermission]
-    filterset_fields = ["action", "resource_type", "user"]
+    filterset_fields = ["action", "resource_type", "user", "patient_id"]
     search_fields = ["action", "resource_type", "user__username"]
     ordering_fields = ["timestamp", "action"]
     ordering = ["-timestamp"]
@@ -368,7 +369,7 @@ class AuditLogViewSet(
 
         return queryset
 
-    @action(detail=False, methods=["get"], permission_classes=[IsAdminUser])
+    @action(detail=False, methods=["get"], permission_classes=[AuditIntegrityPermission])
     def chain_status(self, request):
         """Get audit hash chain health summary."""
         from .services.audit_integrity import AuditIntegrityService
@@ -385,7 +386,7 @@ class AuditLogViewSet(
         status_data = service.get_chain_status(facility=facility)
         return Response(status_data)
 
-    @action(detail=False, methods=["post"], permission_classes=[IsAdminUser])
+    @action(detail=False, methods=["post"], permission_classes=[AuditIntegrityPermission])
     def verify_integrity(self, request):
         """Trigger on-demand audit chain integrity verification."""
         from .services.audit_integrity import AuditIntegrityService
@@ -429,7 +430,7 @@ class AuditLogViewSet(
             }
         )
 
-    @action(detail=False, methods=["get"], permission_classes=[IsAdminUser])
+    @action(detail=False, methods=["get"], permission_classes=[AuditIntegrityPermission])
     def chain_diagnostics(self, request):
         """Return mismatch ranges and transition points for audit chain diagnostics."""
         from .services.audit_integrity import AuditIntegrityService

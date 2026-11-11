@@ -342,7 +342,7 @@ class KeyRotationService:
         try:
             from hmis.apps.core.models import AuditLog
 
-            AuditLog.objects.create(
+            AuditLog.log(
                 action="key_rotation",
                 resource_type="KMS",
                 resource_id=hash(new_metadata.key_id) % (10**9),  # Convert to int
