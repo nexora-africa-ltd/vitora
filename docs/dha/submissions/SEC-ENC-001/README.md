@@ -18,7 +18,7 @@ Inputs: DHA staging security-administrator account, Azure/Neon evidence access, 
 | Endpoint title | Retrieve active encryption control posture — SEC-ENC-001 |
 | HTTP method | `GET` |
 | URL | `https://staging-api.vitora.digital/api/core/security/encryption-status/` |
-| Authentication | DHA staging platform-security administrator bearer JWT with `core.view_encryption_evidence` |
+| Authentication | DHA staging evidence-reader bearer JWT with `core.view_encryption_evidence` |
 | Required header | `X-Facility-ID: 13` |
 | Expected result | `200 OK`; non-secret active KMS status/provider, field-encryption algorithms, TLS requirements, encrypted-backup enforcement, and media-storage posture |
 

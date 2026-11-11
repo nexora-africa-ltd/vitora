@@ -344,14 +344,27 @@ class IsAdminUser(permissions.BasePermission):
 
 
 class EncryptionEvidencePermission(permissions.BasePermission):
-    """Restrict platform encryption evidence to explicitly authorized staff."""
+    """Restrict encryption evidence to the dedicated DHA-reader permission."""
 
     permission_name = "core.view_encryption_evidence"
 
     def has_permission(self, request, view):
-        """Require the dedicated permission; superusers retain Django's implicit grant."""
+        """Require the dedicated Django permission; superusers retain its implicit grant."""
         user = request.user
         return bool(user and user.is_authenticated and user.has_perm(self.permission_name))
+
+
+class BackupRecoveryEvidencePermission(EncryptionEvidencePermission):
+    """Restrict platform backup and recovery evidence to authorized staff."""
+
+    permission_name = "core.view_backup_recovery_evidence"
+
+    def has_permission(self, request, view):
+        """Require platform-staff status for infrastructure recovery posture."""
+        user = request.user
+        return bool(
+            user and user.is_authenticated and user.is_staff and user.has_perm(self.permission_name)
+        )
 
 
 class FacilityAdminPermission(permissions.BasePermission):

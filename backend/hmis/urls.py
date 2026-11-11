@@ -72,6 +72,7 @@ from hmis.apps.core.views import (
     WardViewSet,
     me_permissions,
 )
+from hmis.apps.core.views_backup_recovery_status import BackupRecoveryStatusView
 from hmis.apps.core.views_encryption_status import EncryptionStatusView
 from hmis.apps.encounters.views import (
     ApplyTemplateView,
@@ -931,6 +932,11 @@ urlpatterns = [
         "api/core/security/encryption-status/",
         EncryptionStatusView.as_view(),
         name="encryption-status",
+    ),
+    path(
+        "api/core/security/backup-recovery-status/",
+        BackupRecoveryStatusView.as_view(),
+        name="backup-recovery-status",
     ),
     path("admin/mfa-verify/", admin_mfa_verify, name="admin-mfa-verify"),
     path("admin/mfa-verify/webauthn/begin/", admin_webauthn_begin, name="admin-webauthn-begin"),

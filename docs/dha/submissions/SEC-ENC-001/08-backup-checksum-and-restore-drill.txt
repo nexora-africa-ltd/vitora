@@ -1,0 +1,28 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
+# Purpose: Sanitized GitHub Actions evidence for the SEC-ENC-001 encrypted backup restore drill.
+# Use: Attach to DHA submission; records the verified workflow outcome without credentials or backup contents.
+# Inputs: GitHub Actions restore-drill run 43084560711 and its successful workflow log.
+
+SEC-ENC-001 — Encrypted Backup Checksum and Restore Drill
+Evidence date: 11 November 2026
+
+Restore drill workflow
+- Workflow: Monthly Restore Drill
+- GitHub Actions run: 43084560711
+- Result: success
+- Started: 2026-11-11T19:09:35Z
+- Completed: 2026-11-11T19:10:26Z
+- Commit: b3ef81c3382bfae1e8e29526dc9451dfe4fe7656
+- URL: https://github.com/nexora-africa-ltd/vitora/actions/runs/43084560711
+
+Verified workflow actions
+1. Selected the newest encrypted backup:
+   vitora-production-2026-11-11_190814-43084310258-1.sql.gz.gpg
+2. Downloaded its paired .sha256 checksum artifact from the private backup container.
+3. Decrypted the .gpg artifact with the protected BACKUP_ENCRYPTION_KEY.
+4. Calculated SHA-256 over the decrypted compressed dump and compared it to the paired checksum.
+5. Restored the verified dump into an isolated PostgreSQL 18 drill database with ON_ERROR_STOP enabled.
+6. Queried django_migrations after restore; the GitHub workflow completed successfully.
+
+The successful workflow conclusion is the authoritative verification that decryption, checksum comparison, and isolated restore all completed without error.
+No backup payload, passphrase, storage account key, database connection string, or token is included.

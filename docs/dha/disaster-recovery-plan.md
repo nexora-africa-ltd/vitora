@@ -23,7 +23,7 @@ This plan does not replace a facility's clinical downtime procedure. Facilities 
 
 | Objective                      |   Target | Measurement                                                           |
 | ------------------------------ | -------: | --------------------------------------------------------------------- |
-| Recovery Time Objective (RTO)  | 24 hours | Time from declared recovery incident to restored and verified service |
+| Recovery Time Objective (RTO)  | 4 hours | Time from declared recovery incident to restored and verified service |
 | Recovery Point Objective (RPO) | 24 hours | Maximum accepted data loss window based on daily backup cadence       |
 | Backup frequency               |    Daily | Scheduled production database backup at 02:00 UTC / 05:00 EAT         |
 | Restore validation             |  Monthly | Isolated restore drill of the latest backup                           |
@@ -81,7 +81,7 @@ The Incident Commander records the start time, affected services, decision owner
 4. For a release-related failure, Operations Lead rolls back to the last known-good revision. For runtime or infrastructure loss, redeploy the approved application revision and required configuration into the approved recovery environment.
 5. Restore database or object-storage data only when a dependency failure cannot be corrected without restoration; otherwise preserve the current data state.
 6. Validate HTTPS, authentication, tenant isolation, critical API health, audit logging, background jobs, and essential clinical workflows before inviting facility users back to the service.
-7. Incident Commander approves service restoration, Communications Lead sends the recovery update, and the team records the elapsed recovery time against the 24-hour RTO.
+7. Incident Commander approves service restoration, Communications Lead sends the recovery update, and the team records the elapsed recovery time against the four-hour RTO.
 
 ### 6.2 Data Loss, Corruption, Or Failed Migration
 
@@ -141,7 +141,7 @@ Facility-hub recovery uses encrypted backup bundles and the dedicated hub restor
 Within ten business days of a material incident or recovery exercise, the Incident Commander must convene a review with the Operations Lead, Security Lead, Application Lead, Clinical/Facility Liaison, and Data Protection Officer/Compliance Lead as applicable. The review record must include:
 
 - Timeline, incident classification, affected systems, and decisions made.
-- Measured recovery time and recovery point, assessed against the 24-hour RTO and 24-hour RPO.
+- Measured recovery time and recovery point, assessed against the four-hour RTO and 24-hour RPO.
 - Confirmed or suspected impact on confidentiality, integrity, availability, and clinical operations.
 - Reconciliation outcome for downtime, offline, and delayed records.
 - Root cause, corrective actions, action owners, deadlines, and verification status.

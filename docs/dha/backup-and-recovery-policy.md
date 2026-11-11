@@ -103,7 +103,7 @@ For end-of-life physical backup media, the responsible asset owner must use a re
 | ---------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | Full snapshot | Daily GitHub Actions production database backup at 02:00 UTC / 05:00 EAT | Must meet Tier 1 snapshot, encryption, alerting, and offsite-copy requirements. |
 | Current baseline RPO | 24 hours from daily snapshot cadence | Must improve to 15 minutes when approved transaction-log capture is enabled. |
-| Current baseline RTO | 24 hours | Must remain within Tier 1 RTO and below the 48-hour MTPD. |
+| Current baseline RTO | 4 hours | Must meet the approved Tier 1 RTO and remain below the 48-hour MTPD. |
 | Backup content | PostgreSQL dump and SHA-256 checksum | `backend/scripts/backup-db.sh`; add approved incremental/log and configuration backups. |
 | Current storage | Private Azure Blob `db-backups` container with public access disabled | Add separate immutable offsite copy and evidence its residency and retention lock. |
 | Current operational retention | 30 days in backup script configuration | Add protected 20-year PHI archive and tiered lifecycle policy. |
@@ -186,7 +186,7 @@ Fernet provides authenticated encryption but does not by itself demonstrate the 
 
 Unauthorized modification, deletion, disabling, encryption, or destruction of backup data; bypassing backup controls; or failure to maintain required backup procedures is a security and compliance incident. It may result in access suspension, disciplinary action under employment or supplier terms, contractual remedies, reporting to regulators or law enforcement where required, and any other legal consequence available under applicable law.
 
-Any inability to meet the backup schedule, 3-2-1 rule, encryption, immutability, residency, retention, 24-hour RPO, 24-hour RTO, or MTPD target must be recorded as an operational risk with compensating controls, owner, expiry date, and approval from the Security Lead, DPO, and designated facility representative. This policy is reviewed annually and after a restore failure, security incident, material infrastructure change, supplier change, or legal/regulatory change.
+Any inability to meet the backup schedule, 3-2-1 rule, encryption, immutability, residency, retention, 24-hour RPO, four-hour RTO, or MTPD target must be recorded as an operational risk with compensating controls, owner, expiry date, and approval from the Security Lead, DPO, and designated facility representative. This policy is reviewed annually and after a restore failure, security incident, material infrastructure change, supplier change, or legal/regulatory change.
 
 \newpage
 
