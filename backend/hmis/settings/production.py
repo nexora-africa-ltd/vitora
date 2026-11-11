@@ -52,6 +52,7 @@ else:
             "PORT": os.getenv("DB_PORT", "5432"),
             "CONN_MAX_AGE": DB_CONN_MAX_AGE,
             "DISABLE_SERVER_SIDE_CURSORS": True,
+            "OPTIONS": {"sslmode": "require"},
         }
     }
 
@@ -207,6 +208,11 @@ if REDIS_URL:
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "")
 FIELD_ENCRYPTION_KEY = ENCRYPTION_KEY
 PII_HMAC_KEY = os.getenv("PII_HMAC_KEY", "")
+BACKUP_ENCRYPTION_REQUIRED = True
+
+# External LIS traffic carries clinical data and must use authenticated TLS.
+MLLP_USE_SSL = os.getenv("MLLP_USE_SSL", "true").lower() == "true"
+MLLP_SSL_VERIFY = os.getenv("MLLP_SSL_VERIFY", "true").lower() == "true"
 
 if not ENCRYPTION_KEY:
     import warnings

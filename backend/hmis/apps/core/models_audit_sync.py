@@ -264,6 +264,9 @@ class AuditLog(models.Model):
         ]
         verbose_name = "Audit Log"
         verbose_name_plural = "Audit Logs"
+        permissions = [
+            ("view_encryption_evidence", "Can view encryption certification evidence"),
+        ]
 
     def __str__(self) -> str:
         """String representation of the audit log entry."""

@@ -1,0 +1,7 @@
+{
+  "created": "2026-10-02T18:46:06+00:00",
+  "enabled": true,
+  "keyType": "RSA",
+  "recoveryLevel": "Recoverable+Purgeable",
+  "updated": "2026-10-02T18:46:06+00:00"
+}

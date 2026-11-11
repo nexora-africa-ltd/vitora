@@ -111,6 +111,19 @@ def test_daily_backup_uses_a_dedicated_container_apps_job():
     assert "DATABASE_URL=secretref:database-url" in provisioner
     assert "vitora-db-backup-prod-sa" in provisioner
     assert "DefaultAzureCredential" in backup_script
+    assert "BACKUP_ENCRYPTION_KEY must be set" in backup_script
+    assert '"BACKUP_ENCRYPTION_KEY=secretref:backup-encryption-key"' in workflow
+    assert '"backup-encryption-key=$BACKUP_ENCRYPTION_KEY"' in provisioner
+    assert '"BACKUP_ENCRYPTION_KEY=secretref:backup-encryption-key"' in provisioner
+    assert ".sql.gz.gpg" in workflow.split('echo "artifact=', 1)[1].split("Prune old backups", 1)[0]
+    staging_env_update = (REPO_ROOT / "backend" / "scripts" / "azure-update-env.sh").read_text()
+    production_env_update = (
+        REPO_ROOT / "backend" / "scripts" / "azure-update-env-production.sh"
+    ).read_text()
+    assert "encrypted production-style backups are mandatory" not in staging_env_update
+    assert "BACKUP_ENCRYPTION_KEY must be set" in production_env_update
+    assert "az containerapp job secret set" in production_env_update
+    assert "az containerapp job secret list" in production_env_update
     assert (
         "AZURE_STORAGE_SAS_TOKEN"
         not in workflow.split("Run dedicated backup job", 1)[1].split("Prune old backups", 1)[0]
@@ -121,6 +134,22 @@ def test_daily_backup_uses_a_dedicated_container_apps_job():
     assert "az containerapp job update" in backup_job_update
     assert "--set-env-vars" in backup_job_update
     assert "--env-vars" not in backup_job_update.split("Run post-deploy maintenance", 1)[0]
+    assert "az containerapp job secret list" in backup_job_update
+    assert '"$AZURE_BACKUP_ENCRYPTION_KEY" != "$BACKUP_ENCRYPTION_KEY"' in backup_job_update
+
+
+def test_backend_image_contains_gpg_for_mandatory_encrypted_backups():
+    """The backup job uses the backend image and must include its encryption binary."""
+    dockerfile = (REPO_ROOT / "backend" / "Dockerfile").read_text()
+
+    assert "gnupg" in dockerfile
+
+
+def test_storage_provisioning_disables_public_blob_access():
+    """Cloud storage hosting backups and documents must not allow public blobs."""
+    provisioner = (REPO_ROOT / "scripts" / "azure-provision-sa.sh").read_text()
+
+    assert "--allow-blob-public-access false" in provisioner
 
 
 def test_locust_scenario_is_environment_configured_and_safe_by_default():

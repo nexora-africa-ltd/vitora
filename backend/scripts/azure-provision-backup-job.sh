@@ -18,6 +18,12 @@ STORAGE_ACCOUNT="${STORAGE_ACCOUNT:-vitorabackupssa}"
 STORAGE_CONTAINER="${STORAGE_CONTAINER:-db-backups}"
 SOURCE_APP="${SOURCE_APP:-vitora-api-prod-private-sa}"
 STORAGE_SCOPE="$(az storage account show --name "$STORAGE_ACCOUNT" --resource-group "$RG" --query id --output tsv)"
+BACKUP_ENCRYPTION_KEY="${BACKUP_ENCRYPTION_KEY:-}"
+
+if [[ -z "$BACKUP_ENCRYPTION_KEY" ]]; then
+  echo "ERROR: BACKUP_ENCRYPTION_KEY must be set to provision encrypted backups." >&2
+  exit 1
+fi
 
 if az containerapp job show --name "$JOB_NAME" --resource-group "$RG" >/dev/null 2>&1; then
   echo "Backup job '$JOB_NAME' already exists; retaining its secret configuration."
@@ -52,9 +58,10 @@ else
     --registry-server "$REGISTRY_SERVER" \
     --registry-username "$REGISTRY_USERNAME" \
     --registry-password "$REGISTRY_PASSWORD" \
-    --secrets "database-url=$DATABASE_URL" \
+    --secrets "database-url=$DATABASE_URL" "backup-encryption-key=$BACKUP_ENCRYPTION_KEY" \
     --env-vars \
       "DATABASE_URL=secretref:database-url" \
+      "BACKUP_ENCRYPTION_KEY=secretref:backup-encryption-key" \
       "AZURE_STORAGE_ACCOUNT=$STORAGE_ACCOUNT" \
       "AZURE_STORAGE_CONTAINER=$STORAGE_CONTAINER" \
       "VITORA_ENV=production" \
@@ -62,6 +69,18 @@ else
     --command bash /app/scripts/backup-db.sh \
     --output none
 fi
+
+# Ensure both fresh and pre-existing jobs receive the mandatory encryption secret.
+az containerapp job secret set \
+  --name "$JOB_NAME" \
+  --resource-group "$RG" \
+  --secrets "backup-encryption-key=$BACKUP_ENCRYPTION_KEY" \
+  --output none
+az containerapp job update \
+  --name "$JOB_NAME" \
+  --resource-group "$RG" \
+  --set-env-vars "BACKUP_ENCRYPTION_KEY=secretref:backup-encryption-key" \
+  --output none
 
 az containerapp job identity assign \
   --name "$JOB_NAME" \

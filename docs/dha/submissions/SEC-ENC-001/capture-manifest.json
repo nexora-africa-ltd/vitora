@@ -1,0 +1,98 @@
+{
+  "test_id": "SEC-ENC-001",
+  "captured_at": "2026-11-11T18:02:05.464461+00:00",
+  "environment": "DHA staging",
+  "sanitization": "No tokens, secrets, credentials, patient data, or backup contents are included.",
+  "artifacts": [
+    {
+      "file": "01-encryption-status-unauthenticated-response.json",
+      "status": "complete_auxiliary",
+      "purpose": "Proves the certification endpoint rejects unauthenticated access (HTTP 401)."
+    },
+    {
+      "file": "01-encryption-status-response.json",
+      "status": "complete",
+      "purpose": "Authenticated staging response verified healthy with AzureKeyVaultProvider."
+    },
+    {
+      "file": "02-tls-certificate.txt",
+      "status": "complete",
+      "purpose": "Live certificate chain, hostname, issuer, and validity period."
+    },
+    {
+      "file": "03-tls-protocol-scan.txt",
+      "status": "complete",
+      "purpose": "TLS 1.2 and TLS 1.3 connection results."
+    },
+    {
+      "file": "03-tls-cipher-scan.txt",
+      "status": "complete",
+      "purpose": "Nmap TLS cipher enumeration; TLS 1.2 and TLS 1.3 only."
+    },
+    {
+      "file": "04-database-encryption-at-rest.md",
+      "status": "complete",
+      "purpose": "Neon provider AES-256 at-rest and TLS evidence mapping."
+    },
+    {
+      "file": "neon-security-overview.md",
+      "status": "complete",
+      "purpose": "Copied Neon Security & Compliance source used by the database encryption evidence mapping."
+    },
+    {
+      "file": "04-neon-console-project-context-sanitized.png",
+      "status": "complete",
+      "purpose": "Sanitized project/production-branch context."
+    },
+    {
+      "file": "05-key-vault-key-and-identity.json",
+      "status": "complete",
+      "purpose": "Enabled KEK attributes."
+    },
+    {
+      "file": "05-container-app-managed-identity.json",
+      "status": "complete",
+      "purpose": "System-assigned workload identity confirmation."
+    },
+    {
+      "file": "05-key-vault-key-and-identity-roles.json",
+      "status": "complete",
+      "purpose": "Sanitized Key Vault role names assigned to the workload identity."
+    },
+    {
+      "file": "05-key-vault-rotation-policy.json",
+      "status": "complete",
+      "purpose": "Current KEK expiry notification policy."
+    },
+    {
+      "file": "06-media-storage-encryption.json",
+      "status": "complete",
+      "purpose": "Azure Storage SSE enabled, TLS 1.2, secure transfer, and public-blob access disabled."
+    },
+    {
+      "file": "06-backup-container-access.json",
+      "status": "complete",
+      "purpose": "Backup container has no anonymous public access."
+    },
+    {
+      "file": "07-encrypted-backup-artifact.txt",
+      "status": "pending",
+      "purpose": "Current Azure identity lacks Storage Blob Data Reader; capture after role assignment or from the backup operator."
+    },
+    {
+      "file": "08-backup-checksum-and-restore-drill.txt",
+      "status": "pending",
+      "purpose": "Requires a completed encrypted backup and isolated restore drill."
+    },
+    {
+      "file": "09-key-management-approval.pdf",
+      "status": "awaiting_signature",
+      "purpose": "Unsigned approval record prepared for Security Officer, DPO, Platform Owner, and CTO/Engineering Lead signatures."
+    },
+    {
+      "file": "automated-test-report.txt",
+      "status": "complete",
+      "purpose": "Targeted encryption regression test report."
+    }
+  ]
+}

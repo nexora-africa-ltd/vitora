@@ -32,7 +32,7 @@ This document distinguishes software capability from verified production operati
 | Search without plaintext storage | HMAC blind index | Eligible PII lookup fields with distinct `PII_HMAC_KEY` | Verify separate key, index scope, and no plaintext lookup storage |
 | Transport encryption | HTTPS and WSS | Browser, API, WebSocket, integration, and Front Door/public ingress traffic | Verify certificate chain, TLS settings, HTTPS redirect, and endpoint scan results |
 | Cloud KMS capability | Azure Key Vault provider | Envelope encryption and key wrapping when `KMS_PROVIDER=azure` | Verify deployed provider, managed identity, Key Vault key, access policy, and rotation evidence |
-| Backup encryption | GPG AES-256 when backup passphrase is supplied | Database backup files before Azure Blob upload | Verify `BACKUP_ENCRYPTION_KEY`, encrypted backup artifact, checksum, and restore drill |
+| Backup encryption | Mandatory GPG AES-256 | Database backup files before Azure Blob upload | Verify `BACKUP_ENCRYPTION_KEY`, encrypted backup artifact, checksum, and restore drill |
 | Offline minimization | PowerSync Sync Streams exclusions | Browser-local PowerSync SQLite projection | Verify encrypted direct identifiers and keys are excluded from sync streams |
 
 ## 3. Data at Rest: PII Field Encryption
@@ -230,17 +230,17 @@ Recovery escrow stores only Azure Key Vault-wrapped database-key ciphertext. Rec
 
 ## 7. Backup Encryption
 
-The repository contains two database backup scripts with different missing-key behavior. The production runbook must identify which script is scheduled in each environment and retain evidence of its configuration:
+The repository contains two database backup scripts. Both refuse to create backups when their encryption key is absent. The production runbook must identify which script is scheduled in each environment and retain evidence of its configuration:
 
 `scripts/backup-db.sh` supports:
 
 - PostgreSQL dump creation and compression.
 - SHA-256 checksum generation.
-- Optional GPG symmetric encryption using AES-256 when `BACKUP_ENCRYPTION_KEY` is supplied.
+- Required GPG symmetric encryption using AES-256 with `BACKUP_ENCRYPTION_KEY`.
 - Azure Blob upload using SAS token or managed identity.
 - Backup artifact and checksum upload.
 
-`scripts/backup-db.sh` can upload an unencrypted backup when no backup encryption key is supplied. By contrast, `scripts/backup.sh` refuses to create an unencrypted backup when `BACKUP_ENCRYPTION_KEY` is absent. Therefore, production backup encryption is a mandatory deployment verification item, not a control that may be assumed solely from either script's existence.
+`scripts/backup-db.sh` and `scripts/backup.sh` both refuse to create an unencrypted backup when `BACKUP_ENCRYPTION_KEY` is absent. Production backup encryption remains a mandatory deployment verification item: the scheduled Container Apps Job must receive the secret reference, and a real encrypted artifact plus restore drill must be retained as evidence.
 
 Production evidence must show:
 

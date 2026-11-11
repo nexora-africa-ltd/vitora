@@ -85,6 +85,7 @@ class TestProductionSettings:
             assert production.DATABASES["default"]["PASSWORD"] == "test_pass"
             assert production.DATABASES["default"]["HOST"] == "db.example.com"
             assert production.DATABASES["default"]["PORT"] == "5433"
+            assert production.DATABASES["default"]["OPTIONS"]["sslmode"] == "require"
 
         finally:
             # Restore

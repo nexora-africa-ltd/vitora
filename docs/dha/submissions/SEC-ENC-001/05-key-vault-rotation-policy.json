@@ -1,0 +1,12 @@
+{
+  "created": null,
+  "expiryTime": null,
+  "lifetimeActions": [
+    {
+      "action": "Notify",
+      "timeAfterCreate": null,
+      "timeBeforeExpiry": "P30D"
+    }
+  ],
+  "updated": null
+}

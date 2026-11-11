@@ -1,0 +1,24 @@
+# Nmap 7.94SVN scan initiated Wed Nov 11 18:00:22 2026 as: nmap --script ssl-enum-ciphers -p 443 -oN docs/dha/submissions/SEC-ENC-001/03-tls-cipher-scan.txt staging-api.vitora.digital
+Nmap scan report for staging-api.vitora.digital (4.253.162.134)
+Host is up (0.17s latency).
+
+PORT    STATE SERVICE
+443/tcp open  https
+| ssl-enum-ciphers:
+|   TLSv1.2:
+|     ciphers:
+|       TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 (ecdh_x25519) - A
+|       TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 (ecdh_x25519) - A
+|       TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256 (ecdh_x25519) - A
+|     compressors:
+|       NULL
+|     cipher preference: client
+|   TLSv1.3:
+|     ciphers:
+|       TLS_AKE_WITH_AES_128_GCM_SHA256 (ecdh_x25519) - A
+|       TLS_AKE_WITH_AES_256_GCM_SHA384 (ecdh_x25519) - A
+|       TLS_AKE_WITH_CHACHA20_POLY1305_SHA256 (ecdh_x25519) - A
+|     cipher preference: client
+|_  least strength: A
+
+# Nmap done at Wed Nov 11 18:00:28 2026 -- 1 IP address (1 host up) scanned in 5.34 seconds

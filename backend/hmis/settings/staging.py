@@ -89,10 +89,13 @@ AUTH_COOKIE_SECURE = os.getenv("AUTH_COOKIE_SECURE", "true").lower() == "true"
 AUTH_COOKIE_SAMESITE = os.getenv("AUTH_COOKIE_SAMESITE", "None")
 AUTH_COOKIE_DOMAIN = os.getenv("AUTH_COOKIE_DOMAIN", None)
 
-# HSTS disabled for staging (easier testing)
-SECURE_HSTS_SECONDS = 0
-SECURE_HSTS_INCLUDE_SUBDOMAINS = False
-SECURE_HSTS_PRELOAD = False
+# Certification staging is public and carries synthetic health data; retain the
+# same HTTPS-only browser posture as production unless explicitly overridden.
+SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = (
+    os.getenv("SECURE_HSTS_INCLUDE_SUBDOMAINS", "true").lower() == "true"
+)
+SECURE_HSTS_PRELOAD = os.getenv("SECURE_HSTS_PRELOAD", "true").lower() == "true"
 
 # =============================================================================
 # CORS - Allow staging frontend

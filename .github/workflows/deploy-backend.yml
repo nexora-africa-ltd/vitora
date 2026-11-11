@@ -41,6 +41,7 @@ jobs:
       CONTAINER_APP_NAME: ${{ (github.event.inputs.environment == 'production' || github.ref_name == 'main') && 'vitora-api-prod-private-sa' || 'vitora-api-private-sa' }}
       WORKER_APP_NAME: ${{ (github.event.inputs.environment == 'production' || github.ref_name == 'main') && 'vitora-worker-private-prod-sa' || 'vitora-worker-private-sa' }}
       BEAT_APP_NAME: ${{ (github.event.inputs.environment == 'production' || github.ref_name == 'main') && 'vitora-beat-private-prod-sa' || 'vitora-beat-private-sa' }}
+      BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
       ASYNC_WORKERS_ENABLED: ${{ vars.ASYNC_WORKERS_ENABLED || 'false' }}
       API_MIN_REPLICAS: 1
       API_MAX_REPLICAS: ${{ vars.ASYNC_WORKERS_ENABLED == 'true' && 6 || 1 }}
@@ -113,6 +114,11 @@ jobs:
           if [[ -n "$PAYSTACK_SECRET_KEY" ]]; then
             SECRET_ARGS+=("paystack-secret-key=$PAYSTACK_SECRET_KEY")
           fi
+          if [[ -z "$BACKUP_ENCRYPTION_KEY" ]]; then
+            echo "ERROR: BACKUP_ENCRYPTION_KEY GitHub environment secret is required."
+            exit 1
+          fi
+          SECRET_ARGS+=("backup-encryption-key=$BACKUP_ENCRYPTION_KEY")
           if [[ -n "$AZURE_HUB_BACKUP_STORAGE_ACCOUNT_KEY" ]]; then
             SECRET_ARGS+=("azure-hub-backup-storage-account-key=$AZURE_HUB_BACKUP_STORAGE_ACCOUNT_KEY")
           fi
@@ -220,6 +226,8 @@ jobs:
             HL7_RECEIVING_FACILITY=STAGING_LIS \
             MLLP_HOST=${{ vars.MLLP_HOST || '' }} \
             MLLP_PORT=2575 \
+            MLLP_USE_SSL=true \
+            MLLP_SSL_VERIFY=true \
             HL7_LIS_CODE_SYSTEM=LIS_DEFAULT \
             HIE_AUTO_CR_LOOKUP=true \
             HIE_AUTO_CR_REGISTER=true \
@@ -387,12 +395,31 @@ jobs:
         if: env.DEPLOY_ENV == 'production'
         run: |
           if az containerapp job show --name "vitora-db-backup-prod-sa" --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" >/dev/null 2>&1; then
+            if [[ -z "$BACKUP_ENCRYPTION_KEY" ]]; then
+              echo "ERROR: BACKUP_ENCRYPTION_KEY GitHub environment secret is required."
+              exit 1
+            fi
+            az containerapp job secret set \
+              --name "vitora-db-backup-prod-sa" \
+              --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+              --secrets "backup-encryption-key=$BACKUP_ENCRYPTION_KEY" \
+              --output none
+            AZURE_BACKUP_ENCRYPTION_KEY=$(az containerapp job secret list \
+              --name "vitora-db-backup-prod-sa" \
+              --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+              --show-values \
+              --query "[?name=='backup-encryption-key'].value | [0]" \
+              --output tsv)
+            if [[ -z "$AZURE_BACKUP_ENCRYPTION_KEY" || "$AZURE_BACKUP_ENCRYPTION_KEY" != "$BACKUP_ENCRYPTION_KEY" ]]; then
+              echo "ERROR: ACA backup secret does not match the GitHub environment secret."
+              exit 1
+            fi
             az containerapp job update \
               --name "vitora-db-backup-prod-sa" \
               --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
               --image "${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}" \
               --command bash /app/scripts/backup-db.sh \
-              --set-env-vars "AZURE_STORAGE_ACCOUNT=vitorabackupssa" "AZURE_STORAGE_CONTAINER=db-backups" "VITORA_ENV=production" "PGAPPNAME=vitora-production-backup-job" \
+              --set-env-vars "AZURE_STORAGE_ACCOUNT=vitorabackupssa" "AZURE_STORAGE_CONTAINER=db-backups" "BACKUP_ENCRYPTION_KEY=secretref:backup-encryption-key" "VITORA_ENV=production" "PGAPPNAME=vitora-production-backup-job" \
               --output none
           fi
 

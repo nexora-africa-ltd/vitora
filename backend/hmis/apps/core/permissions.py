@@ -343,6 +343,17 @@ class IsAdminUser(permissions.BasePermission):
         return request.user and request.user.is_authenticated and request.user.is_staff
 
 
+class EncryptionEvidencePermission(permissions.BasePermission):
+    """Restrict platform encryption evidence to explicitly authorized staff."""
+
+    permission_name = "core.view_encryption_evidence"
+
+    def has_permission(self, request, view):
+        """Require the dedicated permission; superusers retain Django's implicit grant."""
+        user = request.user
+        return bool(user and user.is_authenticated and user.has_perm(self.permission_name))
+
+
 class FacilityAdminPermission(permissions.BasePermission):
     """
     Permission for facility CRUD operations.

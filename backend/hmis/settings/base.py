@@ -652,6 +652,7 @@ PII_HMAC_KEY = os.getenv("PII_HMAC_KEY", "")
 
 # Key rotation policy (in days) - minimum 365 per DHA compliance
 KMS_KEY_ROTATION_DAYS = int(os.getenv("KMS_KEY_ROTATION_DAYS", "365"))
+BACKUP_ENCRYPTION_REQUIRED = os.getenv("BACKUP_ENCRYPTION_REQUIRED", "true").lower() == "true"
 
 # Per-organization AES-GCM PII ciphertext is deployed behind this gate until the
 # organization-scoped blind-index query migration is enabled with it.

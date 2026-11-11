@@ -12,7 +12,7 @@
 #   AZURE_STORAGE_SAS_TOKEN  — SAS token with write permission (or use managed identity)
 #
 # Optional environment variables:
-#   BACKUP_ENCRYPTION_KEY    — GPG passphrase for AES-256 encryption (recommended)
+#   BACKUP_ENCRYPTION_KEY    — GPG passphrase for mandatory AES-256 encryption
 #   BACKUP_RETENTION_DAYS    — Days to retain backups (default: 30)
 #   SLACK_WEBHOOK_URL        — Slack webhook for success/failure alerts
 #   ALERT_EMAIL              — Email address for failure alerts
@@ -93,11 +93,16 @@ for var in DATABASE_URL AZURE_STORAGE_ACCOUNT AZURE_STORAGE_CONTAINER; do
   fi
 done
 
+if [[ -z "${BACKUP_ENCRYPTION_KEY:-}" ]]; then
+  echo "ERROR: BACKUP_ENCRYPTION_KEY must be set. Refusing to create an unencrypted backup."
+  exit 1
+fi
+
 echo "==> Starting database backup: ${BACKUP_FILE}"
 echo "    Timestamp: ${TIMESTAMP}"
 echo "    Environment: ${ENVIRONMENT}"
 echo "    Retention: ${RETENTION_DAYS} days"
-echo "    Encryption: $(if [[ -n "${BACKUP_ENCRYPTION_KEY:-}" ]]; then echo "AES-256 (GPG)"; else echo "DISABLED (set BACKUP_ENCRYPTION_KEY to enable)"; fi)"
+echo "    Encryption: AES-256 (GPG)"
 
 # ─── Dump & Compress ───────────────────────────────────────────────────────
 echo "==> Running pg_dump..."
@@ -126,17 +131,15 @@ echo "    SHA-256: ${CHECKSUM}"
 
 # ─── Encrypt (AES-256 via GPG) ─────────────────────────────────────────────
 UPLOAD_FILE="/tmp/${BACKUP_FILE}"
-if [[ -n "${BACKUP_ENCRYPTION_KEY:-}" ]]; then
-  echo "==> Encrypting backup (AES-256)..."
-  echo "${BACKUP_ENCRYPTION_KEY}" | gpg --batch --yes --passphrase-fd 0 \
-    --symmetric --cipher-algo AES256 \
-    -o "/tmp/${BACKUP_FILE}.gpg" "/tmp/${BACKUP_FILE}"
-  rm -f "/tmp/${BACKUP_FILE}"
-  UPLOAD_FILE="/tmp/${BACKUP_FILE}.gpg"
-  BACKUP_FILE="${BACKUP_FILE}.gpg"
-  ENCRYPTION_ENABLED=true
-  echo "    Encrypted: ${BACKUP_FILE}"
-fi
+echo "==> Encrypting backup (AES-256)..."
+echo "${BACKUP_ENCRYPTION_KEY}" | gpg --batch --yes --passphrase-fd 0 \
+  --symmetric --cipher-algo AES256 \
+  -o "/tmp/${BACKUP_FILE}.gpg" "/tmp/${BACKUP_FILE}"
+rm -f "/tmp/${BACKUP_FILE}"
+UPLOAD_FILE="/tmp/${BACKUP_FILE}.gpg"
+BACKUP_FILE="${BACKUP_FILE}.gpg"
+ENCRYPTION_ENABLED=true
+echo "    Encrypted: ${BACKUP_FILE}"
 
 # ─── Upload to Azure Blob Storage ──────────────────────────────────────────
 BLOB_URL="https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}/${BACKUP_FILE}"

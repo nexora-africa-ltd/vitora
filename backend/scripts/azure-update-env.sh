@@ -51,6 +51,7 @@ declare -A SECRETS=(
   ["database-url"]="${DATABASE_URL:-}"
   ["redis-url"]="${REDIS_URL:-}"
   ["encryption-key"]="${ENCRYPTION_KEY:-}"
+  ["backup-encryption-key"]="${BACKUP_ENCRYPTION_KEY:-}"
   ["pii-hmac-key"]="${PII_HMAC_KEY:-}"
   ["django-secret-key"]="${DJANGO_SECRET_KEY:-}"
   ["sha-username"]="${SHA_USERNAME:-}"
@@ -212,6 +213,8 @@ az containerapp update \
     "HL7_RECEIVING_FACILITY=${HL7_RECEIVING_FACILITY:-STAGING_LIS}" \
     "MLLP_HOST=${MLLP_HOST:-}" \
     "MLLP_PORT=${MLLP_PORT:-2575}" \
+    "MLLP_USE_SSL=${MLLP_USE_SSL:-true}" \
+    "MLLP_SSL_VERIFY=${MLLP_SSL_VERIFY:-true}" \
     "HL7_LIS_CODE_SYSTEM=${HL7_LIS_CODE_SYSTEM:-LIS_DEFAULT}" \
     "HIE_AUTO_CR_LOOKUP=${HIE_AUTO_CR_LOOKUP:-true}" \
     "HIE_AUTO_CR_REGISTER=${HIE_AUTO_CR_REGISTER:-true}" \

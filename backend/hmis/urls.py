@@ -72,6 +72,7 @@ from hmis.apps.core.views import (
     WardViewSet,
     me_permissions,
 )
+from hmis.apps.core.views_encryption_status import EncryptionStatusView
 from hmis.apps.encounters.views import (
     ApplyTemplateView,
     ChronicConditionViewSet,
@@ -926,6 +927,11 @@ urlpatterns = [
     ),
     path("", liveness_check, name="liveness_check"),
     path("api/health/", health_check, name="api_health_check"),
+    path(
+        "api/core/security/encryption-status/",
+        EncryptionStatusView.as_view(),
+        name="encryption-status",
+    ),
     path("admin/mfa-verify/", admin_mfa_verify, name="admin-mfa-verify"),
     path("admin/mfa-verify/webauthn/begin/", admin_webauthn_begin, name="admin-webauthn-begin"),
     path(
