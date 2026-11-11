@@ -6,16 +6,22 @@
 
 const mockGetAppConfig = jest.fn();
 const mockIsDesktop = jest.fn();
+const mockPost = jest.fn();
 
 jest.mock('@/lib/desktop', () => ({
   getAppConfig: () => mockGetAppConfig(),
   isDesktop: () => mockIsDesktop(),
 }));
 
+jest.mock('@/lib/api/client', () => ({
+  apiClient: { post: (...args: unknown[]) => mockPost(...args) },
+}));
+
 import { clearHubRoutingManifest } from '@/lib/desktop/hub-capabilities';
 import {
   bootstrapWebSocketRuntime,
   resetWebSocketRuntime,
+  resolveAuthenticatedWebSocketUrl,
   resolveWebSocketUrl,
 } from '@/lib/desktop/websocket-runtime';
 
@@ -59,6 +65,9 @@ describe('WebSocket runtime resolver', () => {
       cloud_api_url: 'https://cloud.test/',
       deployment_mode: 'lan_client',
     });
+    mockPost.mockResolvedValue({
+      data: { ticket: 'opaque-single-use-ticket', expires_at: '2026-10-11T21:00:00.000Z' },
+    });
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ routing_manifest: routingManifest }),
@@ -84,5 +93,14 @@ describe('WebSocket runtime resolver', () => {
     await bootstrapWebSocketRuntime();
 
     expect(resolveWebSocketUrl('/ws/restricted/alerts/')).toBeNull();
+  });
+
+  it('uses a fresh opaque ticket for desktop sockets', async () => {
+    await bootstrapWebSocketRuntime();
+
+    await expect(resolveAuthenticatedWebSocketUrl('/ws/billing/1/invoices/')).resolves.toBe(
+      'ws://hub.test:9088/ws/billing/1/invoices/?ticket=opaque-single-use-ticket'
+    );
+    expect(mockPost).toHaveBeenCalledWith('/api/core/websocket-ticket/');
   });
 });

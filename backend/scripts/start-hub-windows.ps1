@@ -215,6 +215,11 @@ function Load-DpapiSecrets {
 }
 
 try {
+    # Scheduled tasks running as SYSTEM start in C:\Windows\System32. Django
+    # commands must run from the hub installation so manage.py is resolved
+    # consistently and project-relative paths remain within the hub bundle.
+    Set-Location -LiteralPath $InstallDir
+
     $envFile = Join-Path $InstallDir ".env"
     Load-DotEnv -Path $envFile
 

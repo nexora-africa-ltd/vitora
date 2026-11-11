@@ -173,6 +173,7 @@ $RECYCLE.BIN/
 # Test outputs
 test-results/
 playwright-report/
+.playwright-mcp/
 test-output/
 
 # Build artifacts
@@ -212,3 +213,4 @@ mobile/*.apk
 web-app/.env.vercel
 backend/data/MCL LOINC Values.xls
 desktop-app/src-tauri/gen/
+graphify-out/

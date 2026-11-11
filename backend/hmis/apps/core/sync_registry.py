@@ -580,6 +580,7 @@ SYNC_EXCLUSIONS: dict[str, SyncExclusion] = {
         "Sync prescriptions, items, batches, and dispensing; complete external and alert workflows in cloud.",
         "pharmacy.AlertSettings",
         "pharmacy.ExternalPrescriptionRequest",
+        "pharmacy.PrescriptionTransmission",
         "pharmacy.StockAlert",
         "pharmacy.WalkInCustomer",
         planned_phase=1,
@@ -604,6 +605,12 @@ SYNC_EXCLUSIONS: dict[str, SyncExclusion] = {
         "surveillance.SurveillanceAlert",
         "surveillance.SurveillanceFacilitySettings",
         "triage.ERBed",
+        planned_phase=3,
+    ),
+    **_exclusions(
+        "IDSR submission attempts contain cloud-authoritative DHIS2/KHIS transport, retry, and response state.",
+        "Synchronize the IDSR report source record only; view submission history and resume external reporting from cloud when online.",
+        "surveillance.IDSRSubmissionAttempt",
         planned_phase=3,
     ),
 }

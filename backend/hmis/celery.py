@@ -48,6 +48,7 @@ app.conf.task_routes = {
     "hmis.apps.surveillance.tasks.check_overdue_notifications": {"queue": "monitoring"},
     "hmis.apps.surveillance.tasks.check_outbreak_thresholds": {"queue": "monitoring"},
     "hmis.apps.surveillance.tasks.submit_idsr_to_dhis2": {"queue": "reporting"},
+    "hmis.apps.surveillance.tasks.retry_idsr_dhis2_submissions": {"queue": "reporting"},
     # Billing tasks
     "hmis.apps.billing.tasks.poll_sha_claim_statuses": {"queue": "billing"},
     "hmis.apps.billing.tasks.submit_pending_sha_claims": {"queue": "billing"},
@@ -86,6 +87,7 @@ app.conf.task_routes = {
     "hmis.apps.scheduling.tasks.send_shift_reminders": {"queue": "monitoring"},
     # HWR license verification
     "hmis.apps.core.tasks.verify_staff_hwr_licenses": {"queue": "monitoring"},
+    "core.verify_audit_chain_integrity": {"queue": "monitoring"},
     # Laboratory analyzer tasks
     "laboratory.analyzers.check_channel_health": {"queue": "monitoring"},
     "laboratory.analyzers.retry_failed_messages": {"queue": "maintenance"},
@@ -118,14 +120,23 @@ app.conf.beat_schedule = {
         "task": "hmis.apps.core.tasks.retry_failed_entries",
         "schedule": 3600.0,  # Every hour
     },
+    "verify-audit-chain-integrity-hourly": {
+        "task": "core.verify_audit_chain_integrity",
+        "schedule": 3600.0,  # Every hour
+    },
     "generate-monthly-clinic-reports": {
         "task": "hmis.apps.clinics.tasks.generate_monthly_clinic_reports",
         "schedule": crontab(minute=0, hour=1, day_of_month=1),
     },
-    # IDSR Weekly Report - runs Sunday at midnight (Kenya time)
+    # IDSR reporting weeks are Monday-Sunday (ISO 8601). Generate after the
+    # reporting week closes: Monday 00:05 Africa/Nairobi.
     "generate-idsr-weekly-report": {
         "task": "hmis.apps.surveillance.tasks.generate_idsr_weekly_report",
-        "schedule": crontab(minute=0, hour=0, day_of_week="sunday"),
+        "schedule": crontab(minute=5, hour=0, day_of_week="monday"),
+    },
+    "retry-idsr-dhis2-submissions": {
+        "task": "hmis.apps.surveillance.tasks.retry_idsr_dhis2_submissions",
+        "schedule": 900.0,
     },
     # Check for overdue notifications - every 4 hours
     "check-overdue-notifications": {
@@ -211,6 +222,11 @@ app.conf.beat_schedule = {
     "billing-refresh-sha-interventions": {
         "task": "hmis.apps.billing.tasks.refresh_sha_interventions",
         "schedule": crontab(minute=0, hour=3, day_of_week="sunday"),
+    },
+    # Terminology: refresh selected HPT/ICD-11/LOINC/ICHI concepts nightly.
+    "billing-refresh-selected-terminology-concepts": {
+        "task": "hmis.apps.billing.tasks.refresh_selected_terminology_concepts",
+        "schedule": crontab(minute=30, hour=2),
     },
     # Billing: Fetch and reconcile SHA remittances daily at 6 AM
     "billing-fetch-reconcile-remittances": {

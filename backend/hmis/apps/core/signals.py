@@ -12,10 +12,41 @@ from django.contrib.auth.signals import user_logged_in, user_logged_out, user_lo
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
-from hmis.apps.core.events import ClinicalEvents, CoreEvents, OrganizationEvents, publish_event
+from hmis.apps.core.events import (
+    ClinicalEvents,
+    CoreEvents,
+    OrganizationEvents,
+    TerminologyEvents,
+    publish_event,
+)
 from hmis.apps.core.sync_context import is_sync_materialization_active
 
 logger = logging.getLogger(__name__)
+
+
+@receiver(post_save, sender="core.TerminologyBinding")
+def publish_terminology_binding_event(sender, instance, created, **kwargs):
+    """Publish selected terminology bindings for audit projections and sync observers."""
+    if not created or is_sync_materialization_active():
+        return
+    publish_event(
+        TerminologyEvents.BINDING_CREATED,
+        "TerminologyBinding",
+        instance.pk,
+        {
+            "binding_id": instance.pk,
+            "terminology_key": instance.concept.terminology_key,
+            "code": instance.concept.code,
+            "content_type": instance.content_type.model,
+            "object_id": instance.object_id,
+            "field_name": instance.field_name,
+            "organization_id": instance.organization_id,
+            "facility_id": instance.facility_id,
+        },
+        user_id=instance.selected_by_id,
+        facility_id=instance.facility_id,
+        organization_id=instance.organization_id,
+    )
 
 
 @receiver(pre_save, sender="core.StaffProfile")
@@ -219,8 +250,26 @@ def log_user_login_failed(sender, credentials, request, **kwargs):
     if is_sync_materialization_active():
         return
 
+    from django.contrib.auth import get_user_model
+    from django.db.models import Q
+
     from .models import AuditLog
     from .permissions import get_client_ip
+
+    identifier = credentials.get("username", "")
+    failed_user = None
+    if identifier:
+        # Keep the actor anonymous for failed authentication, but preserve the
+        # tenant context for a known account so facility admins can review the
+        # security event without exposing it to other facilities.
+        User = get_user_model()
+        failed_user = (
+            User.objects.filter(Q(username__iexact=identifier) | Q(email__iexact=identifier))
+            .select_related("staff_profile__organization", "staff_profile__primary_facility")
+            .first()
+        )
+
+    profile = getattr(failed_user, "staff_profile", None)
 
     AuditLog.log(
         action="login_failed",
@@ -228,7 +277,9 @@ def log_user_login_failed(sender, credentials, request, **kwargs):
         resource_type="User",
         ip_address=get_client_ip(request) if request else None,
         user_agent=request.META.get("HTTP_USER_AGENT", "") if request else "",
-        details={"username": credentials.get("username", "unknown")},
+        details={"username": identifier or "unknown"},
+        organization=getattr(profile, "organization", None),
+        facility=getattr(profile, "primary_facility", None),
     )
 
 

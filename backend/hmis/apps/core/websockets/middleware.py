@@ -21,13 +21,68 @@ through untouched.
 
 import logging
 import re
+from http.cookies import SimpleCookie
+from urllib.parse import parse_qs
 
 from channels.db import database_sync_to_async
+from django.contrib.auth import get_user_model
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.tokens import AccessToken
 
 logger = logging.getLogger(__name__)
 
 # Regex to extract facility_id from URL path
 _FACILITY_RE = re.compile(r"/(?P<facility_id>\d+)/")
+
+
+class JWTWebSocketAuthMiddleware:
+    """Authenticate WebSockets using the web JWT cookie or one-time ticket."""
+
+    def __init__(self, app):
+        self.inner = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "websocket" and self._is_anonymous(scope.get("user")):
+            user = await self._resolve_user(scope)
+            if user is not None:
+                scope["user"] = user
+        return await self.inner(scope, receive, send)
+
+    async def _resolve_user(self, scope):
+        ticket = parse_qs(scope.get("query_string", b"").decode("utf-8")).get("ticket", [""])[0]
+        if ticket:
+            return await self._consume_ticket(ticket)
+
+        cookie_header = next(
+            (value for name, value in scope.get("headers", []) if name.lower() == b"cookie"),
+            b"",
+        )
+        cookies = SimpleCookie()
+        cookies.load(cookie_header.decode("latin-1"))
+        access_cookie = cookies.get("vitora_access")
+        return await self._authenticate_access_token(access_cookie.value if access_cookie else "")
+
+    @staticmethod
+    def _is_anonymous(user) -> bool:
+        return user is None or getattr(user, "is_anonymous", True)
+
+    @database_sync_to_async
+    def _authenticate_access_token(self, raw_token: str):
+        """Validate the same access-token class used by cookie API authentication."""
+        if not raw_token:
+            return None
+        try:
+            user_id = AccessToken(raw_token).get("user_id")
+            return get_user_model().objects.get(pk=user_id, is_active=True)
+        except (TokenError, get_user_model().DoesNotExist, TypeError, ValueError):
+            return None
+
+    @database_sync_to_async
+    def _consume_ticket(self, token: str):
+        """Redeem a one-time desktop ticket without retaining its plaintext value."""
+        from hmis.apps.core.models import WebSocketTicket
+
+        return WebSocketTicket.consume(token)
 
 
 class FacilityWebSocketMiddleware:

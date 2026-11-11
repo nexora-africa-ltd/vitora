@@ -1,0 +1,26 @@
+{
+  "status": "healthy",
+  "kms": {
+    "status": "healthy",
+    "provider": "AzureKeyVaultProvider"
+  },
+  "field_encryption": {
+    "legacy": "Fernet AES-128-CBC + HMAC-SHA256",
+    "current": "AES-256-GCM",
+    "organization_scoped_current_path": true
+  },
+  "transport": {
+    "public_https_required": true,
+    "minimum_tls_version": "1.2",
+    "database_tls_required": true,
+    "external_mllp_tls_required": true
+  },
+  "backups": {
+    "encryption_required": true,
+    "algorithm": "GPG AES-256"
+  },
+  "media_storage": {
+    "backend": "azure_blob",
+    "provider_managed_encryption_evidence_required": true
+  }
+}

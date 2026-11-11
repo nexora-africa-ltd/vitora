@@ -57,7 +57,8 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
   const isClinicalMode = navigationMode === 'clinical';
   const desktopMode = isDesktop();
   const cloudConnection = useCloudConnection();
-  const showCloudStatus = cloudConnection.config === 'configured' || cloudConnection.config === 'missing';
+  const showCloudStatus =
+    cloudConnection.config === 'configured' || cloudConnection.config === 'missing';
   const cloudSessionRequired =
     cloudConnection.session === 'required' && cloudConnection.reachability === 'available';
 
@@ -68,6 +69,12 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
       : cloudConnection.reachability === 'checking'
         ? 'Cloud check'
         : 'Cloud connected';
+
+  const cloudIndicatorClass = cloudSessionRequired
+    ? 'bg-amber-500'
+    : cloudConnection.reachability === 'unavailable'
+      ? 'bg-red-500'
+      : 'bg-green-500';
 
   const handleClearCache = async () => {
     setIsClearingCache(true);
@@ -98,9 +105,9 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
         desktopMode ? 'top-9' : 'top-0'
       )}
     >
-      <div className="flex h-full items-center justify-between px-4 md:px-6">
+      <div className="flex h-full items-center px-4 md:px-6">
         {/* Left side */}
-        <div className="flex min-w-0 items-center gap-2 lg:gap-4">
+        <div className="flex min-w-0 flex-1 items-center gap-2 lg:gap-4">
           {/* Mobile menu button - hidden at xl when sidebar always visible */}
           <Button
             variant="ghost"
@@ -118,7 +125,7 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
         </div>
 
         {/* Right side */}
-         <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 xl:gap-4">
+        <div className="ml-2 flex shrink-0 items-center gap-1.5 sm:gap-2 lg:gap-3 xl:gap-4">
           {showCloudStatus && (
             <TooltipProvider delayDuration={300}>
               <Tooltip>
@@ -134,14 +141,27 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
                     )}
                     onClick={() => {
                       if (cloudSessionRequired) {
-                        router.push(`/cloud-sign-in?callbackUrl=${encodeURIComponent(window.location.pathname)}`);
+                        router.push(
+                          `/cloud-sign-in?callbackUrl=${encodeURIComponent(window.location.pathname)}`
+                        );
                       }
                     }}
                     type="button"
                     aria-label={cloudStatusLabel}
                   >
-                    {cloudSessionRequired ? <LogIn className="h-3.5 w-3.5" /> : <Cloud className="h-3.5 w-3.5" />}
-                    <span className="hidden xl:inline">{cloudStatusLabel}</span>
+                    {desktopMode ? (
+                      <span
+                        className={cn('h-2 w-2 rounded-full', cloudIndicatorClass)}
+                        aria-hidden="true"
+                      />
+                    ) : cloudSessionRequired ? (
+                      <LogIn className="h-3.5 w-3.5" />
+                    ) : (
+                      <Cloud className="h-3.5 w-3.5" />
+                    )}
+                    <span className={cn('hidden', desktopMode ? '2xl:inline' : 'xl:inline')}>
+                      {desktopMode ? 'Cloud' : cloudStatusLabel}
+                    </span>
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-xs">
@@ -155,7 +175,9 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
                   ) : cloudConnection.reachability === 'unavailable' ? (
                     <div className="space-y-1">
                       <p className="font-medium">Cloud service unavailable</p>
-                      <p className="text-xs text-muted-foreground">Your local hub remains available offline.</p>
+                      <p className="text-xs text-muted-foreground">
+                        Your local hub remains available offline.
+                      </p>
                     </div>
                   ) : (
                     <p className="text-xs">Vitora Cloud session connected.</p>
@@ -185,12 +207,12 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
                     state={isSyncing ? 'fixing' : isOnline ? 'active' : 'down'}
                     size="sm"
                   />
-                  {/* Short text on sm-lg screens */}
-                  <span className="hidden sm:inline xl:hidden">
+                  {/* Desktop windows are narrower than the web xl layout despite matching its viewport breakpoint. */}
+                  <span className={cn('hidden', desktopMode ? '2xl:inline' : 'xl:hidden')}>
                     {isSyncing ? 'Sync' : isOnline ? formatLastFetchShort(lastFetchTime) : 'Off'}
                   </span>
-                  {/* Full text on xl+ screens */}
-                  <span className="hidden xl:inline">
+                  {/* Full text is reserved for the web layout, where the persistent sidebar has more room. */}
+                  <span className={cn('hidden', !desktopMode && 'xl:inline')}>
                     {isSyncing
                       ? 'Syncing...'
                       : isOnline

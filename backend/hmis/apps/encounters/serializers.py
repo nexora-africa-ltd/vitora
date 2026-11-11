@@ -84,6 +84,12 @@ class DiagnosisSerializer(serializers.ModelSerializer):
             "icd10_description",
             "icd11_code",
             "icd11_display",
+            "icd11_system",
+            "icd11_owner",
+            "icd11_source",
+            "icd11_retrieved_at",
+            "icd11_version",
+            "icd11_checksum",
             "snomed_code",
             "snomed_display",
             "diagnosis_type",
@@ -137,6 +143,50 @@ class DiagnosisSerializer(serializers.ModelSerializer):
                 )
 
         return data
+
+    def _record_icd11_binding(self, diagnosis):
+        """Persist selected ICD-11 provenance when the diagnosis is coded."""
+        if not (
+            diagnosis.icd11_code
+            and diagnosis.icd11_system
+            and diagnosis.icd11_owner
+            and diagnosis.icd11_source
+        ):
+            return
+        from hmis.apps.billing.services.terminology import TerminologyConcept
+        from hmis.apps.core.models import TerminologyBinding
+
+        concept = TerminologyConcept(
+            code=diagnosis.icd11_code,
+            display=diagnosis.icd11_display or diagnosis.free_text_diagnosis,
+            owner=diagnosis.icd11_owner,
+            source=diagnosis.icd11_source,
+            system=diagnosis.icd11_system,
+            retrieved_at=diagnosis.icd11_retrieved_at,
+            version=diagnosis.icd11_version,
+        )
+        binding = TerminologyBinding.record(
+            diagnosis,
+            concept=concept,
+            terminology_key="icd11",
+            field_name="icd11_code",
+            user=self.context["request"].user if self.context.get("request") else None,
+        )
+        if diagnosis.icd11_checksum != binding.concept.checksum:
+            diagnosis.icd11_checksum = binding.concept.checksum
+            diagnosis.save(update_fields=["icd11_checksum"])
+
+    def create(self, validated_data):
+        """Create and bind a selected ICD-11 concept when supplied."""
+        diagnosis = super().create(validated_data)
+        self._record_icd11_binding(diagnosis)
+        return diagnosis
+
+    def update(self, instance, validated_data):
+        """Update and refresh the selected ICD-11 concept binding."""
+        diagnosis = super().update(instance, validated_data)
+        self._record_icd11_binding(diagnosis)
+        return diagnosis
 
 
 class DiagnosisNestedSerializer(serializers.ModelSerializer):

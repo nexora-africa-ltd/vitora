@@ -33,7 +33,6 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
-from rest_framework_simplejwt.tokens import RefreshToken
 
 from hmis.apps.core.mfa.models import BackupCode, MFAToken, UserTOTPDevice, UserWebAuthnCredential
 from hmis.apps.core.mfa.serializers import (
@@ -415,8 +414,10 @@ class MFAVerifyView(APIView):
         # Mark MFA token as used
         mfa_token.mark_used()
 
-        # Generate JWT tokens
-        refresh = RefreshToken.for_user(user)
+        # Generate JWT tokens bound to a server-revocable session.
+        from hmis.apps.core.session_security import create_token_pair
+
+        _, refresh = create_token_pair(user)
 
         # Audit successful login
         AuditLog.log(
@@ -1037,8 +1038,10 @@ class WebAuthnAuthenticateCompleteView(APIView):
         # Mark MFA token as used
         mfa_token.mark_used()
 
-        # Generate JWT tokens
-        refresh = RefreshToken.for_user(user)
+        # Generate JWT tokens bound to a server-revocable session.
+        from hmis.apps.core.session_security import create_token_pair
+
+        _, refresh = create_token_pair(user)
 
         AuditLog.log(
             action="mfa_verification_success",
@@ -1148,6 +1151,10 @@ class MFAAwareTokenRefreshView(APIView):
                 user = User.objects.get(id=user_id)
             except User.DoesNotExist:
                 raise InvalidToken("User not found") from None
+
+            from hmis.apps.core.session_security import validate_session
+
+            validate_session(user, token.payload.get("session_id"), request)
 
             # Check if MFA is enabled for this user
             mfa_device = (

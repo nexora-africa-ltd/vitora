@@ -51,6 +51,7 @@ declare -A SECRETS=(
   ["database-url"]="${DATABASE_URL:-}"
   ["redis-url"]="${REDIS_URL:-}"
   ["encryption-key"]="${ENCRYPTION_KEY:-}"
+  ["backup-encryption-key"]="${BACKUP_ENCRYPTION_KEY:-}"
   ["pii-hmac-key"]="${PII_HMAC_KEY:-}"
   ["django-secret-key"]="${DJANGO_SECRET_KEY:-}"
   ["sha-username"]="${SHA_USERNAME:-}"
@@ -127,6 +128,8 @@ az containerapp update \
     "VITORA_DB_APPLICATION_NAME=${VITORA_DB_APPLICATION_NAME:-vitora-staging-api}" \
     "REDIS_URL=${REDIS_URL:+secretref:redis-url}" \
     "DB_CONN_MAX_AGE=${DB_CONN_MAX_AGE:-300}" \
+    "DB_POOL_MIN_SIZE=${DB_POOL_MIN_SIZE:-1}" \
+    "DB_POOL_MAX_SIZE=${DB_POOL_MAX_SIZE:-8}" \
     "ENCRYPTION_KEY=secretref:encryption-key" \
     "PII_HMAC_KEY=secretref:pii-hmac-key" \
     "ORGANIZATION_PII_ENCRYPTION_ENABLED=true" \
@@ -135,9 +138,9 @@ az containerapp update \
     "PAYSTACK_PUBLIC_KEY=${PAYSTACK_PUBLIC_KEY:-}" \
     "PAYSTACK_CALLBACK_URL=${PAYSTACK_CALLBACK_URL:-https://staging.vitora.digital/account-billing?payment=returned}" \
     "PAYSTACK_WEBHOOK_URL=${PAYSTACK_WEBHOOK_URL:-https://${FQDN}/api/payments/paystack/webhook/}" \
-    "HUB_BACKUP_CREDENTIAL_SIGNER=${HUB_BACKUP_CREDENTIAL_SIGNER:-}" \
+    "HUB_BACKUP_CREDENTIAL_SIGNER=${HUB_BACKUP_CREDENTIAL_SIGNER:-hmis.apps.licensing.backup_credentials.sign_azure_blob_backup_credentials}" \
     "HUB_BACKUP_ALLOWED_RESIDENCY_COUNTRIES=${HUB_BACKUP_ALLOWED_RESIDENCY_COUNTRIES:-KE}" \
-    "AZURE_HUB_BACKUP_STORAGE_ACCOUNT=${AZURE_HUB_BACKUP_STORAGE_ACCOUNT:-}" \
+    "AZURE_HUB_BACKUP_STORAGE_ACCOUNT=${AZURE_HUB_BACKUP_STORAGE_ACCOUNT:-vitorabackupssa}" \
     "AZURE_HUB_BACKUP_STORAGE_ACCOUNT_KEY=secretref:azure-hub-backup-storage-account-key" \
     "AZURE_HUB_BACKUP_STORAGE_CONTAINER=${AZURE_HUB_BACKUP_STORAGE_CONTAINER:-hub-backups}" \
     "AZURE_HUB_BACKUP_SAS_EXPIRY_MINUTES=${AZURE_HUB_BACKUP_SAS_EXPIRY_MINUTES:-60}" \
@@ -151,7 +154,7 @@ az containerapp update \
     "MEDIA_BLOB_BASE_URL=${MEDIA_BLOB_BASE_URL:-https://vitorareleasessa.blob.core.windows.net/vitora-media}" \
     "DEMO_MODE=${DEMO_MODE:-true}" \
     "ACTIVE_SHIFT_ENFORCEMENT=${ACTIVE_SHIFT_ENFORCEMENT:-false}" \
-    "ONBOARDING_ENFORCEMENT=${ONBOARDING_ENFORCEMENT:-false}" \
+    "ONBOARDING_ENFORCEMENT=${ONBOARDING_ENFORCEMENT:-true}" \
     "ALLOWED_HOSTS=${FQDN},staging.vitora.digital,staging-api.vitora.digital,localhost" \
     "SECURE_SSL_REDIRECT=true" \
     "CORS_ALLOWED_ORIGINS=https://staging.vitora.digital,http://localhost:3009" \
@@ -210,6 +213,8 @@ az containerapp update \
     "HL7_RECEIVING_FACILITY=${HL7_RECEIVING_FACILITY:-STAGING_LIS}" \
     "MLLP_HOST=${MLLP_HOST:-}" \
     "MLLP_PORT=${MLLP_PORT:-2575}" \
+    "MLLP_USE_SSL=${MLLP_USE_SSL:-true}" \
+    "MLLP_SSL_VERIFY=${MLLP_SSL_VERIFY:-true}" \
     "HL7_LIS_CODE_SYSTEM=${HL7_LIS_CODE_SYSTEM:-LIS_DEFAULT}" \
     "HIE_AUTO_CR_LOOKUP=${HIE_AUTO_CR_LOOKUP:-true}" \
     "HIE_AUTO_CR_REGISTER=${HIE_AUTO_CR_REGISTER:-true}" \

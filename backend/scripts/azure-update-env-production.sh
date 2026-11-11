@@ -18,6 +18,7 @@ set -euo pipefail
 
 RG="${ACA_RG:-vitora-rg-sa}"
 APP_NAME="${ACA_NAME:-vitora-api-prod-private-sa}"
+BACKUP_JOB_NAME="${BACKUP_JOB_NAME:-vitora-db-backup-prod-sa}"
 
 FQDN=$(az containerapp show \
   --name "$APP_NAME" \
@@ -54,10 +55,16 @@ fi
 # ─── Secrets ────────────────────────────────────────────────────────────────
 echo "==> Updating secrets..."
 
+if [[ -z "${BACKUP_ENCRYPTION_KEY:-}" ]]; then
+  echo "ERROR: BACKUP_ENCRYPTION_KEY must be set; encrypted production backups are mandatory." >&2
+  exit 1
+fi
+
 declare -A SECRETS=(
   ["database-url"]="${DATABASE_URL:-}"
   ["redis-url"]="${REDIS_URL:-}"
   ["encryption-key"]="${ENCRYPTION_KEY:-}"
+  ["backup-encryption-key"]="${BACKUP_ENCRYPTION_KEY:-}"
   ["pii-hmac-key"]="${PII_HMAC_KEY:-}"
   ["django-secret-key"]="${DJANGO_SECRET_KEY:-}"
   ["sha-username"]="${SHA_USERNAME:-}"
@@ -139,9 +146,9 @@ az containerapp update \
     "PAYSTACK_PUBLIC_KEY=${PAYSTACK_PUBLIC_KEY:-}" \
     "PAYSTACK_CALLBACK_URL=${PAYSTACK_CALLBACK_URL:-https://${PROD_DOMAIN}/account-billing?payment=returned}" \
     "PAYSTACK_WEBHOOK_URL=${PAYSTACK_WEBHOOK_URL:-https://${PROD_API_DOMAIN}/api/payments/paystack/webhook/}" \
-    "HUB_BACKUP_CREDENTIAL_SIGNER=${HUB_BACKUP_CREDENTIAL_SIGNER:-}" \
+    "HUB_BACKUP_CREDENTIAL_SIGNER=${HUB_BACKUP_CREDENTIAL_SIGNER:-hmis.apps.licensing.backup_credentials.sign_azure_blob_backup_credentials}" \
     "HUB_BACKUP_ALLOWED_RESIDENCY_COUNTRIES=${HUB_BACKUP_ALLOWED_RESIDENCY_COUNTRIES:-KE}" \
-    "AZURE_HUB_BACKUP_STORAGE_ACCOUNT=${AZURE_HUB_BACKUP_STORAGE_ACCOUNT:-}" \
+    "AZURE_HUB_BACKUP_STORAGE_ACCOUNT=${AZURE_HUB_BACKUP_STORAGE_ACCOUNT:-vitorabackupssa}" \
     "AZURE_HUB_BACKUP_STORAGE_ACCOUNT_KEY=secretref:azure-hub-backup-storage-account-key" \
     "AZURE_HUB_BACKUP_STORAGE_CONTAINER=${AZURE_HUB_BACKUP_STORAGE_CONTAINER:-hub-backups}" \
     "AZURE_HUB_BACKUP_SAS_EXPIRY_MINUTES=${AZURE_HUB_BACKUP_SAS_EXPIRY_MINUTES:-60}" \
@@ -214,6 +221,8 @@ az containerapp update \
     "HL7_RECEIVING_FACILITY=${HL7_RECEIVING_FACILITY:-PROD_LIS}" \
     "MLLP_HOST=${MLLP_HOST:-}" \
     "MLLP_PORT=${MLLP_PORT:-2575}" \
+    "MLLP_USE_SSL=${MLLP_USE_SSL:-true}" \
+    "MLLP_SSL_VERIFY=${MLLP_SSL_VERIFY:-true}" \
     "HL7_LIS_CODE_SYSTEM=${HL7_LIS_CODE_SYSTEM:-LIS_DEFAULT}" \
     "HIE_AUTO_CR_LOOKUP=${HIE_AUTO_CR_LOOKUP:-true}" \
     "HIE_AUTO_CR_REGISTER=${HIE_AUTO_CR_REGISTER:-true}" \
@@ -295,6 +304,34 @@ az containerapp update \
     "LICENSE_SIGNING_KEY=secretref:license-signing-key" \
     "LOINC_USERNAME=secretref:loinc-username" \
     "LOINC_PASSWORD=secretref:loinc-password" \
+  --output none
+
+# The GitHub production environment is the canonical source for this passphrase.
+# A manual production update must receive that same value, synchronize it to the
+# backup job, then compare silently without emitting either value.
+if ! az containerapp job show --name "$BACKUP_JOB_NAME" --resource-group "$RG" >/dev/null 2>&1; then
+  echo "ERROR: Required backup job '$BACKUP_JOB_NAME' was not found." >&2
+  exit 1
+fi
+az containerapp job secret set \
+  --name "$BACKUP_JOB_NAME" \
+  --resource-group "$RG" \
+  --secrets "backup-encryption-key=$BACKUP_ENCRYPTION_KEY" \
+  --output none
+AZURE_BACKUP_ENCRYPTION_KEY=$(az containerapp job secret list \
+  --name "$BACKUP_JOB_NAME" \
+  --resource-group "$RG" \
+  --show-values \
+  --query "[?name=='backup-encryption-key'].value | [0]" \
+  --output tsv)
+if [[ -z "$AZURE_BACKUP_ENCRYPTION_KEY" || "$AZURE_BACKUP_ENCRYPTION_KEY" != "$BACKUP_ENCRYPTION_KEY" ]]; then
+  echo "ERROR: ACA backup secret does not match BACKUP_ENCRYPTION_KEY." >&2
+  exit 1
+fi
+az containerapp job update \
+  --name "$BACKUP_JOB_NAME" \
+  --resource-group "$RG" \
+  --set-env-vars "BACKUP_ENCRYPTION_KEY=secretref:backup-encryption-key" \
   --output none
 
 echo ""

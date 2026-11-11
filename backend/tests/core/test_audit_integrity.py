@@ -424,6 +424,30 @@ class TestAuditIntegrityAPI:
         assert "total_entries" in response.data
         assert "chained_entries" in response.data
 
+    def test_chain_status_tenant_admin_access(
+        self, api_client, test_user, sample_organization, sample_facility
+    ):
+        """Facility-scoped tenant admins can review their audit-chain status."""
+        from hmis.apps.core.models import Role
+        from tests.conftest import ensure_staff_profile
+
+        role, _ = Role.objects.get_or_create(
+            code="ORG-ADMIN",
+            defaults={"name": "Organization Administrator", "hierarchy_level": 1},
+        )
+        profile = ensure_staff_profile(test_user, sample_organization, sample_facility)
+        profile.primary_role = role
+        profile.save(update_fields=["primary_role"])
+        api_client.force_authenticate(user=test_user)
+
+        response = api_client.get(
+            "/api/auditlogs/chain_status/",
+            HTTP_X_FACILITY_ID=str(sample_facility.id),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "total_entries" in response.data
+
     def test_chain_status_requires_active_facility(self, api_client):
         """Chain status endpoint requires a resolvable active facility."""
         user = User.objects.create_superuser(
@@ -504,6 +528,15 @@ class TestAuditIntegrityCeleryTask:
         )
         assert notifications.exists()
         assert "Tampering Detected" in notifications.first().title
+
+    def test_integrity_verification_is_scheduled_hourly(self):
+        """Celery Beat must invoke audit integrity verification every hour."""
+        from hmis.celery import app
+
+        entry = app.conf.beat_schedule["verify-audit-chain-integrity-hourly"]
+
+        assert entry["task"] == "core.verify_audit_chain_integrity"
+        assert entry["schedule"] == 3600.0
 
 
 class TestBackfillCommand:

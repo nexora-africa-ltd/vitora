@@ -32,6 +32,8 @@ ALLOWED_HOSTS = [
 DATABASE_URL = os.getenv("DATABASE_URL")
 DB_CONN_MAX_AGE = int(os.getenv("DB_CONN_MAX_AGE", "60"))
 DB_APPLICATION_NAME = os.getenv("VITORA_DB_APPLICATION_NAME", "vitora-staging-api").strip()
+DB_POOL_MIN_SIZE = max(1, int(os.getenv("DB_POOL_MIN_SIZE", "1")))
+DB_POOL_MAX_SIZE = max(DB_POOL_MIN_SIZE, int(os.getenv("DB_POOL_MAX_SIZE", "8")))
 
 if DATABASE_URL:
     # PostgreSQL (Neon / Vercel Postgres / Render)
@@ -49,8 +51,8 @@ if DATABASE_URL:
     # Django's bounded Psycopg client pool instead.
     DATABASES["default"]["CONN_MAX_AGE"] = 0
     DATABASES["default"].setdefault("OPTIONS", {})["pool"] = {
-        "min_size": 1,
-        "max_size": 4,
+        "min_size": DB_POOL_MIN_SIZE,
+        "max_size": DB_POOL_MAX_SIZE,
     }
     # Attribute every PostgreSQL session so a Neon connection spike is traceable.
     DATABASES["default"]["OPTIONS"]["application_name"] = DB_APPLICATION_NAME
@@ -87,10 +89,13 @@ AUTH_COOKIE_SECURE = os.getenv("AUTH_COOKIE_SECURE", "true").lower() == "true"
 AUTH_COOKIE_SAMESITE = os.getenv("AUTH_COOKIE_SAMESITE", "None")
 AUTH_COOKIE_DOMAIN = os.getenv("AUTH_COOKIE_DOMAIN", None)
 
-# HSTS disabled for staging (easier testing)
-SECURE_HSTS_SECONDS = 0
-SECURE_HSTS_INCLUDE_SUBDOMAINS = False
-SECURE_HSTS_PRELOAD = False
+# Certification staging is public and carries synthetic health data; retain the
+# same HTTPS-only browser posture as production unless explicitly overridden.
+SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = (
+    os.getenv("SECURE_HSTS_INCLUDE_SUBDOMAINS", "true").lower() == "true"
+)
+SECURE_HSTS_PRELOAD = os.getenv("SECURE_HSTS_PRELOAD", "true").lower() == "true"
 
 # =============================================================================
 # CORS - Allow staging frontend
@@ -214,6 +219,38 @@ ICD11_USE_LOCAL = os.getenv("ICD11_USE_LOCAL", "false").lower() == "true"
 # =============================================================================
 CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "true").lower() == "true"
 CELERY_TASK_EAGER_PROPAGATES = CELERY_TASK_ALWAYS_EAGER
+
+# Redis is shared by Celery, Channels, and Django cache when staging runs more
+# than one API replica. The shared cache preserves CQM task ownership while a
+# polling request can be routed to a different replica.
+REDIS_URL = os.getenv("REDIS_URL", "")
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+            "TIMEOUT": 300,
+            "KEY_PREFIX": "vitora:staging:cache",
+            "OPTIONS": {
+                "health_check_interval": 30,
+            },
+        }
+    }
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [REDIS_URL],
+                "prefix": "vitora:staging:channels",
+                "capacity": 1500,
+                "expiry": 60,
+            },
+        }
+    }
+    CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", REDIS_URL)
+    CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", REDIS_URL)
+    CELERY_BROKER_TRANSPORT_OPTIONS = {"global_keyprefix": "vitora:staging:broker:"}
+    CELERY_RESULT_BACKEND_TRANSPORT_OPTIONS = {"global_keyprefix": "vitora:staging:result:"}
 
 # =============================================================================
 # Email - Console backend for staging (no real emails)

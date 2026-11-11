@@ -3,9 +3,12 @@
 import { useState, useEffect } from 'react';
 import { Shield, Key, CheckCircle, AlertCircle, Loader2, Copy, Eye, EyeOff } from 'lucide-react';
 import { mfaApi } from '@/lib/api/mfa';
+import { getApiErrorMessage } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { HelpPopover } from '@/components/shared/help-popover';
+import { cn } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -30,6 +33,7 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
   const [token, setToken] = useState('');
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
   const [showBackupCodes, setShowBackupCodes] = useState(false);
+  const [backupCodesCopied, setBackupCodesCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,17 +55,17 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
     startSetup();
   }, []);
 
-  const handleVerifyToken = async () => {
-    if (!setupData || token.length !== 6) return;
+  const handleVerifyToken = async (submittedToken = token) => {
+    if (!setupData || submittedToken.length !== 6 || isLoading) return;
 
     setIsLoading(true);
     setError(null);
     try {
-      const result = await mfaApi.confirmTOTPSetup(token);
+      const result = await mfaApi.confirmTOTPSetup(submittedToken);
       setBackupCodes(result.backup_codes);
       setStep('backup');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invalid token. Please try again.');
+      setError(getApiErrorMessage(err) || 'Invalid token. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -72,26 +76,33 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
     onComplete();
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success('Copied to clipboard');
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Copied to clipboard');
+      return true;
+    } catch {
+      toast.error('Unable to copy to clipboard');
+      return false;
+    }
   };
 
   if (step === 'setup') {
     return (
       <Dialog open={true} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent
+          aria-describedby={undefined}
+          className="gap-3 overflow-hidden p-4 sm:max-w-md sm:p-5"
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
               Set Up Two-Factor Authentication
+              <HelpPopover content="Add an extra layer of security to your account by enabling two-factor authentication." />
             </DialogTitle>
-            <DialogDescription>
-              Add an extra layer of security to your account by enabling two-factor authentication.
-            </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin" />
@@ -100,18 +111,18 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
             ) : setupData ? (
               <>
                 <div className="text-center">
-                  <p className="mb-4 text-sm text-muted-foreground">
+                    <p className="mb-3 text-sm text-muted-foreground">
                     Scan this QR code with your authenticator app (Google Authenticator, Authy,
                     etc.)
                   </p>
 
                   {setupData.qr_code && (
-                    <div className="mb-4 flex justify-center">
+                    <div className="mb-3 flex justify-center">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={`data:image/png;base64,${setupData.qr_code}`}
                         alt="QR Code for MFA setup"
-                        className="rounded-lg border"
+                          className="size-40 rounded-lg border sm:size-44"
                       />
                     </div>
                   )}
@@ -125,7 +136,8 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => copyToClipboard(setupData.secret)}
+                        aria-label="Copy setup secret"
+                        onClick={() => void copyToClipboard(setupData.secret)}
                       >
                         <Copy className="h-4 w-4" />
                       </Button>
@@ -133,7 +145,8 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
                     {setupData.provisioning_uri && (
                       <a
                         href={setupData.provisioning_uri}
-                        className="mt-1 inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                        className="mt-1 inline-flex items-center gap-1.5 text-xs text-primary hover:underline md:hidden"
+                        aria-label="Open authenticator app"
                       >
                         Open in Authenticator App →
                       </a>
@@ -165,7 +178,7 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
   if (step === 'verify') {
     return (
       <Dialog open={true} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="gap-3 overflow-hidden p-4 sm:max-w-md sm:p-5">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Key className="h-5 w-5" />
@@ -176,24 +189,41 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="space-y-2">
               <label htmlFor="token" className="text-sm font-medium">
                 6-digit code
               </label>
-              <Input
+              <InputOTP
                 id="token"
-                type="text"
-                placeholder="000000"
+                aria-label="6-digit code"
                 value={token}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-                  setToken(value);
+                onChange={(value) => {
+                  setError(null);
+                  setToken(value.replace(/\D/g, '').slice(0, 6));
                 }}
-                className="text-center text-lg tracking-widest"
-                disabled={isLoading}
+                onComplete={(value) => void handleVerifyToken(value)}
+                maxLength={6}
+                pattern="^[0-9]+$"
+                pushPasswordManagerStrategy="none"
                 autoFocus
-              />
+                disabled={isLoading}
+                aria-invalid={Boolean(error)}
+                containerClassName="justify-center"
+              >
+                <InputOTPGroup>
+                  {Array.from({ length: 6 }, (_, index) => (
+                    <InputOTPSlot
+                      key={index}
+                      index={index}
+                      className={cn(
+                        'h-12 w-10 text-xl font-semibold sm:h-14 sm:w-12 sm:text-2xl',
+                        error && 'border-destructive text-destructive'
+                      )}
+                    />
+                  ))}
+                </InputOTPGroup>
+              </InputOTP>
             </div>
 
             {error && (
@@ -208,7 +238,7 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
                 Back
               </Button>
               <Button
-                onClick={handleVerifyToken}
+                onClick={() => void handleVerifyToken()}
                 disabled={token.length !== 6 || isLoading}
                 className="flex-1"
               >
@@ -231,7 +261,7 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
   if (step === 'backup') {
     return (
       <Dialog open={true} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="gap-3 overflow-hidden p-4 sm:max-w-md sm:p-5">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-600" />
@@ -243,7 +273,7 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
@@ -273,13 +303,19 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
               </div>
 
               <Button
-                variant="outline"
                 size="sm"
-                onClick={() => copyToClipboard(backupCodes.join('\n'))}
-                className="w-full"
-              >
-                <Copy className="mr-2 h-4 w-4" />
-                Copy All Codes
+                  onClick={async () => {
+                    if (await copyToClipboard(backupCodes.join('\n'))) setBackupCodesCopied(true);
+                  }}
+                  className="w-full"
+                  variant={backupCodesCopied ? 'default' : 'outline'}
+                >
+                  {backupCodesCopied ? (
+                    <CheckCircle className="mr-2 h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <Copy className="mr-2 h-4 w-4" aria-hidden="true" />
+                  )}
+                  {backupCodesCopied ? 'Codes Copied' : 'Copy All Codes'}
               </Button>
             </div>
 

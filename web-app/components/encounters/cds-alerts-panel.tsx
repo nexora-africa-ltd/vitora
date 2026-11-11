@@ -26,6 +26,7 @@ import {
   X,
   ShieldOff,
   Lightbulb,
+  RefreshCw,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -49,9 +50,12 @@ import {
   useAcceptCDSAlert,
   useOverrideCDSAlert,
   useDismissCDSAlert,
+  useEvaluateEncounterCDS,
 } from '@/lib/hooks/use-cds';
 import { useFeatureFlag } from '@/lib/hooks/use-feature-flags';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import type { CDSAlertListItem, CDSSuggestedAction } from '@/lib/types/cds';
+import { toast } from 'sonner';
 
 // =============================================================================
 // Priority Helpers
@@ -327,7 +331,10 @@ export function CDSAlertsPanel({ encounterId, onSuggestedAction, className }: CD
   const acceptAlert = useAcceptCDSAlert();
   const overrideAlert = useOverrideCDSAlert();
   const dismissAlert = useDismissCDSAlert();
+  const evaluateEncounter = useEvaluateEncounterCDS();
   const smartAutopopulate = useFeatureFlag('smart_autopopulate');
+  const { hasPermission } = usePermissions();
+  const canEvaluate = hasPermission('cds.change_cdsalert');
 
   const [showLower, setShowLower] = useState(false);
   const [overrideTarget, setOverrideTarget] = useState<CDSAlertListItem | null>(null);
@@ -336,7 +343,8 @@ export function CDSAlertsPanel({ encounterId, onSuggestedAction, className }: CD
     acknowledgeAlert.isPending ||
     acceptAlert.isPending ||
     overrideAlert.isPending ||
-    dismissAlert.isPending;
+    dismissAlert.isPending ||
+    evaluateEncounter.isPending;
 
   // Group alerts by priority tier
   const { critical, high, lower, resolved, totalCount } = useMemo(() => {
@@ -401,8 +409,26 @@ export function CDSAlertsPanel({ encounterId, onSuggestedAction, className }: CD
     [dismissAlert]
   );
 
+  const handleEvaluate = useCallback(() => {
+    evaluateEncounter.mutate(encounterId, {
+      onSuccess: (result) => {
+        toast.success('CDS evaluation complete', {
+          description:
+            result.alerts_created > 0
+              ? `${result.alerts_created} new alert${result.alerts_created === 1 ? '' : 's'} created from ${result.rules_evaluated} rule${result.rules_evaluated === 1 ? '' : 's'}.`
+              : `${result.rules_evaluated} rule${result.rules_evaluated === 1 ? '' : 's'} evaluated; no new alerts.`,
+        });
+      },
+      onError: () => {
+        toast.error('CDS evaluation failed', {
+          description: 'The encounter was not changed. Try again or contact an administrator.',
+        });
+      },
+    });
+  }, [encounterId, evaluateEncounter]);
+
   // Nothing to show
-  if (isLoading || totalCount === 0) return null;
+  if (isLoading || (totalCount === 0 && !canEvaluate)) return null;
 
   return (
     <>
@@ -414,14 +440,28 @@ export function CDSAlertsPanel({ encounterId, onSuggestedAction, className }: CD
         )}
       >
         <CardHeader className="px-3 py-3 pb-3 sm:px-6 sm:py-4">
-          <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <ShieldAlert className="h-4 w-4 sm:h-5 sm:w-5" />
               <span className="sm:hidden">CDS Alerts</span>
               <span className="hidden sm:inline">Clinical Decision Support</span>
-              <HelpPopover content="Evidence-based advisories generated from clinical rules. These are recommendations only — they do not block your workflow. Accept, override (with reason), or dismiss each alert." />
+              <HelpPopover content="Evidence-based advisories generated from clinical rules. These are recommendations only — they do not block your workflow. Accept, override (with reason), or dismiss each alert. Clinicians with CDS permission can re-evaluate the encounter after new clinical information is entered." />
             </CardTitle>
             <div className="flex items-center gap-1.5">
+              {canEvaluate && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleEvaluate}
+                  disabled={isActing}
+                  className="h-8 gap-1.5"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${evaluateEncounter.isPending ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">Re-evaluate</span>
+                  <span className="sm:hidden">Run</span>
+                </Button>
+              )}
               {critical.length > 0 && (
                 <Badge className={priorityConfig.CRITICAL.badgeClass}>
                   {critical.length} Critical
@@ -435,6 +475,12 @@ export function CDSAlertsPanel({ encounterId, onSuggestedAction, className }: CD
           </div>
         </CardHeader>
         <CardContent className="space-y-3 px-3 sm:px-6">
+          {totalCount === 0 && (
+            <p className="text-sm text-muted-foreground">
+              No CDS alerts are currently recorded for this encounter. Re-evaluate after recording
+              relevant clinical findings, orders, or results.
+            </p>
+          )}
           {/* Critical alerts — always visible */}
           {critical.map((alert) => (
             <AlertRow

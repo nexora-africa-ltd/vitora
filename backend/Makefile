@@ -188,6 +188,7 @@ notif-burst5:
 	./scripts/notif-burst.sh "$(NOTIF_USER)" 5
 
 test:
+	@rm -f .coverage .coverage.*
 	poetry run pytest --cov=hmis --cov-report=term-missing --cov-report=html --cov-report=xml --cov-fail-under=75
 
 test-fast:

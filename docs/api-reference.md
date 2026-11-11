@@ -777,10 +777,27 @@ GET             /api/cds/alerts/                     # Active CDS alerts
 ## Quality
 
 ```
-# Managed via included app URLs at /api/quality/
-GET|POST        /api/quality/measures/               # Quality improvement measures
-GET|PATCH       /api/quality/measures/{id}/
-GET             /api/quality/reports/                 # Quality reports / dashboards
+# Quality measure definitions
+GET|POST        /api/quality/measures/                    # List/create measure definitions
+GET|PATCH       /api/quality/measures/{id}/               # Retrieve/update a definition
+POST            /api/quality/measures/preview-rule/       # Preview a calculation rule
+POST            /api/quality/measures/seed-defaults/      # Seed Kenya CQM defaults
+
+# Calculated results and reporting
+GET             /api/quality/dashboard/?year={year}&clinic_id={id}
+                                                        # Tenant-scoped quality dashboard
+GET             /api/quality/results/                     # List tenant-scoped calculated results
+POST            /api/quality/results/evaluate/            # Evaluate one clinic or all active clinics
+GET             /api/quality/results/evaluate/status/{task_id}/
+                                                        # Poll facility-wide evaluation
+GET             /api/quality/results/trends/?measure_id={id}
+                                                        # Measure trend data
+GET             /api/quality/results/export/?export_format=pdf|xlsx&year={year}&clinic={id}&measure={id}&period={number}&period_type={type}
+                                                        # Download a filtered PDF/XLSX result report
+
+# Aggregated reports
+GET|POST        /api/quality/quarterly-reports/
+GET|POST        /api/quality/annual-reports/
 ```
 
 ---

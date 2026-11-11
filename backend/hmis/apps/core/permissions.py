@@ -343,6 +343,17 @@ class IsAdminUser(permissions.BasePermission):
         return request.user and request.user.is_authenticated and request.user.is_staff
 
 
+class EncryptionEvidencePermission(permissions.BasePermission):
+    """Restrict platform encryption evidence to explicitly authorized staff."""
+
+    permission_name = "core.view_encryption_evidence"
+
+    def has_permission(self, request, view):
+        """Require the dedicated permission; superusers retain Django's implicit grant."""
+        user = request.user
+        return bool(user and user.is_authenticated and user.has_perm(self.permission_name))
+
+
 class FacilityAdminPermission(permissions.BasePermission):
     """
     Permission for facility CRUD operations.
@@ -412,6 +423,23 @@ class AuditLogPermission(permissions.BasePermission):
         return request.method in permissions.SAFE_METHODS and (
             request.user.is_staff or request.user.is_superuser or obj.user_id == request.user.id
         )
+
+
+class AuditIntegrityPermission(permissions.BasePermission):
+    """Allow audit-chain operations only to platform or tenant administrators."""
+
+    ADMIN_ROLE_CODES = {"ADMIN", "ORG-ADMIN", "OWNER"}
+
+    def has_permission(self, request, view):
+        """Require an authenticated user with an administrative role."""
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser or user.is_staff:
+            return True
+        profile = getattr(user, "staff_profile", None)
+        role = getattr(profile, "primary_role", None) if profile else None
+        return bool(role and getattr(role, "code", "") in self.ADMIN_ROLE_CODES)
 
 
 class PatientPermission(permissions.BasePermission):

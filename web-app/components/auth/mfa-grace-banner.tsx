@@ -5,6 +5,7 @@ import { Shield, X } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { mfaApi } from '@/lib/api/mfa';
 
 const MFA_GRACE_KEY = 'vitora_mfa_grace_deadline';
 const MFA_BANNER_DISMISSED_KEY = 'vitora_mfa_banner_dismissed';
@@ -19,23 +20,46 @@ export function MFAGraceBanner() {
   const [dismissed, setDismissed] = useState(false);
   const [deadline, setDeadline] = useState<Date | null>(null);
 
-  // Read the grace deadline from localStorage on mount
+  // Reconcile persisted grace state with the server so an MFA setup completed
+  // in a previous page view cannot leave a stale warning after refresh.
   useEffect(() => {
-    const raw = localStorage.getItem(MFA_GRACE_KEY);
-    if (!raw) return;
+    let isActive = true;
 
-    const dl = new Date(raw);
-    if (isNaN(dl.getTime())) return;
+    const loadGraceState = async () => {
+      try {
+        const status = await mfaApi.getStatus();
+        if (status.mfa_enabled) {
+          localStorage.removeItem(MFA_GRACE_KEY);
+          return;
+        }
+      } catch {
+        // Preserve the local warning if status cannot be checked (for example, offline mode).
+      }
 
-    // Already expired — don't show banner (interceptor will redirect)
-    if (dl.getTime() <= Date.now()) return;
+      if (!isActive) return;
+      const raw = localStorage.getItem(MFA_GRACE_KEY);
+      if (!raw) return;
 
-    // Check if previously dismissed this session
-    if (sessionStorage.getItem(MFA_BANNER_DISMISSED_KEY) === 'true') {
-      setDismissed(true);
-    }
+      const dl = new Date(raw);
+      if (isNaN(dl.getTime()) || dl.getTime() <= Date.now()) return;
 
-    setDeadline(dl);
+      if (sessionStorage.getItem(MFA_BANNER_DISMISSED_KEY) === 'true') {
+        setDismissed(true);
+      }
+      setDeadline(dl);
+    };
+
+    void loadGraceState();
+    const handleMfaEnabled = () => {
+      localStorage.removeItem(MFA_GRACE_KEY);
+      setDeadline(null);
+      setTimeLeft(null);
+    };
+    window.addEventListener('vitora:mfa-enabled', handleMfaEnabled);
+    return () => {
+      isActive = false;
+      window.removeEventListener('vitora:mfa-enabled', handleMfaEnabled);
+    };
   }, []);
 
   // Update countdown every minute

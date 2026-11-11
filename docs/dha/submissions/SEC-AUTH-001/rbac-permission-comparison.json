@@ -1,0 +1,78 @@
+{
+  "evidence": "Sanitized live GET /api/staff/me/ RBAC comparison",
+  "captured_at": "2026-11-07T17:50:34.647Z",
+  "users": [
+    {
+      "label": "Administrator",
+      "role": "ORG-ADMIN",
+      "role_display": "Administrator",
+      "role_category": "MANAGEMENT",
+      "permission_count": 387,
+      "capabilities": {
+        "manage_staff": true,
+        "view_audit_logs": true,
+        "approve_emergency_access": true,
+        "create_encounter": false,
+        "register_patient": false,
+        "manage_roles": false
+      },
+      "redacted_fields": [
+        "id",
+        "username",
+        "email",
+        "names",
+        "phone_number",
+        "national_id",
+        "facility identifiers"
+      ]
+    },
+    {
+      "label": "Clinician",
+      "role": "DOCTOR",
+      "role_display": "Medical Doctor",
+      "role_category": "CLINICAL",
+      "permission_count": 540,
+      "capabilities": {
+        "manage_staff": false,
+        "view_audit_logs": false,
+        "approve_emergency_access": false,
+        "create_encounter": true,
+        "register_patient": true,
+        "manage_roles": false
+      },
+      "redacted_fields": [
+        "id",
+        "username",
+        "email",
+        "names",
+        "phone_number",
+        "national_id",
+        "facility identifiers"
+      ]
+    },
+    {
+      "label": "Clerk",
+      "role": "RECORDS_CLERK",
+      "role_display": "Medical Records Clerk",
+      "role_category": "ADMINISTRATIVE",
+      "permission_count": 10,
+      "capabilities": {
+        "manage_staff": false,
+        "view_audit_logs": false,
+        "approve_emergency_access": false,
+        "create_encounter": false,
+        "register_patient": true,
+        "manage_roles": false
+      },
+      "redacted_fields": [
+        "id",
+        "username",
+        "email",
+        "names",
+        "phone_number",
+        "national_id",
+        "facility identifiers"
+      ]
+    }
+  ]
+}

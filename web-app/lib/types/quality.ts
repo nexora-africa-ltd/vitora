@@ -276,6 +276,18 @@ export interface QualityMeasureResult {
   denominator: number;
   percentage: string;
   meets_target: boolean;
+  evaluation_status: 'EVALUATED' | 'NOT_EVALUABLE' | 'DATA_QUALITY_ISSUE' | 'ERROR';
+  performance_summary: {
+    is_evaluable: boolean;
+    percentage: string | null;
+    target_percentage: string | null;
+    target_direction: 'AT_LEAST';
+    gap_to_target: string | null;
+  };
+  data_quality_summary: Record<string, unknown>;
+  evaluation_details: Record<string, unknown>;
+  recommendations: string[];
+  rule_snapshot: QualityEvaluationRule | Record<string, unknown>;
   calculation_notes: string;
   calculated_at: string;
   calculated_by: number | null;
@@ -299,6 +311,7 @@ export interface QualityMeasureResultListParams {
   measure__domain?: QualityMeasureDomain;
   clinic?: number;
   year?: number;
+  period?: number;
   period_type?: ReportingPeriod;
   meets_target?: boolean;
   ordering?: string;
@@ -325,6 +338,32 @@ export interface QualityMeasureImportResult {
 export interface QualityMeasureExportData {
   format: ExportFormat;
   measures?: number[];
+}
+
+export interface QualityResultExportParams {
+  year: number;
+  clinic?: number;
+  measure?: number;
+  period?: number;
+  period_type?: ReportingPeriod;
+}
+
+export interface QualityEvaluationTask {
+  task_id: string;
+  status: string;
+  year: number;
+  period: number;
+  period_type: string;
+  facility_id?: number | null;
+  result?: {
+    year: number;
+    period: number;
+    period_type: string;
+    clinics_evaluated: number;
+    results_created_or_updated: number;
+    facility_id: number | null;
+  };
+  detail?: string;
 }
 
 // =============================================================================

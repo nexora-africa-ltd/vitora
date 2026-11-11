@@ -1,0 +1,56 @@
+{
+  "endpoint": "GET /api/auditlogs/?patient_id=402&ordering=-timestamp",
+  "count": 2,
+  "results": [
+    {
+      "id": 1993,
+      "user": 45,
+      "username": "dha_lab_admin",
+      "user_name": "DHA Administrator",
+      "action": "patient_view",
+      "resource_type": "Patient",
+      "resource_id": 402,
+      "timestamp": "2026-11-11T18:28:36.812295+03:00",
+      "patient_id": 402,
+      "facility": 13,
+      "facility_name": "DHA Certification Test Facility",
+      "organization": 8,
+      "organization_name": "DHA Certification Test Organization",
+      "sequence_number": 1980,
+      "entry_hash": "450544d214a3bc35e9948cec27a0fe6493a2a48bff45db585e1de3dfb85d3d5e",
+      "previous_hash": "2db011fe43071ceee282362d1856061061413381615a258b98c17f8227a8b0d0",
+      "details": {
+        "purpose": "DHA SEC-AUDIT-001 staging evidence review",
+        "seed_marker": "DHA SEC-AUDIT-001 2026 audit evidence"
+      }
+    },
+    {
+      "id": 1992,
+      "user": 45,
+      "username": "dha_lab_admin",
+      "user_name": "DHA Administrator",
+      "action": "patient_update",
+      "resource_type": "Patient",
+      "resource_id": 402,
+      "timestamp": "2026-11-11T18:28:35.906663+03:00",
+      "patient_id": 402,
+      "facility": 13,
+      "facility_name": "DHA Certification Test Facility",
+      "organization": 8,
+      "organization_name": "DHA Certification Test Organization",
+      "sequence_number": 1979,
+      "entry_hash": "2db011fe43071ceee282362d1856061061413381615a258b98c17f8227a8b0d0",
+      "previous_hash": "29b85fc7fe1d598ebdb73377ea99850fcc82e5656327a064d02af9af9d8ef83a",
+      "details": {
+        "changes": {
+          "village": {
+            "new": "DHA Certification Audit Evidence",
+            "old": "DHA Test Village 1"
+          }
+        },
+        "purpose": "DHA SEC-AUDIT-001 staging evidence",
+        "seed_marker": "DHA SEC-AUDIT-001 2026 audit evidence"
+      }
+    }
+  ]
+}

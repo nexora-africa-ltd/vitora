@@ -1,0 +1,26 @@
+{
+  "encryption": {
+    "encryptionIdentity": null,
+    "keySource": "Microsoft.Storage",
+    "keyVaultProperties": null,
+    "requireInfrastructureEncryption": null,
+    "services": {
+      "blob": {
+        "enabled": true,
+        "keyType": "Account",
+        "lastEnabledTime": "2026-08-07T19:12:19.311904+00:00"
+      },
+      "file": {
+        "enabled": true,
+        "keyType": "Account",
+        "lastEnabledTime": "2026-08-07T19:12:19.311904+00:00"
+      },
+      "queue": null,
+      "table": null
+    }
+  },
+  "minimumTlsVersion": "TLS1_2",
+  "publicBlobAccessAllowed": false,
+  "publicNetworkAccess": null,
+  "secureTransferRequired": true
+}

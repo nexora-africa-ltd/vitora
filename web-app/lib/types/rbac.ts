@@ -312,6 +312,13 @@ export interface StaffProfileUpdateData extends Partial<Omit<StaffProfileCreateD
   supervisor?: number | null;
 }
 
+/** Fields an authenticated staff member may update through PATCH /api/staff/me/. */
+export interface SelfServiceStaffProfileUpdateData {
+  phone_number?: string;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+}
+
 export interface StaffPasswordResetData {
   password?: string;
   must_change_password?: boolean;
@@ -381,7 +388,7 @@ export interface AuditLogEntry {
   action: string;
   resource_type: string;
   resource_id: number | null;
-  resource_name?: string;
+  resource_name?: string | null;
   details: Record<string, unknown>;
   ip_address: string | null;
   user_agent: string;

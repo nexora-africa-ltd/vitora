@@ -1049,6 +1049,15 @@ class FHIRMedicationStatementView(APIView):
             fhir_status = "stopped"
 
         medication_text = f"{drug.generic_name} {drug.strength} {drug.form}"
+        medication_coding = []
+        if drug.hpt_code:
+            medication_coding.append(
+                {
+                    "system": drug.hpt_system or "urn:kenya:knhts:hpt",
+                    "code": drug.hpt_code,
+                    "display": drug.hpt_display or drug.generic_name,
+                }
+            )
         fhir_resource = {
             "resourceType": "MedicationStatement",
             "id": str(item.id),
@@ -1078,6 +1087,7 @@ class FHIRMedicationStatementView(APIView):
             "status": fhir_status,
             "medicationCodeableConcept": {
                 "text": medication_text,
+                **({"coding": medication_coding} if medication_coding else {}),
             },
             "subject": {
                 "reference": f"Patient/{prescription.patient.id}",

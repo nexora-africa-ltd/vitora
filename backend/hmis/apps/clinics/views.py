@@ -65,7 +65,9 @@ class IsAdminOrReadOnly(permissions.BasePermission):
         """Check if user has permission."""
         if request.method in permissions.SAFE_METHODS:
             return True
-        return request.user and request.user.is_staff
+        return request.user and (
+            request.user.is_staff or request.user.has_perm("clinics.add_clinic")
+        )
 
 
 class CanManageClinicStaff(permissions.BasePermission):
@@ -594,7 +596,8 @@ class ClinicViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         created = []
         skipped = 0
         for clinic_data in default_clinics:
-            code = f"{clinic_data['code']}-F{facility.pk}"
+            facility_suffix = f"-F{facility.pk}"
+            code = f"{clinic_data['code'][: 20 - len(facility_suffix)]}{facility_suffix}"
             if Clinic.objects.filter(code=code, facility=facility).exists():
                 skipped += 1
                 continue

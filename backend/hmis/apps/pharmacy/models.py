@@ -177,6 +177,13 @@ class Drug(models.Model):
         blank=True,
         help_text="When HPT data was last fetched from DHA",
     )
+    hpt_system = models.CharField(max_length=255, blank=True, default="")
+    hpt_owner = models.CharField(max_length=100, blank=True, default="")
+    hpt_source = models.CharField(max_length=100, blank=True, default="")
+    hpt_display = models.CharField(max_length=500, blank=True, default="")
+    hpt_retrieved_at = models.DateTimeField(null=True, blank=True)
+    hpt_version = models.CharField(max_length=100, blank=True, default="")
+    hpt_checksum = models.CharField(max_length=64, blank=True, default="")
     ppb_code = models.CharField(
         max_length=20,
         blank=True,
@@ -882,6 +889,52 @@ class PrescriptionItem(models.Model):
     def remaining_quantity(self) -> int:
         """Get remaining quantity to be dispensed."""
         return self.quantity - self.quantity_dispensed
+
+
+class PrescriptionTransmission(FacilityScopedModel, TimeStampedModel):
+    """Auditable electronic handoff of a prescription to an in-network pharmacy."""
+
+    class Status(models.TextChoices):
+        RECEIVED = "RECEIVED", "Received by pharmacy"
+        ACCEPTED = "ACCEPTED", "Accepted by pharmacy"
+        REJECTED = "REJECTED", "Rejected by pharmacy"
+        DISPENSED = "DISPENSED", "Dispensed"
+
+    prescription = models.ForeignKey(
+        Prescription, on_delete=models.CASCADE, related_name="transmissions"
+    )
+    recipient_facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.PROTECT,
+        related_name="received_prescription_transmissions",
+    )
+    recipient_request = models.OneToOneField(
+        "pharmacy.ExternalPrescriptionRequest",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="source_transmission",
+    )
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.RECEIVED)
+    transmitted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="prescription_transmissions",
+    )
+    transmitted_at = models.DateTimeField(auto_now_add=True)
+    received_at = models.DateTimeField(auto_now_add=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    rejected_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-transmitted_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["prescription", "recipient_facility"],
+                name="unique_prescription_recipient_facility",
+            )
+        ]
 
 
 class Dispensing(FacilityScopedModel):

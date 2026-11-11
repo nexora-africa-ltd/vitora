@@ -54,6 +54,9 @@ export interface Allergy {
   substance: string;
   substance_code?: string;
   substance_code_system?: string;
+  terminology_owner?: string;
+  terminology_source?: string;
+  terminology_retrieved_at?: string | null;
   substance_type: SubstanceType;
   substance_type_display: string;
   // Drug link
@@ -113,6 +116,9 @@ export interface AllergyLookupResult {
   substance: string;
   code: string;
   code_system: string;
+  terminology_owner?: string;
+  terminology_source?: string;
+  terminology_retrieved_at?: string | null;
   drug_id: number | null;
   type: string;
   display: string;
@@ -150,6 +156,9 @@ export interface AllergyCreatePayload {
   substance_type?: SubstanceType;
   substance_code?: string;
   substance_code_system?: string;
+  terminology_owner?: string;
+  terminology_source?: string;
+  terminology_retrieved_at?: string;
   drug?: number;
   reaction_type?: ReactionType;
   reaction_description?: string;

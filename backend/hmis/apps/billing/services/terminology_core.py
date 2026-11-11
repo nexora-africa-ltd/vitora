@@ -13,6 +13,7 @@ Supported inputs/args:
 
 from importlib import import_module
 
+import requests
 from django.conf import settings
 
 from hmis.apps.billing.services.terminology_drug_loinc import TerminologyDrugLoincMixin
@@ -20,6 +21,8 @@ from hmis.apps.billing.services.terminology_ichi_utils import TerminologyIchiUti
 from hmis.apps.billing.services.terminology_interventions_icd import (
     TerminologyInterventionsICDMixin,
 )
+from hmis.apps.billing.services.terminology_models import TerminologyConcept
+from hmis.apps.billing.services.terminology_source_registry import get_terminology_source
 
 
 class TerminologyService(
@@ -62,6 +65,44 @@ class TerminologyService(
         # Initialize auth service
         terminology_module = import_module("hmis.apps.billing.services.terminology")
         self.auth_service = terminology_module.SHAAuthService()
+
+    def search_concepts(
+        self, terminology_key: str, query: str, *, limit: int = 50
+    ) -> list[TerminologyConcept]:
+        """Search one approved DHA Clinical Concepts source in a normalized form."""
+        source = get_terminology_source(terminology_key)
+        params = {**source.query_params(), "search": query, "limit": limit}
+        try:
+            response = requests.get(
+                source.endpoint,
+                params=params,
+                headers={"Accept": "application/json"},
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+        except requests.RequestException as exc:
+            from .terminology_models import TerminologyError
+
+            raise TerminologyError(
+                f"Failed to search {terminology_key} clinical concepts: {exc}",
+                terminology_type=terminology_key.upper(),
+            ) from exc
+
+        payload = response.json()
+        records = payload.get("results", []) if isinstance(payload, dict) else []
+        return [
+            TerminologyConcept.from_api_response(
+                record,
+                owner=source.owner,
+                source=source.source or source.collection or "",
+            )
+            for record in records
+            if isinstance(record, dict)
+        ]
+
+    def search_hpt_concepts(self, query: str, *, limit: int = 50) -> list[TerminologyConcept]:
+        """Search the KNHTS HPT source using the normalized Clinical Concepts API."""
+        return self.search_concepts("hpt", query, limit=limit)
 
     # =========================================================================
     # Response Helpers

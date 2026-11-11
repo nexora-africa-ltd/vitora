@@ -18,12 +18,14 @@ import {
   SetupInitializeResponseSchema,
   OnboardingStatusResponseSchema,
   OnboardingCompleteResponseSchema,
+  BackupPolicyAcceptanceResponseSchema,
 } from '@/lib/schemas/onboarding.schema';
 import { API_BASE_URL } from '@/lib/utils/constants';
 import type { PaginatedResponse } from '@/lib/types';
 import type {
   OnboardingStatusResponse,
   OnboardingCompleteResponse,
+  BackupPolicyAcceptanceResponse,
   StaffInvitation,
   InvitationCreateData,
   InvitationPublicInfo,
@@ -322,6 +324,13 @@ export const onboardingChecklistApi = {
     const response = await apiClient.post('/api/core/onboarding/status/');
     return parseResponse(OnboardingCompleteResponseSchema, response.data, {
       context: 'onboardingChecklistApi.markComplete',
+    });
+  },
+
+  acceptBackupPolicy: async (): Promise<BackupPolicyAcceptanceResponse> => {
+    const response = await apiClient.post('/api/core/onboarding/backup-policy/');
+    return parseResponse(BackupPolicyAcceptanceResponseSchema, response.data, {
+      context: 'onboardingChecklistApi.acceptBackupPolicy',
     });
   },
 };

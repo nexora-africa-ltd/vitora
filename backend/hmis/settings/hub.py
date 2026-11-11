@@ -25,6 +25,7 @@ from .base import *  # noqa: F401, F403, F405
 MIDDLEWARE = list(MIDDLEWARE)  # noqa: F405
 
 DEBUG = False
+ENVIRONMENT = "hub"
 
 # ---------------------------------------------------------------------------
 # Network

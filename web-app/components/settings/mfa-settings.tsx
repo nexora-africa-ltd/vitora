@@ -18,6 +18,7 @@ import {
   ShieldOff,
   Key,
   AlertCircle,
+  CheckCircle,
   Loader2,
   RefreshCw,
   Fingerprint,
@@ -41,6 +42,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { MFASetupWizard } from '@/components/auth/mfa-setup-wizard';
 import { toast } from 'sonner';
+
+const MFA_GRACE_KEY = 'vitora_mfa_grace_deadline';
 
 export function MFASettingsTab() {
   const [status, setStatus] = useState<MFAStatus | null>(null);
@@ -124,7 +127,9 @@ export function MFASettingsTab() {
 
   // Show new backup codes in a dialog
   const [newBackupCodes, setNewBackupCodes] = useState<string[] | null>(null);
+  const [newBackupCodesCopied, setNewBackupCodesCopied] = useState(false);
   const showNewBackupCodes = (codes: string[]) => {
+    setNewBackupCodesCopied(false);
     setNewBackupCodes(codes);
   };
 
@@ -405,6 +410,8 @@ export function MFASettingsTab() {
       {showSetupWizard && (
         <MFASetupWizard
           onComplete={() => {
+            localStorage.removeItem(MFA_GRACE_KEY);
+            window.dispatchEvent(new Event('vitora:mfa-enabled'));
             setShowSetupWizard(false);
             loadStatus();
           }}
@@ -531,7 +538,13 @@ export function MFASettingsTab() {
       </Dialog>
 
       {/* New Backup Codes Dialog */}
-      <Dialog open={!!newBackupCodes} onOpenChange={() => setNewBackupCodes(null)}>
+      <Dialog
+        open={!!newBackupCodes}
+        onOpenChange={() => {
+          setNewBackupCodes(null);
+          setNewBackupCodesCopied(false);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>New Backup Codes</DialogTitle>
@@ -550,15 +563,23 @@ export function MFASettingsTab() {
 
           <DialogFooter>
             <Button
-              variant="outline"
-              onClick={() => {
+              variant={newBackupCodesCopied ? 'default' : 'outline'}
+              onClick={async () => {
                 if (newBackupCodes) {
-                  navigator.clipboard.writeText(newBackupCodes.join('\n'));
-                  toast.success('Copied to clipboard');
+                  try {
+                    await navigator.clipboard.writeText(newBackupCodes.join('\n'));
+                    setNewBackupCodesCopied(true);
+                    toast.success('Copied to clipboard');
+                  } catch {
+                    toast.error('Unable to copy to clipboard');
+                  }
                 }
               }}
             >
-              Copy All
+              {newBackupCodesCopied ? (
+                <CheckCircle className="mr-2 h-4 w-4" aria-hidden="true" />
+              ) : null}
+              {newBackupCodesCopied ? 'Codes Copied' : 'Copy All'}
             </Button>
             <Button onClick={() => setNewBackupCodes(null)}>I've Saved These Codes</Button>
           </DialogFooter>

@@ -410,6 +410,7 @@ class OrganizationAdmin(admin.ModelAdmin):
         "is_verified",
         "is_active",
         "onboarding_completed_at",
+        "backup_policy_accepted_at",
         "facility_count",
         "ai_token_usage_display",
         "tibabot_keys_count",
@@ -421,6 +422,7 @@ class OrganizationAdmin(admin.ModelAdmin):
         "is_active",
         "is_verified",
         "onboarding_completed_at",
+        "backup_policy_accepted_at",
     ]
     search_fields = ["name", "slug"]
     prepopulated_fields = {"slug": ("name",)}
@@ -440,6 +442,9 @@ class OrganizationAdmin(admin.ModelAdmin):
         "display_contact_email",
         "display_contact_phone",
         "display_address",
+        "backup_policy_accepted_at",
+        "backup_policy_accepted_by",
+        "backup_policy_version",
     ]
     inlines = [FacilityInline, OrgStaffInline]
 
@@ -516,7 +521,14 @@ class OrganizationAdmin(admin.ModelAdmin):
         (
             "Status",
             {
-                "fields": ("is_verified", "is_active", "onboarding_completed_at"),
+                "fields": (
+                    "is_verified",
+                    "is_active",
+                    "onboarding_completed_at",
+                    "backup_policy_accepted_at",
+                    "backup_policy_accepted_by",
+                    "backup_policy_version",
+                ),
             },
         ),
         (

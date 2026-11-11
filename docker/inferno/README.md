@@ -69,20 +69,20 @@ When Inferno Core starts through this Compose file, it reapplies a small local I
 
 ### 5. Access Test UI
 
-| Test Kit | URL | How to Start |
-|----------|-----|--------------|
-| Inferno UI | <http://localhost:4567> | \`--setup\` or \`--smoke\` |
+| Test Kit   | URL                                           | How to Start               |
+| ---------- | --------------------------------------------- | -------------------------- |
+| Inferno UI | [http://localhost:4567](http://localhost:4567) | \`--setup\` or \`--smoke\` |
 
 ### 6. Configure Tests
 
 When prompted in the Inferno UI, use these Vitora endpoints:
 
-| Setting | Value |
-|---------|-------|
-| FHIR Server URL | \`<http://host.docker.internal:9088/fhir\`> |
-| SMART Config | \`<http://host.docker.internal:9088/.well-known/smart-configuration\`> |
-| Authorization | \`<http://host.docker.internal:9088/oauth/authorize/\`> |
-| Token | \`<http://host.docker.internal:9088/oauth/token/\`> |
+| Setting         | Value                                                                                                                                         |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| FHIR Server URL | \`[http://host.docker.internal:9088/fhir\`](http://host.docker.internal:9088/fhir%5C%60)                                                       |
+| SMART Config    | \`[http://host.docker.internal:9088/.well-known/smart-configuration\`](http://host.docker.internal:9088/.well-known/smart-configuration%5C%60) |
+| Authorization   | \`[http://host.docker.internal:9088/oauth/authorize/\`](http://host.docker.internal:9088/oauth/authorize/%5C%60)                               |
+| Token           | \`[http://host.docker.internal:9088/oauth/token/\`](http://host.docker.internal:9088/oauth/token/%5C%60)                                       |
 
 > **Note**: Use \`host.docker.internal\` when Inferno (in Docker) needs to reach Vitora (on host). On Linux, the Compose file must also provide \`host.docker.internal:host-gateway\`; this repo now does that for the Inferno container. For Snap-managed Docker hosts that show AppArmor signal denials when stopping Inferno, the Inferno service also runs with \`apparmor=unconfined\` to avoid the stop/kill deadlock.
 
@@ -128,7 +128,7 @@ Application.objects.create(
     client_secret='inferno-test-secret',
     client_type='confidential',
     authorization_grant_type='authorization-code',
-    redirect_uris='<http://localhost:4567/custom/smart/redirect> <http://localhost:4568/custom/smart/redirect>'
+    redirect_uris='[http://localhost:4567/custom/smart/redirect](http://localhost:4567/custom/smart/redirect) [http://localhost:4568/custom/smart/redirect](http://localhost:4568/custom/smart/redirect)'
 )
 \`\`\`
 
@@ -136,17 +136,17 @@ Application.objects.create(
 
 All endpoints require JWT authentication via Bearer token.
 
-| Endpoint | Description | Status |
-|----------|-------------|--------|
-| \`/fhir/metadata\` | CapabilityStatement | ✅ Working |
-| \`/fhir/Patient/{id}\` | Patient resource | ✅ Working |
-| \`/fhir/Patient/{id}/$summary\` | IPS Bundle | ✅ Working |
-| \`/fhir/Practitioner/{id}\` | Practitioner resource | ✅ Working |
-| \`/fhir/Organization/{id}\` | Organization resource | ✅ Working |
-| \`/fhir/Condition/{id}\` | Condition (from Diagnosis) | ✅ Working |
-| \`/fhir/Observation/{id}\` | Lab results & vitals | ✅ Working |
-| \`/fhir/Encounter/{id}\` | Encounter resource | ✅ Working |
-| \`/fhir/Composition/{id}\` | IPS Composition | ✅ Working |
+| Endpoint                        | Description                | Status     |
+| ------------------------------- | -------------------------- | ---------- |
+| \`/fhir/metadata\`              | CapabilityStatement        | ✅ Working |
+| \`/fhir/Patient/{id}\`          | Patient resource           | ✅ Working |
+| \`/fhir/Patient/{id}/$summary\` | IPS Bundle                 | ✅ Working |
+| \`/fhir/Practitioner/{id}\`     | Practitioner resource      | ✅ Working |
+| \`/fhir/Organization/{id}\`     | Organization resource      | ✅ Working |
+| \`/fhir/Condition/{id}\`        | Condition (from Diagnosis) | ✅ Working |
+| \`/fhir/Observation/{id}\`      | Lab results & vitals       | ✅ Working |
+| \`/fhir/Encounter/{id}\`        | Encounter resource         | ✅ Working |
+| \`/fhir/Composition/{id}\`      | IPS Composition            | ✅ Working |
 
 ## Test Suites
 
@@ -174,11 +174,11 @@ Tests OAuth2 authorization flows for FHIR applications:
 
 ## Files
 
-| File | Description |
-|------|-------------|
-| \`compose.yml\` | Docker Compose configuration for Inferno services |
-| \`.env.example\` | Environment configuration template |
-| \`run-tests.sh\` | Test runner script with helpful options |
+| File             | Description                                       |
+| ---------------- | ------------------------------------------------- |
+| \`compose.yml\`  | Docker Compose configuration for Inferno services |
+| \`.env.example\` | Environment configuration template                |
+| \`run-tests.sh\` | Test runner script with helpful options           |
 
 ## Troubleshooting
 
@@ -237,13 +237,13 @@ FHIR endpoints require JWT authentication:
 
 # Get token
 
-TOKEN=\$(curl -s -X POST <http://localhost:9088/api/token/> \\
+TOKEN=\$(curl -s -X POST [http://localhost:9088/api/token/](http://localhost:9088/api/token/) \\
   -H "Content-Type: application/json" \\
   -d '{"username":"admin","password":"admin123"}' | jq -r '.access')
 
 # Use token
 
-curl -H "Authorization: Bearer \$TOKEN" <http://localhost:9088/fhir/Patient/1>
+curl -H "Authorization: Bearer \$TOKEN" [http://localhost:9088/fhir/Patient/1](http://localhost:9088/fhir/Patient/1)
 \`\`\`
 
 ## Reporting

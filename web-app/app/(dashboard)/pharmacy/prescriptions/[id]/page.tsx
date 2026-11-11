@@ -49,7 +49,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { usePrescription, useCancelPrescription } from '@/lib/hooks/use-pharmacy';
+import { usePrescription, useCancelPrescription, useRecipientPharmacies, useTransmitPrescription } from '@/lib/hooks/use-pharmacy';
 import { PrescriptionStatus } from '@/lib/types/pharmacy';
 import { useState } from 'react';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -61,6 +61,7 @@ import { usePermissions } from '@/lib/hooks/use-permissions';
 import { CommentThread } from '@/components/comments';
 import { useCommentCount } from '@/lib/hooks/use-comment-count';
 import { SignatureBadge } from '@/components/shared/signature-badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Status badge colors
 const STATUS_COLORS: Record<PrescriptionStatus, string> = {
@@ -89,6 +90,8 @@ export default function PrescriptionDetailPage() {
   const { data: prescription, isLoading, error } = usePrescription(prescriptionId);
   const prescriptionNumericId = prescription?.id ?? 0;
   const cancelMutation = useCancelPrescription();
+  const transmitMutation = useTransmitPrescription();
+  const { data: recipientPharmacies = [] } = useRecipientPharmacies(Boolean(prescription));
   const { user } = useAuth();
   const { facility, facilityDetail } = useFacility();
   const { isAdmin } = usePermissions();
@@ -96,6 +99,8 @@ export default function PrescriptionDetailPage() {
 
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [showTransmitDialog, setShowTransmitDialog] = useState(false);
+  const [recipientFacility, setRecipientFacility] = useState('');
 
   const handleCancel = async () => {
     if (!cancelReason.trim()) {
@@ -132,6 +137,18 @@ export default function PrescriptionDetailPage() {
   const handleDispense = () => {
     // Navigate to dispensing page with prescription context
     router.push(`/pharmacy/dispensing?prescription=${prescriptionId}`);
+  };
+
+  const handleTransmit = async () => {
+    if (!prescription || !recipientFacility) return;
+    try {
+      await transmitMutation.mutateAsync({ id: prescription.id, recipientFacility: Number(recipientFacility) });
+      toast({ title: 'Prescription transmitted', description: 'The receiving pharmacy has a live queue request.' });
+      setShowTransmitDialog(false);
+      setRecipientFacility('');
+    } catch {
+      toast({ title: 'Transmission failed', description: 'The prescription could not be delivered to that pharmacy.', variant: 'destructive' });
+    }
   };
 
   if (isLoading) {
@@ -218,6 +235,11 @@ export default function PrescriptionDetailPage() {
             <Button onClick={handleDispense}>
               <Pill className="mr-2 h-4 w-4" />
               Dispense
+            </Button>
+          )}
+          {canCancel && recipientPharmacies.length > 0 && (
+            <Button variant="outline" onClick={() => setShowTransmitDialog(true)}>
+              Transmit to pharmacy
             </Button>
           )}
           {prescription.status === 'DISPENSED' && (
@@ -467,6 +489,13 @@ export default function PrescriptionDetailPage() {
               Cancel Prescription
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={showTransmitDialog} onOpenChange={setShowTransmitDialog}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Transmit prescription</DialogTitle><DialogDescription>Select an in-network pharmacy. It will receive a live, actionable queue request.</DialogDescription></DialogHeader>
+          <div className="py-4"><Label htmlFor="recipient-pharmacy">Receiving pharmacy</Label><Select value={recipientFacility} onValueChange={setRecipientFacility}><SelectTrigger id="recipient-pharmacy" className="mt-2"><SelectValue placeholder="Select pharmacy" /></SelectTrigger><SelectContent>{recipientPharmacies.map((item) => <SelectItem key={item.id} value={String(item.id)}>{item.name} · {item.mfl_code}</SelectItem>)}</SelectContent></Select></div>
+          <DialogFooter><Button variant="outline" onClick={() => setShowTransmitDialog(false)}>Cancel</Button><Button onClick={handleTransmit} disabled={!recipientFacility || transmitMutation.isPending}>Transmit</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

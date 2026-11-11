@@ -6,6 +6,9 @@
  */
 
 import { getAppConfig, isDesktop, type AppConfig } from '@/lib/desktop';
+import { apiClient } from '@/lib/api/client';
+import { WebSocketTicketResponseSchema } from '@/lib/schemas/websocket.schema';
+import { parseResponse } from '@/lib/schemas/validation';
 import {
   getHubWebSocketRoutingPolicy,
   loadHubRoutingManifest,
@@ -94,6 +97,24 @@ export function resolveWebSocketUrl(path: string): string | null {
 
   const origin = policy === 'CLOUD' ? runtime.config.cloud_api_url : runtime.config.api_url;
   return origin ? `${toWebSocketOrigin(origin)}${path}` : null;
+}
+
+/**
+ * Resolve a socket URL and add a one-time ticket for desktop runtimes.
+ * Browser clients authenticate with the HttpOnly ``vitora_access`` cookie.
+ */
+export async function resolveAuthenticatedWebSocketUrl(path: string): Promise<string | null> {
+  const url = resolveWebSocketUrl(path);
+  if (!url || !isDesktop()) return url;
+
+  const response = await apiClient.post('/api/core/websocket-ticket/');
+  const data = parseResponse(WebSocketTicketResponseSchema, response.data, {
+    context: 'resolveAuthenticatedWebSocketUrl',
+  });
+
+  const target = new URL(url);
+  target.searchParams.set('ticket', data.ticket);
+  return target.toString();
 }
 
 /** Reset the runtime after desktop discovery or configuration changes. */

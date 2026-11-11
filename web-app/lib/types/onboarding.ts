@@ -256,3 +256,7 @@ export interface OnboardingCompleteResponse {
   completed_at: string;
   steps: OnboardingStep[];
 }
+
+export interface BackupPolicyAcceptanceResponse {
+  accepted: boolean;
+}

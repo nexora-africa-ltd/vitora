@@ -41,6 +41,7 @@ jobs:
       CONTAINER_APP_NAME: ${{ (github.event.inputs.environment == 'production' || github.ref_name == 'main') && 'vitora-api-prod-private-sa' || 'vitora-api-private-sa' }}
       WORKER_APP_NAME: ${{ (github.event.inputs.environment == 'production' || github.ref_name == 'main') && 'vitora-worker-private-prod-sa' || 'vitora-worker-private-sa' }}
       BEAT_APP_NAME: ${{ (github.event.inputs.environment == 'production' || github.ref_name == 'main') && 'vitora-beat-private-prod-sa' || 'vitora-beat-private-sa' }}
+      BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
       ASYNC_WORKERS_ENABLED: ${{ vars.ASYNC_WORKERS_ENABLED || 'false' }}
       API_MIN_REPLICAS: 1
       API_MAX_REPLICAS: ${{ vars.ASYNC_WORKERS_ENABLED == 'true' && 6 || 1 }}
@@ -113,6 +114,11 @@ jobs:
           if [[ -n "$PAYSTACK_SECRET_KEY" ]]; then
             SECRET_ARGS+=("paystack-secret-key=$PAYSTACK_SECRET_KEY")
           fi
+          if [[ -z "$BACKUP_ENCRYPTION_KEY" ]]; then
+            echo "ERROR: BACKUP_ENCRYPTION_KEY GitHub environment secret is required."
+            exit 1
+          fi
+          SECRET_ARGS+=("backup-encryption-key=$BACKUP_ENCRYPTION_KEY")
           if [[ -n "$AZURE_HUB_BACKUP_STORAGE_ACCOUNT_KEY" ]]; then
             SECRET_ARGS+=("azure-hub-backup-storage-account-key=$AZURE_HUB_BACKUP_STORAGE_ACCOUNT_KEY")
           fi
@@ -132,6 +138,8 @@ jobs:
             DATABASE_URL=secretref:database-url \
             VITORA_DB_APPLICATION_NAME=vitora-${{ env.DEPLOY_ENV }}-api \
             DB_CONN_MAX_AGE=${{ vars.DB_CONN_MAX_AGE || (env.DEPLOY_ENV == 'production' && '600' || '60') }} \
+            DB_POOL_MIN_SIZE=${{ vars.DB_POOL_MIN_SIZE || '1' }} \
+            DB_POOL_MAX_SIZE=${{ vars.DB_POOL_MAX_SIZE || (env.DEPLOY_ENV == 'production' && '4' || '8') }} \
             REDIS_URL=${{ env.ASYNC_WORKERS_ENABLED == 'true' && 'secretref:redis-url' || '' }} \
             ENCRYPTION_KEY=secretref:encryption-key \
             PII_HMAC_KEY=secretref:pii-hmac-key \
@@ -145,7 +153,7 @@ jobs:
             PAYSTACK_WEBHOOK_URL=${{ vars.PAYSTACK_WEBHOOK_URL || (env.DEPLOY_ENV == 'production' && 'https://api.vitora.digital/api/payments/paystack/webhook/' || 'https://staging-api.vitora.digital/api/payments/paystack/webhook/') }} \
             HUB_BACKUP_CREDENTIAL_SIGNER=${{ vars.HUB_BACKUP_CREDENTIAL_SIGNER || 'hmis.apps.licensing.backup_credentials.sign_azure_blob_backup_credentials' }} \
             HUB_BACKUP_ALLOWED_RESIDENCY_COUNTRIES=${{ vars.HUB_BACKUP_ALLOWED_RESIDENCY_COUNTRIES || 'KE' }} \
-            AZURE_HUB_BACKUP_STORAGE_ACCOUNT=${{ vars.AZURE_HUB_BACKUP_STORAGE_ACCOUNT || '' }} \
+            AZURE_HUB_BACKUP_STORAGE_ACCOUNT=${{ vars.AZURE_HUB_BACKUP_STORAGE_ACCOUNT || 'vitorabackupssa' }} \
             AZURE_HUB_BACKUP_STORAGE_ACCOUNT_KEY=secretref:azure-hub-backup-storage-account-key \
             AZURE_HUB_BACKUP_STORAGE_CONTAINER=${{ vars.AZURE_HUB_BACKUP_STORAGE_CONTAINER || 'hub-backups' }} \
             AZURE_HUB_BACKUP_SAS_EXPIRY_MINUTES=${{ vars.AZURE_HUB_BACKUP_SAS_EXPIRY_MINUTES || '60' }} \
@@ -159,8 +167,8 @@ jobs:
             MEDIA_BLOB_BASE_URL=${{ vars.MEDIA_BLOB_BASE_URL || 'https://vitoramediasa.blob.core.windows.net/vitora-media' }} \
             DEMO_MODE=${{ env.DEPLOY_ENV == 'staging' && 'true' || 'false' }} \
             ACTIVE_SHIFT_ENFORCEMENT=${{ env.DEPLOY_ENV == 'production' && 'true' || 'false' }} \
-            ONBOARDING_ENFORCEMENT=${{ env.DEPLOY_ENV == 'production' && 'true' || 'false' }} \
-            ALLOWED_HOSTS=${{ vars.ALLOWED_HOSTS || (env.DEPLOY_ENV == 'production' && 'api.vitora.digital,app.vitora.digital,vitora-navy.vercel.app' || 'staging-api.vitora.digital,staging.vitora.digital') }} \
+            ONBOARDING_ENFORCEMENT=true \
+            ALLOWED_HOSTS=${{ vars.ALLOWED_HOSTS || (env.DEPLOY_ENV == 'production' && 'api.vitora.digital,app.vitora.digital,vitora-navy.vercel.app,vitora-api-prod-private-sa.wittysmoke-66276dae.southafricanorth.azurecontainerapps.io' || 'staging-api.vitora.digital,staging.vitora.digital,vitora-api-private-sa.wittysmoke-66276dae.southafricanorth.azurecontainerapps.io') }} \
             SECURE_SSL_REDIRECT=true \
             CORS_ALLOWED_ORIGINS=${{ vars.CORS_ALLOWED_ORIGINS || (env.DEPLOY_ENV == 'production' && 'https://app.vitora.digital,https://api.vitora.digital,https://vitora-navy.vercel.app' || 'https://staging.vitora.digital,http://localhost:3009') }} \
             CSRF_TRUSTED_ORIGINS=${{ vars.CSRF_TRUSTED_ORIGINS || (env.DEPLOY_ENV == 'production' && 'https://app.vitora.digital,https://api.vitora.digital,https://vitora-navy.vercel.app' || 'https://staging.vitora.digital') }} \
@@ -218,6 +226,8 @@ jobs:
             HL7_RECEIVING_FACILITY=STAGING_LIS \
             MLLP_HOST=${{ vars.MLLP_HOST || '' }} \
             MLLP_PORT=2575 \
+            MLLP_USE_SSL=true \
+            MLLP_SSL_VERIFY=true \
             HL7_LIS_CODE_SYSTEM=LIS_DEFAULT \
             HIE_AUTO_CR_LOOKUP=true \
             HIE_AUTO_CR_REGISTER=true \
@@ -320,14 +330,23 @@ jobs:
 
       - name: Apply bounded API autoscaling
         run: |
+          if [[ "${{ env.DEPLOY_ENV }}" == "staging" ]]; then
+            API_MIN_REPLICAS=2
+            API_MAX_REPLICAS=2
+            API_CONCURRENT_REQUESTS=10
+          else
+            API_MIN_REPLICAS="${{ env.API_MIN_REPLICAS }}"
+            API_MAX_REPLICAS="${{ env.API_MAX_REPLICAS }}"
+            API_CONCURRENT_REQUESTS=80
+          fi
           az containerapp update \
             --name "${{ env.CONTAINER_APP_NAME }}" \
             --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
-            --min-replicas "${{ env.API_MIN_REPLICAS }}" \
-            --max-replicas "${{ env.API_MAX_REPLICAS }}" \
+            --min-replicas "$API_MIN_REPLICAS" \
+            --max-replicas "$API_MAX_REPLICAS" \
             --scale-rule-name http-concurrency \
             --scale-rule-type http \
-            --scale-rule-http-concurrency 80 \
+            --scale-rule-http-concurrency "$API_CONCURRENT_REQUESTS" \
             --output none
 
       - name: Disable distributed async processes for budget mode
@@ -376,12 +395,31 @@ jobs:
         if: env.DEPLOY_ENV == 'production'
         run: |
           if az containerapp job show --name "vitora-db-backup-prod-sa" --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" >/dev/null 2>&1; then
+            if [[ -z "$BACKUP_ENCRYPTION_KEY" ]]; then
+              echo "ERROR: BACKUP_ENCRYPTION_KEY GitHub environment secret is required."
+              exit 1
+            fi
+            az containerapp job secret set \
+              --name "vitora-db-backup-prod-sa" \
+              --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+              --secrets "backup-encryption-key=$BACKUP_ENCRYPTION_KEY" \
+              --output none
+            AZURE_BACKUP_ENCRYPTION_KEY=$(az containerapp job secret list \
+              --name "vitora-db-backup-prod-sa" \
+              --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+              --show-values \
+              --query "[?name=='backup-encryption-key'].value | [0]" \
+              --output tsv)
+            if [[ -z "$AZURE_BACKUP_ENCRYPTION_KEY" || "$AZURE_BACKUP_ENCRYPTION_KEY" != "$BACKUP_ENCRYPTION_KEY" ]]; then
+              echo "ERROR: ACA backup secret does not match the GitHub environment secret."
+              exit 1
+            fi
             az containerapp job update \
               --name "vitora-db-backup-prod-sa" \
               --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
               --image "${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}" \
               --command bash /app/scripts/backup-db.sh \
-              --set-env-vars "AZURE_STORAGE_ACCOUNT=vitorabackupssa" "AZURE_STORAGE_CONTAINER=db-backups" "VITORA_ENV=production" "PGAPPNAME=vitora-production-backup-job" \
+              --set-env-vars "AZURE_STORAGE_ACCOUNT=vitorabackupssa" "AZURE_STORAGE_CONTAINER=db-backups" "BACKUP_ENCRYPTION_KEY=secretref:backup-encryption-key" "VITORA_ENV=production" "PGAPPNAME=vitora-production-backup-job" \
               --output none
           fi
 

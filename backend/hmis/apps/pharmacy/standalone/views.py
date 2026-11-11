@@ -151,6 +151,9 @@ class ExternalPrescriptionRequestViewSet(TenantScopedViewMixin, viewsets.ModelVi
                 organization=getattr(request, "_organization", None) or ext_req.organization,
             )
             ext_req.accept(request.user)
+            from hmis.apps.pharmacy.transmissions import update_transmission_status
+
+            update_transmission_status(ext_req)
             ext_req.prescription = prescription
             ext_req.save(update_fields=["prescription", "updated_at"])
 
@@ -191,5 +194,8 @@ class ExternalPrescriptionRequestViewSet(TenantScopedViewMixin, viewsets.ModelVi
         serializer.is_valid(raise_exception=True)
 
         ext_req.reject(request.user, serializer.validated_data["reason"])
+        from hmis.apps.pharmacy.transmissions import update_transmission_status
+
+        update_transmission_status(ext_req)
 
         return Response(ExternalPrescriptionRequestSerializer(ext_req).data)

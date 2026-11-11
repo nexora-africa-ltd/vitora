@@ -79,6 +79,10 @@ def generate_idsr_weekly_report(
                 report.epi_year,
                 report.total_cases,
             )
+            from hmis.apps.core.models import FeatureFlag
+
+            if FeatureFlag.is_flag_enabled("idsr_auto_submission"):
+                submit_idsr_to_dhis2.delay(report.id, trigger="automated")
             reports.append(
                 {
                     "report_id": report.id,
@@ -203,7 +207,7 @@ def check_outbreak_thresholds() -> dict:
 
 
 @shared_task(name="hmis.apps.surveillance.tasks.submit_idsr_to_dhis2")
-def submit_idsr_to_dhis2(report_id: int) -> dict:
+def submit_idsr_to_dhis2(report_id: int, trigger: str = "manual") -> dict:
     """
     Submit an approved IDSR report to DHIS2.
 
@@ -219,13 +223,17 @@ def submit_idsr_to_dhis2(report_id: int) -> dict:
     try:
         report = IDSRWeeklyReport.objects.get(id=report_id)
 
-        if report.status != "APPROVED":
+        from hmis.apps.core.models import FeatureFlag
+
+        if trigger == "automated" and FeatureFlag.is_flag_enabled("idsr_auto_submission"):
+            report.approve(user=None)
+        elif report.status != "APPROVED":
             return {
                 "success": False,
                 "error": f"Report must be approved before submission (current: {report.status})",
             }
 
-        result = IDSRReportingService.submit_to_dhis2(report)
+        result = IDSRReportingService.submit_to_dhis2(report, trigger=trigger)
 
         return {
             "success": report.status == "SUBMITTED",
@@ -247,3 +255,26 @@ def submit_idsr_to_dhis2(report_id: int) -> dict:
     ) as e:
         logger.error("Failed to submit IDSR report to DHIS2: %s", e)
         raise
+
+
+@shared_task(name="hmis.apps.surveillance.tasks.retry_idsr_dhis2_submissions")
+def retry_idsr_dhis2_submissions() -> dict:
+    """Queue due automated IDSR retries without bypassing the feature flag."""
+    from django.utils import timezone
+
+    from hmis.apps.core.models import FeatureFlag
+
+    from .models import IDSRSubmissionAttempt, IDSRSubmissionAttemptStatus
+
+    if not FeatureFlag.is_flag_enabled("idsr_auto_submission"):
+        return {"queued": 0, "reason": "feature_flag_disabled"}
+
+    attempts = IDSRSubmissionAttempt.objects.filter(
+        status=IDSRSubmissionAttemptStatus.RETRY_SCHEDULED,
+        next_retry_at__lte=timezone.now(),
+    ).select_related("report")
+    queued = 0
+    for attempt in attempts:
+        submit_idsr_to_dhis2.delay(attempt.report_id, trigger="automated")
+        queued += 1
+    return {"queued": queued}

@@ -1,0 +1,83 @@
+{
+  "total_measures": 13,
+  "active_measures": 12,
+  "measures_meeting_target": 0,
+  "measures_below_threshold": 2,
+  "overall_compliance_rate": 0.0,
+  "domain_summary": [
+    {
+      "domain": "CLINICAL",
+      "domain_display": "Clinical Quality",
+      "total_measures": 6,
+      "total_results": 0,
+      "meeting_target": 0,
+      "compliance_rate": 0
+    },
+    {
+      "domain": "PATIENT_SAFETY",
+      "domain_display": "Patient Safety",
+      "total_measures": 1,
+      "total_results": 0,
+      "meeting_target": 0,
+      "compliance_rate": 0
+    },
+    {
+      "domain": "EFFICIENCY",
+      "domain_display": "Efficiency",
+      "total_measures": 2,
+      "total_results": 0,
+      "meeting_target": 0,
+      "compliance_rate": 0
+    },
+    {
+      "domain": "PATIENT_EXPERIENCE",
+      "domain_display": "Patient Experience",
+      "total_measures": 0,
+      "total_results": 0,
+      "meeting_target": 0,
+      "compliance_rate": 0
+    },
+    {
+      "domain": "PUBLIC_HEALTH",
+      "domain_display": "Public Health",
+      "total_measures": 2,
+      "total_results": 4,
+      "meeting_target": 0,
+      "compliance_rate": 0.0
+    },
+    {
+      "domain": "CARE_COORDINATION",
+      "domain_display": "Care Coordination",
+      "total_measures": 1,
+      "total_results": 0,
+      "meeting_target": 0,
+      "compliance_rate": 0
+    }
+  ],
+  "trend_data": [
+    {
+      "period": "2026 Q1",
+      "total": 0,
+      "meeting_target": 0,
+      "compliance_rate": 0
+    },
+    {
+      "period": "2026 Q2",
+      "total": 0,
+      "meeting_target": 0,
+      "compliance_rate": 0
+    },
+    {
+      "period": "2026 Q3",
+      "total": 0,
+      "meeting_target": 0,
+      "compliance_rate": 0
+    },
+    {
+      "period": "2026 Q4",
+      "total": 2,
+      "meeting_target": 0,
+      "compliance_rate": 0.0
+    }
+  ]
+}

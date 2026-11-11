@@ -61,7 +61,7 @@ class HL7IntegrationConfig:
     @classmethod
     def from_settings(cls) -> HL7IntegrationConfig:
         """Create config from Django settings."""
-        return cls(
+        config = cls(
             enabled=getattr(settings, "HL7_INTEGRATION_ENABLED", False),
             lis_code_system=getattr(settings, "HL7_LIS_CODE_SYSTEM", "LIS_DEFAULT"),
             mllp_host=getattr(settings, "MLLP_HOST", "localhost"),
@@ -75,6 +75,14 @@ class HL7IntegrationConfig:
             mllp_ssl_key_file=getattr(settings, "MLLP_SSL_KEY_FILE", ""),
             mllp_ssl_ca_file=getattr(settings, "MLLP_SSL_CA_FILE", ""),
         )
+        loopback_hosts = {"localhost", "127.0.0.1", "::1"}
+        if config.enabled and config.mllp_host not in loopback_hosts and not config.mllp_use_ssl:
+            raise ValueError("TLS is required for external HL7/MLLP connections")
+        if config.enabled and config.mllp_use_ssl and not config.mllp_ssl_verify:
+            raise ValueError(
+                "Certificate verification is required for external HL7/MLLP connections"
+            )
+        return config
 
 
 @dataclass

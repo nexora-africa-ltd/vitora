@@ -78,6 +78,9 @@ def is_mfa_required(user: "AbstractUser") -> bool:
     if profile and profile.mfa_disabled:
         return False
 
+    if profile and profile.mfa_required:
+        return True
+
     # Superusers always require MFA
     if user.is_superuser:
         return True
@@ -92,6 +95,9 @@ def is_mfa_required(user: "AbstractUser") -> bool:
             if primary_role.code in MFA_REQUIRED_ROLES:
                 return True
 
+            if primary_role.requires_mfa:
+                return True
+
             # Check if role category is MANAGEMENT
             if primary_role.category == "MANAGEMENT":
                 return True
@@ -99,6 +105,8 @@ def is_mfa_required(user: "AbstractUser") -> bool:
         # Check secondary roles too
         for role in profile.secondary_roles.all():
             if role.code in MFA_REQUIRED_ROLES:
+                return True
+            if role.requires_mfa:
                 return True
             if role.category == "MANAGEMENT":
                 return True

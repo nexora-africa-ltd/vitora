@@ -238,9 +238,11 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
     setHptMapping(true);
     try {
       await pharmacyApi.mapHpt(drug.id, {
-        hpt_code: result.knhts_concept_id,
-        hpt_product_id: result.product_id,
-        ppb_code: result.ppb_registration_code || undefined,
+        code: result.code,
+        display: result.display,
+        owner: result.owner,
+        source: result.source,
+        system: result.system,
       });
       toast({ title: 'Linked to HPT Registry' });
       await queryClient.invalidateQueries({ queryKey: ['drug', drugId] });
@@ -868,7 +870,7 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
               <Input
                 autoComplete="off"
                 className="pl-9"
-                placeholder="Search HPT products…"
+                placeholder="Search DHA HPT concepts…"
                 value={hptQuery}
                 onChange={(e) => handleHptSearch(e.target.value)}
               />
@@ -882,20 +884,22 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
               <div className="max-h-60 space-y-2 overflow-auto">
                 {hptResults.map((result) => (
                   <button
-                    key={result.product_id}
+                    key={result.code}
                     className="w-full rounded-md border p-3 text-left transition-colors hover:bg-accent"
                     disabled={hptMapping}
                     onClick={() => handleHptMap(result)}
                   >
-                    <p className="text-sm font-medium">{result.generic_display_name}</p>
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-medium">{result.display}</p>
+                      <Badge variant={result.is_stocked ? 'secondary' : 'outline'} className="shrink-0 text-xs">
+                        {result.is_stocked ? 'Stocked locally' : result.local_drug_id ? 'Catalogued, not stocked' : 'Not in local catalog'}
+                      </Badge>
+                    </div>
                     <p className="text-xs text-muted-foreground">
-                      {result.form_description} • {result.route_description} •{' '}
-                      {result.strength_amount}
-                      {result.strength_unit}
+                      {result.owner} • {result.source}
                     </p>
                     <p className="mt-1 font-mono text-xs text-muted-foreground">
-                      KNHTS: {result.knhts_concept_id}
-                      {result.ppb_registration_code && ` • PPB: ${result.ppb_registration_code}`}
+                      HPT: {result.code}
                     </p>
                   </button>
                 ))}

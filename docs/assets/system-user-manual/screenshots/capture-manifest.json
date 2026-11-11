@@ -1,0 +1,155 @@
+{
+  "capturedAt": "2026-10-11T16:31:05.190Z",
+  "baseUrl": "https://staging.vitora.digital",
+  "outputDir": "/home/azureuser/vitora/docs/assets/system-user-manual/screenshots",
+  "captureWaitMs": 5000,
+  "slowCaptureWaitMs": 20000,
+  "loginRetries": 3,
+  "safety": "Capture only a dedicated staging facility populated with synthetic data. Review every image before DHA submission.",
+  "browserBypassedCsp": true,
+  "captured": [
+    {
+      "file": "00-login.png",
+      "title": "Sign in and access procedure",
+      "route": "/login"
+    },
+    {
+      "file": "01-login-validation.png",
+      "title": "Required-field validation message",
+      "route": "/login"
+    },
+    {
+      "file": "02-dashboard.png",
+      "title": "Role-aware dashboard and navigation",
+      "route": "/dashboard",
+      "resolvedUrl": "https://staging.vitora.digital/dashboard"
+    },
+    {
+      "file": "03-patient-lookup.png",
+      "title": "Patient lookup and duplicate prevention",
+      "route": "/patients/lookup",
+      "resolvedUrl": "https://staging.vitora.digital/patients/lookup"
+    },
+    {
+      "file": "04-new-patient.png",
+      "title": "Patient registration and required fields",
+      "route": "/patients/new",
+      "resolvedUrl": "https://staging.vitora.digital/patients/new"
+    },
+    {
+      "file": "05-check-in.png",
+      "title": "Patient check-in and clinic routing",
+      "route": "/patients/checkin",
+      "resolvedUrl": "https://staging.vitora.digital/patients/checkin"
+    },
+    {
+      "file": "04a-patient-profile.png",
+      "title": "Patient profile, alerts, and sensitive-record guidance",
+      "route": "/patients/343",
+      "resolvedUrl": "https://staging.vitora.digital/patients/343"
+    },
+    {
+      "file": "06-triage-queue.png",
+      "title": "Triage queue and prioritization",
+      "route": "/triage",
+      "resolvedUrl": "https://staging.vitora.digital/triage"
+    },
+    {
+      "file": "07-new-encounter.png",
+      "title": "Encounter data entry and clinical validation",
+      "route": "/encounters/new/patient?patient=343",
+      "resolvedUrl": "https://staging.vitora.digital/encounters/new/details"
+    },
+    {
+      "file": "08-cds-alerts.png",
+      "title": "Clinical decision support alert workflow",
+      "route": "/cds/alerts",
+      "resolvedUrl": "https://staging.vitora.digital/cds/alerts"
+    },
+    {
+      "file": "09-laboratory.png",
+      "title": "Laboratory order and result workflow",
+      "route": "/laboratory",
+      "resolvedUrl": "https://staging.vitora.digital/laboratory"
+    },
+    {
+      "file": "10-pharmacy-prescription-detail.png",
+      "title": "Prescription review and medication validation",
+      "route": "/pharmacy/prescriptions/28",
+      "resolvedUrl": "https://staging.vitora.digital/pharmacy/prescriptions/28"
+    },
+    {
+      "file": "09a-laboratory-result.png",
+      "title": "Laboratory result verification and critical-result escalation",
+      "route": "/laboratory/results/94",
+      "resolvedUrl": "https://staging.vitora.digital/laboratory/results/94"
+    },
+    {
+      "file": "11-pharmacy-dispensing.png",
+      "title": "Dispensing and stock validation",
+      "route": "/pharmacy/dispensing?prescription=28",
+      "resolvedUrl": "https://staging.vitora.digital/pharmacy/dispensing?prescription=28"
+    },
+    {
+      "file": "12-billing.png",
+      "title": "Invoice, payment, and receipt workflow",
+      "route": "/billing",
+      "resolvedUrl": "https://staging.vitora.digital/transactions"
+    },
+    {
+      "file": "13-private-insurance.png",
+      "title": "Private-insurance workflows and HealthCloud status",
+      "route": "/insurance",
+      "resolvedUrl": "https://staging.vitora.digital/insurance"
+    },
+    {
+      "file": "13a-sha-claims.png",
+      "title": "SHA claim validation and submission workflow",
+      "route": "/transactions/sha-claims",
+      "resolvedUrl": "https://staging.vitora.digital/transactions/sha-claims"
+    },
+    {
+      "file": "14-moh-reporting.png",
+      "title": "MOH, KHIS, and DHIS2 reporting",
+      "route": "/reports/moh",
+      "resolvedUrl": "https://staging.vitora.digital/reports/moh"
+    },
+    {
+      "file": "13b-sha-claim-detail.png",
+      "title": "SHA claim validation and submission-status guidance",
+      "route": "/transactions/sha-claims/1",
+      "resolvedUrl": "https://staging.vitora.digital/transactions/sha-claims/1"
+    },
+    {
+      "file": "15-scheduling.png",
+      "title": "Scheduling and active-shift workflow",
+      "route": "/scheduling",
+      "resolvedUrl": "https://staging.vitora.digital/scheduling"
+    },
+    {
+      "file": "16-analytics.png",
+      "title": "Analytics and report validation",
+      "route": "/analytics",
+      "resolvedUrl": "https://staging.vitora.digital/analytics"
+    },
+    {
+      "file": "14a-moh705-report-detail.png",
+      "title": "MOH 705 report review and DHIS2 submission guidance",
+      "route": "/reports/moh/705/2",
+      "resolvedUrl": "https://staging.vitora.digital/reports/moh/705/2"
+    },
+    {
+      "file": "17-admin-staff.png",
+      "title": "Role and access administration",
+      "route": "/admin/staff",
+      "resolvedUrl": "https://staging.vitora.digital/admin/staff"
+    },
+    {
+      "file": "18-emergency-access.png",
+      "title": "Emergency access request workflow",
+      "route": "/safety/emergency-access",
+      "resolvedUrl": "https://staging.vitora.digital/safety/emergency-access"
+    }
+  ],
+  "skipped": []
+}

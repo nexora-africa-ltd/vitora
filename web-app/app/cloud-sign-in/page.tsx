@@ -39,7 +39,8 @@ export default function CloudSignInPage() {
     setError(
       result.reason === 'unavailable'
         ? 'Vitora Cloud is not reachable. Check your internet connection and try again.'
-        : 'This desktop could not verify the active hub session. Contact an administrator if the issue persists.'
+        : result.detail ||
+            'This desktop could not verify the active hub session. Contact an administrator if the issue persists.'
     );
   };
 

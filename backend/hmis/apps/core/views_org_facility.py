@@ -848,7 +848,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         """Scope to the user's own organization unless superuser."""
         qs = super().get_queryset()
         user = self.request.user
-        if user.is_superuser:
+        if user.is_superuser or user.is_staff:
             return qs
         profile = getattr(user, "staff_profile", None)
         if profile and profile.organization_id:
@@ -861,8 +861,8 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             return OrganizationListSerializer
         return OrganizationDetailSerializer
 
-    def partial_update(self, request, *args, **kwargs):
-        """Keep commercial entitlement changes exclusive to the billing ledger."""
+    def update(self, request, *args, **kwargs):
+        """Protect commercial entitlement and audit-retention policy changes."""
         restricted = {
             "subscription_plan",
             "subscription_status",
@@ -877,7 +877,14 @@ class OrganizationViewSet(viewsets.ModelViewSet):
                 },
                 status=status.HTTP_403_FORBIDDEN,
             )
-        return super().partial_update(request, *args, **kwargs)
+        if "data_retention_years" in request.data and not (
+            request.user.is_superuser or request.user.is_staff
+        ):
+            return Response(
+                {"detail": "Only Nexora platform staff can change audit retention."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().update(request, *args, **kwargs)
 
     @action(detail=True, methods=["get"])
     def facilities(self, request, pk=None):

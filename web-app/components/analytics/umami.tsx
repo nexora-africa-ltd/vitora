@@ -13,11 +13,12 @@ import Script from 'next/script';
  *   NEXT_PUBLIC_UMAMI_WEBSITE_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
  */
 export function UmamiAnalytics({ nonce }: { nonce?: string }) {
+  const enabled = process.env.NEXT_PUBLIC_UMAMI_ENABLED === 'true';
   const umamiUrl = process.env.NEXT_PUBLIC_UMAMI_URL;
   const websiteId = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
   const integrity = process.env.NEXT_PUBLIC_UMAMI_SCRIPT_INTEGRITY;
 
-  if (!umamiUrl || !websiteId) return null;
+  if (!enabled || !umamiUrl || !websiteId) return null;
 
   return (
     <Script

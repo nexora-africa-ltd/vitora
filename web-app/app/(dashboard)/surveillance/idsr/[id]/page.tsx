@@ -156,8 +156,17 @@ export default function IDSRReportDetailPage() {
             </Badge>
           )}
           <IDSRStatusBadge status={report.status} />
+          <Badge variant={report.auto_submission_enabled ? 'default' : 'secondary'}>
+            {report.auto_submission_enabled ? 'Auto-submit enabled' : 'Manual approval required'}
+          </Badge>
         </div>
       </div>
+
+      <p className="text-sm text-muted-foreground" role="status" aria-atomic="true">
+        {report.auto_submission_enabled
+          ? 'Scheduled reports are validated and submitted automatically after the reporting week closes.'
+          : 'Automatic submission is disabled. Review and submit this report manually.'}
+      </p>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
         {summaryStats.map((stat) => (

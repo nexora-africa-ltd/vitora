@@ -1,6 +1,6 @@
-# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
-
 <!--
+Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
+
 Purpose: DHA-facing disaster recovery plan for Vitora HMIS production and facility-hub deployments.
 Use: Activate during a material service, data, security, or regional incident; record all decisions in the incident log.
 Inputs: Current environment inventory, backup evidence, provider escalation contacts, and the Backup and Recovery Policy.
@@ -23,27 +23,41 @@ This plan does not replace a facility's clinical downtime procedure. Facilities 
 
 | Objective                      |   Target | Measurement                                                           |
 | ------------------------------ | -------: | --------------------------------------------------------------------- |
-| Recovery Time Objective (RTO)  |  4 hours | Time from declared recovery incident to restored and verified service |
+| Recovery Time Objective (RTO)  | 24 hours | Time from declared recovery incident to restored and verified service |
 | Recovery Point Objective (RPO) | 24 hours | Maximum accepted data loss window based on daily backup cadence       |
 | Backup frequency               |    Daily | Scheduled production database backup at 02:00 UTC / 05:00 EAT         |
 | Restore validation             |  Monthly | Isolated restore drill of the latest backup                           |
 
 The RTO and RPO are policy targets, not measured guarantees. Actual recovery performance must be recorded in restore drills and incidents.
 
-## 3. Roles And Responsibilities
+## 3. Offsite Backup Location And Protection
+
+Production PostgreSQL backup archives, their SHA-256 checksum files, and necessary restore metadata are stored offsite in the private Azure Blob Storage `db-backups` container. This storage is separate from the production application runtime and is not publicly accessible. The storage account name, Azure region, retention configuration, access-control assignments, and approved recovery credentials are maintained in the controlled operations asset and secret registers rather than this document.
+
+Facility-hub encrypted backup bundles are stored only at the approved offsite destination configured for that hub. The destination must be geographically and contractually approved for the facility's data-residency obligations; its physical or provider location and replication location must be recorded in the facility's controlled backup register before backup uploads are enabled.
+
+Operations must verify the following at least monthly as part of the restore drill:
+
+- The latest backup and matching checksum are present at the offsite location.
+- The backup can be retrieved by authorized recovery personnel.
+- The backup can be decrypted and restored in an isolated environment.
+- Public access remains disabled and backup access follows least privilege.
+
+## 4. Roles And Responsibilities
 
 | Role                                      | Responsibilities                                                                                      |
 | ----------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Incident Commander                        | Declares incident severity, authorizes service suspension and recovery, maintains incident timeline   |
-| Operations Lead                           | Coordinates infrastructure recovery, backup retrieval, deployment, DNS, and health checks             |
-| Security Lead                             | Preserves evidence, assesses compromise, coordinates credential/key rotation and access review        |
-| Clinical/Fault Liaison                    | Communicates downtime and recovery status to affected facilities; coordinates clinical reconciliation |
-| Data Protection Officer / Compliance Lead | Assesses notification obligations and maintains regulator/facility evidence                           |
-| Application Lead                          | Validates migrations, application health, tenant isolation, and critical workflows after recovery     |
+| Incident Commander | Declares incident severity; activates this plan; authorizes service suspension, recovery point selection, and production cutover; maintains the incident timeline; and declares recovery complete. |
+| Operations Lead | Leads technical recovery; coordinates infrastructure, deployment, DNS, offsite backup retrieval, restoration, and health checks; and records actual RTO/RPO results. |
+| Security Lead | Leads cyber-incident containment; preserves evidence; assesses compromise; directs credential, token, and key rotation; validates access control before cutover; and approves security recovery actions. |
+| Application Lead | Diagnoses application and migration faults; prepares or approves rollback/redeployment; validates tenant isolation, critical workflows, and audit logging after recovery. |
+| Clinical/Facility Liaison | Activates the facility downtime process; communicates status and workarounds to facility teams; coordinates reconciliation of paper, offline, and delayed records; and confirms clinical readiness. |
+| Data Protection Officer / Compliance Lead | Assesses legal, contractual, and regulatory notification obligations; approves incident communications involving personal data; maintains compliance evidence; and coordinates regulator or data-subject notifications where required. |
+| Communications Lead or Incident Commander delegate | Sends approved internal, facility, supplier, and customer status updates; maintains an approved communication log; and avoids including patient identifiers in routine status messages. |
 
 Named contacts, deputies, supplier escalation contacts, and after-hours numbers must be maintained in the controlled operations contact register and must not be embedded in source control.
 
-## 4. Activation And Communications
+## 5. Activation And Communications
 
 Activate this plan when any of the following occurs:
 
@@ -55,9 +69,21 @@ Activate this plan when any of the following occurs:
 
 The Incident Commander records the start time, affected services, decision owner, containment actions, selected recovery point, restoration result, and stakeholder notifications. Communications must not contain patient identifiers unless an approved secure channel and lawful purpose apply.
 
-## 5. Recovery Procedures
+\newpage
 
-### 5.1 Database Corruption Or Accidental Data Loss
+## 6. Recovery Procedures
+
+### 6.1 System Failure: Application, Infrastructure, Or Dependency Outage
+
+1. Incident Commander declares the incident, opens the incident log, identifies affected facilities and services, and asks the Clinical/Facility Liaison to activate the applicable downtime procedure.
+2. Operations Lead confirms scope through monitoring, the service health endpoint, provider status, DNS checks, and dependency checks for the application, database, storage, and identity services.
+3. Application Lead determines whether a recent release, migration, configuration change, capacity issue, or external dependency is the likely cause.
+4. For a release-related failure, Operations Lead rolls back to the last known-good revision. For runtime or infrastructure loss, redeploy the approved application revision and required configuration into the approved recovery environment.
+5. Restore database or object-storage data only when a dependency failure cannot be corrected without restoration; otherwise preserve the current data state.
+6. Validate HTTPS, authentication, tenant isolation, critical API health, audit logging, background jobs, and essential clinical workflows before inviting facility users back to the service.
+7. Incident Commander approves service restoration, Communications Lead sends the recovery update, and the team records the elapsed recovery time against the 24-hour RTO.
+
+### 6.2 Data Loss, Corruption, Or Failed Migration
 
 1. Declare the incident and restrict write traffic where possible.
 2. Preserve the current database state and relevant logs before destructive recovery actions.
@@ -68,15 +94,7 @@ The Incident Commander records the start time, affected services, decision owner
 7. Obtain Incident Commander approval before replacing production data.
 8. Restore production, restart services, monitor errors, and reconcile any documented downtime records.
 
-### 5.2 Application Or Infrastructure Failure
-
-1. Confirm impact through the health endpoint, provider status, and monitoring.
-2. Check the active Azure Container App revision, configuration, DNS, and dependent services.
-3. Roll back to the last known-good application revision if the failure is release-related.
-4. Re-deploy from the approved source revision if the runtime environment is lost.
-5. Validate HTTPS, authentication, tenant isolation smoke checks, critical API health, and audit logging before declaring recovery complete.
-
-### 5.3 Security Incident Or Ransomware
+### 6.3 Cyber Incident, Unauthorized Access, Or Ransomware
 
 1. Isolate affected services and revoke exposed credentials, tokens, and sessions.
 2. Preserve logs, audit trails, infrastructure events, and a forensic copy of affected data where lawful and safe.
@@ -86,14 +104,16 @@ The Incident Commander records the start time, affected services, decision owner
 6. Review accounts, MFA status, role assignments, third-party integrations, and audit integrity.
 7. Coordinate breach assessment and notifications through the Data Protection Officer and legal/compliance process.
 
-### 5.4 Region Or Provider Outage
+### 6.4 Region Or Provider Outage
 
 1. Confirm provider scope using Azure and DNS/provider status evidence.
 2. Communicate the expected outage and facility downtime procedure.
 3. Restore service in the approved alternate environment only when current infrastructure, backup location, residency, and supplier arrangements have been approved.
 4. Validate data consistency and reconcile offline/downtime records before resuming normal operations.
 
-## 6. Recovery Acceptance Checklist
+\newpage
+
+## 7. Recovery Acceptance Checklist
 
 Recovery is complete only when the following are recorded:
 
@@ -108,15 +128,40 @@ Recovery is complete only when the following are recorded:
 - [ ] Stakeholders receive recovery completion communication.
 - [ ] Post-incident review, corrective actions, and evidence are recorded.
 
-## 7. Testing And Evidence
+## 8. Testing And Evidence
 
-The repository contains a daily production backup workflow and a monthly isolated restore drill. The drill downloads the latest backup, verifies the checksum, restores it into isolated PostgreSQL, and checks the restored migration table. Evidence required for DHA/facility review includes the workflow run, backup timestamp, restore duration, checksum result, exceptions, and corrective actions.
+The repository contains a daily production backup workflow and a monthly isolated restore drill. The drill retrieves the latest offsite backup, verifies the checksum, restores it into isolated PostgreSQL, and checks the restored migration table. Evidence required for DHA/facility review includes the workflow run, backup timestamp, offsite location verification, restore duration, checksum result, achieved recovery point, exceptions, and corrective actions.
 
 Facility-hub recovery uses encrypted backup bundles and the dedicated hub restore runbook: `docs/hub-backup-recovery.md`.
 
-## 8. Related Documents
+\newpage
 
-- `docs/dha/backup-and-recovery-policy.md`
-- `docs/hub-backup-recovery.md`
-- `docs/dpia.md`
-- `docs/system-user-manual.md`
+## 9. Post-Incident Review
+
+Within ten business days of a material incident or recovery exercise, the Incident Commander must convene a review with the Operations Lead, Security Lead, Application Lead, Clinical/Facility Liaison, and Data Protection Officer/Compliance Lead as applicable. The review record must include:
+
+- Timeline, incident classification, affected systems, and decisions made.
+- Measured recovery time and recovery point, assessed against the 24-hour RTO and 24-hour RPO.
+- Confirmed or suspected impact on confidentiality, integrity, availability, and clinical operations.
+- Reconciliation outcome for downtime, offline, and delayed records.
+- Root cause, corrective actions, action owners, deadlines, and verification status.
+- Whether this plan, the backup policy, supplier contacts, or the offsite backup register require revision.
+
+\newpage
+
+## 10. Version And Approval Record
+
+| Item | Record |
+| --- | --- |
+| Current version | 1.1 |
+| Last reviewed | 15 October 2026 |
+| Next scheduled review | 15 October 2027 |
+| Additional review triggers | Material incident, failed restore, material infrastructure change, or change to backup location/provider |
+
+| Approval role | Name | Signature or approved electronic equivalent | Date |
+| --- | --- | --- | --- |
+| Operations Lead |  |  |  |
+| Security Lead |  |  |  |
+| Designated facility representative |  |  |  |
+
+The controlled approved copy must contain the completed approval record. The Operations Lead retains it with associated test and incident evidence in the controlled operations records repository.

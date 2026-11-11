@@ -16,6 +16,7 @@ from hmis.apps.licensing.serializers import (
     CloudUserTokenResponseSerializer,
     DeviceReenrollmentSerializer,
     GenerateActivationCodeSerializer,
+    HubCloudUserTokenRequestSerializer,
     HubDatabaseKeyEscrowRecoverySerializer,
     HubDatabaseKeyEscrowSubmissionSerializer,
     InstallationDetailSerializer,
@@ -123,6 +124,10 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "organization_id",
             }
         ),
+    ),
+    (
+        HubCloudUserTokenRequestSerializer,
+        frozenset({}),
     ),
     (
         HubDatabaseKeyEscrowRecoverySerializer,

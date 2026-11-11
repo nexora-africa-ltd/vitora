@@ -148,6 +148,7 @@ describe('MFAVerification', () => {
       render(<MFAVerification mfaToken={mockMfaToken} onCancel={mockOnCancel} />);
 
       const input = screen.getByRole('textbox');
+      expect(input).toHaveFocus();
       await user.type(input, '123456');
 
       expect(input).toHaveValue('123456');
@@ -185,28 +186,24 @@ describe('MFAVerification', () => {
       expect(verifyButton).toBeDisabled();
     });
 
-    it('should enable verify button when code is complete', async () => {
+    it('should auto-submit when code is complete', async () => {
       const user = userEvent.setup();
       render(<MFAVerification mfaToken={mockMfaToken} onCancel={mockOnCancel} />);
 
       const input = screen.getByRole('textbox');
       await user.type(input, '123456');
 
-      const verifyButton = screen.getByRole('button', { name: /verify.*continue/i });
-      expect(verifyButton).not.toBeDisabled();
+      await waitFor(() => expect(mockVerifyMFA).toHaveBeenCalledWith(mockMfaToken, { token: '123456' }));
     });
   });
 
   describe('TOTP Verification Flow', () => {
-    it('should call verifyMFA with token on submit', async () => {
+    it('should call verifyMFA when the final OTP digit is entered', async () => {
       const user = userEvent.setup();
       render(<MFAVerification mfaToken={mockMfaToken} onCancel={mockOnCancel} />);
 
       const input = screen.getByRole('textbox');
       await user.type(input, '123456');
-
-      const verifyButton = screen.getByRole('button', { name: /verify.*continue/i });
-      fireEvent.click(verifyButton);
 
       await waitFor(() => {
         expect(mockVerifyMFA).toHaveBeenCalledWith(mockMfaToken, { token: '123456' });
@@ -219,9 +216,6 @@ describe('MFAVerification', () => {
 
       const input = screen.getByRole('textbox');
       await user.type(input, '123456');
-
-      const verifyButton = screen.getByRole('button', { name: /verify.*continue/i });
-      fireEvent.click(verifyButton);
 
       // Component uses router.replace, not router.push
       await waitFor(() => {
@@ -238,12 +232,9 @@ describe('MFAVerification', () => {
       const input = screen.getByRole('textbox');
       await user.type(input, '000000');
 
-      const verifyButton = screen.getByRole('button', { name: /verify.*continue/i });
-      fireEvent.click(verifyButton);
-
-      // Error is now shown via toast, so test that verifyMFA was called
       await waitFor(() => {
         expect(mockVerifyMFA).toHaveBeenCalled();
+        expect(screen.getByText(/code is invalid or has expired/i)).toBeInTheDocument();
       });
     });
 
@@ -256,9 +247,6 @@ describe('MFAVerification', () => {
 
       const input = screen.getByRole('textbox');
       await user.type(input, '123456');
-
-      const verifyButton = screen.getByRole('button', { name: /verify.*continue/i });
-      fireEvent.click(verifyButton);
 
       await waitFor(() => {
         expect(screen.getByText(/verifying/i)).toBeInTheDocument();

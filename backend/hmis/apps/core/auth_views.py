@@ -1632,3 +1632,93 @@ def onboarding_status(request):
             "steps": steps,
         }
     )
+
+
+@extend_schema(
+    request=None,
+    responses={
+        201: inline_serializer(
+            name="BackupPolicyAcceptanceResponse", fields={"accepted": serializers.BooleanField()}
+        )
+    },
+)
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def accept_backup_policy(request):
+    """Record backup policy consent and create the cloud-approved default destination."""
+    if not FacilityAdminPermission().has_permission(request, None):
+        return Response(
+            {"detail": "Organization administrator access is required."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    profile = getattr(request.user, "staff_profile", None)
+    org = getattr(profile, "organization", None)
+    if org is None:
+        return Response({"detail": "No organization assigned."}, status=status.HTTP_404_NOT_FOUND)
+
+    account = str(getattr(settings, "AZURE_HUB_BACKUP_STORAGE_ACCOUNT", "") or "").strip()
+    account_key = str(getattr(settings, "AZURE_HUB_BACKUP_STORAGE_ACCOUNT_KEY", "") or "").strip()
+    container = str(getattr(settings, "AZURE_HUB_BACKUP_STORAGE_CONTAINER", "") or "").strip()
+    signer = str(getattr(settings, "HUB_BACKUP_CREDENTIAL_SIGNER", "") or "").strip()
+    countries = {
+        item.strip().upper()
+        for item in str(getattr(settings, "HUB_BACKUP_ALLOWED_RESIDENCY_COUNTRIES", "")).split(",")
+    }
+    if (
+        signer != "hmis.apps.licensing.backup_credentials.sign_azure_blob_backup_credentials"
+        or not account
+        or not account_key
+        or not container
+        or "KE" not in countries
+    ):
+        return Response(
+            {
+                "detail": "Approved offsite backup storage is not configured.",
+                "code": "backup_default_unavailable",
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    from hmis.apps.licensing.models import HubBackupDestination
+
+    with transaction.atomic():
+        destination, created = HubBackupDestination.objects.get_or_create(
+            organization=org,
+            facility=None,
+            defaults={
+                "enabled": True,
+                "target_type": HubBackupDestination.TargetType.S3_COMPATIBLE,
+                "endpoint_url": f"https://{account}.blob.core.windows.net/{container}",
+                "residency_country": "KE",
+                "retention_days": 30,
+            },
+        )
+        if not destination.enabled:
+            return Response(
+                {
+                    "detail": "The organization backup destination is disabled.",
+                    "code": "backup_destination_disabled",
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        org.backup_policy_accepted_at = timezone.now()
+        org.backup_policy_accepted_by = request.user
+        org.backup_policy_version = "2026-10-11"
+        org.save(
+            update_fields=[
+                "backup_policy_accepted_at",
+                "backup_policy_accepted_by",
+                "backup_policy_version",
+            ]
+        )
+
+    AuditLog.log(
+        action="backup_policy_accepted",
+        user=request.user,
+        resource_type="Organization",
+        resource_id=org.id,
+        ip_address=_get_client_ip(request),
+        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+        details={"policy_version": org.backup_policy_version, "destination_created": created},
+    )
+    return Response({"accepted": True}, status=status.HTTP_201_CREATED)

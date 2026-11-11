@@ -414,7 +414,7 @@ export default function DashboardPageClient({ readOnly, actions }: DashboardPage
             meta: `${formatNumber(stats?.checkin.waiting ?? 0)} waiting`,
             description: `${formatNumber(stats?.checkin.completed_today ?? 0)} completed`,
             icon: ClipboardCheck,
-            href: '/checkin',
+            href: '/patients/checkin',
             ariaLabel: 'Open check-in queue',
             showTrendIndicator: false,
           },

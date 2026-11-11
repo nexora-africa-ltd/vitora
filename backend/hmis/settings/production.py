@@ -52,6 +52,7 @@ else:
             "PORT": os.getenv("DB_PORT", "5432"),
             "CONN_MAX_AGE": DB_CONN_MAX_AGE,
             "DISABLE_SERVER_SIDE_CURSORS": True,
+            "OPTIONS": {"sslmode": "require"},
         }
     }
 
@@ -177,15 +178,29 @@ if REDIS_URL:
             "BACKEND": "channels_redis.core.RedisChannelLayer",
             "CONFIG": {
                 "hosts": [REDIS_URL],
+                "prefix": "vitora:production:channels",
                 "capacity": 1500,  # Max messages per channel before oldest dropped
                 "expiry": 60,  # Message TTL in seconds
             },
         },
     }
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+            "TIMEOUT": 300,
+            "KEY_PREFIX": "vitora:production:cache",
+            "OPTIONS": {
+                "health_check_interval": 30,
+            },
+        }
+    }
 
     # Use the same Redis for Celery broker in production
     CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", REDIS_URL)
     CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", REDIS_URL)
+    CELERY_BROKER_TRANSPORT_OPTIONS = {"global_keyprefix": "vitora:production:broker:"}
+    CELERY_RESULT_BACKEND_TRANSPORT_OPTIONS = {"global_keyprefix": "vitora:production:result:"}
 
 # =============================================================================
 # Encryption — MUST be set via environment (no defaults in production)
@@ -193,6 +208,11 @@ if REDIS_URL:
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "")
 FIELD_ENCRYPTION_KEY = ENCRYPTION_KEY
 PII_HMAC_KEY = os.getenv("PII_HMAC_KEY", "")
+BACKUP_ENCRYPTION_REQUIRED = True
+
+# External LIS traffic carries clinical data and must use authenticated TLS.
+MLLP_USE_SSL = os.getenv("MLLP_USE_SSL", "true").lower() == "true"
+MLLP_SSL_VERIFY = os.getenv("MLLP_SSL_VERIFY", "true").lower() == "true"
 
 if not ENCRYPTION_KEY:
     import warnings

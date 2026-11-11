@@ -1,0 +1,30 @@
+{
+  "captured_at": "2026-11-11T15:54:36+00:00",
+  "facility_id": 13,
+  "patient_id": 402,
+  "endpoints": {
+    "audit_logs": "https://staging-api.vitora.digital/api/auditlogs/?patient_id=402&ordering=-timestamp",
+    "patient_history": "https://staging-api.vitora.digital/api/patients/402/history/"
+  },
+  "actor": "dha_lab_auditor",
+  "authentication": "Bearer token redacted; X-Facility-ID: 13",
+  "method": "GET",
+  "sanitization": "Only seeded audit entries and the controlled village version diff are retained.",
+  "screenshots": [
+    {
+      "file": "04-audit-log-viewer-patient-402.png",
+      "viewport": "1440x1024",
+      "description": "Authenticated DHA auditor audit-log viewer filtered to the synthetic patient-update event for patient 402."
+    },
+    {
+      "file": "04-audit-chain-integrity-dashboard.png",
+      "viewport": "1440x1024",
+      "description": "Authenticated DHA auditor read-only audit-chain dashboard."
+    },
+    {
+      "file": "06-patient-history-402.png",
+      "viewport": "1440x1024",
+      "description": "Authenticated DHA auditor patient-history timeline for synthetic patient 402."
+    }
+  ]
+}

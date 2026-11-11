@@ -32,8 +32,9 @@ from drf_spectacular.utils import (
 )
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.mixins import ListModelMixin, RetrieveModelMixin
-from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -66,6 +67,7 @@ from .models import (
 )
 from .openapi import SchemaFallbackSerializer
 from .permissions import (
+    AuditIntegrityPermission,
     AuditLogPermission,
     FacilityAdminPermission,
     ReadRequiresModelPermission,
@@ -321,7 +323,7 @@ class AuditLogViewSet(
     queryset = AuditLog.objects.all()
     serializer_class = AuditLogSerializer
     permission_classes = [AuditLogPermission]
-    filterset_fields = ["action", "resource_type", "user"]
+    filterset_fields = ["action", "resource_type", "user", "patient_id"]
     search_fields = ["action", "resource_type", "user__username"]
     ordering_fields = ["timestamp", "action"]
     ordering = ["-timestamp"]
@@ -367,7 +369,7 @@ class AuditLogViewSet(
 
         return queryset
 
-    @action(detail=False, methods=["get"], permission_classes=[IsAdminUser])
+    @action(detail=False, methods=["get"], permission_classes=[AuditIntegrityPermission])
     def chain_status(self, request):
         """Get audit hash chain health summary."""
         from .services.audit_integrity import AuditIntegrityService
@@ -384,7 +386,7 @@ class AuditLogViewSet(
         status_data = service.get_chain_status(facility=facility)
         return Response(status_data)
 
-    @action(detail=False, methods=["post"], permission_classes=[IsAdminUser])
+    @action(detail=False, methods=["post"], permission_classes=[AuditIntegrityPermission])
     def verify_integrity(self, request):
         """Trigger on-demand audit chain integrity verification."""
         from .services.audit_integrity import AuditIntegrityService
@@ -428,7 +430,7 @@ class AuditLogViewSet(
             }
         )
 
-    @action(detail=False, methods=["get"], permission_classes=[IsAdminUser])
+    @action(detail=False, methods=["get"], permission_classes=[AuditIntegrityPermission])
     def chain_diagnostics(self, request):
         """Return mismatch ranges and transition points for audit chain diagnostics."""
         from .services.audit_integrity import AuditIntegrityService
@@ -663,17 +665,46 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
     )
     def post(self, request, *args, **kwargs):
         """Handle token obtain request with audit logging and MFA."""
-        response = super().post(request, *args, **kwargs)
+        from django.contrib.auth import get_user_model
+
+        from hmis.apps.core.session_security import (
+            check_account_lock,
+            clear_failed_logins,
+            record_failed_login,
+        )
+
+        login_identifier = str(request.data.get("username") or "").strip()
+        User = get_user_model()
+        login_user = (
+            User.objects.filter(
+                models.Q(username__iexact=login_identifier)
+                | models.Q(email__iexact=login_identifier)
+            )
+            .select_related("staff_profile")
+            .first()
+        )
+        if login_user and check_account_lock(login_user, request):
+            return Response(
+                {
+                    "detail": "Account is temporarily locked. Please try again later.",
+                    "code": "account_locked",
+                },
+                status=status.HTTP_423_LOCKED,
+            )
+
+        try:
+            response = super().post(request, *args, **kwargs)
+        except AuthenticationFailed:
+            if login_user:
+                record_failed_login(login_user, request)
+            raise
 
         if response.status_code == 200:
             # Login successful - check for MFA
-            from django.contrib.auth import get_user_model
-
             from hmis.apps.core.mfa.models import MFAToken
             from hmis.apps.core.mfa.utils import get_client_ip, is_mfa_enabled, is_mfa_required
 
-            User = get_user_model()
-            login_identifier = str(request.data.get("username") or "").strip()
+            clear_failed_logins(login_user)
             try:
                 user = (
                     User.objects.filter(
@@ -709,6 +740,27 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
                             )
                         return Response(
                             {"detail": msg, "code": "organization_inactive"},
+                            status=status.HTTP_403_FORBIDDEN,
+                        )
+
+                    # Non-admin staff must not receive a session until their
+                    # organization has completed setup. Admin roles remain able
+                    # to sign in so they can finish the onboarding checklist.
+                    admin_codes = {"ADMIN", "ORG-ADMIN", "OWNER"}
+                    role_code = profile.primary_role.code if profile.primary_role else None
+                    if (
+                        getattr(django_settings, "ONBOARDING_ENFORCEMENT", False)
+                        and not org.onboarding_complete
+                        and role_code not in admin_codes
+                    ):
+                        return Response(
+                            {
+                                "detail": (
+                                    "Onboarding has not been completed yet. "
+                                    "Contact your organization administrator for more information."
+                                ),
+                                "code": "onboarding_pending_contact_admin",
+                            },
                             status=status.HTTP_403_FORBIDDEN,
                         )
 
@@ -771,6 +823,15 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
                     user_logged_in.send(sender=self.__class__, request=request, user=user)
                     response.data["mfa_required"] = False
 
+                # Replace SimpleJWT's default pair with a pair carrying the
+                # server-side session identifier. MFA responses return above
+                # and issue their own session-bound pair after verification.
+                from hmis.apps.core.session_security import create_token_pair
+
+                _, refresh = create_token_pair(user)
+                response.data["access"] = str(refresh.access_token)
+                response.data["refresh"] = str(refresh)
+
                 # Check must_change_password flag
                 if hasattr(user, "staff_profile") and user.staff_profile.must_change_password:
                     response.data["must_change_password"] = True
@@ -785,6 +846,8 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
             except User.DoesNotExist:
                 pass
         else:
+            if login_user:
+                record_failed_login(login_user, request)
             # Login failed - fire user_login_failed signal
             user_login_failed.send(
                 sender=self.__class__,

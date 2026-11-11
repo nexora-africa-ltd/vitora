@@ -99,6 +99,12 @@ class TestCatalogSerializer(serializers.ModelSerializer):
             "name",
             "short_name",
             "loinc_code",
+            "loinc_system",
+            "loinc_owner",
+            "loinc_source",
+            "loinc_retrieved_at",
+            "loinc_version",
+            "loinc_checksum",
             "category",
             "specimen_type",
             "result_type",
@@ -133,6 +139,11 @@ class TestCatalogCreateSerializer(serializers.ModelSerializer):
             "name",
             "short_name",
             "loinc_code",
+            "loinc_system",
+            "loinc_owner",
+            "loinc_source",
+            "loinc_retrieved_at",
+            "loinc_version",
             "category",
             "specimen_type",
             "requires_fasting",
@@ -154,6 +165,45 @@ class TestCatalogCreateSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+    def _record_loinc_binding(self, test):
+        """Persist a selected LOINC concept without importing a full catalogue."""
+        if not (test.loinc_code and test.loinc_system and test.loinc_owner and test.loinc_source):
+            return
+        from hmis.apps.billing.services.terminology import TerminologyConcept
+        from hmis.apps.core.models import TerminologyBinding
+
+        concept = TerminologyConcept(
+            code=test.loinc_code,
+            display=test.name,
+            owner=test.loinc_owner,
+            source=test.loinc_source,
+            system=test.loinc_system,
+            retrieved_at=test.loinc_retrieved_at,
+            version=test.loinc_version,
+        )
+        binding = TerminologyBinding.record(
+            test,
+            concept=concept,
+            terminology_key="loinc",
+            field_name="loinc_code",
+            user=self.context["request"].user if self.context.get("request") else None,
+        )
+        if test.loinc_checksum != binding.concept.checksum:
+            test.loinc_checksum = binding.concept.checksum
+            test.save(update_fields=["loinc_checksum"])
+
+    def create(self, validated_data):
+        """Create a local test definition and bind its selected LOINC concept."""
+        test = super().create(validated_data)
+        self._record_loinc_binding(test)
+        return test
+
+    def update(self, instance, validated_data):
+        """Update a local test definition and its LOINC binding."""
+        test = super().update(instance, validated_data)
+        self._record_loinc_binding(test)
+        return test
 
     def validate_code(self, value):
         """Ensure code is unique within the facility (case-insensitive)."""
@@ -231,6 +281,8 @@ class LabResultNestedSerializer(serializers.ModelSerializer):
             "external_result_attachment",
             "external_result_date",
             "result_loinc_code",
+            "result_loinc_system",
+            "result_loinc_retrieved_at",
             "created_at",
             "updated_at",
             "validation_summary",

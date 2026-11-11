@@ -130,3 +130,24 @@ class TestHubCloudUserTokenProxy:
 
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert response.data["code"] == "hub_signing_key_unavailable"
+
+    @override_settings(ENVIRONMENT="hub", HUB_ID="hub-proof-test")
+    def test_preserves_cloud_rejection_code(self, authenticated_client):
+        """Desktop clients need the cloud conflict reason, not a false outage."""
+        cloud_response = CloudProxyResponse(
+            success=False,
+            status_code=status.HTTP_409_CONFLICT,
+            data={"detail": "Hub activation requires review.", "code": "hub_activation_pending"},
+            error="Hub activation requires review.",
+        )
+        with (
+            patch.dict("os.environ", {"HUB_DEVICE_SIGNING_PRIVATE_KEY": self._private_key()}),
+            patch(
+                "hmis.apps.licensing.cloud_proxy.exchange_cloud_user_token",
+                return_value=cloud_response,
+            ),
+        ):
+            response = authenticated_client.post(self.url, {}, format="json")
+
+        assert response.status_code == status.HTTP_409_CONFLICT
+        assert response.data["code"] == "hub_activation_pending"

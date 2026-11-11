@@ -543,6 +543,41 @@ class TestStaffProfileAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["employee_id"] == "VH-2026-001"
 
+    def test_current_user_profile_rejects_post_and_delete(self, api_client, sample_staff):
+        """The self-service profile endpoint is read/patch only."""
+        api_client.force_authenticate(user=sample_staff.user)
+
+        post_response = api_client.post("/api/staff/me/", {"title": "Dr."})
+        delete_response = api_client.delete("/api/staff/me/")
+
+        assert post_response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+        assert delete_response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+
+    def test_current_user_profile_patch_requires_authentication(self, api_client):
+        """Anonymous callers cannot modify any self-service profile field."""
+        response = api_client.patch("/api/staff/me/", {"phone_number": "0712345678"})
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_current_user_profile_rejects_privileged_patch_fields(self, api_client, sample_staff):
+        """Staff cannot modify role, facility, or employment data through /me/."""
+        api_client.force_authenticate(user=sample_staff.user)
+        original_role_id = sample_staff.primary_role_id
+        original_status = sample_staff.employment_status
+
+        response = api_client.patch(
+            "/api/staff/me/",
+            {"primary_role": None, "employment_status": "INACTIVE"},
+            format="json",
+        )
+
+        sample_staff.refresh_from_db()
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.data["code"] == "self_profile_field_forbidden"
+        assert response.data["fields"] == ["employment_status", "primary_role"]
+        assert sample_staff.primary_role_id == original_role_id
+        assert sample_staff.employment_status == original_status
+
     def test_license_summary_includes_active_staff_with_expiry_regardless_of_role_requirement(
         self, authenticated_client, sample_staff
     ):

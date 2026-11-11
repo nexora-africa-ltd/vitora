@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import json
 
+from django.conf import settings
+from django.core.cache import cache
 from django.db.models import Count
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
@@ -24,7 +26,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin
+from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, resolve_request_tenant
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.openapi import SchemaFallbackSerializer
 from hmis.apps.core.permissions import ReadRequiresModelPermission
@@ -624,6 +626,7 @@ class QualityMeasureResultViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet)
         "measure__domain",
         "clinic",
         "year",
+        "period",
         "period_type",
         "meets_target",
     ]
@@ -634,6 +637,22 @@ class QualityMeasureResultViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet)
 
     def perform_create(self, serializer):
         serializer.save(calculated_by=self.request.user)
+
+    def _get_scoped_clinic(self, request: Request, clinic_id: int):
+        """Return a clinic visible in the active tenant context, or ``None``."""
+        from hmis.apps.clinics.models import Clinic
+
+        resolve_request_tenant(request)
+        clinics = Clinic.objects.filter(pk=clinic_id)
+        facility = getattr(request, "facility", None)
+        organization = getattr(request, "organization", None)
+        if facility:
+            return clinics.filter(facility=facility).first()
+        if organization:
+            return clinics.filter(organization=organization).first()
+        if request.user.is_superuser:
+            return clinics.first()
+        return None
 
     @extend_schema(summary="Get trend data for a measure across periods")
     @action(detail=False, methods=["get"])
@@ -690,10 +709,13 @@ class QualityMeasureResultViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet)
 
         if clinic_id:
             # Single clinic evaluation
-            results = evaluate_all_measures_for_clinic(int(clinic_id), year, period, period_type)
+            clinic = self._get_scoped_clinic(request, int(clinic_id))
+            if clinic is None:
+                return Response({"detail": "Clinic not found."}, status=status.HTTP_404_NOT_FOUND)
+            results = evaluate_all_measures_for_clinic(clinic.id, year, period, period_type)
             return Response(
                 {
-                    "clinic_id": int(clinic_id),
+                    "clinic_id": clinic.id,
                     "year": year,
                     "period": period,
                     "period_type": period_type,
@@ -703,32 +725,136 @@ class QualityMeasureResultViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet)
             )
         else:
             # Evaluate all active clinics
-            from hmis.apps.clinics.models import Clinic
-
-            clinics = Clinic.objects.filter(status="ACTIVE")
-            all_results = []
-            for clinic in clinics:
-                clinic_results = evaluate_all_measures_for_clinic(
-                    clinic.id, year, period, period_type
+            resolve_request_tenant(request)
+            facility = getattr(request, "facility", None)
+            if not facility:
+                return Response(
+                    {"detail": "A facility context is required to evaluate all clinics."},
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
-                all_results.append(
+            from .tasks import evaluate_quality_measures_task
+
+            if getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False):
+                result = evaluate_quality_measures_task(
+                    year=year,
+                    period=period,
+                    period_type=period_type,
+                    facility_id=facility.id,
+                )
+                return Response(
                     {
-                        "clinic_id": clinic.id,
-                        "clinic_name": clinic.name,
-                        "results": clinic_results,
-                        "total_evaluated": len(clinic_results),
+                        "year": year,
+                        "period": period,
+                        "period_type": period_type,
+                        "facility_id": facility.id,
+                        "status": "SUCCESS",
+                        "result": result,
                     }
                 )
 
+            task = evaluate_quality_measures_task.delay(
+                year=year,
+                period=period,
+                period_type=period_type,
+                facility_id=facility.id,
+            )
+            cache.set(
+                f"quality-evaluation-task:{task.id}",
+                {
+                    "facility_id": facility.id,
+                    "user_id": request.user.id,
+                    "year": year,
+                    "period": period,
+                    "period_type": period_type,
+                },
+                timeout=60 * 60,
+            )
             return Response(
                 {
                     "year": year,
                     "period": period,
                     "period_type": period_type,
-                    "clinics_evaluated": len(all_results),
-                    "clinic_results": all_results,
-                }
+                    "facility_id": facility.id,
+                    "task_id": task.id,
+                    "status": "PENDING",
+                },
+                status=status.HTTP_202_ACCEPTED,
             )
+
+    @action(detail=False, methods=["get"], url_path=r"evaluate/status/(?P<task_id>[\w-]+)")
+    def evaluate_status(self, request: Request, task_id=None) -> Response:
+        """Return the state and result of a facility-scoped CQM evaluation task."""
+        from celery.result import AsyncResult
+
+        from hmis.apps.core.mixins import resolve_request_tenant
+
+        resolve_request_tenant(request)
+        task_scope = cache.get(f"quality-evaluation-task:{task_id}")
+        if (
+            not task_scope
+            or task_scope["user_id"] != request.user.id
+            or task_scope["facility_id"] != getattr(getattr(request, "facility", None), "id", None)
+        ):
+            return Response(
+                {"detail": "Evaluation task not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        task = AsyncResult(task_id)
+        payload = {
+            "task_id": task_id,
+            "status": task.status,
+            "year": task_scope["year"],
+            "period": task_scope["period"],
+            "period_type": task_scope["period_type"],
+            "facility_id": task_scope["facility_id"],
+        }
+        if task.successful():
+            payload["result"] = task.result
+        elif task.failed():
+            payload["detail"] = "Quality evaluation task failed."
+        return Response(payload)
+
+    @extend_schema(
+        summary="Export filtered facility quality measure results as PDF or XLSX",
+        parameters=[
+            OpenApiParameter(name="export_format", type=str, required=False),
+            OpenApiParameter(name="year", type=int, required=True),
+            OpenApiParameter(name="clinic", type=int, required=False),
+            OpenApiParameter(name="measure", type=int, required=False),
+            OpenApiParameter(name="period", type=int, required=False),
+            OpenApiParameter(name="period_type", type=str, required=False),
+        ],
+    )
+    @action(detail=False, methods=["get"], url_path="export")
+    def export(self, request: Request) -> HttpResponse | Response:
+        """Download the current tenant's filtered quality results as PDF or XLSX."""
+        export_format = request.query_params.get("export_format", "xlsx")
+        if export_format not in {"pdf", "xlsx"}:
+            return Response(
+                {"detail": "export_format must be pdf or xlsx."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            year = int(request.query_params.get("year", ""))
+        except (TypeError, ValueError):
+            return Response({"detail": "year is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        results = self.filter_queryset(self.get_queryset().filter(year=year)).order_by(
+            "measure__code", "clinic__name", "period_type", "period"
+        )
+        from .services.result_exports import export_results_to_pdf, export_results_to_xlsx
+
+        if export_format == "pdf":
+            content = export_results_to_pdf(results, year)
+            content_type = "application/pdf"
+        else:
+            content = export_results_to_xlsx(results, year)
+            content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+        response = HttpResponse(content, content_type=content_type)
+        response["Content-Disposition"] = (
+            f'attachment; filename="quality_measure_results_{year}.{export_format}"'
+        )
+        return response
 
 
 # =============================================================================
@@ -756,22 +882,33 @@ class QualityDashboardView(APIView):
         year = request.query_params.get("year")
         clinic_id = request.query_params.get("clinic_id")
 
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        organization = getattr(request, "organization", None)
+
         total_measures = QualityMeasure.objects.count()
         active_measures = QualityMeasure.objects.filter(status="ACTIVE").count()
 
         # Get latest results
         results_qs = QualityMeasureResult.objects.all()
+        if facility:
+            results_qs = results_qs.filter(clinic__facility=facility)
+        elif organization:
+            results_qs = results_qs.filter(clinic__organization=organization)
+        elif not request.user.is_superuser:
+            results_qs = results_qs.none()
         if year:
             results_qs = results_qs.filter(year=int(year))
         if clinic_id:
             results_qs = results_qs.filter(clinic_id=int(clinic_id))
 
-        total_results = results_qs.count()
-        meeting_target = results_qs.filter(meets_target=True).count()
+        evaluable_results = results_qs.filter(evaluation_status="EVALUATED")
+        total_results = evaluable_results.count()
+        meeting_target = evaluable_results.filter(meets_target=True).count()
 
         # Count measures below low threshold
         below_threshold = 0
-        for result in results_qs.select_related("measure"):
+        for result in evaluable_results.select_related("measure"):
             if (
                 result.measure.low_threshold is not None
                 and result.percentage < result.measure.low_threshold
@@ -786,7 +923,7 @@ class QualityDashboardView(APIView):
         domain_summary = []
         for domain_code, domain_label in QualityMeasure.DOMAIN_CHOICES:
             domain_measures = QualityMeasure.objects.filter(domain=domain_code, status="ACTIVE")
-            domain_results = results_qs.filter(measure__domain=domain_code)
+            domain_results = evaluable_results.filter(measure__domain=domain_code)
             domain_meeting = domain_results.filter(meets_target=True).count()
             domain_total = domain_results.count()
 
@@ -808,7 +945,7 @@ class QualityDashboardView(APIView):
         if year:
             y = int(year)
             for q in range(1, 5):
-                q_results = results_qs.filter(year=y, period=q, period_type="QUARTERLY")
+                q_results = evaluable_results.filter(year=y, period=q, period_type="QUARTERLY")
                 q_total = q_results.count()
                 q_meeting = q_results.filter(meets_target=True).count()
                 trend_data.append(

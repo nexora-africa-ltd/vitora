@@ -479,30 +479,48 @@ class TestDrugViewSetHPTActions:
 
     @patch("hmis.apps.billing.services.terminology.TerminologyService")
     def test_hpt_search_returns_results(self, mock_service_cls, authenticated_client):
-        """Should delegate to TerminologyService and return formatted results."""
-        from hmis.apps.billing.services.terminology import DrugProduct
+        """Should return normalized Clinical Concepts instead of legacy product fields."""
+        from hmis.apps.billing.services.terminology import TerminologyConcept
 
         mock_service = MagicMock()
         mock_service_cls.return_value = mock_service
-        mock_service.search_drug_products.return_value = [
-            DrugProduct.from_api_response(SAMPLE_DHA_PRODUCT_RESPONSE["Data"]["products"][0])
+        mock_service.search_hpt_concepts.return_value = [
+            TerminologyConcept(
+                code="PH11949",
+                display="Amoxicillin",
+                owner="MOH-PPB",
+                source="HPT",
+                system="https://example.test/HPT/",
+            )
         ]
 
         response = authenticated_client.get("/api/pharmacy/drugs/hpt-search/?q=Metformin")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == 1
-        assert response.data["results"][0]["knhts_concept_id"] == "10-03913-01"
-        assert response.data["results"][0]["generic_name"] == "Metformin"
+        assert response.data["results"][0] == {
+            "code": "PH11949",
+            "display": "Amoxicillin",
+            "owner": "MOH-PPB",
+            "source": "HPT",
+            "system": "https://example.test/HPT/",
+            "retrieved_at": None,
+            "local_drug_id": None,
+            "is_stocked": False,
+        }
 
     def test_hpt_search_unauthenticated_fails(self, api_client):
         """Should reject unauthenticated requests."""
         response = api_client.get("/api/pharmacy/drugs/hpt-search/?q=test")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_map_hpt_endpoint(self, authenticated_client, db):
+    def test_map_hpt_endpoint(self, authenticated_client, test_user, db):
         """Should map a drug to an HPT code."""
+        from django.contrib.auth.models import Permission
+
         from hmis.apps.pharmacy.models import Drug
+
+        test_user.user_permissions.add(Permission.objects.get(codename="change_drug"))
 
         drug = Drug.objects.create(
             code="MAP_TEST",
@@ -515,7 +533,11 @@ class TestDrugViewSetHPTActions:
         response = authenticated_client.post(
             f"/api/pharmacy/drugs/{drug.id}/map-hpt/",
             {
-                "hpt_code": "10-99999-01",
+                "code": "PH99999",
+                "display": "Test Drug",
+                "owner": "MOH-PPB",
+                "source": "HPT",
+                "system": "https://ilm-dev.dha.go.ke/ocl/orgs/MOH-PPB/sources/HPT/",
                 "hpt_product_id": 1234,
                 "ppb_code": "42",
             },
@@ -524,14 +546,22 @@ class TestDrugViewSetHPTActions:
 
         assert response.status_code == status.HTTP_200_OK
         drug.refresh_from_db()
-        assert drug.hpt_code == "10-99999-01"
+        assert drug.hpt_code == "PH99999"
         assert drug.hpt_product_id == 1234
         assert drug.ppb_code == "42"
+        assert drug.hpt_display == "Test Drug"
+        assert drug.hpt_owner == "MOH-PPB"
+        assert drug.hpt_source == "HPT"
+        assert drug.hpt_checksum
         assert drug.hpt_last_synced is not None
 
-    def test_map_hpt_requires_hpt_code(self, authenticated_client, db):
+    def test_map_hpt_requires_hpt_code(self, authenticated_client, test_user, db):
         """Should reject mapping without hpt_code."""
+        from django.contrib.auth.models import Permission
+
         from hmis.apps.pharmacy.models import Drug
+
+        test_user.user_permissions.add(Permission.objects.get(codename="change_drug"))
 
         drug = Drug.objects.create(
             code="MAP_TEST2",

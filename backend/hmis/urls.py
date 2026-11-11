@@ -49,6 +49,7 @@ from hmis.apps.core.pricing import (
     PricingResolvePlanSlashAliasView,
     PricingResolvePlanView,
 )
+from hmis.apps.core.terminology_views import TerminologyHealthView, TerminologyLookupView
 from hmis.apps.core.views import (
     AuditedTokenObtainPairView,
     AuditLogViewSet,
@@ -71,6 +72,7 @@ from hmis.apps.core.views import (
     WardViewSet,
     me_permissions,
 )
+from hmis.apps.core.views_encryption_status import EncryptionStatusView
 from hmis.apps.encounters.views import (
     ApplyTemplateView,
     ChronicConditionViewSet,
@@ -925,6 +927,11 @@ urlpatterns = [
     ),
     path("", liveness_check, name="liveness_check"),
     path("api/health/", health_check, name="api_health_check"),
+    path(
+        "api/core/security/encryption-status/",
+        EncryptionStatusView.as_view(),
+        name="encryption-status",
+    ),
     path("admin/mfa-verify/", admin_mfa_verify, name="admin-mfa-verify"),
     path("admin/mfa-verify/webauthn/begin/", admin_webauthn_begin, name="admin-webauthn-begin"),
     path(
@@ -938,6 +945,12 @@ urlpatterns = [
     path("api/me/permissions/", me_permissions, name="me-permissions"),
     path("api/locations/", include(location_router.urls)),
     path("api/terminology/", include(terminology_router.urls)),
+    path(
+        "api/terminology/lookup/<str:terminology_key>/",
+        TerminologyLookupView.as_view(),
+        name="terminology-lookup",
+    ),
+    path("api/terminology/health/", TerminologyHealthView.as_view(), name="terminology-health"),
     # Nested route for emergency contacts under patients
     path(
         "api/patients/<int:patient_pk>/emergency-contacts/",

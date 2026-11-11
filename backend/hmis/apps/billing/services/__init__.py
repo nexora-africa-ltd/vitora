@@ -32,6 +32,7 @@ from .terminology import (
     ICHICode,
     InterventionCode,
     RemoteLOINCCode,
+    TerminologyConcept,
     TerminologyError,
     TerminologyService,
 )
@@ -63,6 +64,7 @@ __all__ = [
     "ActiveComponent",
     "ComponentLink",
     "RemoteLOINCCode",
+    "TerminologyConcept",
     "ICHICode",
     # Search
     "DHASearchService",

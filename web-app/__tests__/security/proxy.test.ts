@@ -32,8 +32,16 @@ describe('createContentSecurityPolicy', () => {
   it('allows style attributes without allowing inline style elements', () => {
     const policy = createContentSecurityPolicy('test-nonce');
 
-    expect(policy).toContain("style-src 'self'");
+    expect(policy).toContain("style-src 'self' 'nonce-test-nonce'");
     expect(policy).toContain("style-src-attr 'unsafe-inline'");
     expect(policy).not.toContain("style-src 'self' 'unsafe-inline'");
+  });
+
+  it('allows secure WebSocket upgrades to the configured API origin', () => {
+    process.env.NEXT_PUBLIC_API_URL = 'https://staging-api.vitora.digital';
+
+    const policy = createContentSecurityPolicy('test-nonce');
+
+    expect(policy).toContain('wss://staging-api.vitora.digital');
   });
 });

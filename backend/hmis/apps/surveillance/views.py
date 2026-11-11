@@ -34,6 +34,7 @@ from .models import (
     ContactTracingContact,
     ContactTracingFollowUp,
     CountyNotificationDelivery,
+    IDSRSubmissionAttempt,
     IDSRWeeklyReport,
     IHRNotification,
     IHRNotificationStatus,
@@ -50,6 +51,7 @@ from .serializers import (
     ContactTracingStatusActionSerializer,
     CountyNotificationDeliverySerializer,
     CountyReportSerializer,
+    IDSRSubmissionAttemptSerializer,
     IHRCloseSerializer,
     IHREscalateToNationalSerializer,
     IHRNotificationCreateSerializer,
@@ -1522,7 +1524,7 @@ class IDSRWeeklyReportViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        result = IDSRReportingService.submit_to_dhis2(report)
+        result = IDSRReportingService.submit_to_dhis2(report, trigger="manual")
 
         AuditLog.log(
             action="idsr_report_submit_dhis2",
@@ -1545,6 +1547,13 @@ class IDSRWeeklyReportViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "dhis2_response": result,
             }
         )
+
+    @action(detail=True, methods=["get"])
+    def submission_attempts(self, request, pk=None):
+        """List auditable DHIS2/KHIS submission attempts for this report."""
+        report = self.get_object()
+        attempts = IDSRSubmissionAttempt.objects.filter(report=report).order_by("-attempt_number")
+        return Response(IDSRSubmissionAttemptSerializer(attempts, many=True).data)
 
     @action(detail=True, methods=["get", "post"], url_path=r"export[-_]sdmx")
     def export_sdmx(self, request, pk=None):

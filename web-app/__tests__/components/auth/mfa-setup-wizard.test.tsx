@@ -7,6 +7,7 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { MFASetupWizard } from '@/components/auth/mfa-setup-wizard';
 import { mfaApi } from '@/lib/api/mfa';
+import { AxiosError } from 'axios';
 
 // Mock the MFA API
 jest.mock('@/lib/api/mfa', () => ({
@@ -88,6 +89,18 @@ describe('MFASetupWizard', () => {
 
       // Should show secret key
       expect(screen.getByText(mockSetupData.secret)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Help' })).toBeInTheDocument();
+      expect(
+        screen.queryByText('Add an extra layer of security to your account by enabling two-factor authentication.')
+      ).not.toBeInTheDocument();
+    });
+
+    it('renders the authenticator deep link only for mobile layouts', async () => {
+      render(<MFASetupWizard onComplete={mockOnComplete} onCancel={mockOnCancel} />);
+
+      const deepLink = await screen.findByRole('link', { name: /open authenticator app/i });
+      expect(deepLink).toHaveAttribute('href', mockSetupData.provisioning_uri);
+      expect(deepLink).toHaveClass('md:hidden');
     });
 
     it('should show loading state while fetching setup data', async () => {
@@ -133,12 +146,7 @@ describe('MFASetupWizard', () => {
         expect(screen.getByText(mockSetupData.secret)).toBeInTheDocument();
       });
 
-      // Find and click the copy button (has Copy icon)
-      const copyButtons = screen.getAllByRole('button');
-      const copyButton = copyButtons.find((btn) => btn.querySelector('svg'));
-      if (copyButton) {
-        fireEvent.click(copyButton);
-      }
+      fireEvent.click(screen.getByRole('button', { name: /copy setup secret/i }));
 
       expect(navigator.clipboard.writeText).toHaveBeenCalled();
     });
@@ -175,6 +183,7 @@ describe('MFASetupWizard', () => {
       });
 
       const input = screen.getByLabelText('6-digit code');
+      expect(input).toHaveFocus();
       await user.type(input, '123456');
 
       expect(input).toHaveValue('123456');
@@ -222,7 +231,7 @@ describe('MFASetupWizard', () => {
       expect(verifyButton).toBeDisabled();
     });
 
-    it('should call API and proceed to backup step on successful verification', async () => {
+    it('should auto-verify and proceed to backup step when the OTP is complete', async () => {
       const user = userEvent.setup();
       render(<MFASetupWizard onComplete={mockOnComplete} onCancel={mockOnCancel} />);
 
@@ -239,9 +248,6 @@ describe('MFASetupWizard', () => {
       const input = screen.getByLabelText('6-digit code');
       await user.type(input, '123456');
 
-      const verifyButton = screen.getByText('Verify & Continue');
-      fireEvent.click(verifyButton);
-
       await waitFor(() => {
         expect(mfaApi.confirmTOTPSetup).toHaveBeenCalledWith('123456');
       });
@@ -253,7 +259,15 @@ describe('MFASetupWizard', () => {
 
     it('should show error on verification failure', async () => {
       const user = userEvent.setup();
-      (mfaApi.confirmTOTPSetup as jest.Mock).mockRejectedValue(new Error('Invalid token'));
+      const error = new AxiosError('Request failed with status code 400');
+      error.response = {
+        data: { error: 'Invalid token. Please try again.' },
+        status: 400,
+        statusText: 'Bad Request',
+        headers: {},
+        config: { headers: {} },
+      };
+      (mfaApi.confirmTOTPSetup as jest.Mock).mockRejectedValue(error);
 
       render(<MFASetupWizard onComplete={mockOnComplete} onCancel={mockOnCancel} />);
 
@@ -270,11 +284,9 @@ describe('MFASetupWizard', () => {
       const input = screen.getByLabelText('6-digit code');
       await user.type(input, '000000');
 
-      const verifyButton = screen.getByText('Verify & Continue');
-      fireEvent.click(verifyButton);
-
       await waitFor(() => {
-        expect(screen.getByText('Invalid token')).toBeInTheDocument();
+        expect(mfaApi.confirmTOTPSetup).toHaveBeenCalledWith('000000');
+        expect(screen.getByText('Invalid token. Please try again.')).toBeInTheDocument();
       });
     });
 
@@ -317,7 +329,6 @@ describe('MFASetupWizard', () => {
       });
       const input = screen.getByLabelText('6-digit code');
       await user.type(input, '123456');
-      fireEvent.click(screen.getByText('Verify & Continue'));
 
       // Wait for backup codes step
       await waitFor(() => {

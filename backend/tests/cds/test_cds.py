@@ -759,6 +759,34 @@ class TestCDSAlertAPI:
         assert "rules_evaluated" in response.data
         assert "rules_triggered" in response.data
 
+    @pytest.mark.django_db
+    def test_evaluate_encounter_requires_cds_alert_change_permission_when_rbac_enabled(
+        self, api_client, test_user, cds_rule, sample_encounter, settings
+    ):
+        """Manual evaluation is a CDS clinical action, not generic alert creation."""
+        from django.contrib.auth.models import Permission
+
+        settings.RBAC_CDS_ENFORCEMENT = True
+        api_client.force_authenticate(user=test_user)
+
+        denied = api_client.post(
+            "/api/cds/alerts/evaluate_encounter/",
+            {"encounter_id": sample_encounter.id},
+            format="json",
+        )
+        assert denied.status_code == status.HTTP_403_FORBIDDEN
+
+        test_user.user_permissions.add(Permission.objects.get(codename="change_cdsalert"))
+        test_user = type(test_user).objects.get(pk=test_user.pk)
+        api_client.force_authenticate(user=test_user)
+        allowed = api_client.post(
+            "/api/cds/alerts/evaluate_encounter/",
+            {"encounter_id": sample_encounter.id},
+            format="json",
+        )
+
+        assert allowed.status_code == status.HTTP_200_OK
+
     def test_dashboard(self, authenticated_client, cds_alert, cds_rule):
         """Should return dashboard statistics."""
         response = authenticated_client.get("/api/cds/alerts/dashboard/")
@@ -766,6 +794,44 @@ class TestCDSAlertAPI:
         assert "total_rules" in response.data
         assert "pending_alerts" in response.data
         assert "alerts_by_category" in response.data
+
+    def test_evidence_endpoint_returns_evidence_based_intervention(
+        self, authenticated_client, cds_alert, sample_encounter
+    ):
+        """DHA evidence endpoint links a triggered intervention to its clinical source."""
+        cds_alert.rule.references = [
+            {
+                "title": "WHO guideline for fever management",
+                "url": "https://www.who.int/publications/",
+                "citation": "WHO, 2023",
+            }
+        ]
+        cds_alert.rule.save(update_fields=["references"])
+
+        response = authenticated_client.get(
+            f"/api/cds/alerts/evidence/?encounter_id={sample_encounter.id}"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resource_type"] == "CDSEvidenceReport"
+        assert "capability" not in response.data
+        assert response.data["interventions"][0]["rule_code"] == "TEST-VITAL-001"
+        assert response.data["interventions"][0]["evidence_level"] == "A"
+        assert response.data["interventions"][0]["references"][0]["title"] == (
+            "WHO guideline for fever management"
+        )
+
+    def test_evidence_endpoint_requires_encounter_id(self, authenticated_client):
+        """The evidence endpoint requires one clinical context."""
+        response = authenticated_client.get("/api/cds/alerts/evidence/")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_evidence_endpoint_requires_authentication(self, api_client):
+        """Certification evidence cannot expose clinical alert data anonymously."""
+        response = api_client.get("/api/cds/alerts/evidence/?encounter_id=1")
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_direct_create_not_allowed(self, authenticated_client):
         """Should reject direct alert creation."""
@@ -785,6 +851,40 @@ class TestCDSAlertAPI:
         """Should filter alerts by priority."""
         response = authenticated_client.get("/api/cds/alerts/?priority=HIGH")
         assert response.status_code == status.HTTP_200_OK
+
+
+class TestSeedDHACDSEvidenceCommand:
+    """Tests for the synthetic-only DHA CDS evidence seed command."""
+
+    def test_creates_evidence_backed_alert_for_synthetic_encounter(
+        self, sample_encounter, sample_organization, sample_facility
+    ):
+        """The command seeds one active, referenced intervention without patient mutations."""
+        call_command(
+            "seed_dha_cds_evidence",
+            encounter_id=sample_encounter.id,
+            confirm_synthetic=True,
+        )
+
+        alert = CDSAlert.objects.get(
+            encounter=sample_encounter,
+            rule__code="DHA-SYNTHETIC-CDS-FEVER-001",
+        )
+        assert alert.rule.status == CDSRuleStatus.ACTIVE
+        assert alert.rule.evidence_level == "A"
+        assert alert.rule.references
+        assert alert.facility == sample_facility
+        assert alert.organization == sample_organization
+
+
+class TestGrantCDSEvidenceAccessCommand:
+    """Tests for explicit read-only CDS evidence access grants."""
+
+    def test_grants_cds_alert_view_permission(self, test_user):
+        """A dedicated integration account receives only the CDS alert read permission."""
+        call_command("grant_cds_evidence_access", username=test_user.username)
+
+        assert test_user.has_perm("cds.view_cdsalert")
 
 
 # ──────────────────────────── Seed Command Tests ────────────────────────────

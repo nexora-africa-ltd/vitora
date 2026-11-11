@@ -4,6 +4,7 @@ import { shaApi } from '@/lib/api/sha';
 import { useAuth } from '@/lib/auth/context';
 
 const mockLogout = jest.fn();
+const mockUpdateMyStaffProfile = jest.fn();
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockValidatePractitioner = shaApi.validatePractitioner as jest.MockedFunction<
   typeof shaApi.validatePractitioner
@@ -99,6 +100,10 @@ jest.mock('@/lib/hooks/use-rbac', () => ({
     },
     isLoading: false,
   })),
+  useUpdateMyStaffProfile: jest.fn(() => ({
+    mutateAsync: mockUpdateMyStaffProfile,
+    isPending: false,
+  })),
 }));
 
 jest.mock('@/lib/api/sha', () => ({
@@ -169,6 +174,16 @@ describe('ProfilePage', () => {
     expect(screen.getAllByText('Billing Clerk').length).toBeGreaterThan(0);
     expect(screen.getByText('10 assigned permissions')).toBeInTheDocument();
     expect(await screen.findByText('HWR-12345')).toBeInTheDocument();
+  });
+
+  it('renders only the contact fields permitted by the self-service profile endpoint', () => {
+    render(<ProfilePage />);
+
+    expect(screen.getByLabelText(/phone number/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/emergency contact name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/emergency contact phone/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^role$/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^facility$/i)).not.toBeInTheDocument();
   });
 
   it('shows settings actions and grouped permissions', async () => {

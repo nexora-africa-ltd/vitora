@@ -1,0 +1,25 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
+# Purpose: Automated backend verification artifact for DHA SEC-AUDIT-001.
+# Use: Attach with the SEC-AUDIT-001 submission after reviewing the dated test result below.
+# Inputs: Tests for audit filtering, immutability, retention, integrity, tenant-admin access, chained key-rotation events, history, and organization authorization.
+
+Command:
+cd backend && poetry run pytest tests/core/test_audit_log.py tests/core/test_audit_integrity.py tests/core/test_kms.py tests/core/test_history.py tests/core/test_multitenancy.py --no-cov -q
+
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+django: version: 5.2.17, settings: hmis.settings.test (from ini)
+rootdir: /home/azureuser/vitora/backend
+configfile: pyproject.toml
+plugins: asyncio-1.4.0, django-4.12.0, Faker-22.7.0, xdist-3.8.0, mock-3.15.1, locust-2.46.5, anyio-4.14.1, cov-4.1.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 191 items
+
+tests/core/test_audit_log.py ...........................                 [ 14%]
+tests/core/test_audit_integrity.py .................................s.   [ 32%]
+tests/core/test_kms.py ..................................                [ 50%]
+tests/core/test_history.py .............................                 [ 65%]
+tests/core/test_multitenancy.py ........................................ [ 86%]
+..........................                                               [100%]
+
+======================= 190 passed, 1 skipped in 19.51s ========================

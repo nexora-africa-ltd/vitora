@@ -1412,7 +1412,47 @@ class IDSRReportingService:
         }
 
     @classmethod
-    def submit_to_dhis2(cls, report: "IDSRWeeklyReport") -> dict:
+    def validate_dhis2_submission(cls, report: "IDSRWeeklyReport") -> dict:
+        """Validate configuration and MOH 505 mappings before any DHIS2 write."""
+        from hmis.apps.core.dhis2 import resolve_dhis2_credentials
+
+        from .dhis2_mappings import validate_mappings
+
+        facility = report.facility_ref
+        credentials = resolve_dhis2_credentials(facility)
+        errors: list[str] = []
+        if not credentials.is_configured:
+            errors.append("DHIS2/KHIS endpoint credentials are not configured.")
+        if not credentials.org_unit:
+            errors.append("The facility DHIS2/KHIS organisation unit is not configured.")
+
+        mapping_validation = validate_mappings(credentials.environment)
+        if not mapping_validation["valid"]:
+            errors.append("Required MOH 505 data-element mappings are incomplete.")
+
+        payload = cls.prepare_dhis2_payload(report)
+        if payload["_metadata"]["unmapped_count"]:
+            errors.append("The report contains positive values with no DHIS2/KHIS mapping.")
+
+        return {
+            "valid": not errors,
+            "errors": errors,
+            "mapping_validation": mapping_validation,
+            "payload": payload,
+        }
+
+    @staticmethod
+    def _is_successful_dhis2_import(response_data: dict) -> bool:
+        """Return whether DHIS2 accepted the complete DataValueSet import."""
+        summary = response_data.get("importSummary", response_data)
+        status = str(summary.get("status", "")).upper()
+        import_count = summary.get("importCount", {}) or {}
+        rejected = int(import_count.get("rejected", 0) or 0)
+        conflicts = summary.get("conflicts", []) or []
+        return status in {"SUCCESS", "OK"} and rejected == 0 and not conflicts
+
+    @classmethod
+    def submit_to_dhis2(cls, report: "IDSRWeeklyReport", trigger: str = "manual") -> dict:
         """
         Submit IDSR report to DHIS2.
 
@@ -1431,14 +1471,65 @@ class IDSRReportingService:
 
         facility = report.facility_ref
         creds = resolve_dhis2_credentials(facility)
+        validation = cls.validate_dhis2_submission(report)
+        payload = validation.pop("payload")
 
-        if not all([creds.base_url, creds.username, creds.password]):
-            logger.warning("DHIS2 credentials not configured")
-            return {"status": "error", "message": "DHIS2 not configured"}
+        from .models import IDSRSubmissionAttempt, IDSRSubmissionAttemptStatus
 
-        payload = cls.prepare_dhis2_payload(report)
+        attempt = IDSRSubmissionAttempt.objects.create(
+            report=report,
+            facility=facility,
+            organization=report.organization,
+            trigger=trigger,
+            attempt_number=report.submission_attempts.count() + 1,
+            request_payload=payload,
+            validation_response=validation,
+            attempted_at=timezone.now(),
+        )
+
+        if not validation["valid"]:
+            response_data = {"status": "error", "errors": validation["errors"]}
+            attempt.status = IDSRSubmissionAttemptStatus.VALIDATION_FAILED
+            attempt.response = response_data
+            attempt.error_message = " ".join(validation["errors"])
+            attempt.completed_at = timezone.now()
+            attempt.save(
+                update_fields=["status", "response", "error_message", "completed_at", "updated_at"]
+            )
+            report.mark_failed(response_data)
+            return response_data
 
         try:
+            dry_run = requests.post(
+                f"{creds.base_url}/api/dataValueSets?dryRun=true",
+                json=payload,
+                auth=(creds.username, creds.password),
+                headers={"Content-Type": "application/json"},
+                timeout=30,
+            )
+            dry_run_data = dry_run.json() if dry_run.text else {}
+            attempt.validation_response = {**validation, "staging": dry_run_data}
+            if not dry_run.ok or not cls._is_successful_dhis2_import(dry_run_data):
+                response_data = {"status": "error", "validation": dry_run_data}
+                attempt.status = IDSRSubmissionAttemptStatus.VALIDATION_FAILED
+                attempt.response = response_data
+                attempt.http_status = dry_run.status_code
+                attempt.error_message = "DHIS2/KHIS staging validation rejected the payload."
+                attempt.completed_at = timezone.now()
+                attempt.save(
+                    update_fields=[
+                        "status",
+                        "response",
+                        "validation_response",
+                        "http_status",
+                        "error_message",
+                        "completed_at",
+                        "updated_at",
+                    ]
+                )
+                report.mark_failed(response_data)
+                return response_data
+
             response = requests.post(
                 f"{creds.base_url}/api/dataValueSets",
                 json=payload,
@@ -1449,18 +1540,62 @@ class IDSRReportingService:
 
             response_data = response.json() if response.text else {}
 
-            if response.ok:
+            attempt.response = response_data
+            attempt.http_status = response.status_code
+            attempt.completed_at = timezone.now()
+            if response.ok and cls._is_successful_dhis2_import(response_data):
                 report.mark_submitted(response_data)
+                attempt.status = IDSRSubmissionAttemptStatus.SUBMITTED
                 logger.info("Submitted IDSR report %s to DHIS2", report.id)
             else:
                 report.mark_failed(response_data)
+                attempt.status = (
+                    IDSRSubmissionAttemptStatus.RETRY_SCHEDULED
+                    if trigger == "automated" and attempt.attempt_number < 3
+                    else IDSRSubmissionAttemptStatus.FAILED
+                )
+                if attempt.status == IDSRSubmissionAttemptStatus.RETRY_SCHEDULED:
+                    attempt.next_retry_at = timezone.now() + timedelta(minutes=15)
+                attempt.error_message = "DHIS2/KHIS rejected the submission response."
                 logger.error("DHIS2 submission failed: %s", response.status_code)
+            attempt.save(
+                update_fields=[
+                    "status",
+                    "response",
+                    "http_status",
+                    "error_message",
+                    "completed_at",
+                    "next_retry_at",
+                    "validation_response",
+                    "updated_at",
+                ]
+            )
 
             return response_data
 
         except requests.RequestException as e:
             error_response = {"status": "error", "message": str(e)}
             report.mark_failed(error_response)
+            attempt.status = (
+                IDSRSubmissionAttemptStatus.RETRY_SCHEDULED
+                if trigger == "automated" and attempt.attempt_number < 3
+                else IDSRSubmissionAttemptStatus.FAILED
+            )
+            if attempt.status == IDSRSubmissionAttemptStatus.RETRY_SCHEDULED:
+                attempt.next_retry_at = timezone.now() + timedelta(minutes=15)
+            attempt.response = error_response
+            attempt.error_message = str(e)
+            attempt.completed_at = timezone.now()
+            attempt.save(
+                update_fields=[
+                    "status",
+                    "response",
+                    "error_message",
+                    "completed_at",
+                    "next_retry_at",
+                    "updated_at",
+                ]
+            )
             logger.error("DHIS2 request failed: %s", e)
             return error_response
 

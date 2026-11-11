@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/shared/page-header';
@@ -8,6 +8,7 @@ import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
@@ -18,6 +19,8 @@ import {
 } from '@/components/ui/select';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { qualityApi } from '@/lib/api/quality';
+import { clinicsApi } from '@/lib/api/clinics';
+import { toast } from 'sonner';
 import { CircularProgress } from '@/components/ui/circular-progress';
 import {
   Activity,
@@ -29,11 +32,29 @@ import {
   ChevronRight,
   ClipboardList,
   Loader2,
+  Download,
+  FileSpreadsheet,
 } from 'lucide-react';
-import type { QualityDashboardData, QualityDomainSummary } from '@/lib/types/quality';
+import type {
+  QualityDashboardData,
+  QualityDomainSummary,
+  ReportingPeriod,
+} from '@/lib/types/quality';
 
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
+const months = Array.from({ length: 12 }, (_, index) => ({
+  value: index + 1,
+  label: new Intl.DateTimeFormat('en', { month: 'long' }).format(new Date(2026, index, 1)),
+}));
+
+function periodOptions(periodType: ReportingPeriod) {
+  if (periodType === 'ANNUAL') return [{ value: 0, label: 'Annual' }];
+  if (periodType === 'QUARTERLY') {
+    return [1, 2, 3, 4].map((value) => ({ value, label: `Quarter ${value}` }));
+  }
+  return months;
+}
 
 function StatCard({
   title,
@@ -156,11 +177,29 @@ export default function QualityDashboardPage() {
   const queryClient = useQueryClient();
   const { refresh, isRefreshing } = usePageRefresh();
   const [year, setYear] = useState<number>(currentYear);
+  const [clinicId, setClinicId] = useState<number | undefined>();
+  const [measureId, setMeasureId] = useState<number | undefined>();
+  const [periodType, setPeriodType] = useState<ReportingPeriod>('MONTHLY');
+  const [period, setPeriod] = useState<number>(new Date().getMonth() + 1);
+  const [evaluationTaskId, setEvaluationTaskId] = useState<string | null>(null);
+  const [evaluationNotice, setEvaluationNotice] = useState<string | null>(null);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['quality-dashboard', year],
-    queryFn: () => qualityApi.getDashboard({ year }),
+    queryKey: ['quality-dashboard', year, clinicId],
+    queryFn: () => qualityApi.getDashboard({ year, clinic_id: clinicId }),
     staleTime: 60_000,
+  });
+
+  const { data: clinicsData } = useQuery({
+    queryKey: ['quality-export-clinics'],
+    queryFn: () => clinicsApi.list({ page_size: 100 }),
+    staleTime: 5 * 60_000,
+  });
+
+  const { data: measuresData } = useQuery({
+    queryKey: ['quality-export-measures'],
+    queryFn: () => qualityApi.listMeasures({ status: 'ACTIVE', page_size: 100 }),
+    staleTime: 5 * 60_000,
   });
 
   const seedMutation = useMutation({
@@ -170,9 +209,95 @@ export default function QualityDashboardPage() {
     },
   });
 
+  const evaluateMutation = useMutation({
+    mutationFn: () => qualityApi.evaluateMeasures({
+      clinic_id: clinicId,
+      year,
+      period,
+      period_type: periodType,
+    }),
+    onSuccess: (evaluation) => {
+      if (evaluation.task_id) {
+        setEvaluationNotice(null);
+        setEvaluationTaskId(evaluation.task_id);
+        toast.info('Quality evaluation started. Results will refresh when it completes.');
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['quality-dashboard'] });
+        setEvaluationNotice('Evaluation complete. Dashboard results have been refreshed.');
+        toast.success('Quality evaluation complete.');
+      }
+    },
+    onError: () => toast.error('Unable to start quality evaluation.'),
+  });
+
+  const { data: evaluationTask } = useQuery({
+    queryKey: ['quality-evaluation-task', evaluationTaskId],
+    queryFn: () => qualityApi.getEvaluationStatus(evaluationTaskId!),
+    enabled: evaluationTaskId !== null,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === 'SUCCESS' || status === 'FAILURE' ? false : 2_000;
+    },
+    refetchIntervalInBackground: false,
+  });
+
+  const evaluationComplete = evaluationTask?.status === 'SUCCESS';
+  const evaluationFailed = evaluationTask?.status === 'FAILURE';
+  useEffect(() => {
+    if (!evaluationComplete) return;
+    const updatedResults = evaluationTask?.result?.results_created_or_updated ?? 0;
+    queryClient.invalidateQueries({ queryKey: ['quality-dashboard'] });
+    setEvaluationNotice(`Evaluation complete: ${updatedResults} result(s) updated.`);
+    toast.success('Quality evaluation complete.', { description: `${updatedResults} result(s) updated.` });
+    setEvaluationTaskId(null);
+  }, [evaluationComplete, evaluationTask?.result?.results_created_or_updated, queryClient]);
+
+  useEffect(() => {
+    if (!evaluationFailed) return;
+    const detail = evaluationTask?.detail || 'Quality evaluation failed. Please try again.';
+    setEvaluationNotice(detail);
+    toast.error(detail);
+    setEvaluationTaskId(null);
+  }, [evaluationFailed, evaluationTask?.detail]);
+
+  const handleDownload = async (format: 'pdf' | 'xlsx') => {
+    if (!clinicId || !measureId) {
+      toast.error('Select a clinic and quality measure before exporting.');
+      return;
+    }
+    try {
+      const blob = await qualityApi.exportResults(format, {
+        year,
+        clinic: clinicId,
+        measure: measureId,
+        period,
+        period_type: periodType,
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `quality-measure-${measureId}-clinic-${clinicId}-${year}-${periodType}-${period}.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success(`${format.toUpperCase()} report downloaded.`);
+    } catch {
+      toast.error(`Unable to download the ${format.toUpperCase()} report.`);
+    }
+  };
+
   const handleRefresh = async () => {
     await refresh();
   };
+
+  const selectedPeriodOptions = periodOptions(periodType);
+  const clinics = useMemo(() => clinicsData?.results ?? [], [clinicsData?.results]);
+  const measures = useMemo(() => measuresData?.results ?? [], [measuresData?.results]);
+  const selectedMeasure = useMemo(
+    () => measures.find((measure) => measure.id === measureId),
+    [measureId, measures]
+  );
 
   if (isLoading) {
     return (
@@ -264,20 +389,145 @@ export default function QualityDashboardPage() {
           title="Quality Measures"
           helpContent="Monitor clinical quality measures (CQM) compliance across domains. Track trends, identify underperforming areas, and generate reports."
           actions={
-            <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
-              <SelectTrigger className="w-28">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {years.map((y) => (
-                  <SelectItem key={y} value={String(y)}>
-                    {y}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => evaluateMutation.mutate()}
+                disabled={evaluateMutation.isPending || (!!evaluationTaskId && !evaluationComplete && !evaluationFailed)}
+              >
+                <Loader2
+                  className={`mr-1 h-4 w-4 ${evaluateMutation.isPending || (!!evaluationTaskId && !evaluationComplete && !evaluationFailed) ? 'animate-spin' : 'hidden'}`}
+                />
+                Evaluate
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleDownload('xlsx')}
+                title="Download quality results for the selected year; optional fields narrow the report."
+              >
+                <FileSpreadsheet className="mr-1 h-4 w-4" />
+                <span className="hidden sm:inline">XLSX</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleDownload('pdf')}
+                title="Download quality results for the selected year; optional fields narrow the report."
+              >
+                <Download className="mr-1 h-4 w-4" />
+                <span className="hidden sm:inline">PDF</span>
+              </Button>
+            </div>
           }
         />
+
+        <Card>
+          <CardContent className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+            <div className="space-y-1.5">
+              <Label htmlFor="quality-export-clinic">Clinic</Label>
+              <Select value={clinicId?.toString()} onValueChange={(value) => setClinicId(Number(value))}>
+                <SelectTrigger id="quality-export-clinic">
+                  <SelectValue placeholder="Select clinic" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clinics.map((clinic) => (
+                    <SelectItem key={clinic.id} value={String(clinic.id)}>
+                      {clinic.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="quality-export-measure">Quality measure</Label>
+              <Select value={measureId?.toString()} onValueChange={(value) => setMeasureId(Number(value))}>
+                <SelectTrigger id="quality-export-measure" className="min-w-0">
+                  <SelectValue placeholder="Select measure">
+                    {selectedMeasure ? (
+                      <span className="block truncate" title={`${selectedMeasure.code} — ${selectedMeasure.name}`}>
+                        {selectedMeasure.code} — {selectedMeasure.name}
+                      </span>
+                    ) : undefined}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {measures.map((measure) => (
+                    <SelectItem
+                      key={measure.id}
+                      value={String(measure.id)}
+                      textValue={`${measure.code} — ${measure.name}`}
+                      className="min-w-0"
+                    >
+                      <span className="block truncate" title={`${measure.code} — ${measure.name}`}>
+                        {measure.code} — {measure.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="quality-export-period-type">Period type</Label>
+              <Select
+                value={periodType}
+                onValueChange={(value) => {
+                  const nextPeriodType = value as ReportingPeriod;
+                  setPeriodType(nextPeriodType);
+                  setPeriod(periodOptions(nextPeriodType)[0]?.value ?? 0);
+                }}
+              >
+                <SelectTrigger id="quality-export-period-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MONTHLY">Monthly</SelectItem>
+                  <SelectItem value="QUARTERLY">Quarterly</SelectItem>
+                  <SelectItem value="ANNUAL">Annual</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="quality-export-period">Reporting period</Label>
+              <Select value={String(period)} onValueChange={(value) => setPeriod(Number(value))}>
+                <SelectTrigger id="quality-export-period">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {selectedPeriodOptions.map((option) => (
+                    <SelectItem key={option.value} value={String(option.value)}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="quality-export-year">Year</Label>
+              <Select value={String(year)} onValueChange={(value) => setYear(Number(value))}>
+                <SelectTrigger id="quality-export-year">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {years.map((option) => (
+                    <SelectItem key={option} value={String(option)}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {(evaluationTaskId || evaluationNotice) && (
+          <Card className="border-primary/20 bg-primary/5 p-3">
+            <p className="text-sm">
+              {evaluationNotice || 'Evaluating quality measures… this page will refresh automatically.'}
+            </p>
+          </Card>
+        )}
 
         {/* KPI Cards */}
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">

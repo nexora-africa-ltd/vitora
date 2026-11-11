@@ -1,0 +1,62 @@
+{
+  "generated_at": "2026-11-07T17:36:17.164Z",
+  "base_url": "https://staging.vitora.digital",
+  "facility": "DHA Certification Test Facility (ID redacted from screenshots)",
+  "artifacts": [
+    {
+      "file": "02-invalid-login-rejected.png",
+      "description": "Rejected invalid-login response; password field redacted."
+    },
+    {
+      "file": "03-mfa-challenge.png",
+      "description": "MFA challenge after valid password; no OTP, backup code, token, or credential displayed."
+    },
+    {
+      "file": "01-successful-login-clinician.png",
+      "description": "Fully rendered clinician Profile screen after MFA-authenticated login; direct account details are redacted."
+    },
+    {
+      "file": "sanitized-staff-me-response.json",
+      "description": "Sanitized live GET /api/staff/me/ response showing role, facility metadata, and effective permissions."
+    },
+    {
+      "file": "07-idle-warning-15-minutes.png",
+      "description": "Idle-session warning shown after 15 minutes of inactivity; countdown is visible."
+    },
+    {
+      "file": "09-break-glass-invocation-and-review.png",
+      "description": "Fully rendered Emergency Access table showing the controlled system-wide mass-casualty request as Reviewed and Closed. Requester details are redacted; the API record is the authoritative reviewer evidence."
+    },
+    {
+      "file": "backend-security-tests.txt",
+      "description": "Targeted backend security test report: 231 passed."
+    },
+    {
+      "file": "idle-timer-tests.txt",
+      "description": "Targeted frontend idle-timer test report: 7 passed."
+    },
+    {
+      "file": "sanitized-break-glass-review-record.json",
+      "description": "Sanitized live API proof of the controlled break-glass invocation and reviewer record."
+    },
+    {
+      "file": "06-rbac-permission-comparison.png",
+      "description": "Visual comparison generated from sanitized live staff/me responses for administrator, clinician, and clerk."
+    },
+    {
+      "file": "rbac-permission-comparison.json",
+      "description": "Sanitized live staff/me source data for the RBAC comparison."
+    },
+    {
+      "file": "08-idle-logout-30-minutes.png",
+      "description": "Automatic logout after a simulated 30-minute inactivity interval, including the explicit sign-in notice."
+    },
+    {
+      "file": "10-failed-login-audit-entry.png",
+      "description": "Rendered Audit Logs entry for a controlled failed login. Username and client IP are redacted."
+    }
+  ],
+  "notes": [
+    "Dedicated staging DHA accounts only. Credentials, MFA tokens, cookies, backup codes, and direct patient identifiers are not captured."
+  ]
+}

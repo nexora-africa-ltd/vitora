@@ -274,6 +274,14 @@ function Invoke-HubDeviceReenrollment {
         [Environment]::SetEnvironmentVariable("SHA_AUTH_MODE", [string]$decrypted.sha_auth_mode, "Process")
         [Environment]::SetEnvironmentVariable("SHA_AUTH_BASE_URL", [string]$decrypted.sha_auth_base_url, "Process")
         [Environment]::SetEnvironmentVariable("ILM_BASE_URL", [string]$decrypted.ilm_base_url, "Process")
+        # Keep a still-valid credential if the cloud cannot issue a replacement.
+        # Bootstrap intentionally does not fail hub re-enrollment for backup setup.
+        foreach ($backupCredential in @("HUB_BACKUP_S3_URL", "HUB_BACKUP_S3_TOKEN", "HUB_BACKUP_S3_TOKEN_EXPIRES_AT")) {
+            $property = $decrypted.PSObject.Properties[$backupCredential]
+            if ($null -ne $property -and -not [string]::IsNullOrWhiteSpace([string]$property.Value)) {
+                [Environment]::SetEnvironmentVariable($backupCredential, [string]$property.Value, "Process")
+            }
+        }
         # Re-enrollment replaces cloud-issued secrets but never silently rotates
         # the local SQLCipher key. Older bundles receive a fresh key once.
         $databaseEncryptionKey = Get-HubEnvValue "HUB_DATABASE_ENCRYPTION_KEY"
@@ -904,6 +912,9 @@ $dpapiSecrets = @{
     HUB_DATABASE_ENCRYPTION_REQUIRED = (Get-HubEnvValue "HUB_DATABASE_ENCRYPTION_REQUIRED" "true")
     HUB_DATABASE_ENCRYPTION_KEY = (Get-HubEnvValue "HUB_DATABASE_ENCRYPTION_KEY")
     HUB_BACKUP_ENCRYPTION_KEY = (Get-HubEnvValue "HUB_BACKUP_ENCRYPTION_KEY")
+    HUB_BACKUP_S3_URL = (Get-HubEnvValue "HUB_BACKUP_S3_URL")
+    HUB_BACKUP_S3_TOKEN = (Get-HubEnvValue "HUB_BACKUP_S3_TOKEN")
+    HUB_BACKUP_S3_TOKEN_EXPIRES_AT = (Get-HubEnvValue "HUB_BACKUP_S3_TOKEN_EXPIRES_AT")
     HUB_DEVICE_SIGNING_PRIVATE_KEY = (Get-HubEnvValue "HUB_DEVICE_SIGNING_PRIVATE_KEY")
 }
 Write-DpapiSecretsBundle -Secrets $dpapiSecrets -Path $hubSecretsFile

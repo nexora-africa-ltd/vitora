@@ -34,6 +34,7 @@ from .models import (
     SKU,
     ActivityFeed,
     AuditLog,
+    AuthenticationSecuritySettings,
     Bundle,
     CertificateAuthority,
     CertificateRevocation,
@@ -69,6 +70,25 @@ from .models import (
     UserCertificate,
     Ward,
 )
+
+
+@admin.register(AuthenticationSecuritySettings)
+class AuthenticationSecuritySettingsAdmin(admin.ModelAdmin):
+    """Admin-only runtime controls for account lockout and idle session expiry."""
+
+    fields = (
+        "max_failed_login_attempts",
+        "lockout_duration_minutes",
+        "idle_session_timeout_seconds",
+        "updated_at",
+    )
+    readonly_fields = ("updated_at",)
+
+    def has_add_permission(self, request):
+        return not AuthenticationSecuritySettings.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):  # noqa: ARG002
+        return False
 
 
 class FacilityStaffInline(admin.TabularInline):
@@ -111,6 +131,12 @@ class FacilityAdminForm(forms.ModelForm):
     biometrics_agent_national_id = forms.CharField(
         required=False,
         widget=forms.TextInput(attrs={"size": "40"}),
+        help_text="Leave blank to keep the existing encrypted value.",
+    )
+    clear_biometrics_agent_national_id = forms.BooleanField(
+        required=False,
+        label="Clear stored biometrics agent national ID",
+        help_text="Permanently remove the encrypted value without displaying it.",
     )
 
     class Meta:
@@ -119,17 +145,22 @@ class FacilityAdminForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if self.instance and self.instance.pk:
-            # Populate the form field from the decrypted property
-            self.fields[
-                "biometrics_agent_national_id"
-            ].initial = self.instance.biometrics_agent_national_id
+        # Location labels traverse parent FKs in __str__. Fetch them up front so
+        # rendering the full Kenya hierarchy does not perform an N+1 query per option.
+        self.fields["sub_county"].queryset = SubCounty.objects.select_related("county").order_by(
+            "name"
+        )
+        self.fields["ward"].queryset = Ward.objects.select_related("sub_county__county").order_by(
+            "name"
+        )
 
     def save(self, commit: bool = True):
         instance = super().save(commit=False)
-        instance.biometrics_agent_national_id = self.cleaned_data.get(
-            "biometrics_agent_national_id", ""
-        )
+        biometrics_agent_national_id = self.cleaned_data.get("biometrics_agent_national_id", "")
+        if self.cleaned_data.get("clear_biometrics_agent_national_id"):
+            instance.biometrics_agent_national_id = ""
+        elif biometrics_agent_national_id:
+            instance.biometrics_agent_national_id = biometrics_agent_national_id
         if commit:
             instance.save()
         return instance
@@ -234,6 +265,7 @@ class FacilityAdmin(admin.ModelAdmin):
                     "biometrics_enforced",
                     "workstation_id",
                     "biometrics_agent_national_id",
+                    "clear_biometrics_agent_national_id",
                 ),
                 "classes": ("collapse",),
                 "description": "Biometric consent configuration for DHA HIE integration.",

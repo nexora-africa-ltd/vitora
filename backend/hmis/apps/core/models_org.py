@@ -11,6 +11,7 @@ Supported inputs/args:
 - Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -194,6 +195,9 @@ class Organization(TimeStampedModel):
 
     data_retention_years = models.PositiveIntegerField(
         default=7,
+        validators=[
+            MinValueValidator(7, message="Audit records must be retained for at least 7 years.")
+        ],
         help_text="Minimum data retention period in years (Kenya DPA default: 7).",
     )
 
@@ -234,6 +238,15 @@ class Organization(TimeStampedModel):
             "first clinic, inviting staff, etc.)."
         ),
     )
+    backup_policy_accepted_at = models.DateTimeField(null=True, blank=True)
+    backup_policy_accepted_by = models.ForeignKey(
+        "auth.User",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="accepted_backup_policies",
+    )
+    backup_policy_version = models.CharField(max_length=32, blank=True, default="")
 
     # ------------------------------------------------------------------
     # Meta & Methods
@@ -245,6 +258,12 @@ class Organization(TimeStampedModel):
         verbose_name = "Organization"
         verbose_name_plural = "Organizations"
         ordering = ["name"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(data_retention_years__gte=7),
+                name="organization_audit_retention_minimum_seven_years",
+            )
+        ]
 
     def __str__(self) -> str:
         """Return the organization name."""
@@ -420,6 +439,7 @@ class Organization(TimeStampedModel):
 
         # Check if there's more than 1 staff member (the initial admin)
         has_invited_staff = self.staff_count > 1
+        backup_policy_accepted = self.backup_policy_version == "2026-10-11"
 
         steps = [
             {
@@ -434,6 +454,13 @@ class Organization(TimeStampedModel):
                 "label": "Create your first clinic",
                 "description": "Set up an outpatient clinic for patient consultations.",
                 "done": has_clinic,
+                "required": True,
+            },
+            {
+                "key": "backup_policy_acceptance",
+                "label": "Accept encrypted backup policy",
+                "description": "Approve encrypted offsite backups stored under the approved Kenya residency policy.",
+                "done": backup_policy_accepted,
                 "required": True,
             },
             {

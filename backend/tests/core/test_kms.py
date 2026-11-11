@@ -255,6 +255,21 @@ class TestKeyRotationService:
         assert result.metadata.tags is not None
         assert "new_key" in result.metadata.tags
 
+    @pytest.mark.django_db
+    def test_rotation_audit_event_is_hash_chained(self, local_provider):
+        """Key rotation evidence must use the standard chained audit-log path."""
+        from hmis.apps.core.models import AuditLog
+
+        service = KeyRotationService(provider=local_provider)
+        metadata = local_provider.get_key_metadata()
+
+        service._log_rotation_event(old_metadata=None, new_metadata=metadata)
+
+        entry = AuditLog.objects.get(action="key_rotation")
+        assert entry.sequence_number is not None
+        assert entry.entry_hash
+        assert entry.hash_algorithm == AuditLog.HASH_ALGO_HMAC_SHA256
+
 
 @pytest.mark.unit
 class TestKeyMetadata:

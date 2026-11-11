@@ -7,9 +7,9 @@ Inputs: Approved facility configuration, role matrix, clinical governance polici
 
 **Product:** Vitora HMIS
 **Supplier:** Nexora Consulting Ltd
-**Document version:** 1.0
-**Last reviewed:** 4 October 2026
-**Classification:** Internal and DHA submission material
+**Document version:** 1.1
+**Last reviewed:** 11 October 2026
+**Classification:** DHA review draft - internal and submission material
 
 ## 1. Purpose and Scope
 
@@ -97,6 +97,23 @@ The system records the requester, patient/scope, reason, justification, requeste
 
 Emergency access records have the states **Active**, **Expired**, **Revoked**, and **Reviewed and Closed**. They remain auditable. They must not be deleted to conceal an invocation or a later determination that the use was inappropriate.
 
+\clearpage
+![Emergency Access. Invoke break-glass access only for an immediate documented emergency and use the minimum necessary scope and duration.](assets/system-user-manual/screenshots/18-emergency-access.png){ width=95% fig-pos="H" }
+
+### 2.5 Data Entry and Validation
+
+Apply the following controls to every data-entry workflow:
+
+1. Confirm the selected facility, patient, encounter, order, invoice, or report period before entering or changing data.
+2. Use at least two approved patient identifiers before creating, opening, updating, ordering, dispensing, admitting, discharging, billing, or reporting on a patient record.
+3. Complete all required fields. A validation message means the system has not accepted the save or submission until the indicated issue is corrected.
+4. Check dates, units, quantities, medicine dose/route/frequency, laboratory ranges, payer identifiers, and financial totals against source information before finalizing.
+5. Use the Kenya location cascade in order: county, sub-county, then ward. Do not select an unrelated location to bypass validation.
+6. Search for an existing patient before registration. Escalate potential duplicates through the authorized records workflow; do not create a duplicate record to continue work.
+7. Record a clear rationale when overriding a CDS alert or when correcting, cancelling, voiding, refunding, reversing, or resubmitting a record.
+8. Treat a local save as distinct from an external submission. Confirm the returned DHA, SHA, DHIS2, KHIS, MOH, eTIMS, or payer response before recording the workflow as complete.
+9. If an error is identified after saving, use the authorized amendment, correction, cancellation, reversal, or incident workflow. Do not delete or overwrite information to conceal an error.
+
 ## 3. Access, Roles, and First Use
 
 ### 3.1 Roles and facility capabilities
@@ -108,6 +125,23 @@ Vitora applies two controls before showing or allowing a function:
 
 For example, a pharmacist may see dispensing only where the Pharmacy module is enabled. A billing officer may record payments but not necessarily prescribe medication. Administrators manage roles, facilities, departments, and enabled modules through the administration area.
 
+#### Operational user groups and typical access boundaries
+
+The following are training and workflow groupings, not an exhaustive list of system RBAC role codes. They help users identify their usual responsibilities and escalation boundaries; they do not independently grant access.
+
+| Operational user group | Typical authorized activities | Access and escalation boundary |
+|---|---|---|
+| Reception / records | Patient search, duplicate prevention, registration, demographics, check-in, and authorized contact updates | Does not make clinical decisions, verify laboratory results, dispense, or submit financial/payer transactions unless specifically authorized. |
+| Nurse / triage | Check-in support, triage, vital signs, queue updates, nursing documentation, and assigned inpatient tasks | Escalates unstable patients and works within assigned clinical/shift authority. |
+| Clinician | Encounters, diagnoses, treatment plans, orders, referrals, clinical documentation, and CDS alert disposition | Remains accountable for clinical decisions; AI/CDS does not prescribe or authorize care. |
+| Laboratory | Orders/specimens within role, result entry, verification, critical-result escalation, and laboratory quality workflows | Only authorized laboratory personnel verify results or configure analyzer, reflex, or auto-verification rules. |
+| Pharmacy | Prescription review, medication-safety checks, dispensing, stock visibility, and authorized inventory actions | Dispenses only through the authorized pharmacy workflow after required clinical and stock checks. |
+| Billing / claims | Invoices, payments, receipts, authorized adjustments, payer validation, claims, preauthorizations, remittances, and reconciliation | Does not alter clinical records to resolve payer or financial outcomes; external submission requires returned status confirmation. |
+| Facility administrator | Staff, roles, departments, facilities, clinics, modules, invitations, configuration, audit review, and approved integration settings | Applies least privilege; does not use administration controls as a substitute for clinical or financial authorization. |
+| IT / hub support | Desktop/hub operation, connectivity, backup/recovery support, technical troubleshooting, and escalation | Uses approved support and incident processes; does not access patient data without a legitimate, authorized purpose. |
+
+Actual menu visibility and permitted actions are determined by the assigned RBAC permissions, selected facility, enabled modules, active-shift controls where applicable, and workflow state. The authoritative application role catalogue and permission matrix are maintained in Vitora RBAC configuration by authorized administrators.
+
 ### 3.2 Sign in and MFA
 
 1. Open the approved Vitora web address, desktop application, or facility-hub address.
@@ -117,6 +151,15 @@ For example, a pharmacist may see dispensing only where the Pharmacy module is e
 5. Select the appropriate organization and facility if the user is assigned to more than one.
 
 Use **Forgot password** only through the approved email recovery process. Contact a system administrator if the account is disabled, the facility is not available, or MFA recovery is needed.
+
+\clearpage
+![Sign-in screen. Enter the assigned username or email address and password, then select Sign in.](assets/system-user-manual/screenshots/00-login.png){ width=95% fig-pos="H" }
+
+\clearpage
+![Required-field validation. Correct highlighted mandatory fields before submitting the sign-in form.](assets/system-user-manual/screenshots/01-login-validation.png){ width=95% fig-pos="H" }
+
+\clearpage
+![MFA verification. Enter the code from the registered authenticator when prompted.](assets/system-user-manual/screenshots/01b-mfa-input.png){ width=95% fig-pos="H" }
 
 ### 3.3 Dashboard and navigation
 
@@ -129,6 +172,9 @@ Common clinical navigation:
 - **Encounters** for consultation, diagnoses, plans, orders, and clinical documentation.
 - **CDS Alerts** and **AI Assistant** for decision-support functions where enabled.
 - **Clinics, Laboratory, Pharmacy, Billing, Inpatient, Imaging, MCH, Immunizations, Surveillance, and Scheduling** for service-specific workflows.
+
+\clearpage
+![Role-aware dashboard. Review work queues, alerts, and actions according to the selected facility and assigned role.](assets/system-user-manual/screenshots/02-dashboard.png){ width=95% fig-pos="H" }
 
 ## 4. Patient and Clinic Workflows
 
@@ -143,6 +189,9 @@ Common clinical navigation:
 
 The system generates the medical record number (MRN). Do not attempt to create or manually alter the MRN. If a duplicate is suspected, use the duplicate-record workflow or escalate to the records officer; do not create a second patient record to work around a search issue.
 
+\clearpage
+![New Patient registration. Complete mandatory demographics and validate the Kenya location hierarchy before saving.](assets/system-user-manual/screenshots/04-new-patient.png){ width=95% fig-pos="H" }
+
 ### 4.2 Find and review a patient
 
 1. Go to **Patients → All Patients**.
@@ -152,6 +201,12 @@ The system generates the medical record number (MRN). Do not attempt to create o
 
 Patient lookup and Shared Health Record functions require internet connectivity and appropriate permissions. External results must be reviewed and confirmed before they are incorporated into local care.
 
+\clearpage
+![Patient Lookup. Search by permitted identifiers before registration to reduce duplicate records.](assets/system-user-manual/screenshots/03-patient-lookup.png){ width=95% fig-pos="H" }
+
+\clearpage
+![Patient profile. Review identity, MRN, alerts, and authorized clinical history before acting on a record.](assets/system-user-manual/screenshots/04a-patient-profile.png){ width=95% fig-pos="H" }
+
 ### 4.3 Check-in and clinic routing
 
 1. Open **Clinics & ER Check-in** or **Patients → Check-in**.
@@ -160,6 +215,9 @@ Patient lookup and Shared Health Record functions require internet connectivity 
 4. Save the check-in and direct the patient according to facility procedure.
 
 Clinic teams use clinic sessions, visits, linked rooms, and public queue displays where enabled. Do not display identifying clinical information on a public queue screen.
+
+\clearpage
+![Check-in and clinic routing. Confirm the selected clinic, destination, urgency, and queue before saving.](assets/system-user-manual/screenshots/05-check-in.png){ width=95% fig-pos="H" }
 
 ### 4.4 Triage
 
@@ -171,6 +229,9 @@ Clinic teams use clinic sessions, visits, linked rooms, and public queue display
 
 Triage prioritization supports clinical workflow but does not replace emergency assessment. Escalate unstable patients immediately under facility policy.
 
+\clearpage
+![Triage queue. Review the waiting patient and use the appropriate Start or Continue Triage action.](assets/system-user-manual/screenshots/06-triage-queue.png){ width=95% fig-pos="H" }
+
 ### 4.5 Create and complete an encounter
 
 1. Open **Encounters → New Encounter**, or begin from a clinic or triage queue.
@@ -180,6 +241,9 @@ Triage prioritization supports clinical workflow but does not replace emergency 
 5. Save progress during consultation. Finalize or close the encounter only after confirming the record is complete and all critical issues are addressed or documented.
 
 Use the encounter history to correct data through authorized amendment workflows. Do not overwrite another clinician's clinical decision without an appropriate correction or addendum.
+
+\clearpage
+![New Encounter, Chief Complaint step. Confirm the selected patient and document the complaint before proceeding through the encounter workflow.](assets/system-user-manual/screenshots/07-new-encounter.png){ width=95% fig-pos="H" }
 
 ### 4.6 Referrals, sick notes, and documents
 
@@ -227,6 +291,9 @@ Alert priorities are **Critical, High, Medium, Low,** and **Information**. Criti
 5. Document the clinical assessment and final plan in the encounter, order, prescription, or progress note. Alert disposition alone is not adequate clinical documentation.
 
 Alerts are auditable with the triggering user, resolving user, time, status, and override rationale. The system avoids duplicate pending alerts for the same applicable rule and patient.
+
+\clearpage
+![CDS Alerts. Review the rule, patient, priority, status, category, and message before acknowledging, accepting, overriding, or dismissing an alert.](assets/system-user-manual/screenshots/08-cds-alerts.png){ width=95% fig-pos="H" }
 
 ### 5.4 CDS rule administration
 
@@ -301,6 +368,12 @@ Standard workflow:
 
 AI lab interpretation and CDS critical-lab alerts assist review; they do not verify a laboratory result or replace laboratory authorization.
 
+\clearpage
+![Laboratory workspace. Use the authorized laboratory workflow to create, receive, verify, and escalate results.](assets/system-user-manual/screenshots/09-laboratory.png){ width=95% fig-pos="H" }
+
+\clearpage
+![Laboratory result verification. Check result status, reference ranges, attachments, and verification actions before release.](assets/system-user-manual/screenshots/09a-laboratory-result.png){ width=95% fig-pos="H" }
+
 ### 6.2 Pharmacy and inventory
 
 Use **Pharmacy** for prescriptions, dispensing, drug catalogues, external prescriptions, stock visibility, stock adjustment, goods receipt, purchase orders, transfers, stock counts, suppliers, and reports according to the facility's enabled capabilities.
@@ -314,6 +387,12 @@ Prescription and dispensing workflow:
 5. Record quantity supplied, counselled information, substitution/cancellation reason, and final status.
 
 Inventory changes are accountable actions. Do not use stock adjustments to correct a clinical prescription; correct the appropriate clinical or dispensing record instead.
+
+\clearpage
+![Prescription detail. Verify patient, prescriber, validity, medication, dose, route, quantity, and pending status before dispensing.](assets/system-user-manual/screenshots/10-pharmacy-prescription-detail.png){ width=95% fig-pos="H" }
+
+\clearpage
+![Dispensing workflow. Review the medication and remaining quantity, then select Dispense only when authorized.](assets/system-user-manual/screenshots/11-pharmacy-dispensing.png){ width=95% fig-pos="H" }
 
 ### 6.3 Inventory and procurement
 
@@ -350,6 +429,9 @@ Use **Billing** to create invoices, add approved services/items, apply authorize
 
 Use proformas for quotations or preliminary billing where enabled. Convert, cancel, issue credit notes, reconcile, and manage supplier bills only through the corresponding authorized finance workflow. A financial correction must preserve the original transaction trail and reason.
 
+\clearpage
+![Transactions and invoices. Review invoice status, patient, date, amount, and due date before recording or correcting financial activity.](assets/system-user-manual/screenshots/12-billing.png){ width=95% fig-pos="H" }
+
 ### 6.5 SHA/DHA and private-insurance workflows
 
 Where configured and approved, Vitora supports eligibility checking, patient consent, visit authorization, biometric authorization through DHA-supported workflows, claims, preauthorizations, intervention lifecycle actions, payer adjudication previews, remittances, and selected private-insurance workflows.
@@ -365,6 +447,15 @@ Before submitting a payer request:
 External payer responses are not a clinical decision. A DHA biometric iframe may use DHA-supported scanner or middleware capability; Vitora does not directly control a local fingerprint scanner.
 
 Private-insurance functions can include provider configuration, enrolments, claims, authorizations, preauthorizations, reservations, remittances, tariffs, and credentials. Use these only after the payer connection, facility contract, staff authority, and online status have been verified. Do not enter or disclose payer credentials in clinical notes or free-text fields.
+
+\clearpage
+![Private Insurance. Review provider, HealthCloud synchronization, eligibility, and authorization information within the approved insurance workflow.](assets/system-user-manual/screenshots/13-private-insurance.png){ width=95% fig-pos="H" }
+
+\clearpage
+![SHA Claims. Review claim counts, status distributions, and the claim list before opening, validating, or submitting a claim.](assets/system-user-manual/screenshots/13a-sha-claims.png){ width=95% fig-pos="H" }
+
+\clearpage
+![SHA claim detail. Confirm the claim status, source encounter, patient, payer data, documents, and validation results before an authorized submission.](assets/system-user-manual/screenshots/13b-sha-claim-detail.png){ width=95% fig-pos="H" }
 
 #### Private-insurance workflow
 
@@ -471,9 +562,22 @@ DHIS2/KHIS, MOH-reporting, and SDMX functions are external reporting integration
 
 KHIS/DHIS2 availability and accepted submission are dependent on the external platform. The user must confirm the returned acceptance/import status rather than assuming a local save has completed an external submission.
 
+\clearpage
+![MOH Reports. Select the correct report type, reporting period, facility, and draft record before review or submission.](assets/system-user-manual/screenshots/14-moh-reporting.png){ width=95% fig-pos="H" }
+
+\clearpage
+![MOH 705 report detail. Validate totals and the disease breakdown against source records before approval or DHIS2 preview/submission.](assets/system-user-manual/screenshots/14a-moh705-report-detail.png){ width=95% fig-pos="H" }
+
 ### 8.4 Quality improvement and population reporting
 
 Where enabled, the Quality module supports quality measures, benchmarks, domain views, quarterly/annual reports, and improvement tracking. Authorized users should validate source data, reporting period, numerator/denominator definitions, and governance approval before publishing, exporting, or acting on performance information.
+
+#### Clinical quality measure workflow
+
+1. Capture source clinical data in the relevant workflow. For vaccination coverage, record each due KEPI dose for an eligible child, then mark the dose administered when it is given.
+2. Open **Quality → Quality Measures**, select the reporting year, and select **Evaluate**. For a vaccination measure, use a CWC or Immunization clinic rather than General OPD.
+3. Review the measure result: confirm its numerator, denominator, percentage, evaluation status, source-data summary, and recommendations. A result with no eligible source records is `Not evaluable`; it is not a failed zero-percent measure.
+4. Select **XLSX** or **PDF** to download the tenant-scoped quality-measure report. Before sharing the report, confirm the reporting period, facility context, and source-data totals.
 
 Population and operational analytics are decision-support tools. Do not use aggregate dashboards to identify or make care decisions about an individual without returning to the authorized clinical record.
 
@@ -493,6 +597,9 @@ Staff should clock in/out, take breaks, and resume shifts accurately. Roster man
 4. Use reschedule, cancellation, no-show, queue, or check-in actions with the required reason and patient communication process.
 5. Do not use a roster shift as a substitute for a patient appointment, and do not use an appointment status as evidence that care was delivered; document actual care in the encounter/visit workflow.
 
+\clearpage
+![Scheduling. Review appointments, staff/resource availability, conflicts, and status before creating or changing a schedule.](assets/system-user-manual/screenshots/15-scheduling.png){ width=95% fig-pos="H" }
+
 ### 9.2 Documents, reports, and analytics
 
 Use the Document Hub, module reports, exports, analytics, and dashboards only within your authorized scope. Before printing, downloading, emailing, or exporting, confirm the recipient, minimum necessary data, and facility approval. Do not use exports as an uncontrolled clinical record or secondary data store.
@@ -507,6 +614,9 @@ The **Analytics & BI** area and module dashboards can present operational, clini
 4. Export only the minimum necessary information, store it in an approved location, and apply the facility retention/access policy.
 5. Report unexpected totals, missing data, stale refreshes, or cross-facility discrepancies; do not manually alter source records merely to make a dashboard metric appear correct.
 
+\clearpage
+![Analytics. Confirm the facility, reporting period, metric definitions, and refresh status before interpreting or exporting a dashboard result.](assets/system-user-manual/screenshots/16-analytics.png){ width=95% fig-pos="H" }
+
 ### 9.3 Facility administration
 
 Authorized administrators manage organizations, facilities, departments, roles, staff/memberships, invitations, clinics, resources, enabled modules, integration settings, audit views, certificates, licenses, and other configuration.
@@ -520,6 +630,9 @@ Administration principles:
 - Test non-production or vendor integrations before production activation.
 - Do not use the Django technical admin for normal tenant facility administration unless the platform access policy specifically permits it.
 - Review audit logs and configuration changes periodically.
+
+\clearpage
+![Staff administration. Assign least-privilege roles, departments, facilities, and employment status through the authorized administration workflow.](assets/system-user-manual/screenshots/17-admin-staff.png){ width=95% fig-pos="H" }
 
 ## 10. Desktop, Hub, Connectivity, and Offline Working
 
@@ -602,3 +715,4 @@ Review this manual at least annually and after a material change to clinical wor
 | Version | Date | Change | Owner | Approval |
 |---|---|---|---|---|
 | 1.0 | 2026-10-04 | Initial DHA-facing comprehensive system user manual. | Clinical Governance and Engineering | Pending DHA, DPO, Security, and Clinical Governance review |
+| 1.1 | 2026-10-11 | Added workflow-embedded screenshots, data-entry examples, reporting evidence, and expanded DHA review guidance. | Clinical Governance and Engineering | Pending DHA, DPO, Security, and Clinical Governance review |

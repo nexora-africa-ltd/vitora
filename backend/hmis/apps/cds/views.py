@@ -117,7 +117,9 @@ class CDSAlertPermission(permissions.BasePermission):
         if action in {"acknowledge", "accept", "override", "dismiss"}:
             return user.has_perm("cds.change_cdsalert")
         if action == "evaluate_encounter":
-            return user.has_perm("cds.add_cdsalert")
+            # Evaluation can create a persisted alert, but it is a clinician
+            # workflow action rather than unrestricted alert creation.
+            return user.has_perm("cds.change_cdsalert")
         if action == "create":
             return user.has_perm("cds.add_cdsalert")
         if action in {"update", "partial_update"}:
@@ -464,6 +466,93 @@ class CDSAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             return self.get_paginated_response(serializer.data)
         serializer = CDSAlertListSerializer(qs, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def evidence(self, request: Request) -> Response:
+        """Return DHA-ready evidence-based CDS interventions for one encounter.
+
+        This is a read-only certification evidence view. It exposes the
+        clinical trigger, recommended intervention, evidence strength, and
+        source references captured with each persisted CDS alert.
+        """
+        encounter_id = request.query_params.get("encounter_id")
+        if not encounter_id:
+            return Response(
+                {"detail": "encounter_id is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            encounter_id = int(encounter_id)
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "encounter_id must be an integer."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        alerts = self.get_queryset().filter(encounter_id=encounter_id).select_related("rule")
+        encounters = Encounter.objects.filter(pk=encounter_id).select_related("patient")
+        facility = getattr(request, "facility", None)
+        organization = getattr(request, "organization", None)
+        if facility is not None:
+            encounters = encounters.filter(facility=facility)
+        elif organization is not None:
+            encounters = encounters.filter(organization=organization)
+        encounter = encounters.first()
+        if encounter is None:
+            return Response(
+                {"detail": f"Encounter {encounter_id} was not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        interventions = [
+            {
+                "alert_id": alert.id,
+                "rule_code": alert.rule.code,
+                "rule_name": alert.rule.name,
+                "category": alert.rule.category,
+                "evidence_level": alert.rule.evidence_level,
+                "evidence_based": bool(
+                    alert.rule.references and alert.rule.evidence_level in {"A", "B", "C"}
+                ),
+                "references": alert.rule.references,
+                "trigger": {
+                    "message": alert.message,
+                    "details": alert.details,
+                    "triggered_at": alert.created_at,
+                },
+                "intervention": {
+                    "action_type": alert.rule.action_type,
+                    "recommendation": alert.suggestion or alert.rule.suggestion,
+                },
+                "status": alert.status,
+                "resolution": {
+                    "resolved_at": alert.resolved_at,
+                    "override_reason": alert.override_reason,
+                },
+            }
+            for alert in alerts
+        ]
+        AuditLog.log(
+            action="cds_evidence_view",
+            user=request.user,
+            resource_type="Encounter",
+            resource_id=encounter.id,
+            patient_id=encounter.patient_id,
+            details={"intervention_count": len(interventions)},
+            request=request,
+        )
+        return Response(
+            {
+                "resource_type": "CDSEvidenceReport",
+                "encounter_id": encounter.id,
+                "patient_id": encounter.patient_id,
+                "intervention_count": len(interventions),
+                "evidence_based_intervention_count": sum(
+                    item["evidence_based"] for item in interventions
+                ),
+                "interventions": interventions,
+            }
+        )
 
     @action(detail=False, methods=["post"])
     def evaluate_encounter(self, request: Request) -> Response:

@@ -13,6 +13,7 @@ from .models import (
     ContactTracingFollowUp,
     CountyNotificationDelivery,
     IDSRDiseaseSummary,
+    IDSRSubmissionAttempt,
     IDSRWeeklyReport,
     IHRNotification,
     NotifiableCase,
@@ -74,6 +75,23 @@ class CountyNotificationDeliverySerializer(serializers.ModelSerializer):
             "next_retry_at",
             "triggered_by",
             "triggered_by_name",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "week_label",
+            "is_submitted",
+            "can_edit",
+            "auto_submission_enabled",
+            "generated_at",
+            "generated_by",
+            "approved_at",
+            "approved_by",
+            "dhis2_submitted_at",
+            "dhis2_response",
+            "dhis2_import_summary",
+            "disease_summaries",
             "created_at",
             "updated_at",
         ]
@@ -691,6 +709,7 @@ class IDSRWeeklyReportSerializer(serializers.ModelSerializer):
     week_label = serializers.CharField(read_only=True)
     is_submitted = serializers.BooleanField(read_only=True)
     can_edit = serializers.BooleanField(read_only=True)
+    auto_submission_enabled = serializers.SerializerMethodField()
 
     class Meta:
         # from .models import IDSRWeeklyReport
@@ -718,6 +737,7 @@ class IDSRWeeklyReportSerializer(serializers.ModelSerializer):
             "status",
             "is_submitted",
             "can_edit",
+            "auto_submission_enabled",
             "generated_at",
             "generated_by",
             "generated_by_name",
@@ -739,6 +759,7 @@ class IDSRWeeklyReportSerializer(serializers.ModelSerializer):
             "week_label",
             "is_submitted",
             "can_edit",
+            "auto_submission_enabled",
             "generated_at",
             "generated_by",
             "approved_at",
@@ -750,6 +771,35 @@ class IDSRWeeklyReportSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+    def get_auto_submission_enabled(self, _obj) -> bool:
+        """Expose the platform automation state for the reporting UI."""
+        from hmis.apps.core.models import FeatureFlag
+
+        return FeatureFlag.is_flag_enabled("idsr_auto_submission")
+
+
+class IDSRSubmissionAttemptSerializer(serializers.ModelSerializer):
+    """Read-only serializer for auditable IDSR outbound attempts."""
+
+    class Meta:
+        model = IDSRSubmissionAttempt
+        fields = [
+            "id",
+            "report",
+            "status",
+            "trigger",
+            "attempt_number",
+            "validation_response",
+            "response",
+            "http_status",
+            "error_message",
+            "attempted_at",
+            "completed_at",
+            "next_retry_at",
+            "created_at",
+        ]
+        read_only_fields = fields
 
 
 class IDSRWeeklyReportListSerializer(serializers.ModelSerializer):

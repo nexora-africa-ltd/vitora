@@ -1,0 +1,19 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+django: version: 5.2.17, settings: hmis.settings.test (from ini)
+rootdir: /home/azureuser/vitora/backend
+configfile: pyproject.toml
+plugins: asyncio-1.4.0, django-4.12.0, Faker-22.7.0, xdist-3.8.0, mock-3.15.1, locust-2.46.5, anyio-4.14.1, cov-4.1.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 129 items
+
+tests/core/test_encryption_status_endpoint.py ....                       [  3%]
+tests/core/test_kms.py ..................................                [ 29%]
+tests/core/test_pii_v2.py ........                                       [ 35%]
+tests/patients/test_pii_encryption.py ............................       [ 57%]
+tests/laboratory/test_hl7_transport_security.py ...                      [ 59%]
+tests/infrastructure/test_backup_dr.py ................................. [ 85%]
+.......                                                                  [ 90%]
+tests/infrastructure/test_scaling_operational_assets.py ............     [100%]
+
+============================= 129 passed in 22.41s =============================

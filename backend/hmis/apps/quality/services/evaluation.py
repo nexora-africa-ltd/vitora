@@ -43,6 +43,29 @@ class EvaluationResult:
     numerator: int
     denominator: int
     notes: str = ""
+    status: str = "EVALUATED"
+    data_quality_summary: dict[str, Any] | None = None
+    evaluation_details: dict[str, Any] | None = None
+    recommendations: list[str] | None = None
+
+    def __post_init__(self) -> None:
+        """Standardize non-PII evidence for all evaluator implementations."""
+        if self.denominator == 0 and self.status == "EVALUATED":
+            self.status = "NOT_EVALUABLE"
+        if self.data_quality_summary is None:
+            self.data_quality_summary = {
+                "eligible_records": self.denominator,
+                "missing_required_data": 0,
+                "completeness_percentage": "100.00" if self.denominator else None,
+            }
+        if self.evaluation_details is None:
+            self.evaluation_details = {}
+        if self.recommendations is None:
+            self.recommendations = (
+                ["Record the required source data before evaluating this measure."]
+                if self.status == "NOT_EVALUABLE"
+                else []
+            )
 
     @property
     def percentage(self) -> Decimal:
@@ -303,16 +326,44 @@ def evaluate_wait_time(
 
     denominator = visits.count()
     if denominator == 0:
-        return EvaluationResult(0, 0, "No completed visits with timing data")
+        return EvaluationResult(
+            0,
+            0,
+            "No completed visits with timing data",
+            evaluation_details={"data_source": "clinic_visit", "wait_minutes": []},
+            recommendations=[
+                "Record registration and consultation start times for completed OPD visits."
+            ],
+        )
 
     # Count visits within threshold
     numerator = 0
+    wait_minutes: list[float] = []
     for visit in visits.only("registered_at", "consultation_started_at"):
         wait = (visit.consultation_started_at - visit.registered_at).total_seconds() / 60
+        wait_minutes.append(wait)
         if wait <= max_minutes:
             numerator += 1
 
-    return EvaluationResult(numerator, denominator, f"Seen within {max_minutes} minutes")
+    wait_minutes.sort()
+    percentile_index = max(0, min(len(wait_minutes) - 1, round((len(wait_minutes) - 1) * 0.9)))
+    return EvaluationResult(
+        numerator,
+        denominator,
+        f"Seen within {max_minutes} minutes",
+        evaluation_details={
+            "data_source": "clinic_visit",
+            "max_minutes": max_minutes,
+            "median_wait_minutes": round(wait_minutes[len(wait_minutes) // 2], 1),
+            "p90_wait_minutes": round(wait_minutes[percentile_index], 1),
+            "max_wait_minutes": round(wait_minutes[-1], 1),
+        },
+        recommendations=(
+            ["Review clinic flow for visits exceeding the waiting-time target."]
+            if numerator < denominator
+            else []
+        ),
+    )
 
 
 # =============================================================================
@@ -432,11 +483,17 @@ def evaluate_stock_availability(
     the stock-out count as numerator. The measure's target_percentage should
     be set accordingly (e.g., target < 5% stock-outs means low_threshold=20).
     """
+    from hmis.apps.clinics.models import Clinic
     from hmis.apps.pharmacy.models import StockAlert
 
-    # Stock alerts for this facility's clinic
+    clinic = Clinic.objects.filter(pk=clinic_id).only("facility_id").first()
+    facility_id = clinic.facility_id if clinic else None
+    if not facility_id:
+        return EvaluationResult(0, 0, "Clinic has no facility mapping")
+
+    # Stock alerts are facility-scoped, not clinic-scoped.
     alerts = StockAlert.objects.filter(
-        facility_id=clinic_id,  # StockAlert uses facility FK
+        facility_id=facility_id,
         alert_type="STOCK_OUT",
         created_at__date__gte=start_date,
         created_at__date__lte=end_date,
@@ -448,14 +505,28 @@ def evaluate_stock_availability(
     # Total tracked items (from StockBatch with this facility)
     from hmis.apps.pharmacy.models import StockBatch
 
-    total_items = StockBatch.objects.filter(facility_id=clinic_id).values("drug").distinct().count()
+    total_items = (
+        StockBatch.objects.filter(facility_id=facility_id).values("drug").distinct().count()
+    )
 
     if total_items == 0:
         return EvaluationResult(0, 0, "No tracked stock items")
 
     # Return stock-out count as numerator (measure target should be LOW)
     return EvaluationResult(
-        items_with_stockout, total_items, f"{items_with_stockout} items stocked out"
+        items_with_stockout,
+        total_items,
+        f"{items_with_stockout} items stocked out",
+        evaluation_details={
+            "tracked_items": total_items,
+            "items_with_stockout": items_with_stockout,
+            "facility_id": facility_id,
+        },
+        recommendations=(
+            ["Review replenishment for medicines with stock-out alerts."]
+            if items_with_stockout
+            else []
+        ),
     )
 
 
@@ -621,15 +692,45 @@ def evaluate_immunization_completeness(
     )
     denominator = per_patient.count()
     if denominator == 0:
-        return EvaluationResult(0, 0, "No due immunization records found")
+        return EvaluationResult(
+            0,
+            0,
+            "No due immunization records found",
+            evaluation_details={
+                "vaccine_program": vaccine_program,
+                "due_doses": 0,
+                "administered_doses": 0,
+            },
+            recommendations=["Record due and administered KEPI doses for eligible children."],
+        )
 
+    rows = list(per_patient)
     numerator = sum(
         1
-        for row in per_patient
+        for row in rows
         if int(row.get("total_due") or 0) > 0
         and int(row.get("total_due") or 0) == int(row.get("total_administered") or 0)
     )
-    return EvaluationResult(numerator, denominator, "Patients complete for due immunization doses")
+    due_doses = sum(int(row.get("total_due") or 0) for row in rows)
+    administered_doses = sum(int(row.get("total_administered") or 0) for row in rows)
+    return EvaluationResult(
+        numerator,
+        denominator,
+        "Patients complete for due immunization doses",
+        evaluation_details={
+            "vaccine_program": vaccine_program,
+            "eligible_children": denominator,
+            "complete_children": numerator,
+            "incomplete_children": denominator - numerator,
+            "due_doses": due_doses,
+            "administered_doses": administered_doses,
+        },
+        recommendations=(
+            ["Follow up eligible children with due KEPI doses not yet administered."]
+            if numerator < denominator
+            else []
+        ),
+    )
 
 
 # =============================================================================
@@ -734,9 +835,12 @@ def evaluate_idsr_timeliness(
             report_map[key] = report
 
     numerator = 0
+    missing_weeks: list[str] = []
+    late_weeks: list[str] = []
     for key in expected_weeks:
         report = report_map.get(key)
         if not report or report.status not in submission_statuses:
+            missing_weeks.append(f"{key[0]}-W{key[1]:02d}")
             continue
 
         if require_dhis2_timestamp:
@@ -748,13 +852,31 @@ def evaluate_idsr_timeliness(
                 else report.updated_at.date()
             )
         if not submitted_date:
+            missing_weeks.append(f"{key[0]}-W{key[1]:02d}")
             continue
 
         deadline_date = report.week_end_date + timedelta(days=deadline_days_after_week_end)
         if submitted_date <= deadline_date:
             numerator += 1
+        else:
+            late_weeks.append(f"{key[0]}-W{key[1]:02d}")
 
-    return EvaluationResult(numerator, denominator, "IDSR reports submitted by weekly deadline")
+    return EvaluationResult(
+        numerator,
+        denominator,
+        "IDSR reports submitted by weekly deadline",
+        evaluation_details={
+            "expected_weeks": [f"{year}-W{week:02d}" for year, week in sorted(expected_weeks)],
+            "missing_weeks": sorted(missing_weeks),
+            "late_weeks": sorted(late_weeks),
+            "deadline_days_after_week_end": deadline_days_after_week_end,
+        },
+        recommendations=(
+            ["Submit missing IDSR reports and record the DHIS2 submission timestamp."]
+            if missing_weeks or late_weeks
+            else []
+        ),
+    )
 
 
 # =============================================================================
@@ -839,7 +961,12 @@ def evaluate_all_measures_for_clinic(
     Creates or updates QualityMeasureResult records.
     Returns list of result summaries.
     """
+    from hmis.apps.clinics.models import Clinic
     from hmis.apps.quality.models import QualityMeasure, QualityMeasureResult
+
+    clinic = Clinic.objects.only("clinic_type").filter(pk=clinic_id).first()
+    if clinic is None:
+        return []
 
     measures = QualityMeasure.objects.filter(
         status="ACTIVE",
@@ -850,15 +977,11 @@ def evaluate_all_measures_for_clinic(
 
     for measure in measures:
         # Check if measure applies to this clinic type
-        if measure.applicable_clinic_types:
-            from hmis.apps.clinics.models import Clinic
-
-            try:
-                clinic = Clinic.objects.get(pk=clinic_id)
-                if clinic.clinic_type not in measure.applicable_clinic_types:
-                    continue
-            except Clinic.DoesNotExist:
-                continue
+        if (
+            measure.applicable_clinic_types
+            and clinic.clinic_type not in measure.applicable_clinic_types
+        ):
+            continue
 
         result = evaluate_measure(measure, clinic_id, year, period, period_type)
         if result is None:
@@ -875,6 +998,11 @@ def evaluate_all_measures_for_clinic(
                 "numerator": result.numerator,
                 "denominator": result.denominator,
                 "calculation_notes": result.notes,
+                "evaluation_status": result.status,
+                "data_quality_summary": result.data_quality_summary,
+                "evaluation_details": result.evaluation_details,
+                "recommendations": result.recommendations,
+                "rule_snapshot": measure.evaluation_rule,
             },
         )
 
@@ -884,8 +1012,14 @@ def evaluate_all_measures_for_clinic(
                 "measure_name": measure.name,
                 "numerator": result.numerator,
                 "denominator": result.denominator,
-                "percentage": float(obj.percentage),
+                "percentage": str(obj.percentage),
                 "meets_target": obj.meets_target,
+                "notes": result.notes,
+                "evaluation_status": obj.evaluation_status,
+                "is_evaluable": obj.performance_summary["is_evaluable"],
+                "data_quality_summary": obj.data_quality_summary,
+                "evaluation_details": obj.evaluation_details,
+                "recommendations": obj.recommendations,
                 "created": created,
             }
         )

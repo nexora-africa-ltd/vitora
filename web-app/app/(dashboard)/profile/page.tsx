@@ -24,12 +24,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { shaApi } from '@/lib/api/sha';
 import { useAuth } from '@/lib/auth/context';
 import { useLogout } from '@/lib/auth/hooks';
 import type { User } from '@/lib/auth/context';
-import { useMyStaffProfile } from '@/lib/hooks/use-rbac';
+import { useMyStaffProfile, useUpdateMyStaffProfile } from '@/lib/hooks/use-rbac';
 import type { DHAPractitioner, PractitionerInfo } from '@/lib/types/sha';
+import { toast } from 'sonner';
 
 function groupPermissionsByDomain(permissions: string[]): Map<string, string[]> {
   const groups = new Map<string, string[]>();
@@ -173,6 +175,7 @@ export default function ProfilePage() {
   const { user } = useAuth();
   const logout = useLogout();
   const { data: staffProfile, isLoading: isStaffProfileLoading } = useMyStaffProfile();
+  const updateMyStaffProfile = useUpdateMyStaffProfile();
   const [permSearch, setPermSearch] = useState('');
   const [expandedDomains, setExpandedDomains] = useState<Set<string>>(new Set());
   const [verifiedPractitioner, setVerifiedPractitioner] = useState<DHAPractitioner | null>(null);
@@ -181,6 +184,11 @@ export default function ProfilePage() {
   );
   const [isValidatingHwr, setIsValidatingHwr] = useState(false);
   const [hwrValidationError, setHwrValidationError] = useState<string | null>(null);
+  const [contactDetails, setContactDetails] = useState({
+    phone_number: '',
+    emergency_contact_name: '',
+    emergency_contact_phone: '',
+  });
 
   const displayName = user
     ? `${user.first_name} ${user.last_name}`.trim() || user.username
@@ -261,6 +269,28 @@ export default function ProfilePage() {
       isActive = false;
     };
   }, [staffProfile?.hwr_id]);
+
+  useEffect(() => {
+    setContactDetails({
+      phone_number: staffProfile?.phone_number || '',
+      emergency_contact_name: staffProfile?.emergency_contact_name || '',
+      emergency_contact_phone: staffProfile?.emergency_contact_phone || '',
+    });
+  }, [
+    staffProfile?.emergency_contact_name,
+    staffProfile?.emergency_contact_phone,
+    staffProfile?.phone_number,
+  ]);
+
+  const saveContactDetails = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    try {
+      await updateMyStaffProfile.mutateAsync(contactDetails);
+      toast.success('Contact details updated');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to update contact details');
+    }
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -374,6 +404,63 @@ export default function ProfilePage() {
                   {user?.is_superuser ? 'Enabled' : 'Disabled'}
                 </span>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base sm:text-lg">Contact Details</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form className="space-y-4" onSubmit={saveContactDetails}>
+                <div className="space-y-2">
+                  <Label htmlFor="profile-phone-number">Phone number</Label>
+                  <Input
+                    id="profile-phone-number"
+                    value={contactDetails.phone_number}
+                    onChange={(event) =>
+                      setContactDetails((current) => ({
+                        ...current,
+                        phone_number: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="profile-emergency-contact-name">Emergency contact name</Label>
+                  <Input
+                    id="profile-emergency-contact-name"
+                    value={contactDetails.emergency_contact_name}
+                    onChange={(event) =>
+                      setContactDetails((current) => ({
+                        ...current,
+                        emergency_contact_name: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="profile-emergency-contact-phone">Emergency contact phone</Label>
+                  <Input
+                    id="profile-emergency-contact-phone"
+                    value={contactDetails.emergency_contact_phone}
+                    onChange={(event) =>
+                      setContactDetails((current) => ({
+                        ...current,
+                        emergency_contact_phone: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <Button
+                  className="w-full"
+                  disabled={!staffProfile || updateMyStaffProfile.isPending}
+                  type="submit"
+                >
+                  {updateMyStaffProfile.isPending ? <Loader2 className="animate-spin" /> : null}
+                  Save contact details
+                </Button>
+              </form>
             </CardContent>
           </Card>
 

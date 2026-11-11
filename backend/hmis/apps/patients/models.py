@@ -1180,6 +1180,11 @@ class Allergy(models.Model):
         default="",
         help_text="Code system URI (e.g., http://www.nlm.nih.gov/research/umls/rxnorm)",
     )
+    terminology_owner = models.CharField(max_length=100, blank=True, default="")
+    terminology_source = models.CharField(max_length=100, blank=True, default="")
+    terminology_retrieved_at = models.DateTimeField(null=True, blank=True)
+    terminology_version = models.CharField(max_length=100, blank=True, default="")
+    terminology_checksum = models.CharField(max_length=64, blank=True, default="")
     substance_type = models.CharField(
         max_length=20,
         choices=SUBSTANCE_TYPE_CHOICES,

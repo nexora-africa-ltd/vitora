@@ -15,6 +15,68 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 ## [Unreleased]
 
+## [Hub 1.0.42] - 2026-10-12
+
+### Hub
+
+- Preserve cloud-issued offsite backup credentials across Windows hub re-enrollment, retaining existing credentials when a replacement cannot be issued.
+
+## [Desktop 1.0.36] - 2026-10-12
+
+### Desktop
+
+- Retry transient hub routing-manifest discovery failures so cloud-only API requests do not fall back to the hub.
+- Automatically exchange a successful hub login for the delegated Cloud session after password or MFA authentication.
+- Require both a reachable Cloud and delegated session before rendering cloud-only routes.
+
+## [Hub 1.0.41] - 2026-10-11
+
+### Hub
+
+- Explicitly classify the local runtime as `hub`, restoring hub-only Cloud session exchange and capability guards for Tauri clients.
+- Preserve Cloud token exchange rejection codes so desktop clients show actionable hub configuration errors instead of false connectivity failures.
+
+## [Hub 1.0.40] - 2026-10-11
+
+### Hub
+
+- Add an audited onboarding acceptance for encrypted offsite backup policy, automatic default destination provisioning, backup health visibility, and a staging-only destination backfill command.
+- Surface cloud exchange rejections to desktop clients with explicit diagnostics.
+
+## [Desktop 1.0.35] - 2026-10-11
+
+### Desktop
+
+- Apply the system color scheme before first paint under the strict nonce-based CSP, preventing the light-mode flash on dark systems.
+- Disable Umami unless explicitly enabled, preserve CSP nonce protection, correct the patient check-in route, and align insurance badge status filters with the API.
+
+## [Hub 1.0.39] - 2026-10-11
+
+### Hub
+
+- Run Windows hub launcher commands from the installation directory so SYSTEM-scheduled backup, upload, and verification jobs resolve `manage.py` correctly.
+
+## [Desktop 1.0.34] - 2026-10-11
+
+### Desktop
+
+- Use the lightweight Cloud health probe for the desktop connectivity indicator, preventing optional dependency checks from incorrectly reporting Cloud as unavailable.
+
+## [Hub 1.0.38] - 2026-10-11
+
+### Hub
+
+- Authenticate browser WebSocket upgrades with the existing HttpOnly `vitora_access` JWT cookie.
+- Add short-lived, opaque, single-use WebSocket tickets for desktop clients so bearer access tokens are never placed in WebSocket URLs.
+- Store only ticket hashes and atomically consume tickets during the WebSocket handshake.
+
+## [Desktop 1.0.33] - 2026-10-11
+
+### Desktop
+
+- Request and validate a fresh one-time WebSocket ticket before each desktop real-time connection.
+- Keep compact Cloud and sync status indicators in the desktop header without changing standard web layouts.
+
 ## [Hub 1.0.36] - 2026-10-10
 
 ### Hub

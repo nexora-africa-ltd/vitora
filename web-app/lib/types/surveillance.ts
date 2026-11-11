@@ -330,6 +330,7 @@ export interface IDSRWeeklyReport {
   status: IDSRReportStatus;
   is_submitted: boolean;
   can_edit: boolean;
+  auto_submission_enabled: boolean;
   generated_at: string;
   generated_by: number | null;
   generated_by_name: string | null;

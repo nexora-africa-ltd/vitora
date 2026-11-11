@@ -91,6 +91,7 @@
     "dicom-parser": "^1.8.21",
     "embla-carousel-react": "^8.6.0",
     "html5-qrcode": "^2.3.8",
+    "input-otp": "^1.5.0",
     "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.562.0",

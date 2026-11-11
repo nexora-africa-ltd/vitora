@@ -335,6 +335,7 @@ KNOWN_CUSTOM_ACTIONS = {
     "submit_sha_claim",
     "approve_sha_claim",
     "appeal_sha_claim",
+    "verify_sha_eligibility",
     "view_ccc_clinic",
     "view_mental_health_clinic",
     "manage_clinic_staff",
@@ -579,6 +580,43 @@ class TestExpandedPermissionMatrices:
         assert triage["create"] is True
         assert triage["perform_triage"] is True
         assert triage["view_triage_queue"] is True
+
+    def test_doctor_can_manage_patient_contacts_and_verify_sha_eligibility(self):
+        """DOCTOR can maintain next-of-kin data and perform SHA eligibility checks."""
+        from hmis.apps.core.models import Role
+
+        doctor = Role.objects.get(code="DOCTOR")
+
+        assert doctor.permissions_matrix["EmergencyContact"] == {
+            "create": True,
+            "read": True,
+            "update": True,
+            "delete": False,
+        }
+        assert doctor.permissions_matrix["SHAMember"]["verify_sha_eligibility"] is True
+
+    def test_doctor_group_receives_sha_eligibility_permission(self):
+        """The role sync grants the custom SHA eligibility permission to doctors."""
+        from django.contrib.auth.models import Permission
+        from django.contrib.contenttypes.models import ContentType
+
+        from hmis.apps.billing.models import SHAMember
+        from hmis.apps.core.models import Role
+        from hmis.apps.core.role_permissions_sync import sync_role_group_permissions
+
+        content_type = ContentType.objects.get_for_model(SHAMember)
+        Permission.objects.get_or_create(
+            content_type=content_type,
+            codename="verify_sha_eligibility",
+            defaults={"name": "Can verify SHA eligibility"},
+        )
+        doctor = Role.objects.get(code="DOCTOR")
+        sync_role_group_permissions(doctor)
+
+        assert doctor.django_group.permissions.filter(
+            content_type__app_label="billing",
+            codename="verify_sha_eligibility",
+        ).exists()
 
     def test_doctor_has_all_nurse_resources(self):
         """DOCTOR should have at least all resources that NURSE has."""

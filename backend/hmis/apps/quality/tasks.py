@@ -79,7 +79,11 @@ def _current_period(reference: date) -> tuple[int, int, str]:
 
 @shared_task(name="hmis.apps.quality.tasks.evaluate_quality_measures")
 def evaluate_quality_measures_task(
-    *, year: int | None = None, period: int | None = None, period_type: str = "MONTHLY"
+    *,
+    year: int | None = None,
+    period: int | None = None,
+    period_type: str = "MONTHLY",
+    facility_id: int | None = None,
 ) -> dict:
     """
     Evaluate all active quality measures for all clinics with active sessions.
@@ -96,7 +100,10 @@ def evaluate_quality_measures_task(
         year, period, period_type = _current_period(today)
 
     # Get all active clinics
-    clinics = Clinic.objects.filter(status="ACTIVE").values_list("id", flat=True)
+    clinics = Clinic.objects.filter(status="ACTIVE")
+    if facility_id is not None:
+        clinics = clinics.filter(facility_id=facility_id)
+    clinics = clinics.values_list("id", flat=True)
 
     total_results = 0
     clinics_evaluated = 0
@@ -122,6 +129,7 @@ def evaluate_quality_measures_task(
         "period_type": period_type,
         "clinics_evaluated": clinics_evaluated,
         "results_created_or_updated": total_results,
+        "facility_id": facility_id,
     }
 
 

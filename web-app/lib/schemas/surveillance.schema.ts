@@ -373,6 +373,7 @@ export const IDSRWeeklyReportSchema = z.object({
   status: IDSRReportStatusSchema,
   is_submitted: z.boolean(),
   can_edit: z.boolean(),
+  auto_submission_enabled: z.boolean(),
   generated_at: z.string(),
   generated_by: z.number().nullable(),
   generated_by_name: z.string().nullable(),

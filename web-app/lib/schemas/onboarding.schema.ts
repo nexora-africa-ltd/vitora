@@ -159,3 +159,7 @@ export const OnboardingCompleteResponseSchema = z.object({
   completed_at: z.string(),
   steps: z.array(OnboardingStepSchema),
 });
+
+export const BackupPolicyAcceptanceResponseSchema = z.object({
+  accepted: z.boolean(),
+});
