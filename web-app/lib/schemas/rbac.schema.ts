@@ -303,7 +303,7 @@ export const AuditLogEntrySchema = z.object({
   action: z.string(), // OpenAPI uses string, not enum
   resource_type: z.string(),
   resource_id: z.number().nullable(),
-  resource_name: z.string().optional(), // Custom field, may not be in API
+  resource_name: z.string().nullable().optional(), // Custom field may be absent or unresolved
   details: z.record(z.unknown()),
   ip_address: z.string().nullable(),
   user_agent: z.string(),
