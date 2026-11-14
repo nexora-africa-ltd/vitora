@@ -481,6 +481,20 @@ class TestSMARTEndpoints:
         assert "Encounter" in resource_types
         assert "Observation" in resource_types
         assert "Composition" in resource_types
+        assert "DiagnosticReport" in resource_types
+
+        supported_resources = {resource["type"]: resource for resource in rest["resource"]}
+        for resource in supported_resources.values():
+            interaction_codes = {interaction["code"] for interaction in resource["interaction"]}
+            assert "update" not in interaction_codes
+            assert "delete" not in interaction_codes
+
+        diagnostic_report = supported_resources["DiagnosticReport"]
+        assert {interaction["code"] for interaction in diagnostic_report["interaction"]} == {
+            "read",
+            "search-type",
+            "create",
+        }
 
         composition_resource = next(r for r in rest["resource"] if r["type"] == "Composition")
         assert {interaction["code"] for interaction in composition_resource["interaction"]} == {

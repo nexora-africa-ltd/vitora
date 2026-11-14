@@ -656,6 +656,22 @@ class TestFHIRDiagnosticReportCreate:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_create_diagnostic_report_missing_code(self, authenticated_client, sample_patient):
+        """Should return a FHIR OperationOutcome for a malformed report."""
+        response = authenticated_client.post(
+            "/fhir/DiagnosticReport/",
+            {
+                "resourceType": "DiagnosticReport",
+                "status": "final",
+                "subject": {"reference": f"Patient/{sample_patient.pk}"},
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["resourceType"] == "OperationOutcome"
+        assert response.data["issue"][0]["code"] == "required"
+
     def test_create_diagnostic_report_requires_auth(self, api_client):
         """Should reject unauthenticated requests."""
         response = api_client.post(

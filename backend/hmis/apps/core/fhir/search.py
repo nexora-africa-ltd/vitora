@@ -674,46 +674,10 @@ class FHIRDiagnosticReportSearchView(FHIRSearchAPIView):
         reports = queryset.order_by("-issued_at")[offset : offset + count]
 
         entries = []
-        for report in reports:
-            # Map local status to FHIR
-            local_status = getattr(report, "status", "FINAL")
-            fhir_status = "final"
-            status_reverse_map = {
-                "DRAFT": "registered",
-                "PARTIAL": "partial",
-                "PRELIMINARY": "preliminary",
-                "FINAL": "final",
-                "RELEASED": "final",
-                "AMENDED": "amended",
-                "CANCELLED": "cancelled",
-            }
-            fhir_status = status_reverse_map.get(local_status, "final")
+        from hmis.apps.core.fhir.views_clinical_resources import FHIRDiagnosticReportView
 
-            resource = {
-                "resourceType": "DiagnosticReport",
-                "id": str(report.pk),
-                "status": fhir_status,
-                "code": {
-                    "coding": [
-                        {
-                            "system": "http://loinc.org",
-                            "code": getattr(report, "report_number", "") or "",
-                            "display": getattr(report, "conclusion", "")[:100] or "",
-                        }
-                    ]
-                },
-                "subject": {
-                    "reference": (
-                        f"Patient/{report.lab_order.patient_id}" if report.lab_order else None
-                    )
-                },
-                "issued": (
-                    report.issued_at.isoformat()
-                    if hasattr(report, "issued_at") and report.issued_at
-                    else None
-                ),
-                "conclusion": getattr(report, "conclusion", "") or "",
-            }
-            entries.append(resource)
+        diagnostic_report_view = FHIRDiagnosticReportView()
+        for report in reports:
+            entries.append(diagnostic_report_view._to_fhir_diagnostic_report(report))
 
         return Response(self.build_bundle(entries, total, request, count, offset))

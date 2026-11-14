@@ -604,11 +604,30 @@ class FHIRDiagnosticReportView(PublicFHIRReadAPIView):
         """Convert Django DiagnosticReport to FHIR DiagnosticReport resource."""
         results = []
         specimens = []
+        report_codings = []
         for order_item in report.lab_order.items.select_related("result").all():
+            test = order_item.test
+            if test.loinc_code:
+                report_codings.append(
+                    {
+                        "system": "http://loinc.org",
+                        "code": test.loinc_code,
+                        "display": test.name,
+                    }
+                )
             if hasattr(order_item, "result"):
                 results.append({"reference": f"Observation/{order_item.result.id}"})
                 if order_item.result.specimen_id:
                     specimens.append({"reference": f"Specimen/{order_item.result.specimen_id}"})
+
+        unique_report_codings = {
+            (coding["system"], coding["code"]): coding for coding in report_codings
+        }
+        report_code = (
+            {"coding": list(unique_report_codings.values())}
+            if len(unique_report_codings) == 1
+            else {"text": "Laboratory diagnostic report"}
+        )
 
         fhir_resource = {
             "resourceType": "DiagnosticReport",
@@ -631,7 +650,7 @@ class FHIRDiagnosticReportView(PublicFHIRReadAPIView):
                     "text": "Laboratory",
                 }
             ],
-            "code": {"text": "Laboratory Diagnostic Report"},
+            "code": report_code,
             "subject": {"reference": f"Patient/{report.lab_order.patient_id}"},
             "effectiveDateTime": format_date(report.issued_at or report.created_at),
             "issued": format_date(report.issued_at or report.created_at),

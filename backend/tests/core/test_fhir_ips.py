@@ -912,6 +912,29 @@ class TestFHIRAdditionalResources:
         assert response.data["category"][0]["coding"][0]["code"] == "LAB"
         assert response.data["performer"][0]["reference"].startswith("Practitioner/")
 
+    def test_diagnostic_report_uses_persisted_loinc_terminology(
+        self,
+        authenticated_client,
+        sample_diagnostic_report,
+    ):
+        """A single-test report must export its configured LOINC code."""
+        test = sample_diagnostic_report.lab_order.items.get().test
+        test.loinc_code = "58410-2"
+        test.loinc_system = "http://loinc.org"
+        test.save(update_fields=["loinc_code", "loinc_system"])
+
+        response = authenticated_client.get(
+            reverse("fhir:diagnostic-report-read", args=[sample_diagnostic_report.id])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        coding = response.data["code"]["coding"][0]
+        assert coding == {
+            "system": "http://loinc.org",
+            "code": "58410-2",
+            "display": "Complete Blood Count",
+        }
+
     def test_immunization_endpoint(self, authenticated_client, sample_immunization_record):
         response = authenticated_client.get(
             reverse("fhir:immunization-read", args=[sample_immunization_record.id])

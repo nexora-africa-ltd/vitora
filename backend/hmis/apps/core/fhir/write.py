@@ -611,6 +611,12 @@ class FHIRDiagnosticReportCreateView(FHIRWriteAPIView):
 
         # Extract report details
         code_obj = data.get("code", {})
+        if not isinstance(code_obj, dict) or not code_obj:
+            return self.operation_outcome(
+                "error",
+                "required",
+                "DiagnosticReport.code is required",
+            )
         report_code = ""
         report_display = ""
         for coding in code_obj.get("coding", []):
