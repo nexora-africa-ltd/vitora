@@ -1,0 +1,50 @@
+{
+  "category": [
+    {
+      "coding": [
+        {
+          "code": "LAB",
+          "display": "Laboratory",
+          "system": "http://terminology.hl7.org/CodeSystem/v2-0074"
+        }
+      ],
+      "text": "Laboratory"
+    }
+  ],
+  "code": {
+    "coding": [
+      {
+        "code": "58410-2",
+        "display": "Complete blood count",
+        "system": "http://loinc.org"
+      }
+    ]
+  },
+  "conclusion": "DHA synthetic complete blood count report: within reference range.",
+  "effectiveDateTime": "2026-11-14T15:28:49+00:00",
+  "id": "402",
+  "issued": "2026-11-14T15:28:49+00:00",
+  "meta": {
+    "lastUpdated": "2026-11-14T15:28:49+00:00",
+    "versionId": "1"
+  },
+  "performer": [
+    {
+      "reference": "Practitioner/1"
+    }
+  ],
+  "resourceType": "DiagnosticReport",
+  "result": [
+    {
+      "reference": "Observation/402"
+    }
+  ],
+  "status": "final",
+  "subject": {
+    "reference": "Patient/402"
+  },
+  "text": {
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p><b>DiagnosticReport</b></p><p>DHA synthetic complete blood count report: within reference range.</p></div>",
+    "status": "generated"
+  }
+}

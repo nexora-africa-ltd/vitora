@@ -1,0 +1,20 @@
+{
+  "class": {
+    "code": "AMB",
+    "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+  },
+  "id": "402",
+  "period": {
+    "start": "2026-11-04"
+  },
+  "reasonCode": [
+    {
+      "text": "DHA CPOE synthetic test encounter"
+    }
+  ],
+  "resourceType": "Encounter",
+  "status": "in-progress",
+  "subject": {
+    "reference": "Patient/402"
+  }
+}
