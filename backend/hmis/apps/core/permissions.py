@@ -11,6 +11,7 @@ This module contains custom permission classes for:
 import logging
 import re
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from rest_framework import permissions
 
@@ -355,16 +356,23 @@ class EncryptionEvidencePermission(permissions.BasePermission):
 
 
 class BackupRecoveryEvidencePermission(EncryptionEvidencePermission):
-    """Restrict platform backup and recovery evidence to authorized staff."""
+    """Restrict recovery evidence to staff or the DHA evidence-reader role."""
 
     permission_name = "core.view_backup_recovery_evidence"
+    evidence_reader_role_code = "DHA_EVIDENCE_READER"
 
     def has_permission(self, request, view):
-        """Require platform-staff status for infrastructure recovery posture."""
+        """Allow authorized staff or the explicit non-staff DHA reader role."""
         user = request.user
-        return bool(
-            user and user.is_authenticated and user.is_staff and user.has_perm(self.permission_name)
-        )
+        if not user or not user.is_authenticated or not user.has_perm(self.permission_name):
+            return False
+        if user.is_staff:
+            return True
+
+        try:
+            return user.staff_profile.primary_role.code == self.evidence_reader_role_code
+        except ObjectDoesNotExist:
+            return False
 
 
 class FacilityAdminPermission(permissions.BasePermission):

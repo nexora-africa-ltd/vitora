@@ -2,7 +2,7 @@
 <!--
 Purpose: DHA portal submission narrative for SEC-BCK-001 Backup and Disaster Recovery.
 Use: Submit the GET endpoint and attach the listed controlled documents and sanitized evidence.
-Inputs: DHA staging platform-security administrator, the SEC-BCK-001 evidence package, and the approved DR plan.
+Inputs: DHA staging evidence-reader, the SEC-BCK-001 evidence package, and the approved DR plan.
 -->
 
 # SEC-BCK-001 — Backup and Disaster Recovery
@@ -18,11 +18,11 @@ Inputs: DHA staging platform-security administrator, the SEC-BCK-001 evidence pa
 | Endpoint title | Retrieve backup and disaster-recovery control status — SEC-BCK-001 |
 | HTTP method | `GET` |
 | URL | `https://staging-api.vitora.digital/api/core/security/backup-recovery-status/` |
-| Authentication | DHA staging platform-security administrator bearer JWT with `core.view_backup_recovery_evidence` |
+| Authentication | DHA staging evidence-reader bearer JWT with `core.view_backup_recovery_evidence` |
 | Tenant header | Not required; this is a platform control endpoint |
 | Expected response | `200 OK`; daily backup policy, off-site storage safeguards, RTO/RPO, restore-validation requirements, and sanitized metadata from the latest verified production drill |
 
-The endpoint is deliberately **read-only** and platform-scoped. It does not start a backup or restore, list backup objects, disclose the backup location, return an artifact, or reveal database credentials, storage credentials, passphrases, encryption keys, or patient data. Both `is_staff=True` and the dedicated Django permission are required. Anonymous requests receive `401`; other users receive `403`.
+The endpoint is deliberately **read-only** and platform-scoped. It does not start a backup or restore, list backup objects, disclose the backup location, return an artifact, or reveal database credentials, storage credentials, passphrases, encryption keys, or patient data. Access requires the dedicated Django permission and either `is_staff=True` or the explicit `DHA_EVIDENCE_READER` primary role. Anonymous requests receive `401`; other users receive `403`.
 
 ## DHA document-review package
 
@@ -59,10 +59,10 @@ The endpoint is deliberately **read-only** and platform-scoped. It does not star
 
 ## Capture command
 
-After deploying the endpoint and granting the dedicated permission to the DHA staging platform-security administrator:
+After deploying the endpoint and granting the dedicated permission to the DHA staging evidence-reader:
 
 ```bash
-export DHA_ACCESS_TOKEN='<DHA staging platform-security administrator token>'
+export DHA_ACCESS_TOKEN='<DHA staging evidence-reader token>'
 export API_BASE_URL='https://staging-api.vitora.digital'
 
 curl --silent --show-error --fail --max-time 30 \
@@ -78,7 +78,7 @@ Never save a token, cookie, passphrase, storage key, SAS URL, database URL, back
 1. Deploy the endpoint and migration to staging.
 2. Configure the GitHub **staging** environment `BACKUP_ENCRYPTION_KEY`; it must differ from production's secret.
 3. Run **Staging Daily Database Backup** and **Staging Monthly Restore Drill** successfully, then update the endpoint's staging-validation metadata and capture `08-staging-backup-and-restore-drill.txt`.
-4. Create a dedicated platform staff account for DHA evidence review, grant `core.view_backup_recovery_evidence`, and validate `200 OK`.
+4. Grant the DHA evidence-reader `core.view_backup_recovery_evidence`, assign its primary role as `DHA_EVIDENCE_READER`, and validate `200 OK`.
 5. Obtain required approval signatures for the Backup and Recovery Policy, Disaster Recovery Plan, and RTO/RPO statement.
 6. Export the approved controlled documents to PDF if DHA requires signed PDFs rather than controlled Markdown copies.
 7. Capture the authenticated endpoint response, re-check every attachment for secrets and PII, and regenerate `SHA256SUMS.txt`.
