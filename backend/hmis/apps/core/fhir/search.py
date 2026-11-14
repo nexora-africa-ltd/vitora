@@ -480,6 +480,14 @@ class FHIRConditionSearchView(FHIRSearchAPIView):
                         ),
                     }
                 )
+            if getattr(dx, "icd11_code", ""):
+                resource["code"]["coding"].append(
+                    {
+                        "system": "http://id.who.int/icd/release/11/mms",
+                        "code": dx.icd11_code,
+                        "display": dx.icd11_display or dx.icd11_code,
+                    }
+                )
             if getattr(dx, "snomed_code", None):
                 resource["code"]["coding"].append(
                     {

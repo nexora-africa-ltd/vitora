@@ -978,7 +978,6 @@ class FHIRConditionView(PublicFHIRReadAPIView):
             "meta": {
                 "versionId": "1",
                 "lastUpdated": format_date(datetime.now()),
-                "profile": ["http://hl7.org/fhir/uv/ips/StructureDefinition/Condition-uv-ips"],
             },
             "clinicalStatus": {
                 "coding": [

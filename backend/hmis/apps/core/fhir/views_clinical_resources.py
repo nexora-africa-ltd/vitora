@@ -775,18 +775,44 @@ class FHIRProcedureView(PublicFHIRReadAPIView):
 
     def _to_fhir_procedure(self, order) -> dict:
         """Convert Django ProcedureOrder to FHIR Procedure resource."""
+        codings = []
+        if order.procedure.ichi_code:
+            codings.append(
+                {
+                    "system": "http://id.who.int/ichi",
+                    "code": order.procedure.ichi_code,
+                    "display": order.procedure.name,
+                }
+            )
+        if order.procedure.cpt_code:
+            codings.append(
+                {
+                    "system": "http://www.ama-assn.org/go/cpt",
+                    "code": order.procedure.cpt_code,
+                    "display": order.procedure.name,
+                }
+            )
+        if order.procedure.icd10_pcs_code:
+            codings.append(
+                {
+                    "system": "http://www.cms.gov/Medicare/Coding/ICD10",
+                    "code": order.procedure.icd10_pcs_code,
+                    "display": order.procedure.name,
+                }
+            )
+        codings.append(
+            {
+                "system": "urn:vitora:procedure",
+                "code": order.procedure.code,
+                "display": order.procedure.name,
+            }
+        )
         fhir_resource = {
             "resourceType": "Procedure",
             "id": str(order.id),
             "status": self.STATUS_MAP.get(order.status, "unknown"),
             "code": {
-                "coding": [
-                    {
-                        "system": "urn:vitora:procedure",
-                        "code": order.procedure.code,
-                        "display": order.procedure.name,
-                    }
-                ],
+                "coding": codings,
                 "text": order.procedure.name,
             },
             "subject": {"reference": f"Patient/{order.patient_id}"},

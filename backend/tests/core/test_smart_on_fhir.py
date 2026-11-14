@@ -495,6 +495,11 @@ class TestSMARTEndpoints:
             "search-type",
             "create",
         }
+        procedure = supported_resources["Procedure"]
+        assert {interaction["code"] for interaction in procedure["interaction"]} == {
+            "read",
+            "create",
+        }
 
         encounter = supported_resources["Encounter"]
         assert {interaction["code"] for interaction in encounter["interaction"]} == {

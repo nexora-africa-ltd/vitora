@@ -13,6 +13,7 @@ Reference: https://hl7.org/fhir/R4/http.html#create
 
 import logging
 from datetime import date
+from decimal import Decimal, InvalidOperation
 
 from django.db import IntegrityError
 from rest_framework import status
@@ -270,6 +271,15 @@ class FHIRObservationCreateView(FHIRWriteAPIView):
             patient = scope_fhir_queryset(request, Patient.objects).get(pk=patient_id)
         except (Patient.DoesNotExist, ValueError):
             return self.operation_outcome("error", "not-found", f"Patient/{patient_id} not found")
+        try:
+            tenant_kwargs = fhir_facility_create_tenant_kwargs(request)
+        except PermissionDenied:
+            return self.operation_outcome(
+                "error",
+                "forbidden",
+                "FHIR Observation writes require a facility-bound tenant context",
+                403,
+            )
 
         # Extract category
         categories = data.get("category", [])
@@ -324,9 +334,129 @@ class FHIRObservationCreateView(FHIRWriteAPIView):
                     }
                     return Response(response_data, status=status.HTTP_201_CREATED)
 
-        # For lab observations, store as a note on the latest encounter
-        # (Full lab result creation requires LabOrder workflow)
-        encounter = Encounter.objects.filter(patient=patient).order_by("-encounter_date").first()
+        if category_code == "laboratory":
+            from hmis.apps.laboratory.models import LabOrder, LabOrderItem, LabResult, TestCatalog
+
+            if not loinc_code:
+                return self.operation_outcome(
+                    "error", "required", "Laboratory Observation.code requires a LOINC coding"
+                )
+            if value is None:
+                return self.operation_outcome(
+                    "error",
+                    "required",
+                    "Laboratory Observation requires valueQuantity or valueString",
+                )
+            encounter_ref = data.get("encounter", {}).get("reference", "")
+            try:
+                if encounter_ref.startswith("Encounter/"):
+                    encounter = scope_fhir_queryset(request, Encounter.objects).get(
+                        pk=encounter_ref.removeprefix("Encounter/"),
+                        patient=patient,
+                        facility=tenant_kwargs["facility"],
+                    )
+                else:
+                    encounter = (
+                        scope_fhir_queryset(request, Encounter.objects)
+                        .filter(patient=patient, facility=tenant_kwargs["facility"])
+                        .order_by("-encounter_date")
+                        .first()
+                    )
+            except (Encounter.DoesNotExist, ValueError):
+                encounter = None
+            if not encounter:
+                return self.operation_outcome(
+                    "error",
+                    "not-found",
+                    "A facility-scoped Encounter is required for laboratory Observation",
+                )
+            test = TestCatalog.objects.filter(
+                facility=tenant_kwargs["facility"], loinc_code=loinc_code, is_active=True
+            ).first()
+            if not test:
+                return self.operation_outcome(
+                    "error",
+                    "not-found",
+                    f"No active facility test catalog mapping exists for LOINC {loinc_code}",
+                )
+            quantity = data.get("valueQuantity", {})
+            numeric_value = None
+            if "valueQuantity" in data:
+                try:
+                    numeric_value = Decimal(str(value))
+                except (InvalidOperation, TypeError, ValueError):
+                    return self.operation_outcome(
+                        "error", "value", "Observation.valueQuantity.value must be numeric"
+                    )
+            interpretation_code = next(
+                (
+                    coding.get("code", "")
+                    for item in data.get("interpretation", [])
+                    for coding in item.get("coding", [])
+                    if coding.get("code")
+                ),
+                "",
+            )
+            flag_map = {
+                "N": "NORMAL",
+                "L": "LOW",
+                "H": "HIGH",
+                "LL": "CRITICAL_LOW",
+                "HH": "CRITICAL_HIGH",
+                "A": "ABNORMAL",
+                "POS": "POSITIVE",
+                "NEG": "NEGATIVE",
+            }
+            order = LabOrder.objects.create(
+                patient=patient,
+                billing_patient=patient,
+                encounter=encounter,
+                ordered_by=request.user,
+                status="COMPLETED",
+                order_type="EXTERNAL",
+                external_lab="FHIR external system",
+                clinical_notes="Received via facility-scoped FHIR semantic exchange.",
+                bill_patient=False,
+                **tenant_kwargs,
+            )
+            item = LabOrderItem.objects.create(
+                lab_order=order, test=test, status="COMPLETED", unit_cost=test.cost
+            )
+            result = LabResult.objects.create(
+                order_item=item,
+                numeric_value=numeric_value,
+                text_value="" if numeric_value is not None else str(value),
+                result_unit=quantity.get("unit", "") or test.result_unit,
+                reference_range_text=(
+                    data.get("referenceRange", [{}])[0].get("text", "")
+                    if data.get("referenceRange")
+                    else ""
+                ),
+                result_flag=flag_map.get(interpretation_code, ""),
+                is_critical_result=flag_map.get(interpretation_code, "").startswith("CRITICAL_"),
+                entered_by=request.user,
+                verification_status="VERIFIED",
+                verified_by=request.user,
+                result_loinc_code=loinc_code,
+                result_loinc_system="http://loinc.org",
+                is_external_result=True,
+            )
+            from hmis.apps.core.fhir.views_observation_condition import FHIRObservationView
+
+            response = Response(
+                FHIRObservationView()._lab_result_to_fhir(result, request),
+                status=status.HTTP_201_CREATED,
+            )
+            response["Location"] = request.build_absolute_uri(f"/fhir/Observation/{result.pk}")
+            return response
+
+        # For non-laboratory Observations, retain the lightweight external-note response.
+        encounter = (
+            scope_fhir_queryset(request, Encounter.objects)
+            .filter(patient=patient, facility=tenant_kwargs["facility"])
+            .order_by("-encounter_date")
+            .first()
+        )
 
         response_data = {
             "resourceType": "Observation",
@@ -374,10 +504,21 @@ class FHIRConditionCreateView(FHIRWriteAPIView):
             patient = scope_fhir_queryset(request, Patient.objects).get(pk=patient_id)
         except (Patient.DoesNotExist, ValueError):
             return self.operation_outcome("error", "not-found", f"Patient/{patient_id} not found")
+        try:
+            tenant_kwargs = fhir_facility_create_tenant_kwargs(request)
+        except PermissionDenied:
+            return self.operation_outcome(
+                "error",
+                "forbidden",
+                "FHIR Condition writes require a facility-bound tenant context",
+                403,
+            )
 
         # Extract code (ICD-10 or SNOMED)
         code_obj = data.get("code", {})
         icd10_code_obj = None
+        icd11_code = ""
+        icd11_display = ""
         snomed_code = ""
         snomed_display = ""
         free_text = code_obj.get("text", "")
@@ -388,19 +529,31 @@ class FHIRConditionCreateView(FHIRWriteAPIView):
                 icd10_code_obj = ICD10Code.objects.filter(code__iexact=coding["code"]).first()
                 if not free_text:
                     free_text = coding.get("display", "")
+            elif system == "http://id.who.int/icd/release/11/mms" and coding.get("code"):
+                icd11_code = coding["code"]
+                icd11_display = coding.get("display", "")
+                if not free_text:
+                    free_text = icd11_display
             elif system == "http://snomed.info/sct":
                 snomed_code = coding.get("code", "")
                 snomed_display = coding.get("display", "")
                 if not free_text:
                     free_text = snomed_display
 
-        if not icd10_code_obj and not snomed_code and not free_text:
+        if not icd10_code_obj and not icd11_code and not snomed_code and not free_text:
             return self.operation_outcome(
-                "error", "required", "Condition.code with ICD-10, SNOMED CT, or text is required"
+                "error",
+                "required",
+                "Condition.code with ICD-10, ICD-11, SNOMED CT, or text is required",
             )
 
         # Find or create encounter context
-        encounter = Encounter.objects.filter(patient=patient).order_by("-encounter_date").first()
+        encounter = (
+            scope_fhir_queryset(request, Encounter.objects)
+            .filter(patient=patient, facility=tenant_kwargs["facility"])
+            .order_by("-encounter_date")
+            .first()
+        )
         if not encounter:
             return self.operation_outcome(
                 "error",
@@ -418,6 +571,8 @@ class FHIRConditionCreateView(FHIRWriteAPIView):
         diagnosis = Diagnosis.objects.create(
             encounter=encounter,
             icd10_code=icd10_code_obj,
+            icd11_code=icd11_code,
+            icd11_display=icd11_display,
             snomed_code=snomed_code,
             snomed_display=snomed_display,
             free_text_diagnosis=free_text,
@@ -442,6 +597,97 @@ class FHIRConditionCreateView(FHIRWriteAPIView):
         resp = Response(response_data, status=status.HTTP_201_CREATED)
         resp["Location"] = location
         return resp
+
+
+class FHIRProcedureCreateView(FHIRWriteAPIView):
+    """Create a facility-scoped ProcedureOrder from a coded FHIR Procedure."""
+
+    def post(self, request):
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+        from hmis.apps.procedures.models import ProcedureCatalog, ProcedureOrder
+
+        data = request.data
+        if data.get("resourceType") != "Procedure":
+            return self.operation_outcome("error", "invalid", "resourceType must be 'Procedure'")
+
+        patient_ref = data.get("subject", {}).get("reference", "")
+        if not patient_ref.startswith("Patient/"):
+            return self.operation_outcome(
+                "error", "required", "Procedure.subject.reference to Patient is required"
+            )
+        try:
+            patient = scope_fhir_queryset(request, Patient.objects).get(
+                pk=patient_ref.removeprefix("Patient/")
+            )
+            tenant_kwargs = fhir_facility_create_tenant_kwargs(request)
+        except (Patient.DoesNotExist, ValueError):
+            return self.operation_outcome("error", "not-found", f"{patient_ref} not found")
+
+        encounter_ref = data.get("encounter", {}).get("reference", "")
+        if not encounter_ref.startswith("Encounter/"):
+            return self.operation_outcome(
+                "error", "required", "Procedure.encounter.reference to Encounter is required"
+            )
+        try:
+            encounter = scope_fhir_queryset(request, Encounter.objects).get(
+                pk=encounter_ref.removeprefix("Encounter/"),
+                patient=patient,
+                facility=tenant_kwargs["facility"],
+            )
+        except (Encounter.DoesNotExist, ValueError):
+            return self.operation_outcome("error", "not-found", f"{encounter_ref} not found")
+
+        procedure_code = ""
+        coding_system = ""
+        for coding in data.get("code", {}).get("coding", []):
+            if coding.get("code"):
+                procedure_code = coding["code"]
+                coding_system = coding.get("system", "")
+                break
+        if not procedure_code:
+            return self.operation_outcome("error", "required", "Procedure.code.coding is required")
+
+        catalog_qs = ProcedureCatalog.objects.filter(
+            facility=tenant_kwargs["facility"], is_active=True
+        )
+        if coding_system == "http://id.who.int/ichi":
+            catalog = catalog_qs.filter(ichi_code=procedure_code).first()
+        elif coding_system == "http://www.ama-assn.org/go/cpt":
+            catalog = catalog_qs.filter(cpt_code=procedure_code).first()
+        elif coding_system == "http://www.cms.gov/Medicare/Coding/ICD10":
+            catalog = catalog_qs.filter(icd10_pcs_code=procedure_code).first()
+        else:
+            catalog = catalog_qs.filter(code=procedure_code).first()
+        if not catalog:
+            return self.operation_outcome(
+                "error",
+                "not-found",
+                "No active facility procedure catalog mapping exists for Procedure.code",
+            )
+
+        reason_codes = data.get("reasonCode", [])
+        indication = next((item.get("text", "") for item in reason_codes if item.get("text")), "")
+        order = ProcedureOrder.objects.create(
+            procedure=catalog,
+            patient=patient,
+            encounter=encounter,
+            indication=indication or "Received from external FHIR system",
+            ordered_by=request.user,
+            status=(
+                ProcedureOrder.Status.COMPLETED
+                if data.get("status") == "completed"
+                else ProcedureOrder.Status.ORDERED
+            ),
+            **tenant_kwargs,
+        )
+        from hmis.apps.core.fhir.views_clinical_resources import FHIRProcedureView
+
+        response = Response(
+            FHIRProcedureView()._to_fhir_procedure(order), status=status.HTTP_201_CREATED
+        )
+        response["Location"] = request.build_absolute_uri(f"/fhir/Procedure/{order.pk}")
+        return response
 
 
 class FHIREncounterCreateView(FHIRWriteAPIView):

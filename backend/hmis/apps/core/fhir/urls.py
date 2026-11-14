@@ -60,6 +60,7 @@ from hmis.apps.core.fhir.write import (
     FHIRMedicationRequestCreateView,
     FHIRObservationCreateView,
     FHIRPatientCreateView,
+    FHIRProcedureCreateView,
 )
 
 app_name = "fhir"
@@ -251,5 +252,10 @@ urlpatterns = [
         "DiagnosticReport/",
         FHIRDiagnosticReportCreateView.as_view(),
         name="diagnostic-report-create",
+    ),
+    path(
+        "Procedure/",
+        FHIRProcedureCreateView.as_view(),
+        name="procedure-create",
     ),
 ]

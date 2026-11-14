@@ -331,6 +331,14 @@ class CapabilityStatementView(APIView):
                 ],
             },
             {
+                "type": "Procedure",
+                "profile": "http://hl7.org/fhir/StructureDefinition/Procedure",
+                "interaction": [
+                    {"code": "read"},
+                    {"code": "create"},
+                ],
+            },
+            {
                 "type": "Composition",
                 "profile": "http://hl7.org/fhir/StructureDefinition/Composition",
                 "interaction": [
