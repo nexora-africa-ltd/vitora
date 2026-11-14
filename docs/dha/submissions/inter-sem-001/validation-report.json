@@ -1,0 +1,109 @@
+{
+  "passed": true,
+  "results": {
+    "condition": {
+      "authoritative": true,
+      "detail": "",
+      "is_valid": true,
+      "local_errors": [],
+      "local_valid": true,
+      "operation_outcome": {
+        "issue": [
+          {
+            "code": "informational",
+            "diagnostics": "No issues detected during validation",
+            "severity": "information"
+          },
+          {
+            "code": "informational",
+            "diagnostics": "No issues detected during validation",
+            "severity": "information"
+          }
+        ],
+        "resourceType": "OperationOutcome"
+      },
+      "resource_type": "Condition",
+      "status": "validated"
+    },
+    "observation": {
+      "authoritative": true,
+      "detail": "",
+      "is_valid": true,
+      "local_errors": [],
+      "local_valid": true,
+      "operation_outcome": {
+        "issue": [
+          {
+            "code": "informational",
+            "diagnostics": "No issues detected during validation",
+            "severity": "information"
+          },
+          {
+            "code": "informational",
+            "diagnostics": "No issues detected during validation",
+            "severity": "information"
+          }
+        ],
+        "resourceType": "OperationOutcome"
+      },
+      "resource_type": "Observation",
+      "status": "validated"
+    },
+    "procedure": {
+      "authoritative": true,
+      "detail": "",
+      "is_valid": true,
+      "local_errors": [],
+      "local_valid": true,
+      "operation_outcome": {
+        "issue": [
+          {
+            "code": "processing",
+            "diagnostics": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-line",
+                "valueInteger": 1
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-col",
+                "valueInteger": 542
+              }
+            ],
+            "location": [
+              "Procedure",
+              "Line[1] Col[542]"
+            ],
+            "severity": "warning"
+          },
+          {
+            "code": "processing",
+            "diagnostics": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-line",
+                "valueInteger": 1
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-col",
+                "valueInteger": 542
+              }
+            ],
+            "location": [
+              "Procedure",
+              "Line[1] Col[542]"
+            ],
+            "severity": "warning"
+          }
+        ],
+        "resourceType": "OperationOutcome"
+      },
+      "resource_type": "Procedure",
+      "status": "validated"
+    }
+  },
+  "scope": {
+    "facility_id": 13
+  },
+  "validation_authority": "HAPI FHIR R4 4.0.1 $validate"
+}

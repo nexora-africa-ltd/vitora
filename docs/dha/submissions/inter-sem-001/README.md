@@ -19,6 +19,18 @@ Vitora receives facility-scoped FHIR R4 resources and returns standard coded FHI
 
 The inbound create endpoints are authenticated and facility-scoped. An inbound code must map to an active facility catalogue entry; unknown codes are rejected rather than silently converted to local free text.
 
+## Staging evidence run
+
+The approved synthetic run used Patient `402`, Encounter `402`, and Facility `13`:
+
+| Returned resource | ID | Semantic code |
+| --- | --- | --- |
+| Condition | `220` | ICD-11 MMS `BA00` |
+| Procedure | `4` | ICHI `LZZ.JG.AH` |
+| Observation | `96` | LOINC `58410-2`, UCUM `g/dL`, interpretation `H` |
+
+`inbound-exchange-capture.json` records the three successful facility-scoped FHIR create operations. The exported resource JSON and matching HAPI R4 `OperationOutcome` files provide the semantic-preservation and authoritative-validation evidence.
+
 ## Submission endpoints
 
 ```text

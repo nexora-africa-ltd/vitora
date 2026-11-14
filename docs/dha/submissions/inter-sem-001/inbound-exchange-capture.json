@@ -1,0 +1,46 @@
+{
+  "capture_context": {
+    "environment": "staging",
+    "facility_id": 13,
+    "patient_id": 402,
+    "encounter_id": 402,
+    "synthetic_data_only": true
+  },
+  "requests": [
+    {
+      "endpoint": "POST /fhir/Condition/",
+      "http_status": 201,
+      "resource_type": "Condition",
+      "resource_id": "220",
+      "semantic_coding": {
+        "system": "http://id.who.int/icd/release/11/mms",
+        "code": "BA00",
+        "display": "Essential hypertension"
+      }
+    },
+    {
+      "endpoint": "POST /fhir/Procedure/",
+      "http_status": 201,
+      "resource_type": "Procedure",
+      "resource_id": "4",
+      "semantic_coding": {
+        "system": "http://id.who.int/ichi",
+        "code": "LZZ.JG.AH",
+        "display": "Nonexcisional debridement of wound, infection or burn, not elsewhere classified"
+      }
+    },
+    {
+      "endpoint": "POST /fhir/Observation/",
+      "http_status": 201,
+      "resource_type": "Observation",
+      "resource_id": "96",
+      "semantic_coding": {
+        "system": "http://loinc.org",
+        "code": "58410-2",
+        "unit_system": "http://unitsofmeasure.org",
+        "unit_code": "g/dL",
+        "interpretation": "H"
+      }
+    }
+  ]
+}

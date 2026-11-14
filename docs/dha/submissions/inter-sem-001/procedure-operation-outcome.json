@@ -1,0 +1,43 @@
+{
+  "issue": [
+    {
+      "code": "processing",
+      "diagnostics": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-line",
+          "valueInteger": 1
+        },
+        {
+          "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-col",
+          "valueInteger": 542
+        }
+      ],
+      "location": [
+        "Procedure",
+        "Line[1] Col[542]"
+      ],
+      "severity": "warning"
+    },
+    {
+      "code": "processing",
+      "diagnostics": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-line",
+          "valueInteger": 1
+        },
+        {
+          "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-col",
+          "valueInteger": 542
+        }
+      ],
+      "location": [
+        "Procedure",
+        "Line[1] Col[542]"
+      ],
+      "severity": "warning"
+    }
+  ],
+  "resourceType": "OperationOutcome"
+}

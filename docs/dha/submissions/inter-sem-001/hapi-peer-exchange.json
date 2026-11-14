@@ -1,0 +1,68 @@
+{
+  "peer": "private HAPI FHIR R4 4.0.1",
+  "created": {
+    "Patient": { "status": 201, "id": "8" },
+    "Encounter": { "status": 201, "id": "9" },
+    "Condition": { "status": 201, "id": "10" },
+    "Procedure": { "status": 201, "id": "11" },
+    "Observation": { "status": 201, "id": "12" }
+  },
+  "semantic_codings_preserved": true,
+  "expected": {
+    "Condition": [
+      {
+        "system": "http://id.who.int/icd/release/11/mms",
+        "code": "BA00",
+        "display": "Essential hypertension"
+      }
+    ],
+    "Procedure": [
+      {
+        "system": "http://id.who.int/ichi",
+        "code": "LZZ.JG.AH",
+        "display": "Synthetic nonexcisional wound debridement"
+      },
+      {
+        "system": "urn:vitora:procedure",
+        "code": "DHA-SEM-DEBRIDE",
+        "display": "Synthetic nonexcisional wound debridement"
+      }
+    ],
+    "Observation": [
+      {
+        "system": "http://loinc.org",
+        "code": "58410-2",
+        "display": "Complete blood count"
+      }
+    ]
+  },
+  "actual": {
+    "Condition": [
+      {
+        "system": "http://id.who.int/icd/release/11/mms",
+        "code": "BA00",
+        "display": "Essential hypertension"
+      }
+    ],
+    "Procedure": [
+      {
+        "system": "http://id.who.int/ichi",
+        "code": "LZZ.JG.AH",
+        "display": "Synthetic nonexcisional wound debridement"
+      },
+      {
+        "system": "urn:vitora:procedure",
+        "code": "DHA-SEM-DEBRIDE",
+        "display": "Synthetic nonexcisional wound debridement"
+      }
+    ],
+    "Observation": [
+      {
+        "system": "http://loinc.org",
+        "code": "58410-2",
+        "display": "Complete blood count"
+      }
+    ]
+  },
+  "note": "The HAPI-bound Observation omitted its optional performer reference because the controlled peer did not contain the referenced Practitioner. Vitora's original export retains that reference; coded clinical semantics were unchanged."
+}
