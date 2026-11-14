@@ -57,6 +57,7 @@ jobs:
               --name ${{ env.HAPI_FHIR_APP_NAME }} \
               --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
               --image "$HAPI_IMAGE" \
+              --min-replicas 1 --max-replicas 1 \
               --output none
           else
             az containerapp create \
