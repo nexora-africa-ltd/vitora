@@ -355,6 +355,12 @@ class EncryptionEvidencePermission(permissions.BasePermission):
         return bool(user and user.is_authenticated and user.has_perm(self.permission_name))
 
 
+class DataIntegrityEvidencePermission(EncryptionEvidencePermission):
+    """Restrict SEC-INT-001 evidence to its dedicated DHA-reader permission."""
+
+    permission_name = "core.view_data_integrity_evidence"
+
+
 class BackupRecoveryEvidencePermission(EncryptionEvidencePermission):
     """Restrict recovery evidence to staff or the DHA evidence-reader role."""
 

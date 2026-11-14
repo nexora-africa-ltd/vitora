@@ -1,0 +1,22 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
+# SEC-INT-001 automated test record. Regenerate before DHA submission with the documented command.
+#
+# Scope: data-validation, database-constraint, attachment-checksum, and digital-signature controls.
+# Command:
+# poetry run pytest --no-cov -q tests/core/test_data_integrity_status_endpoint.py tests/infrastructure/test_integrity_constraints.py tests/core/test_digital_signatures.py tests/billing/test_models/test_sha_claim_attachment.py
+#
+# Result: 109 passed
+# Evidence environment: local automated test configuration (not a staging lab capture).
+# Result timestamp: 2026-11-14
+#
+# Separate validation command:
+# poetry run pytest --no-cov -q tests/patients/test_patient_api.py::TestPatientHouseholdSupport::test_create_patient_rejects_malformed_national_id tests/encounters/test_encounter_api.py::TestEncounterAPIValidation::test_invalid_weight
+#
+# Result: 3 passed
+# Controls exercised:
+# - Future-date, malformed national-ID, and negative clinical-measurement rejection
+# - Patient duplicate prevention, active-admission/bed constraints, idempotency, and transactions
+# - SHA-256 claim-attachment checksum generation and storage
+# - X.509 certificate, RSA/SHA-256 signature verification, and altered-document detection
+#
+# This report contains no patient data, tokens, private keys, attachment contents, or credentials.

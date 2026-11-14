@@ -226,8 +226,8 @@
 | Component | Implemented | Notes |
 |-----------|:-----------:|-------|
 | Validation Rules | ✅ | DOB not in future, Kenya location cascade, ICD-10 validation, vital sign ranges, DRF serializer validation, FHIR resource validation |
-| Checksum Verification | ⚠️ | Partial — SHA-256 checksums on SHA claim attachments; not applied to general data records |
-| Digital Signatures | ❌ | No cryptographic signing for clinical documents; imaging reports have finalization status but no signatures |
+| Checksum Verification | ✅ | SHA-256 calculated and persisted for SHA claim attachments; backup and hub recovery flows also verify SHA-256 before restore |
+| Digital Signatures | ✅ | X.509 user certificates and RSA/SHA-256 signatures for eligible clinical documents; verification detects altered content and invalid/revoked certificates |
 
 ---
 
@@ -307,6 +307,5 @@
 - **Backup & disaster recovery** plan
 - **ODPC registration** (Data Controller & Processor)
 - **Emergency access** (break-glass) procedures
-- **Digital signatures** for clinical documents
 - **SDMX** data exchange standard
 - **Active Kenya HIE** push/pull integration

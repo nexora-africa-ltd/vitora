@@ -699,3 +699,13 @@ class TestPatientHouseholdSupport:
         )
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_create_patient_rejects_malformed_national_id(self, auth_client, sample_patient_data):
+        """A Kenyan national ID must contain seven or eight digits."""
+        sample_patient_data["identification_type"] = "national_id"
+        sample_patient_data["identification_number"] = "NOT-A-NATIONAL-ID"
+
+        response = auth_client.post("/api/patients/", sample_patient_data, format="json")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "identification_number" in response.data
