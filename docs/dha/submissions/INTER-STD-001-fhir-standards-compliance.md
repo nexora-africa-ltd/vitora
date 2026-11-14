@@ -38,17 +38,18 @@ HAPI's validator must be reachable from the staging API container through `HAPI_
    - `code.coding` with `system: "http://loinc.org"` and the persisted LOINC code
    - `subject.reference` to patient `402`
    - `result` references to its Observation resources.
-4. From the staging API container, validate each saved resource against HAPI FHIR R4:
+4. From the staging API container, run the controlled validator. It exports the four resources, runs local structural preflight, then requires HAPI FHIR R4 `4.0.1` `$validate` for each resource:
 
    ```bash
-   curl --silent --show-error --fail \
-     --header 'Content-Type: application/fhir+json' \
-     --header 'Accept: application/fhir+json' \
-     --request POST "${HAPI_FHIR_BASE_URL}/DiagnosticReport/\$validate" \
-     --data-binary @diagnostic-report-<ID>.json | jq .
+   python manage.py validate_fhir_r4_evidence \
+     --patient-id 402 \
+     --encounter-id <ENCOUNTER_ID> \
+     --observation-id <LAB_RESULT_ID> \
+     --diagnostic-report-id <DIAGNOSTIC_REPORT_ID> \
+     --output-dir /tmp/dha-inter-std-001
    ```
 
-   Use the matching resource type in the `$validate` URL for Patient, Encounter, and Observation. Retain each returned `OperationOutcome`; none may contain an `error` or `fatal` issue.
+   Retain `validation-report.json`, all four exported resource JSON files, and all four HAPI `OperationOutcome` files. The command exits non-zero when HAPI is unreachable, does not report FHIR R4 `4.0.1`, or returns an `error` or `fatal` issue. A local R4B preflight pass never substitutes for HAPI validation.
 5. Demonstrate malformed-resource handling with a DHA synthetic request that omits required DiagnosticReport data. Retain the `400` FHIR `OperationOutcome`, with no patient data beyond the synthetic identifier.
 6. Retest the submitted GET endpoint externally with the DHA reader account. It must return `200` within 30 seconds.
 

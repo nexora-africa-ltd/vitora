@@ -558,6 +558,7 @@ class FHIREncounterSearchView(FHIRSearchAPIView):
     """
 
     def get(self, request):
+        from hmis.apps.core.fhir.views_encounter import FHIREncounterView
         from hmis.apps.encounters.models import Encounter
 
         queryset = Encounter.objects.select_related("patient")
@@ -594,32 +595,7 @@ class FHIREncounterSearchView(FHIRSearchAPIView):
 
         entries = []
         for enc in encounters:
-            type_to_class = {"OPD": "AMB", "IPD": "IMP", "EMERGENCY": "EMER"}
-            fhir_class = type_to_class.get(enc.encounter_type, "AMB")
-
-            # Map local status to FHIR status
-            local_status = getattr(enc, "status", "IN_PROGRESS")
-            fhir_status = "in-progress"
-            if local_status in ("COMPLETED", "DISCHARGED"):
-                fhir_status = "finished"
-            elif local_status == "CANCELLED":
-                fhir_status = "cancelled"
-
-            resource = {
-                "resourceType": "Encounter",
-                "id": str(enc.pk),
-                "status": fhir_status,
-                "class": {
-                    "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
-                    "code": fhir_class,
-                },
-                "subject": {"reference": f"Patient/{enc.patient_id}"},
-                "period": {
-                    "start": enc.encounter_date.isoformat() if enc.encounter_date else None,
-                },
-                "reasonCode": [{"text": enc.chief_complaint}] if enc.chief_complaint else [],
-            }
-            entries.append(resource)
+            entries.append(FHIREncounterView.to_fhir_resource(enc))
 
         return Response(self.build_bundle(entries, total, request, count, offset))
 

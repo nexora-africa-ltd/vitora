@@ -827,6 +827,17 @@ class TestFHIRObservation:
 class TestFHIRAdditionalResources:
     """Tests for additional FHIR resources needed by Inferno input fields."""
 
+    def test_encounter_endpoint(self, authenticated_client, sample_encounter):
+        """A FHIR Encounter must be retrievable directly by logical ID."""
+        response = authenticated_client.get(
+            reverse("fhir:encounter-read", args=[sample_encounter.id])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Encounter"
+        assert response.data["id"] == str(sample_encounter.id)
+        assert response.data["subject"]["reference"] == f"Patient/{sample_encounter.patient_id}"
+
     @pytest.mark.parametrize(
         ("fixture_name", "route_name", "resource_type", "id_attr"),
         [

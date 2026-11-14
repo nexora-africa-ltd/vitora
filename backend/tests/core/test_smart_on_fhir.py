@@ -496,6 +496,13 @@ class TestSMARTEndpoints:
             "create",
         }
 
+        encounter = supported_resources["Encounter"]
+        assert {interaction["code"] for interaction in encounter["interaction"]} == {
+            "read",
+            "search-type",
+            "create",
+        }
+
         composition_resource = next(r for r in rest["resource"] if r["type"] == "Composition")
         assert {interaction["code"] for interaction in composition_resource["interaction"]} == {
             "read"
