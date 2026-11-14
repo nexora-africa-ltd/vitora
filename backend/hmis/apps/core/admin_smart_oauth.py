@@ -15,7 +15,7 @@ from django.core.exceptions import ValidationError
 from oauth2_provider.admin import ApplicationAdmin
 from oauth2_provider.models import Application
 
-from hmis.apps.core.models import SMARTOAuthClientTenantBinding
+from hmis.apps.core.models import ExternalFHIROrganization, SMARTOAuthClientTenantBinding
 
 
 class SMARTOAuthApplicationForm(forms.ModelForm):
@@ -162,3 +162,49 @@ class SMARTOAuthApplicationAdmin(ApplicationAdmin):
 with suppress(admin.sites.NotRegistered):
     admin.site.unregister(Application)
 admin.site.register(Application, SMARTOAuthApplicationAdmin)
+
+
+@admin.register(ExternalFHIROrganization)
+class ExternalFHIROrganizationAdmin(admin.ModelAdmin):
+    """Admin controls for external FHIR Organization reference data."""
+
+    list_display = (
+        "display_name",
+        "mfl_code",
+        "organization",
+        "matched_facility",
+        "source_application",
+        "last_seen_at",
+    )
+    list_filter = ("organization", "fhir_resource_type", "source_application")
+    search_fields = ("display_name", "mfl_code", "fhir_resource_id", "external_base_url")
+    raw_id_fields = ("organization", "matched_facility", "matched_by", "source_application")
+    readonly_fields = ("created_at", "updated_at")
+    list_select_related = ("organization", "matched_facility", "source_application")
+    fieldsets = (
+        (
+            "Vitora ownership",
+            {
+                "fields": ("organization", "matched_facility", "matched_at", "matched_by"),
+                "description": "These fields describe the Vitora tenant and an optional verified local match.",
+            },
+        ),
+        (
+            "External FHIR identity",
+            {
+                "fields": (
+                    "external_base_url",
+                    "fhir_resource_type",
+                    "fhir_resource_id",
+                    "identifiers",
+                    "mfl_code",
+                    "display_name",
+                )
+            },
+        ),
+        (
+            "Integration provenance",
+            {"fields": ("source_application", "source_endpoint", "provenance", "last_seen_at")},
+        ),
+        ("Audit", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+    )
