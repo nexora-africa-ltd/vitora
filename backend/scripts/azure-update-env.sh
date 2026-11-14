@@ -202,6 +202,11 @@ az containerapp update \
     "MPESA_CALLBACK_URL=https://${FQDN}/api/billing/mpesa/callback/" \
     "CELERY_TASK_ALWAYS_EAGER=${CELERY_TASK_ALWAYS_EAGER:-true}" \
     "ICD11_USE_LOCAL=${ICD11_USE_LOCAL:-false}" \
+    "ICD11_MMS_RELEASE=${ICD11_MMS_RELEASE:-2026-01}" \
+    "SNOMED_EDITION=${SNOMED_EDITION:-MAIN}" \
+    "SNOMED_VERSION=${SNOMED_VERSION:-20261030}" \
+    "SNOMED_CT_RELEASE=${SNOMED_CT_RELEASE:-20261030}" \
+    "LOINC_RELEASE=${LOINC_RELEASE:-2.83}" \
     "HAPI_FHIR_ENABLED=${HAPI_FHIR_ENABLED:-true}" \
     "HAPI_FHIR_BASE_URL=${HAPI_FHIR_BASE_URL:-http://vitora-hapi-fhir-sa.internal.wittysmoke-66276dae.southafricanorth.azurecontainerapps.io/fhir}" \
     "HAPI_FHIR_TIMEOUT=${HAPI_FHIR_TIMEOUT:-10}" \

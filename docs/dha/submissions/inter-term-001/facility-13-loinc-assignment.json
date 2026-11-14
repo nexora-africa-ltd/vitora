@@ -1,0 +1,23 @@
+{
+  "capture_context": {
+    "environment": "staging",
+    "facility_id": 13,
+    "synthetic_data_only": true
+  },
+  "operation": {
+    "endpoint": "GET /api/lab/tests/DHA-TERM-CBC/",
+    "http_status": 200
+  },
+  "test_catalog_assignment": {
+    "id": 50,
+    "code": "DHA-TERM-CBC",
+    "name": "Synthetic DHA CBC auto differential panel",
+    "loinc_code": "57021-8",
+    "loinc_system": "http://loinc.org",
+    "loinc_owner": "Regenstrief Institute",
+    "loinc_source": "DHA Clinical Concepts",
+    "loinc_version": "2.83",
+    "facility_id": 13,
+    "is_active": true
+  }
+}

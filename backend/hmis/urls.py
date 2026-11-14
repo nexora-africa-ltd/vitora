@@ -49,7 +49,11 @@ from hmis.apps.core.pricing import (
     PricingResolvePlanSlashAliasView,
     PricingResolvePlanView,
 )
-from hmis.apps.core.terminology_views import TerminologyHealthView, TerminologyLookupView
+from hmis.apps.core.terminology_views import (
+    StandardTerminologyUsageView,
+    TerminologyHealthView,
+    TerminologyLookupView,
+)
 from hmis.apps.core.views import (
     AuditedTokenObtainPairView,
     AuditLogViewSet,
@@ -963,6 +967,11 @@ urlpatterns = [
         name="terminology-lookup",
     ),
     path("api/terminology/health/", TerminologyHealthView.as_view(), name="terminology-health"),
+    path(
+        "api/terminology/standard-usage/",
+        StandardTerminologyUsageView.as_view(),
+        name="standard-terminology-usage",
+    ),
     # Nested route for emergency contacts under patients
     path(
         "api/patients/<int:patient_pk>/emergency-contacts/",

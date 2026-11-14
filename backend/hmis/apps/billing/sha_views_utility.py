@@ -244,18 +244,20 @@ class TerminologySearchView(APIView):
         try:
             logger.debug("Attempting DHA Terminology API for ICD-11 search")
             service = _legacy_sha_views_module().TerminologyService(use_local_fallback=False)
-            results = service.search_icd11(search, limit=limit)
+            results = service.search_concepts("icd11", search, limit=limit)
 
             if results:
-                data = []
-                for item in results:
-                    if hasattr(item, "__dict__"):
-                        item_dict = {
-                            k: v for k, v in item.__dict__.items() if not k.startswith("_")
-                        }
-                        data.append(item_dict)
-                    else:
-                        data.append(item)
+                data = [
+                    {
+                        "code": item.code,
+                        "title": item.display,
+                        "description": item.display,
+                        "is_active": True,
+                        "source": "dha_clinical_concepts",
+                        "version": item.version,
+                    }
+                    for item in results
+                ]
 
                 return Response(
                     {

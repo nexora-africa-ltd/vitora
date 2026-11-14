@@ -13,7 +13,7 @@
  */
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Check, ChevronsUpDown, Loader2, Search, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -71,6 +71,20 @@ export function ICD11Select({
   const [isLoading, setIsLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const debounceRef = useRef<NodeJS.Timeout>();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [triggerWidth, setTriggerWidth] = useState<number>();
+
+  useLayoutEffect(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+
+    const updateWidth = () => setTriggerWidth(trigger.getBoundingClientRect().width);
+    updateWidth();
+
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(trigger);
+    return () => observer.disconnect();
+  }, []);
 
   // Debounced search
   useEffect(() => {
@@ -119,12 +133,13 @@ export function ICD11Select({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant="outline"
+          ref={triggerRef}
+          variant="ghost"
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            'h-auto min-h-10 w-full justify-between py-2 text-foreground',
+            'h-auto min-h-10 w-full justify-between py-2 text-foreground hover:outline',
             !value && 'text-muted-foreground',
             className
           )}
@@ -141,7 +156,8 @@ export function ICD11Select({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[--radix-popover-trigger-width] min-w-[200px] p-0"
+        className="max-w-[calc(100vw-2rem)] p-0"
+        style={triggerWidth ? { width: `${triggerWidth}px` } : undefined}
         align="start"
         side="bottom"
         sideOffset={4}
