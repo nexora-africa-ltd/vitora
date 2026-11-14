@@ -203,7 +203,7 @@ az containerapp update \
     "CELERY_TASK_ALWAYS_EAGER=${CELERY_TASK_ALWAYS_EAGER:-true}" \
     "ICD11_USE_LOCAL=${ICD11_USE_LOCAL:-false}" \
     "HAPI_FHIR_ENABLED=${HAPI_FHIR_ENABLED:-true}" \
-    "HAPI_FHIR_BASE_URL=${HAPI_FHIR_BASE_URL:-}" \
+    "HAPI_FHIR_BASE_URL=${HAPI_FHIR_BASE_URL:-http://vitora-hapi-fhir-sa.internal.wittysmoke-66276dae.southafricanorth.azurecontainerapps.io/fhir}" \
     "HAPI_FHIR_TIMEOUT=${HAPI_FHIR_TIMEOUT:-10}" \
     "SYNC_ENABLED=${SYNC_ENABLED:-false}" \
     "HL7_INTEGRATION_ENABLED=${HL7_INTEGRATION_ENABLED:-true}" \
