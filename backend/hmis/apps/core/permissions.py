@@ -1152,7 +1152,9 @@ class FHIRAccessPermission(permissions.BasePermission):
         user = request.user
         if not user or not user.is_authenticated:
             return False
-        if user.is_superuser or user.has_perm("core.access_fhir_api"):
+        action = "read" if request.method in permissions.SAFE_METHODS else "create"
+        required_permission = "core.access_fhir_api" if action == "read" else "core.write_fhir_api"
+        if user.is_superuser or user.has_perm(required_permission):
             return True
 
         profile = getattr(user, "staff_profile", None)
@@ -1162,7 +1164,6 @@ class FHIRAccessPermission(permissions.BasePermission):
         if not profile:
             return False
 
-        action = "read" if request.method in permissions.SAFE_METHODS else "create"
         return profile.has_permission(action, "FHIR")
 
 

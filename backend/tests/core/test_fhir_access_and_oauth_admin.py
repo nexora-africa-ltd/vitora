@@ -44,6 +44,38 @@ class TestFHIRAccessPermission:
 
         assert FHIRAccessPermission().has_permission(request, object())
 
+    @override_settings(FHIR_RBAC_ENFORCEMENT=True)
+    def test_read_permission_does_not_grant_fhir_writes(self, test_user):
+        """FHIR writes require the separate write capability."""
+        permission = Permission.objects.get(
+            content_type__app_label="core",
+            codename="access_fhir_api",
+        )
+        test_user.user_permissions.add(permission)
+        request = RequestFactory().post("/fhir/Patient/")
+        request.user = test_user
+
+        assert not FHIRAccessPermission().has_permission(request, object())
+
+    def test_fhir_matrix_actions_sync_to_the_matching_group_permissions(self):
+        """FHIR matrix entries materialize into read and write Django permissions."""
+        from hmis.apps.core.models import Role
+        from hmis.apps.core.role_permissions_sync import sync_role_group_permissions
+
+        role = Role.objects.create(
+            code="FHIR_TEST",
+            name="FHIR Test",
+            hierarchy_level=1,
+            permissions_matrix={"FHIR": {"read": True, "create": True}},
+        )
+        sync_role_group_permissions(role)
+
+        assert set(
+            role.django_group.permissions.filter(codename__contains="fhir_api").values_list(
+                "codename", flat=True
+            )
+        ) == {"access_fhir_api", "write_fhir_api"}
+
 
 class TestSMARTOAuthApplicationAdmin:
     """OAuth admin must use secure defaults and explain partner-controlled URLs."""

@@ -87,6 +87,7 @@ class SMARTOAuthClientTenantBinding(models.Model):
         verbose_name_plural = "SMART OAuth client tenant bindings"
         permissions = [
             ("access_fhir_api", "Can access the FHIR API"),
+            ("write_fhir_api", "Can write to the FHIR API"),
         ]
 
     def __str__(self) -> str:
