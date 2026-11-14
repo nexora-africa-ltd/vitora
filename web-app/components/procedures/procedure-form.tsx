@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { HelpPopover } from '@/components/shared/help-popover';
+import { ICHISelect } from '@/components/terminology';
 import {
   Form,
   FormControl,
@@ -34,6 +35,7 @@ import { useClinics } from '@/lib/hooks/use-clinics';
 import { getClinicTypesForCategory } from '@/lib/config/procedure-clinic-mapping';
 import { toast } from '@/lib/hooks/use-toast';
 import type { ProcedureCatalogDetail } from '@/lib/types/procedure';
+import type { ICHISelectValue } from '@/lib/terminology';
 
 const CATEGORIES = [
   { value: 'MINOR', label: 'Minor Procedure' },
@@ -52,6 +54,7 @@ const CATEGORIES = [
 ];
 
 const BODY_SYSTEMS = [
+  { value: 'UNSPECIFIED', label: 'Unspecified (requires review)' },
   { value: 'INTEGUMENTARY', label: 'Integumentary (Skin)' },
   { value: 'MUSCULOSKELETAL', label: 'Musculoskeletal' },
   { value: 'RESPIRATORY', label: 'Respiratory' },
@@ -138,6 +141,9 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEdit = !!procedure;
+  const [selectedICHI, setSelectedICHI] = useState<ICHISelectValue | null>(
+    procedure?.ichi_code ? { code: procedure.ichi_code, title: procedure.name } : null
+  );
 
   const form = useForm<ProcedureFormValues>({
     resolver: zodResolver(procedureFormSchema),
@@ -251,8 +257,11 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
                 <FormItem>
                   <FormLabel>Code *</FormLabel>
                   <FormControl>
-                    <Input placeholder="PROC-XX-001" {...field} disabled={isEdit} />
+                    <Input placeholder="PROC-XX-001" {...field} />
                   </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Facility-scoped internal identifier. It may differ from the selected ICHI code.
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}
@@ -381,9 +390,18 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
               name="ichi_code"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>ICHI Code</FormLabel>
+                  <FormLabel className="flex items-center gap-1">
+                    ICHI Code
+                    <HelpPopover content="Preferred WHO intervention code. Select a verified concept; Vitora records terminology provenance server-side." />
+                  </FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., PZX.DB.AC" {...field} />
+                    <ICHISelect
+                      value={selectedICHI}
+                      onSelect={(concept) => {
+                        setSelectedICHI(concept);
+                        field.onChange(concept.code);
+                      }}
+                    />
                   </FormControl>
                 </FormItem>
               )}
@@ -393,7 +411,10 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
               name="cpt_code"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>CPT Code</FormLabel>
+                  <FormLabel className="flex items-center gap-1">
+                    CPT Code
+                    <HelpPopover content="Optional licensed partner crosswalk. Vitora does not search or provide CPT content." />
+                  </FormLabel>
                   <FormControl>
                     <Input placeholder="e.g., 12001" {...field} />
                   </FormControl>
@@ -405,7 +426,10 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
               name="icd10_pcs_code"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>ICD-10-PCS</FormLabel>
+                  <FormLabel className="flex items-center gap-1">
+                    ICD-10-PCS
+                    <HelpPopover content="Optional external crosswalk. ICHI is Vitora’s preferred WHO intervention code." />
+                  </FormLabel>
                   <FormControl>
                     <Input placeholder="e.g., 0W9F0ZZ" {...field} />
                   </FormControl>
@@ -435,6 +459,63 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
                       ))}
                     </SelectContent>
                   </Select>
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Consent */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Consent Requirements</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-3">
+            <FormField
+              control={form.control}
+              name="consent_required"
+              render={({ field }) => (
+                <FormItem className="flex items-center gap-2">
+                  <FormControl>
+                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                  <FormLabel className="!mt-0">Written Consent</FormLabel>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="guardian_consent_required"
+              render={({ field }) => (
+                <FormItem className="flex items-center gap-2">
+                  <FormControl>
+                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                  <FormLabel className="!mt-0">Guardian Consent (Minors)</FormLabel>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="witness_required"
+              render={({ field }) => (
+                <FormItem className="flex items-center gap-2">
+                  <FormControl>
+                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                  <FormLabel className="!mt-0">Witness Required</FormLabel>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="consent_template"
+              render={({ field }) => (
+                <FormItem className="sm:col-span-3">
+                  <FormLabel>Consent Template Text</FormLabel>
+                  <FormControl>
+                    <Textarea rows={3} placeholder="Default consent form text..." {...field} />
+                  </FormControl>
                 </FormItem>
               )}
             />
@@ -540,63 +621,6 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
                   <FormLabel>Post-Procedure Instructions</FormLabel>
                   <FormControl>
                     <Textarea rows={2} {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Consent */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Consent Requirements</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-3">
-            <FormField
-              control={form.control}
-              name="consent_required"
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-2">
-                  <FormControl>
-                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                  </FormControl>
-                  <FormLabel className="!mt-0">Written Consent</FormLabel>
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="guardian_consent_required"
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-2">
-                  <FormControl>
-                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                  </FormControl>
-                  <FormLabel className="!mt-0">Guardian Consent (Minors)</FormLabel>
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="witness_required"
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-2">
-                  <FormControl>
-                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                  </FormControl>
-                  <FormLabel className="!mt-0">Witness Required</FormLabel>
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="consent_template"
-              render={({ field }) => (
-                <FormItem className="sm:col-span-3">
-                  <FormLabel>Consent Template Text</FormLabel>
-                  <FormControl>
-                    <Textarea rows={3} placeholder="Default consent form text..." {...field} />
                   </FormControl>
                 </FormItem>
               )}

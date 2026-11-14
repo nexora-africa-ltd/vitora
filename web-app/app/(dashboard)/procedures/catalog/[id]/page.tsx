@@ -5,13 +5,14 @@ import { useQuery } from '@tanstack/react-query';
 import {
   AlertTriangle,
   Bot,
+  Building2,
   Clock,
   Edit,
   FileText,
   Heart,
   Shield,
   Syringe,
-  Users,
+  Wrench,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -33,12 +34,14 @@ const CATEGORY_LABELS: Record<string, string> = {
   OPHTHALMIC: 'Ophthalmic',
   ENT: 'ENT',
   OBSTETRIC: 'Obstetric',
+  SURGICAL: 'Surgical',
   WOUND_CARE: 'Wound Care',
   INJECTION: 'Injection/Infusion',
   OTHER: 'Other',
 };
 
 const BODY_SYSTEM_LABELS: Record<string, string> = {
+  UNSPECIFIED: 'Unspecified (requires review)',
   INTEGUMENTARY: 'Integumentary (Skin)',
   MUSCULOSKELETAL: 'Musculoskeletal',
   RESPIRATORY: 'Respiratory',
@@ -71,6 +74,11 @@ function BoolRow({ label, value }: { label: string; value: boolean }) {
       </span>
     </InfoRow>
   );
+}
+
+function EmptyValue({ value }: { value?: string | null }) {
+  if (value) return <>{value}</>;
+  return <span className="text-muted-foreground">Not configured</span>;
 }
 
 export default function ProcedureCatalogDetailPage() {
@@ -160,6 +168,18 @@ export default function ProcedureCatalogDetailPage() {
           <CardContent className="space-y-3 text-sm">
             <InfoRow label="Code">{procedure.code}</InfoRow>
             {procedure.ichi_code && <InfoRow label="ICHI">{procedure.ichi_code}</InfoRow>}
+            {procedure.ichi_system && <InfoRow label="ICHI System">{procedure.ichi_system}</InfoRow>}
+            {procedure.ichi_owner && <InfoRow label="ICHI Owner">{procedure.ichi_owner}</InfoRow>}
+            {procedure.ichi_source && <InfoRow label="ICHI Source">{procedure.ichi_source}</InfoRow>}
+            {procedure.ichi_version && <InfoRow label="ICHI Version">{procedure.ichi_version}</InfoRow>}
+            {procedure.ichi_retrieved_at && (
+              <InfoRow label="ICHI Retrieved">{formatDate(procedure.ichi_retrieved_at)}</InfoRow>
+            )}
+            {procedure.ichi_checksum && (
+              <InfoRow label="Integrity Check">
+                <span className="font-mono text-xs">{procedure.ichi_checksum.slice(0, 12)}…</span>
+              </InfoRow>
+            )}
             {procedure.cpt_code && <InfoRow label="CPT">{procedure.cpt_code}</InfoRow>}
             {procedure.icd10_pcs_code && (
               <InfoRow label="ICD-10-PCS">{procedure.icd10_pcs_code}</InfoRow>
@@ -204,9 +224,9 @@ export default function ProcedureCatalogDetailPage() {
             )}
             <BoolRow label="Fasting Required" value={procedure.requires_fasting} />
             <InfoRow label="Min. Staff">{procedure.minimum_staff_count}</InfoRow>
-            {procedure.required_qualifications && (
-              <InfoRow label="Qualifications">{procedure.required_qualifications}</InfoRow>
-            )}
+            <InfoRow label="Qualifications">
+              <EmptyValue value={procedure.required_qualifications} />
+            </InfoRow>
           </CardContent>
         </Card>
 
@@ -249,26 +269,86 @@ export default function ProcedureCatalogDetailPage() {
             {procedure.billing_price != null && (
               <InfoRow label="Billing Price">{formatCurrency(procedure.billing_price)}</InfoRow>
             )}
-            {procedure.sha_tariff_code && (
-              <InfoRow label="SHA Tariff">{procedure.sha_tariff_code}</InfoRow>
-            )}
-            {procedure.sha_package_code && (
-              <InfoRow label="SHA Package">{procedure.sha_package_code}</InfoRow>
-            )}
+            <InfoRow label="SHA Tariff">
+              <EmptyValue value={procedure.sha_tariff_code} />
+            </InfoRow>
+            <InfoRow label="SHA Package">
+              <EmptyValue value={procedure.sha_package_code} />
+            </InfoRow>
           </CardContent>
         </Card>
 
-        {/* Follow-up */}
-        {procedure.requires_follow_up && (
+        {/* Follow-up & Availability */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Clock className="h-4 w-4" />
+              Follow-up & Availability
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <BoolRow label="Follow-up Required" value={procedure.requires_follow_up} />
+            {procedure.requires_follow_up && (
+              <InfoRow label="Follow-up Days">{procedure.default_follow_up_days}</InfoRow>
+            )}
+            <InfoRow label="Follow-up Clinic">
+              {procedure.follow_up_clinic ? `Clinic #${procedure.follow_up_clinic}` : 'Not configured'}
+            </InfoRow>
+            <div className="border-t pt-3">
+              <p className="mb-2 text-xs text-muted-foreground">Available Clinics</p>
+              {procedure.default_clinics_detail.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {procedure.default_clinics_detail.map((clinic) => (
+                    <Badge key={clinic.id} variant="outline" className="w-fit">
+                      {clinic.name}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground">No clinic assignments configured.</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Theatre Requirements */}
+        {(procedure.category === 'SURGICAL' ||
+          procedure.complexity ||
+          procedure.sha_intervention_code ||
+          procedure.requires_icu_bed ||
+          procedure.typical_blood_requirement ||
+          procedure.special_equipment) && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Clock className="h-4 w-4" />
-                Follow-up
+                <Wrench className="h-4 w-4" />
+                Theatre Requirements
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <InfoRow label="Follow-up Days">{procedure.default_follow_up_days}</InfoRow>
+              <InfoRow label="Complexity">
+                <EmptyValue value={procedure.complexity} />
+              </InfoRow>
+              <InfoRow label="SHA Intervention">
+                <EmptyValue value={procedure.sha_intervention_code} />
+              </InfoRow>
+              <BoolRow label="ICU Bed Required" value={procedure.requires_icu_bed} />
+              <InfoRow label="Blood Requirement">
+                <EmptyValue value={procedure.typical_blood_requirement} />
+              </InfoRow>
+              <InfoRow label="Setup / Cleanup">
+                {procedure.setup_time_minutes} min / {procedure.cleanup_time_minutes} min
+              </InfoRow>
+              <InfoRow label="Surgeon / Theatre / Anesthesia">
+                {formatCurrency(procedure.surgeon_fee ?? 0)} / {formatCurrency(procedure.theatre_fee ?? 0)} /{' '}
+                {formatCurrency(procedure.anesthesia_fee ?? 0)}
+              </InfoRow>
+              {procedure.special_equipment && (
+                <div className="border-t pt-2">
+                  <p className="mb-1 text-xs text-muted-foreground">Special Equipment</p>
+                  <p className="whitespace-pre-wrap">{procedure.special_equipment}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -302,6 +382,26 @@ export default function ProcedureCatalogDetailPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Record Metadata */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Building2 className="h-4 w-4" />
+              Record Metadata
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
+            <InfoRow label="Facility">
+              {procedure.facility ? `Facility #${procedure.facility}` : 'Not assigned'}
+            </InfoRow>
+            <InfoRow label="Organization">
+              {procedure.organization ? `Organization #${procedure.organization}` : 'Not assigned'}
+            </InfoRow>
+            <InfoRow label="Created">{formatDate(procedure.created_at)}</InfoRow>
+            <InfoRow label="Last Updated">{formatDate(procedure.updated_at)}</InfoRow>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

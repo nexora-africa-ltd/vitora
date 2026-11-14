@@ -18,6 +18,7 @@ Reference: docs/dha-api-usage-analysis.md
 from unittest.mock import Mock, patch
 
 import pytest
+from django.test import override_settings
 
 from hmis.apps.billing.services.terminology import (
     CodeNotFoundError,
@@ -412,6 +413,60 @@ class TestICHICodes:
         assert len(results) > 0
         assert results[0].title == "Appendectomy"
 
+    def test_search_ichi_uses_ilm_clinical_concepts_for_ilm_auth(self, service, mocker):
+        """ILM ICHI searches use the controlled WHO/ICHI Clinical Concepts source."""
+        service.auth_service.auth_mode = "ilm"
+        response = Mock()
+        response.json = {
+            "results": [
+                {
+                    "code": "PZX.DB.AC",
+                    "display": "Laparoscopic appendectomy",
+                }
+            ]
+        }
+        get = mocker.patch(
+            "hmis.apps.billing.services.ilm_client.IlmClient.get",
+            return_value=response,
+        )
+
+        results = service.search_ichi(query="laparoscopic", limit=20)
+
+        assert [(result.code, result.title) for result in results] == [
+            ("PZX.DB.AC", "Laparoscopic appendectomy")
+        ]
+        get.assert_called_once_with(
+            "/api/v1/clinical/concepts",
+            params={
+                "owner": "WHO",
+                "source": "ICHI",
+                "search": "laparoscopic",
+                "limit": 25,
+            },
+        )
+
+    @pytest.mark.parametrize(
+        ("requested_limit", "expected_limit"),
+        [
+            (1, 25),
+            (25, 25),
+            (250, 200),
+        ],
+    )
+    def test_search_ichi_clamps_dha_limit(self, service, mocker, requested_limit, expected_limit):
+        """ICHI Clinical Concepts requests honour DHA's supported 25–200 range."""
+        service.auth_service.auth_mode = "ilm"
+        response = Mock()
+        response.json = {"results": []}
+        get = mocker.patch(
+            "hmis.apps.billing.services.ilm_client.IlmClient.get",
+            return_value=response,
+        )
+
+        service.search_ichi(query="laparoscopic", limit=requested_limit)
+
+        assert get.call_args.kwargs["params"]["limit"] == expected_limit
+
     def test_get_ichi_by_code(self, service, mock_requests_get):
         """Should get specific ICHI code."""
         mock_requests_get.return_value = Mock(
@@ -449,6 +504,25 @@ class TestTerminologyServiceConfig:
         service = TerminologyService()
 
         assert service.timeout > 0
+
+    @override_settings(
+        SHA_ENDPOINTS={
+            "terminology_icd11": "/configured/icd11",
+            "terminology_loinc": "/configured/loinc",
+            "terminology_ichi": "/configured/ichi",
+            "terminology_sha": "/configured/interventions",
+            "terminology_product": "/configured/products",
+        }
+    )
+    def test_service_uses_configured_terminology_endpoint_keys(self, mock_sha_auth):
+        """Terminology endpoint overrides must use the documented settings keys."""
+        service = TerminologyService()
+
+        assert service.interventions_endpoint == "/configured/interventions"
+        assert service.icd11_endpoint == "/configured/icd11"
+        assert service.loinc_endpoint == "/configured/loinc"
+        assert service.ichi_endpoint == "/configured/ichi"
+        assert service.products_endpoint == "/configured/products"
 
     def test_service_local_fallback_config(self, mock_sha_auth):
         """Should configure local fallback option."""

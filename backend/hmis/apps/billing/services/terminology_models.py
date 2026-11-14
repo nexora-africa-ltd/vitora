@@ -399,7 +399,12 @@ class ICHICode:
         """Create from DHA API response."""
         return cls(
             code=data.get("code", "") or data.get("id_code", ""),
-            title=data.get("clean_title", "") or data.get("title", "") or data.get("name", ""),
+            title=(
+                data.get("clean_title", "")
+                or data.get("title", "")
+                or data.get("display", "")
+                or data.get("name", "")
+            ),
             definition=data.get("definition"),
             target=data.get("target"),
             action=data.get("action"),

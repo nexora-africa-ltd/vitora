@@ -34,6 +34,7 @@ class ProcedureCatalog(FacilityScopedModel, TimeStampedModel):
         OTHER = "OTHER", "Other"
 
     class BodySystem(models.TextChoices):
+        UNSPECIFIED = "UNSPECIFIED", "Unspecified (requires review)"
         INTEGUMENTARY = "INTEGUMENTARY", "Integumentary (Skin)"
         MUSCULOSKELETAL = "MUSCULOSKELETAL", "Musculoskeletal"
         RESPIRATORY = "RESPIRATORY", "Respiratory"
@@ -56,8 +57,11 @@ class ProcedureCatalog(FacilityScopedModel, TimeStampedModel):
     # Core Fields
     code = models.CharField(
         max_length=20,
-        unique=True,
-        help_text="Internal procedure code (e.g., PROC-001)",
+        help_text="Internal procedure code, unique within the facility (e.g., PROC-001)",
+    )
+    code_follows_ichi = models.BooleanField(
+        default=False,
+        help_text="Whether the internal code is automatically kept equal to the ICHI code.",
     )
     name = models.CharField(max_length=200, help_text="Procedure name")
     description = models.TextField(
@@ -73,12 +77,26 @@ class ProcedureCatalog(FacilityScopedModel, TimeStampedModel):
     ichi_code = models.CharField(
         max_length=20, blank=True, default="", help_text="ICHI procedure code (WHO standard)"
     )
+    ichi_system = models.CharField(max_length=255, blank=True, default="")
+    ichi_owner = models.CharField(max_length=100, blank=True, default="")
+    ichi_source = models.CharField(max_length=100, blank=True, default="")
+    ichi_retrieved_at = models.DateTimeField(null=True, blank=True)
+    ichi_version = models.CharField(max_length=100, blank=True, default="")
+    ichi_checksum = models.CharField(max_length=64, blank=True, default="")
     cpt_code = models.CharField(
-        max_length=10, blank=True, default="", help_text="CPT procedure code (if applicable)"
+        max_length=10,
+        blank=True,
+        default="",
+        help_text="Optional licensed CPT crosswalk code; Vitora does not provide CPT lookup.",
     )
+    cpt_provenance = models.JSONField(default=dict, blank=True)
     icd10_pcs_code = models.CharField(
-        max_length=10, blank=True, default="", help_text="ICD-10-PCS code (if applicable)"
+        max_length=10,
+        blank=True,
+        default="",
+        help_text="Optional external ICD-10-PCS crosswalk; ICHI is the preferred WHO intervention code.",
     )
+    icd10_pcs_provenance = models.JSONField(default=dict, blank=True)
     tibabot_procedure_key = models.CharField(
         max_length=100,
         blank=True,
@@ -229,6 +247,12 @@ class ProcedureCatalog(FacilityScopedModel, TimeStampedModel):
         ordering = ["category", "name"]
         verbose_name = "Procedure Catalog Entry"
         verbose_name_plural = "Procedure Catalog"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "code"],
+                name="unique_procedure_catalog_code_per_facility",
+            )
+        ]
         indexes = [
             models.Index(fields=["ichi_code"]),
             models.Index(fields=["category"]),

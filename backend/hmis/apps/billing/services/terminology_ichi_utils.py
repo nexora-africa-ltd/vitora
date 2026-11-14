@@ -16,9 +16,13 @@ import logging
 
 import requests
 
+from .dha_errors import DHAError
 from .sha_auth import SHAAuthError
 
 logger = logging.getLogger(__name__)
+
+ICHI_MIN_LIMIT = 25
+ICHI_MAX_LIMIT = 200
 
 
 def _sanitize_log_field(value: object) -> str:
@@ -45,6 +49,7 @@ class TerminologyIchiUtilsMixin:
         Returns:
             List of matching ICHICode objects
         """
+        limit = min(max(limit, ICHI_MIN_LIMIT), ICHI_MAX_LIMIT)
         logger.info("Searching ICHI codes: query=%s", _sanitize_log_field(query))
 
         params = {
@@ -53,6 +58,19 @@ class TerminologyIchiUtilsMixin:
         }
 
         try:
+            if self.auth_service.auth_mode == "ilm":
+                from .ilm_client import IlmClient
+                from .terminology_source_registry import get_terminology_source
+
+                source = get_terminology_source("ichi")
+                response = IlmClient(auth_service=self.auth_service).get(
+                    "/api/v1/clinical/concepts",
+                    params={**source.query_params(), **params},
+                )
+                data = response.json
+                results = data.get("results", data) if isinstance(data, dict) else data
+                return [ICHICode.from_api_response(result) for result in results]
+
             headers = self.auth_service.get_terminology_headers()
 
             response = requests.get(
@@ -73,6 +91,12 @@ class TerminologyIchiUtilsMixin:
                 f"Failed to search ICHI codes: {str(e)}",
                 terminology_type="ICHI",
             )
+        except DHAError as e:
+            raise TerminologyError(
+                f"Failed to search ICHI codes: {e}",
+                status_code=e.status_code or 0,
+                terminology_type="ICHI",
+            ) from e
 
     def get_ichi(self, code: str) -> ICHICode:
         """

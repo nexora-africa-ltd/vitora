@@ -112,7 +112,16 @@ class TerminologySearchView(APIView):
         """Search terminology codes."""
         search = request.query_params.get("search", "")
         code = str(request.query_params.get("code", "") or "").strip()
-        limit = int(request.query_params.get("limit", 50))
+        try:
+            limit = int(
+                request.query_params.get("limit", request.query_params.get("page_size", 50))
+            )
+        except ValueError:
+            return Response(
+                {"error": "limit or page_size must be an integer."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        limit = min(max(limit, 25), 200) if terminology_type == "ichi" else min(max(limit, 1), 100)
 
         if len(search) < 2 and not (
             terminology_type == "interventions"

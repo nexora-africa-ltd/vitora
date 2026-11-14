@@ -53,8 +53,16 @@ export const ProcedureCatalogListSchema = z.object({
 export const ProcedureCatalogDetailSchema = ProcedureCatalogListSchema.extend({
   description: z.string().default(''),
   ichi_code: z.string().default(''),
+  ichi_system: z.string().default(''),
+  ichi_owner: z.string().default(''),
+  ichi_source: z.string().default(''),
+  ichi_retrieved_at: z.string().nullable().default(null),
+  ichi_version: z.string().default(''),
+  ichi_checksum: z.string().default(''),
   cpt_code: z.string().default(''),
+  cpt_provenance: z.record(z.string(), z.unknown()).default({}),
   icd10_pcs_code: z.string().default(''),
+  icd10_pcs_provenance: z.record(z.string(), z.unknown()).default({}),
   consent_template: z.string().default(''),
   guardian_consent_required: z.boolean().default(false),
   witness_required: z.boolean().default(false),
@@ -73,10 +81,29 @@ export const ProcedureCatalogDetailSchema = ProcedureCatalogListSchema.extend({
   billing_service: z.number().nullable(),
   billing_price: NumericNullableSchema,
   billing_service_name: z.string().nullable(),
+  complexity: z.string().default(''),
+  sha_intervention_code: z.string().default(''),
+  requires_icu_bed: z.boolean().default(false),
+  typical_blood_requirement: z.string().default(''),
+  special_equipment: z.string().default(''),
+  setup_time_minutes: z.number().default(0),
+  cleanup_time_minutes: z.number().default(0),
+  surgeon_fee: NumericNullableSchema.default(0),
+  theatre_fee: NumericNullableSchema.default(0),
+  anesthesia_fee: NumericNullableSchema.default(0),
   organization: z.number().nullable(),
   facility: z.number().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
+});
+
+export const ProcedureCatalogSeedResponseSchema = z.object({
+  created: z.number(),
+  updated: z.number(),
+  skipped: z.number(),
+  legacy_removed: z.number(),
+  total: z.number(),
+  facility_id: z.number(),
 });
 
 export const ProcedureOrderListSchema = z.object({

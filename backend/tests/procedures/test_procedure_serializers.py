@@ -1,5 +1,7 @@
 """Tests for procedure serializers: validation, computed fields."""
 
+import hashlib
+
 import pytest  # type: ignore
 from rest_framework.test import APIRequestFactory
 
@@ -136,3 +138,112 @@ class TestActionSerializers:
         serializer = ProcedureCompleteSerializer(data={"status": "INVALID"})
         assert not serializer.is_valid()
         assert "status" in serializer.errors
+
+
+@pytest.mark.django_db
+def test_catalog_serializer_verifies_ichi_selection_and_records_provenance(
+    mocker, sample_facility, sample_organization
+):
+    """An ICHI code selected for a procedure is verified and attributed server-side."""
+    from hmis.apps.billing.services.terminology_models import ICHICode
+    from hmis.apps.procedures.serializers import ProcedureCatalogDetailSerializer
+
+    mocker.patch(
+        "hmis.apps.procedures.serializers.TerminologyService.get_ichi",
+        return_value=ICHICode(code="MZJ.01", title="Wound debridement"),
+    )
+    serializer = ProcedureCatalogDetailSerializer(
+        data={
+            "code": "PROC-ICHI-001",
+            "name": "Wound debridement",
+            "category": "THERAPEUTIC",
+            "body_system": "INTEGUMENTARY",
+            "risk_level": "LOW",
+            "facility": sample_facility.id,
+            "organization": sample_organization.id,
+            "ichi_code": "MZJ.01",
+        }
+    )
+
+    assert serializer.is_valid(), serializer.errors
+    procedure = serializer.save()
+
+    assert procedure.ichi_system == "http://id.who.int/ichi"
+    assert procedure.ichi_owner == "WHO"
+    assert procedure.ichi_source == "ICHI"
+    assert (
+        procedure.ichi_checksum
+        == hashlib.sha256(b"http://id.who.int/ichi|MZJ.01|Wound debridement").hexdigest()
+    )
+
+
+@pytest.mark.django_db
+def test_catalog_serializer_updates_linked_internal_code_with_ichi(mocker, procedure_catalog_entry):
+    """A seeded code follows ICHI changes until an administrator customizes it."""
+    from hmis.apps.billing.services.terminology_models import ICHICode
+    from hmis.apps.procedures.serializers import ProcedureCatalogDetailSerializer
+
+    procedure_catalog_entry.code = "OLD-ICHI"
+    procedure_catalog_entry.ichi_code = "OLD-ICHI"
+    procedure_catalog_entry.code_follows_ichi = True
+    procedure_catalog_entry.save(update_fields=["code", "ichi_code", "code_follows_ichi"])
+    mocker.patch(
+        "hmis.apps.procedures.serializers.TerminologyService.get_ichi",
+        return_value=ICHICode(code="NEW-ICHI", title="Updated procedure"),
+    )
+
+    serializer = ProcedureCatalogDetailSerializer(
+        procedure_catalog_entry,
+        data={"ichi_code": "NEW-ICHI"},
+        partial=True,
+    )
+
+    assert serializer.is_valid(), serializer.errors
+    updated = serializer.save()
+    assert updated.code == "NEW-ICHI"
+    assert updated.code_follows_ichi is True
+
+    custom_code = ProcedureCatalogDetailSerializer(
+        updated,
+        data={"code": "FACILITY-PROC-001"},
+        partial=True,
+    )
+    assert custom_code.is_valid(), custom_code.errors
+    customized = custom_code.save()
+    assert customized.code_follows_ichi is False
+
+    mocker.patch(
+        "hmis.apps.procedures.serializers.TerminologyService.get_ichi",
+        return_value=ICHICode(code="LATEST-ICHI", title="Latest procedure"),
+    )
+    serializer = ProcedureCatalogDetailSerializer(
+        customized,
+        data={"ichi_code": "LATEST-ICHI"},
+        partial=True,
+    )
+    assert serializer.is_valid(), serializer.errors
+    updated = serializer.save()
+    assert updated.code == "FACILITY-PROC-001"
+    assert updated.code_follows_ichi is False
+
+
+@pytest.mark.django_db
+def test_catalog_serializer_keeps_cpt_as_manual_crosswalk(sample_facility, sample_organization):
+    """CPT remains user-supplied and does not trigger an external terminology lookup."""
+    from hmis.apps.procedures.serializers import ProcedureCatalogDetailSerializer
+
+    serializer = ProcedureCatalogDetailSerializer(
+        data={
+            "code": "PROC-CPT-001",
+            "name": "Licensed CPT crosswalk",
+            "category": "THERAPEUTIC",
+            "body_system": "INTEGUMENTARY",
+            "risk_level": "LOW",
+            "facility": sample_facility.id,
+            "organization": sample_organization.id,
+            "cpt_code": "12001",
+        }
+    )
+
+    assert serializer.is_valid(), serializer.errors
+    assert serializer.save().cpt_code == "12001"

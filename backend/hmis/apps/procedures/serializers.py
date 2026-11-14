@@ -1,5 +1,11 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
+import hashlib
+
+from django.utils import timezone
 from rest_framework import serializers
+
+from hmis.apps.billing.services.terminology import TerminologyError, TerminologyService
+from hmis.apps.billing.services.terminology_source_registry import get_terminology_source
 
 from .models import (
     ExternalProcedureOrderRequest,
@@ -57,6 +63,55 @@ class ProcedureCatalogDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProcedureCatalog
         fields = "__all__"
+        read_only_fields = [
+            "ichi_system",
+            "ichi_owner",
+            "ichi_source",
+            "ichi_retrieved_at",
+            "ichi_version",
+            "ichi_checksum",
+            "code_follows_ichi",
+        ]
+
+    def validate(self, attrs):
+        """Verify changed ICHI selections against the approved terminology source."""
+        ichi_code = attrs.get("ichi_code")
+        current_code = getattr(self.instance, "ichi_code", "") if self.instance else ""
+        manual_code_edit = bool(
+            self.instance and "code" in attrs and attrs["code"] != self.instance.code
+        )
+        if manual_code_edit:
+            attrs["code_follows_ichi"] = attrs["code"] == (ichi_code or current_code)
+        if not ichi_code or ichi_code == current_code:
+            return attrs
+
+        try:
+            concept = TerminologyService().get_ichi(ichi_code)
+        except TerminologyError as exc:
+            raise serializers.ValidationError(
+                {"ichi_code": "The selected ICHI code could not be verified."}
+            ) from exc
+
+        source = get_terminology_source("ichi")
+        system = "http://id.who.int/ichi"
+        checksum = hashlib.sha256(f"{system}|{concept.code}|{concept.title}".encode()).hexdigest()
+        attrs.update(
+            {
+                "ichi_code": concept.code,
+                "ichi_system": system,
+                "ichi_owner": source.owner,
+                "ichi_source": source.source or "",
+                "ichi_retrieved_at": timezone.now(),
+                "ichi_version": str(concept.raw_data.get("version") or ""),
+                "ichi_checksum": checksum,
+            }
+        )
+        if self.instance and self.instance.code_follows_ichi and not manual_code_edit:
+            attrs["code"] = concept.code
+            attrs["code_follows_ichi"] = True
+        elif not self.instance and attrs.get("code") == concept.code:
+            attrs["code_follows_ichi"] = True
+        return attrs
 
     def get_default_clinics_detail(self, obj: ProcedureCatalog) -> list[dict]:
         return [
