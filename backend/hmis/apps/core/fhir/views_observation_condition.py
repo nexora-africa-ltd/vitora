@@ -432,10 +432,6 @@ class FHIRObservationView(PublicFHIRReadAPIView):
             "meta": {
                 "versionId": "1",
                 "lastUpdated": format_date(lab_result.updated_at),
-                "profile": [
-                    "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-results-laboratory-uv-ips",
-                    "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-results-uv-ips",
-                ],
             },
             "status": "final",
             "category": [

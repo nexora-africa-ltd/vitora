@@ -922,6 +922,7 @@ class TestFHIRAdditionalResources:
         assert response.data["id"] == str(sample_diagnostic_report.id)
         assert response.data["category"][0]["coding"][0]["code"] == "LAB"
         assert response.data["performer"][0]["reference"].startswith("Practitioner/")
+        assert "profile" not in response.data.get("meta", {})
 
     def test_diagnostic_report_uses_persisted_loinc_terminology(
         self,
@@ -945,6 +946,19 @@ class TestFHIRAdditionalResources:
             "code": "58410-2",
             "display": "Complete Blood Count",
         }
+
+    def test_standalone_lab_observation_does_not_claim_uninstalled_ips_profiles(
+        self,
+        authenticated_client,
+        sample_lab_result,
+    ):
+        """Standalone R4 exports must not claim profiles the validator cannot resolve."""
+        response = authenticated_client.get(
+            reverse("fhir:observation-read", args=[sample_lab_result.id])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "profile" not in response.data.get("meta", {})
 
     def test_immunization_endpoint(self, authenticated_client, sample_immunization_record):
         response = authenticated_client.get(

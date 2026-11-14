@@ -633,9 +633,8 @@ class FHIRDiagnosticReportView(PublicFHIRReadAPIView):
             "resourceType": "DiagnosticReport",
             "id": str(report.id),
             "meta": {
-                "profile": [
-                    "http://hl7.org/fhir/uv/ips/StructureDefinition/DiagnosticReport-uv-ips"
-                ]
+                "versionId": "1",
+                "lastUpdated": format_date(report.updated_at),
             },
             "status": self.STATUS_MAP.get(report.status, "unknown"),
             "category": [
