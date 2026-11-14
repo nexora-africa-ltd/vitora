@@ -5,7 +5,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { PatientForm } from '@/components/patients/patient-form';
+import { isValidKenyanNationalIdentifier, PatientForm } from '@/components/patients/patient-form';
 
 // Mock the hooks
 jest.mock('@/lib/hooks/use-locations', () => ({
@@ -76,6 +76,12 @@ describe('PatientForm Component', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('accepts a 14-digit Maisha Namba and legacy national IDs', () => {
+    expect(isValidKenyanNationalIdentifier('12345678')).toBe(true);
+    expect(isValidKenyanNationalIdentifier('12345678901234')).toBe(true);
+    expect(isValidKenyanNationalIdentifier('123456789')).toBe(false);
   });
 
   it('should render form with personal information section', () => {

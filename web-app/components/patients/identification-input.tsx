@@ -44,7 +44,7 @@ const ID_TYPE_ICONS: Record<IdentificationType, React.ReactNode> = {
 
 // Placeholder text for each ID type
 const ID_TYPE_PLACEHOLDERS: Record<IdentificationType, string> = {
-  national_id: 'e.g., 12345678',
+  national_id: 'e.g., 12345678 or 12345678901234',
   cr_number: 'e.g., CR1234567890-0',
   mandate_number: 'e.g., MN123456',
   alien_id: 'e.g., A123456',
