@@ -27,7 +27,7 @@ class DataIntegrityStatusView(APIView):
                     "future_date_of_birth_rejected": True,
                     "malformed_national_id_rejected": True,
                     "negative_clinical_measurement_rejected": True,
-                    "national_id_format": "7 or 8 decimal digits",
+                    "national_id_format": "7 or 8 legacy decimal digits, or 14-digit Maisha Namba",
                     "cross_field_validation_enforced": True,
                     "duplicate_patient_detection_enforced": True,
                     "api_validation_failure_status": 400,

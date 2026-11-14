@@ -253,7 +253,7 @@ class PatientSerializer(serializers.ModelSerializer):
         return value
 
     def validate_identification_number(self, value):
-        """Reject malformed identifiers for formats that have a defined national pattern."""
+        """Reject malformed identifiers while accepting legacy IDs and Maisha Namba."""
         if not value:
             return value
 
@@ -261,8 +261,10 @@ class PatientSerializer(serializers.ModelSerializer):
             "identification_type",
             getattr(self.instance, "identification_type", "national_id"),
         )
-        if identification_type == "national_id" and not re.fullmatch(r"\d{7,8}", value):
-            raise serializers.ValidationError("National ID must contain exactly 7 or 8 digits.")
+        if identification_type == "national_id" and not re.fullmatch(r"(?:\d{7,8}|\d{14})", value):
+            raise serializers.ValidationError(
+                "National ID must contain 7 or 8 legacy digits, or a 14-digit Maisha Namba."
+            )
         return value
 
     def validate(self, data):

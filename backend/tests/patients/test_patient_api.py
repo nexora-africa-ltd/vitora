@@ -701,7 +701,7 @@ class TestPatientHouseholdSupport:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_create_patient_rejects_malformed_national_id(self, auth_client, sample_patient_data):
-        """A Kenyan national ID must contain seven or eight digits."""
+        """A national ID must use a supported legacy or Maisha Namba format."""
         sample_patient_data["identification_type"] = "national_id"
         sample_patient_data["identification_number"] = "NOT-A-NATIONAL-ID"
 
@@ -709,3 +709,14 @@ class TestPatientHouseholdSupport:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "identification_number" in response.data
+
+    def test_create_patient_accepts_fourteen_digit_maisha_namba(
+        self, auth_client, sample_patient_data
+    ):
+        """A 14-digit Maisha Namba is a valid Kenyan national identifier."""
+        sample_patient_data["identification_type"] = "national_id"
+        sample_patient_data["identification_number"] = "12345678901234"
+
+        response = auth_client.post("/api/patients/", sample_patient_data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED

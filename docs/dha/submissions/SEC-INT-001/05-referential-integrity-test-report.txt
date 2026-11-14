@@ -10,11 +10,11 @@
 # Result timestamp: 2026-11-14
 #
 # Separate validation command:
-# poetry run pytest --no-cov -q tests/patients/test_patient_api.py::TestPatientHouseholdSupport::test_create_patient_rejects_malformed_national_id tests/encounters/test_encounter_api.py::TestEncounterAPIValidation::test_invalid_weight
+# poetry run pytest --no-cov -q tests/patients/test_patient_enhancements.py::TestDOBValidation::test_dob_validation_on_api_create tests/patients/test_patient_api.py::TestPatientHouseholdSupport::test_create_patient_rejects_malformed_national_id tests/patients/test_patient_api.py::TestPatientHouseholdSupport::test_create_patient_accepts_fourteen_digit_maisha_namba tests/encounters/test_encounter_api.py::TestEncounterAPIValidation::test_invalid_weight
 #
-# Result: 3 passed
+# Result: 4 passed
 # Controls exercised:
-# - Future-date, malformed national-ID, and negative clinical-measurement rejection
+# - Future-date, malformed national-ID, 14-digit Maisha Namba acceptance, and negative clinical-measurement rejection
 # - Patient duplicate prevention, active-admission/bed constraints, idempotency, and transactions
 # - SHA-256 claim-attachment checksum generation and storage
 # - X.509 certificate, RSA/SHA-256 signature verification, and altered-document detection

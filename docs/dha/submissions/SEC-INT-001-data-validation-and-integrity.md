@@ -26,7 +26,7 @@ Use DHA-only synthetic data and capture each request/response:
    `date_of_birth` validation error.
 2. `POST /api/patients/` with `identification_type=national_id` and
    `identification_number=NOT-A-NATIONAL-ID` returns `400`. National IDs accept
-   only seven or eight decimal digits.
+   seven or eight legacy decimal digits, or the 14-digit Maisha Namba.
 3. `POST /api/encounters/` with a synthetic patient and `weight=-10` returns
    `400` with a `weight` validation error.
 4. Upload an allowed synthetic PDF to a test SHA claim at
