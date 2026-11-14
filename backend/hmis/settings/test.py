@@ -61,6 +61,7 @@ SUBSCRIPTION_FEATURE_ENFORCEMENT = (
 RBAC_READ_ENFORCEMENT = os.getenv("RBAC_READ_ENFORCEMENT", "false").lower() == "true"
 RBAC_WRITE_ENFORCEMENT = os.getenv("RBAC_WRITE_ENFORCEMENT", "false").lower() == "true"
 RBAC_CDS_ENFORCEMENT = os.getenv("RBAC_CDS_ENFORCEMENT", "false").lower() == "true"
+FHIR_RBAC_ENFORCEMENT = os.getenv("FHIR_RBAC_ENFORCEMENT", "false").lower() == "true"
 
 # In-memory SQLite for speed — migrations run once per pytest session (~2-4s).
 # WebSocket / Channels tests that need cross-thread visibility should use a

@@ -15,7 +15,7 @@ from oauth2_provider.models import AccessToken, Application
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from hmis.apps.core.models import SMARTTokenContext
+from hmis.apps.core.models import SMARTOAuthClientTenantBinding, SMARTTokenContext
 from tests.conftest import ensure_staff_profile
 
 User = get_user_model()
@@ -35,6 +35,11 @@ class TestSMARTOAuthFHIRAuthorization:
             client_type=Application.CLIENT_CONFIDENTIAL,
             authorization_grant_type=Application.GRANT_AUTHORIZATION_CODE,
             user=user,
+        )
+        SMARTOAuthClientTenantBinding.objects.create(
+            application=application,
+            organization=sample_organization,
+            facility=sample_facility,
         )
         token = AccessToken.objects.create(
             user=user,
@@ -94,6 +99,17 @@ class TestSMARTOAuthFHIRAuthorization:
         assert response.data["entry"][0]["resource"]["id"] == str(sample_patient.pk)
         returned_ids = [entry["resource"]["id"] for entry in response.data["entry"]]
         assert str(other_patient.pk) not in returned_ids
+
+    def test_unbound_oauth_client_is_denied_even_with_patient_context(
+        self, oauth_client, sample_patient
+    ):
+        """A SMART client without a local tenant binding fails closed."""
+        SMARTTokenContext.objects.create(access_token=oauth_client, patient=sample_patient)
+        oauth_client.application.vitora_tenant_binding.delete()
+
+        response = self.client_for(oauth_client).get(f"/fhir/Patient/{sample_patient.pk}")
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_patient_scope_denies_direct_allergy_for_another_patient(
         self, oauth_client, sample_patient, sample_county, sample_sub_county, sample_organization

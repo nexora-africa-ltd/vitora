@@ -788,6 +788,7 @@ LOGGING = {
 RBAC_ENABLED = True
 RBAC_STRICT_MODE = True  # Deny if no explicit permission (vs allow)
 RBAC_CACHE_TIMEOUT = 300  # Cache permission checks for 5 minutes
+FHIR_RBAC_ENFORCEMENT = True  # Require the dedicated FHIR capability on protected FHIR endpoints.
 
 # Kenya Professional License Bodies
 # These are the official regulatory bodies for healthcare professionals in Kenya

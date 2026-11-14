@@ -38,11 +38,21 @@ class PatientAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
         "last_name",
         "date_of_birth",
         "gender",
+        "organization",
+        "registered_at_facility",
         "county",
         "referral_source",
         "created_at",
     ]
-    list_filter = ["gender", "referral_source", "county", "is_sensitive", "created_at"]
+    list_filter = [
+        "organization",
+        "registered_at_facility",
+        "gender",
+        "referral_source",
+        "county",
+        "is_sensitive",
+        "created_at",
+    ]
     search_fields = ["mrn", "first_name", "last_name"]
     readonly_fields = [
         "mrn",
@@ -57,6 +67,7 @@ class PatientAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     ordering = ["-created_at"]
     inlines = [EmergencyContactInline]
     autocomplete_fields = ["county", "sub_county", "ward"]
+    raw_id_fields = ["organization", "registered_at_facility"]
 
     fieldsets = (
         (
@@ -75,6 +86,16 @@ class PatientAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
         (
             "Referral & Registration",
             {"fields": ("referral_source", "referred_from_facility", "registered_by")},
+        ),
+        (
+            "Tenant Ownership",
+            {
+                "fields": ("organization", "registered_at_facility"),
+                "description": (
+                    "Vitora ownership fields. External FHIR Organization references "
+                    "must not be entered here."
+                ),
+            },
         ),
         (
             "Privacy & Consent",

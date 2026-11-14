@@ -1128,6 +1128,44 @@ class WriteRequiresRolePermission(permissions.BasePermission):
         return False
 
 
+class FHIRAccessPermission(permissions.BasePermission):
+    """Require a dedicated role or Django permission for protected FHIR endpoints."""
+
+    message = "Your role does not have access to the FHIR API."
+    code = "fhir_access_denied"
+    ADMIN_ROLE_CODES = {"ADMIN", "ORG-ADMIN", "OWNER"}
+
+    def has_permission(self, request, view):  # noqa: ARG002
+        """Check the explicit FHIR capability without inferring an APIView model."""
+        from django.conf import settings
+
+        enforced = getattr(
+            settings,
+            "FHIR_RBAC_ENFORCEMENT",
+            getattr(settings, "RBAC_READ_ENFORCEMENT", True)
+            if request.method in permissions.SAFE_METHODS
+            else getattr(settings, "RBAC_WRITE_ENFORCEMENT", True),
+        )
+        if not enforced:
+            return True
+
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser or user.has_perm("core.access_fhir_api"):
+            return True
+
+        profile = getattr(user, "staff_profile", None)
+        role = getattr(profile, "primary_role", None)
+        if role and getattr(role, "code", "") in self.ADMIN_ROLE_CODES:
+            return True
+        if not profile:
+            return False
+
+        action = "read" if request.method in permissions.SAFE_METHODS else "create"
+        return profile.has_permission(action, "FHIR")
+
+
 class ReadRequiresModelPermission(permissions.BasePermission):
     """Require Django `view_*` permission for SAFE methods when model can be resolved.
 

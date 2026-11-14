@@ -21,6 +21,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from hmis.apps.core.fhir.tenant import (
+    fhir_facility_create_tenant_kwargs,
+    fhir_patient_create_tenant_kwargs,
+    scope_fhir_queryset,
+)
 from hmis.apps.core.fhir.views import FHIR_RENDERER_CLASSES, FHIRSchemaMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.oauth.permissions import (
@@ -28,7 +33,11 @@ from hmis.apps.core.oauth.permissions import (
     SMARTScopePermission,
     is_patient_context_allowed,
 )
-from hmis.apps.core.permissions import ReadRequiresModelPermission, get_client_ip
+from hmis.apps.core.permissions import (
+    FHIRAccessPermission,
+    ReadRequiresModelPermission,
+    get_client_ip,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +49,7 @@ class FHIRWriteAPIView(FHIRSchemaMixin, APIView):
         IsAuthenticated,
         SMARTScopePermission,
         SMARTPatientAccessPermission,
+        FHIRAccessPermission,
         ReadRequiresModelPermission,
     ]
     renderer_classes = FHIR_RENDERER_CLASSES
@@ -191,6 +201,7 @@ class FHIRPatientCreateView(FHIRWriteAPIView):
                 identification_number=national_id,
                 registered_by=request.user,
                 consent_given=True,
+                **fhir_patient_create_tenant_kwargs(request),
             )
         except IntegrityError as e:
             return self.operation_outcome(
@@ -256,7 +267,7 @@ class FHIRObservationCreateView(FHIRWriteAPIView):
         from hmis.apps.patients.models import Patient
 
         try:
-            patient = Patient.objects.get(pk=patient_id)
+            patient = scope_fhir_queryset(request, Patient.objects).get(pk=patient_id)
         except (Patient.DoesNotExist, ValueError):
             return self.operation_outcome("error", "not-found", f"Patient/{patient_id} not found")
 
@@ -360,7 +371,7 @@ class FHIRConditionCreateView(FHIRWriteAPIView):
         from hmis.apps.patients.models import Patient
 
         try:
-            patient = Patient.objects.get(pk=patient_id)
+            patient = scope_fhir_queryset(request, Patient.objects).get(pk=patient_id)
         except (Patient.DoesNotExist, ValueError):
             return self.operation_outcome("error", "not-found", f"Patient/{patient_id} not found")
 
@@ -458,7 +469,7 @@ class FHIREncounterCreateView(FHIRWriteAPIView):
         patient_id = patient_ref.replace("Patient/", "")
 
         try:
-            patient = Patient.objects.get(pk=patient_id)
+            patient = scope_fhir_queryset(request, Patient.objects).get(pk=patient_id)
         except (Patient.DoesNotExist, ValueError):
             return self.operation_outcome("error", "not-found", f"Patient/{patient_id} not found")
 
@@ -488,6 +499,7 @@ class FHIREncounterCreateView(FHIRWriteAPIView):
             encounter_type=encounter_type,
             chief_complaint=chief_complaint,
             assigned_clinician=request.user,
+            **fhir_facility_create_tenant_kwargs(request),
         )
 
         response_data = {
@@ -531,7 +543,7 @@ class FHIRMedicationRequestCreateView(FHIRWriteAPIView):
         patient_id = patient_ref.replace("Patient/", "")
 
         try:
-            patient = Patient.objects.get(pk=patient_id)
+            patient = scope_fhir_queryset(request, Patient.objects).get(pk=patient_id)
         except (Patient.DoesNotExist, ValueError):
             return self.operation_outcome("error", "not-found", f"Patient/{patient_id} not found")
 
@@ -563,6 +575,7 @@ class FHIRMedicationRequestCreateView(FHIRWriteAPIView):
             status="PENDING",
             valid_until=timezone.now().date() + timedelta(days=30),
             clinical_notes=f"Received via FHIR. Medication: {medication_text}. Dosage: {dosage_instruction}",
+            **fhir_facility_create_tenant_kwargs(request),
         )
 
         response_data = {
@@ -605,7 +618,7 @@ class FHIRDiagnosticReportCreateView(FHIRWriteAPIView):
         patient_id = patient_ref.replace("Patient/", "")
 
         try:
-            patient = Patient.objects.get(pk=patient_id)
+            patient = scope_fhir_queryset(request, Patient.objects).get(pk=patient_id)
         except (Patient.DoesNotExist, ValueError):
             return self.operation_outcome("error", "not-found", f"Patient/{patient_id} not found")
 

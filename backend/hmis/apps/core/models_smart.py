@@ -49,3 +49,58 @@ class SMARTTokenContext(models.Model):
         if self.encounter_id:
             context["encounter"] = str(self.encounter_id)
         return context
+
+
+class SMARTOAuthClientTenantBinding(models.Model):
+    """
+    Bind a SMART OAuth client to the Vitora tenant it may access.
+
+    External FHIR Organization references remain interoperability metadata.
+    This binding is the authoritative local authorization boundary for an
+    OAuth client and may optionally restrict it to one facility.
+    """
+
+    application = models.OneToOneField(
+        "oauth2_provider.Application",
+        on_delete=models.CASCADE,
+        related_name="vitora_tenant_binding",
+    )
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.PROTECT,
+        related_name="smart_oauth_client_bindings",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.PROTECT,
+        related_name="smart_oauth_client_bindings",
+        null=True,
+        blank=True,
+        help_text="Optional facility restriction for this integration client.",
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "SMART OAuth client tenant binding"
+        verbose_name_plural = "SMART OAuth client tenant bindings"
+        permissions = [
+            ("access_fhir_api", "Can access the FHIR API"),
+        ]
+
+    def __str__(self) -> str:
+        """Identify the binding without exposing credentials."""
+        return f"SMART client {self.application_id} → {self.organization_id}"
+
+    def save(self, *args, **kwargs):
+        """Validate the tenant relationship before persisting the binding."""
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def clean(self):
+        """Require any selected facility to belong to the bound organization."""
+        from django.core.exceptions import ValidationError
+
+        if self.facility_id and self.facility.organization_id != self.organization_id:
+            raise ValidationError({"facility": "Facility must belong to the bound organization."})
