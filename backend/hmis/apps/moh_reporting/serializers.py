@@ -96,6 +96,7 @@ class MOH705ReportListSerializer(serializers.ModelSerializer):
             "total_under_5",
             "total_5_and_above",
             "is_submitted",
+            "dhis2_submitted_at",
             "disease_row_count",
             "generated_at",
             "created_at",
@@ -197,6 +198,7 @@ class MOH711ReportListSerializer(serializers.ModelSerializer):
             "malaria_cases_under_5",
             "malaria_cases_5_and_above",
             "is_submitted",
+            "dhis2_submitted_at",
             "generated_at",
             "created_at",
         ]
@@ -294,6 +296,7 @@ class MOH717ReportListSerializer(serializers.ModelSerializer):
             "admissions_total",
             "emergency_visits",
             "is_submitted",
+            "dhis2_submitted_at",
             "generated_at",
             "created_at",
         ]

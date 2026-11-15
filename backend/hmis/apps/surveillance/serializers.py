@@ -52,12 +52,22 @@ class CountyNotificationDeliverySerializer(serializers.ModelSerializer):
 
     recipient_masked = serializers.SerializerMethodField()
     triggered_by_name = serializers.SerializerMethodField()
+    sent_by_name = serializers.SerializerMethodField()
+    case_disease_name = serializers.CharField(source="case.disease.name", read_only=True)
+    case_patient_mrn = serializers.CharField(source="case.patient.mrn", read_only=True)
+    case_notification_status = serializers.CharField(
+        source="case.notification_status",
+        read_only=True,
+    )
 
     class Meta:
         model = CountyNotificationDelivery
         fields = [
             "id",
             "case",
+            "case_disease_name",
+            "case_patient_mrn",
+            "case_notification_status",
             "channel",
             "status",
             "recipient_masked",
@@ -75,6 +85,7 @@ class CountyNotificationDeliverySerializer(serializers.ModelSerializer):
             "next_retry_at",
             "triggered_by",
             "triggered_by_name",
+            "sent_by_name",
             "created_at",
             "updated_at",
         ]
@@ -104,6 +115,10 @@ class CountyNotificationDeliverySerializer(serializers.ModelSerializer):
     def get_triggered_by_name(self, obj) -> str | None:
         """Return trigger actor display name."""
         return _display_user_name(obj.triggered_by)
+
+    def get_sent_by_name(self, obj) -> str:
+        """Return the operator name or identify an automated dispatch."""
+        return _display_user_name(obj.triggered_by) or "Automated system"
 
 
 class SurveillanceFacilitySettingsSerializer(serializers.ModelSerializer):

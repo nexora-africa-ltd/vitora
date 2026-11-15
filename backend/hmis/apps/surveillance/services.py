@@ -609,6 +609,44 @@ class SurveillanceService:
         return deliveries
 
     @classmethod
+    def retry_county_delivery(
+        cls,
+        delivery: "CountyNotificationDelivery",
+        *,
+        ack_base_url: str = "",
+    ) -> "CountyNotificationDelivery":
+        """Manually retry one failed or scheduled county-delivery attempt."""
+        from .models import CountyNotificationDeliveryStatus
+
+        if delivery.status not in {
+            CountyNotificationDeliveryStatus.RETRY_SCHEDULED,
+            CountyNotificationDeliveryStatus.FAILED,
+        }:
+            raise ValueError("Only failed or scheduled deliveries can be retried.")
+
+        case = delivery.case
+        include_patient_identifiers = bool(
+            cls._county_notification_config(case).get("include_patient_identifiers", False)
+        )
+        ack_url = (
+            cls.build_county_ack_url(delivery, base_url=ack_base_url)
+            if delivery.channel == "EMAIL"
+            else ""
+        )
+        text_message, html_message = cls._build_county_notification_message(
+            case,
+            include_patient_identifiers=include_patient_identifiers,
+            ack_url=ack_url,
+        )
+        cls._dispatch_delivery(
+            delivery,
+            text_message=text_message,
+            html_message=html_message,
+            subject=f"[Vitora HMIS] County Notification: {case.disease.name}",
+        )
+        return delivery
+
+    @classmethod
     def has_case_delivery_success(cls, case: "NotifiableCase") -> bool:
         """Return True when at least one county transport accepted the notification."""
         from .models import CountyNotificationChannel, CountyNotificationDeliveryStatus
@@ -726,6 +764,8 @@ class SurveillanceService:
     ) -> "CountyNotificationDelivery | None":
         """Apply provider terminal status for surveillance email deliveries."""
         del payload
+        from hmis.apps.core.models import AuditLog
+
         from .models import CountyNotificationDelivery, CountyNotificationDeliveryStatus
 
         normalized = (event_type or "").strip().lower()
@@ -746,8 +786,28 @@ class SurveillanceService:
         now = timezone.now()
         # Provider events can arrive out of order. A successful delivery is
         # terminal and must never be regressed by a later failure/bounce event.
+        # A superseded delivery belongs to a corrected recipient configuration;
+        # retain that state even when the original provider event arrives late.
+        if delivery.status == CountyNotificationDeliveryStatus.SUPERSEDED:
+            delivery.provider_event = normalized
+            delivery.save(update_fields=["provider_event", "updated_at"])
+            AuditLog.log(
+                action="county_notification_delivery_provider_event_ignored",
+                user=None,
+                resource_type="CountyNotificationDelivery",
+                resource_id=delivery.id,
+                details={
+                    "case_id": delivery.case_id,
+                    "channel": delivery.channel,
+                    "status": delivery.status,
+                    "provider_event": normalized,
+                    "reason": "delivery_superseded",
+                },
+            )
+            return delivery
         if delivery.status == CountyNotificationDeliveryStatus.DELIVERED:
             return delivery
+        previous_status = delivery.status
         delivery.provider_event = normalized
         if normalized == "email.delivered":
             delivery.status = CountyNotificationDeliveryStatus.DELIVERED
@@ -777,6 +837,19 @@ class SurveillanceService:
                 "last_error",
                 "updated_at",
             ]
+        )
+        AuditLog.log(
+            action="county_notification_delivery_status_changed",
+            user=None,
+            resource_type="CountyNotificationDelivery",
+            resource_id=delivery.id,
+            details={
+                "case_id": delivery.case_id,
+                "channel": delivery.channel,
+                "previous_status": previous_status,
+                "status": delivery.status,
+                "provider_event": normalized,
+            },
         )
         return delivery
 

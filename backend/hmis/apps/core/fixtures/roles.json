@@ -550,6 +550,12 @@
           "update": true,
           "delete": true
         },
+        "CountyNotificationDelivery": {
+          "create": false,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
         "IDSRWeeklyReport": {
           "create": true,
           "read": true,
@@ -5756,6 +5762,12 @@
           "update": false,
           "delete": false
         },
+        "CountyNotificationDelivery": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
         "NotifiableCase": {
           "create": false,
           "read": true,
@@ -5910,6 +5922,12 @@
           "create": false,
           "read": true,
           "update": false,
+          "delete": false
+        },
+        "CountyNotificationDelivery": {
+          "create": false,
+          "read": true,
+          "update": true,
           "delete": false
         },
         "Patient": {

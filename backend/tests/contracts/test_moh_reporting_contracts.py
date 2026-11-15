@@ -40,6 +40,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             {
                 "created_at",
                 "disease_row_count",
+                "dhis2_submitted_at",
                 "facility",
                 "facility_name",
                 "generated_at",
@@ -93,6 +94,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             {
                 "created_at",
                 "deliveries_total",
+                "dhis2_submitted_at",
                 "facility",
                 "facility_name",
                 "generated_at",
@@ -156,6 +158,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             {
                 "admissions_total",
                 "created_at",
+                "dhis2_submitted_at",
                 "emergency_visits",
                 "facility",
                 "facility_name",

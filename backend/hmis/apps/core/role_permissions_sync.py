@@ -198,6 +198,7 @@ MODEL_MAPPING: dict[str, tuple[str, str]] = {
     "IDSRWeeklyReport": ("surveillance", "idsrweeklyreport"),
     "IHRNotification": ("surveillance", "ihrnotification"),
     "SurveillanceAlert": ("surveillance", "surveillancealert"),
+    "CountyNotificationDelivery": ("surveillance", "countynotificationdelivery"),
     # allied health — physiotherapy
     "PhysiotherapyOrder": ("physiotherapy", "physiotherapyorder"),
     "PhysiotherapySession": ("physiotherapy", "physiotherapysession"),

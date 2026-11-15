@@ -407,6 +407,14 @@ export const ACTION_PERMISSIONS = {
   'surveillance.escalate_national': ['SURVEILLANCE_OFFICER', 'ADMIN'],
   'surveillance.notify_who': ['ADMIN'],
   'surveillance.manage_thresholds': ['SURVEILLANCE_OFFICER', 'ADMIN'],
+  'surveillance.view_submissions': [
+    'OWNER',
+    'ADMIN',
+    'ORG-ADMIN',
+    'COMPLIANCE_OFFICER',
+    'DHA_EVIDENCE_READER',
+  ],
+  'surveillance.retry_submissions': ['OWNER', 'ADMIN', 'ORG-ADMIN'],
 
   // === Allied Health Module ===
   'allied_health.view_dashboard': [

@@ -109,6 +109,9 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             {
                 "attempt_count",
                 "case",
+                "case_disease_name",
+                "case_notification_status",
+                "case_patient_mrn",
                 "channel",
                 "created_at",
                 "delivered_at",
@@ -123,6 +126,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "recipient_masked",
                 "retry_backoff_minutes",
                 "sent_at",
+                "sent_by_name",
                 "status",
                 "terminal_status_at",
                 "triggered_by",

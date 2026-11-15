@@ -67,6 +67,7 @@ export interface MOH705ReportListItem {
   total_under_5: number;
   total_5_and_above: number;
   is_submitted: boolean;
+  dhis2_submitted_at: string | null;
   disease_row_count: number;
   generated_at: string | null;
   created_at: string;
@@ -113,6 +114,7 @@ export interface MOH711ReportListItem {
   malaria_cases_under_5: number;
   malaria_cases_5_and_above: number;
   is_submitted: boolean;
+  dhis2_submitted_at: string | null;
   generated_at: string | null;
   created_at: string;
 }
@@ -152,6 +154,7 @@ export interface MOH717ReportListItem {
   admissions_total: number;
   emergency_visits: number;
   is_submitted: boolean;
+  dhis2_submitted_at: string | null;
   generated_at: string | null;
   created_at: string;
 }

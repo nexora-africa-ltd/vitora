@@ -497,6 +497,33 @@ class TestExpandedPermissionMatrices:
         admin = Role.objects.get(code="ADMIN")
         assert len(admin.permissions_matrix) >= 60
 
+    def test_submission_delivery_permissions_follow_least_privilege(self):
+        """Only operational admins may retry facility surveillance deliveries."""
+        from hmis.apps.core.models import Role
+
+        assert Role.objects.get(code="ADMIN").permissions_matrix["CountyNotificationDelivery"] == {
+            "create": False,
+            "read": True,
+            "update": True,
+            "delete": False,
+        }
+        assert Role.objects.get(code="ORG-ADMIN").permissions_matrix[
+            "CountyNotificationDelivery"
+        ] == {
+            "create": False,
+            "read": True,
+            "update": True,
+            "delete": False,
+        }
+        assert Role.objects.get(code="COMPLIANCE_OFFICER").permissions_matrix[
+            "CountyNotificationDelivery"
+        ] == {
+            "create": False,
+            "read": True,
+            "update": False,
+            "delete": False,
+        }
+
     def test_admin_has_full_crud_on_all_resources(self):
         """ADMIN should have create+read+update+delete on most resources."""
         from hmis.apps.core.models import Role
@@ -507,6 +534,8 @@ class TestExpandedPermissionMatrices:
             "AuditLog",
             "CDSAlert",
             "SurveillanceAlert",
+            # Created by the county-dispatch service; admins may view/retry only.
+            "CountyNotificationDelivery",
             "WardStockTransaction",
             "VaccineDefinition",
             # Analytics read-only ViewSets

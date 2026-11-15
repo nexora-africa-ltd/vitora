@@ -34,6 +34,7 @@ class CountyNotificationDeliveryStatus(models.TextChoices):
     BOUNCED = "BOUNCED", "Bounced"
     RETRY_SCHEDULED = "RETRY_SCHEDULED", "Retry Scheduled"
     FAILED = "FAILED", "Failed"
+    SUPERSEDED = "SUPERSEDED", "Superseded"
 
 
 class SurveillanceFacilitySettings(FacilityScopedModel):
