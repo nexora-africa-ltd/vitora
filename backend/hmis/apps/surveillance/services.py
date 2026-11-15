@@ -631,6 +631,92 @@ class SurveillanceService:
         ).exists()
 
     @classmethod
+    def notify_county_automatically(
+        cls,
+        *,
+        case: "NotifiableCase",
+        alert: "SurveillanceAlert",
+    ) -> list["CountyNotificationDelivery"]:
+        """Dispatch and record automatic county notification for DHA-reportable alerts."""
+        from hmis.apps.core.models import AuditLog
+
+        from .models import (
+            CountyNotificationChannel,
+            CountyNotificationDelivery,
+            CountyNotificationDeliveryStatus,
+            NotificationStatus,
+        )
+
+        if case.notification_status != NotificationStatus.PENDING:
+            return []
+
+        existing_deliveries = list(
+            CountyNotificationDelivery.objects.filter(
+                case=case,
+                status__in=[
+                    CountyNotificationDeliveryStatus.PENDING,
+                    CountyNotificationDeliveryStatus.SENT,
+                    CountyNotificationDeliveryStatus.DELIVERED,
+                ],
+            ).order_by("created_at")
+        )
+        if existing_deliveries:
+            return existing_deliveries
+
+        alert_label = alert.get_alert_type_display().lower()
+        ack_base_url = str(getattr(settings, "CLOUD_API_BASE_URL", "") or "").rstrip("/")
+        deliveries = cls.notify_county(
+            case=case,
+            notes=f"Automatic {alert_label} notification.",
+            ack_base_url=ack_base_url,
+        )
+        if not deliveries:
+            logger.warning(
+                "Automatic county notification skipped for case %s: no channel configured",
+                case.pk,
+            )
+            return []
+
+        update_fields: list[str] = []
+        for delivery in deliveries:
+            if delivery.channel == CountyNotificationChannel.SMS and delivery.status in {
+                CountyNotificationDeliveryStatus.SENT,
+                CountyNotificationDeliveryStatus.DELIVERED,
+            }:
+                alert.sent_via_sms = True
+                alert.sms_recipient = delivery.recipient
+                update_fields.extend(["sent_via_sms", "sms_recipient_encrypted"])
+            elif delivery.channel == CountyNotificationChannel.EMAIL and delivery.status in {
+                CountyNotificationDeliveryStatus.SENT,
+                CountyNotificationDeliveryStatus.DELIVERED,
+            }:
+                alert.sent_via_email = True
+                alert.email_recipient = delivery.recipient
+                update_fields.extend(["sent_via_email", "email_recipient_encrypted"])
+
+        if update_fields:
+            alert.save(update_fields=list(dict.fromkeys(update_fields)))
+
+        if cls.has_case_delivery_success(case):
+            case.mark_notified()
+
+        AuditLog.log(
+            action="notifiable_case_auto_notify",
+            user=None,
+            resource_type="NotifiableCase",
+            resource_id=case.id,
+            details={
+                "disease": case.disease.name,
+                "alert_type": alert.alert_type,
+                "delivery_statuses": [
+                    {"channel": delivery.channel, "status": delivery.status}
+                    for delivery in deliveries
+                ],
+            },
+        )
+        return deliveries
+
+    @classmethod
     def apply_email_webhook_status(
         cls,
         *,
@@ -747,13 +833,13 @@ class SurveillanceService:
         # Broadcast via WebSocket
         cls.broadcast_alert(alert)
 
-        # Send SMS/email for immediate diseases
-        if case.disease.is_immediate and alert_type in [
+        # DHA-reportable immediate and outbreak alerts must be dispatched through
+        # the durable county-delivery workflow, not only via an untracked alert.
+        if alert_type in [
             SurveillanceAlert.AlertType.NEW_CASE,
             SurveillanceAlert.AlertType.OUTBREAK,
-        ]:
-            cls.send_sms_alert(alert)
-            cls.send_email_alert(alert)
+        ] and (case.disease.is_immediate or alert_type == SurveillanceAlert.AlertType.OUTBREAK):
+            cls.notify_county_automatically(case=case, alert=alert)
 
         return alert
 

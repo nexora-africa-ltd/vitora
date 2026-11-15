@@ -66,11 +66,11 @@ Use DHA-only synthetic data. The vaccination demonstration uses the canonical **
 4. Download `GET /api/quality/results/export/?export_format=xlsx&year=<year>` and the equivalent `pdf` export. Confirm both include the vaccination measure, reporting period, numerator, denominator, percentage, and target result.
 
 For the standard audit cohort, ten children with due doses and eight children complete produce **8 / 10 = 80.00%**. A period with no due KEPI records must be labelled `NOT_EVALUABLE`, rather than reported as a zero-performance rate.
-| 9 | `REP-IMM-001` Immediate disease reporting | Retrieve immediate-notification record | `/api/surveillance/notifications/?patient_id=402` | Cholera notification screenshot; outbound-notification/audit record; MoH payload sample. |
-| 10 | `REP-IDSR-001` IDSR weekly reports | Retrieve weekly IDSR report | `/api/surveillance/idsr-reports/<IDSR_REPORT_ID>/` | Weekly report screenshot; DHIS2 submission confirmation; export sample. |
-| 11 | `REP-PHE-001` Public-health event detection | Retrieve detected outbreak alert | `/api/surveillance/outbreak-alerts/<ALERT_ID>/` | Five-case outbreak screenshot; configured threshold; generated event report. |
-| 12 | `REP-IHR-001` IHR reporting | Retrieve IHR escalation report | `/api/surveillance/ihr-notifications/<IHR_REPORT_ID>/` | IHR report screenshot; WHO escalation-path evidence; submitted/report status. |
-| 13 | `REP-ROUT-001` Routine health reporting | Retrieve routine health report | `/api/moh-reporting/reports/<ROUTINE_REPORT_ID>/` | Monthly, quarterly, and annual PDF/Excel exports; source aggregate-data evidence. |
+| 9 | `REP-IMM-001` Immediate disease reporting | Retrieve DHA synthetic immediate notifiable case | `/api/surveillance/cases/<IMMEDIATE_CASE_ID>/` | Cholera diagnosis and alert screenshots; `GET /api/surveillance/cases/<IMMEDIATE_CASE_ID>/notification_deliveries/` evidence showing the authorized recipient, delivery state, and county acknowledgement; corresponding audit record. |
+| 10 | `REP-IDSR-001` IDSR weekly reports | Retrieve weekly IDSR report | `/api/surveillance/idsr/<IDSR_REPORT_ID>/` | Weekly report screenshot; `GET /api/surveillance/idsr/<IDSR_REPORT_ID>/submission_attempts/` confirmation after approved DHIS2/KHIS submission; DHIS2 payload/ADX/SDMX export sample. |
+| 11 | `REP-PHE-001` Public-health event detection | Retrieve DHA synthetic detected outbreak alert | `/api/surveillance/alerts/<OUTBREAK_ALERT_ID>/` | Five-case outbreak screenshot; configured threshold; source case `GET /api/surveillance/cases/<OUTBREAK_CASE_ID>/notification_deliveries/` evidence showing delivery to the authorized recipient; generated event report. |
+| 12 | `REP-IHR-001` IHR reporting | Retrieve IHR escalation report | `/api/surveillance/ihr/<IHR_REPORT_ID>/` | IHR report screenshot; WHO escalation-path procedure; submitted/report status and external WHO-reference evidence. |
+| 13 | `REP-ROUT-001` Routine health reporting | Retrieve a DHA synthetic MOH monthly report | `/api/moh-reports/705/<MOH705_REPORT_ID>/` | MOH 705 review screenshot; source aggregate-data evidence; DHIS2/KHIS preview/submission result. Use the separately validated quarterly/annual report endpoints and export evidence only after their PDF/XLSX routes are confirmed. |
 | 14 | `SEC-AUTH-001` Authentication and authorization | Retrieve authenticated staff access profile | `/api/staff/me/` | Login/MFA/RBAC screenshots; role-permission matrix; failed-login, `account_locked`, and `session_idle_revoked` audit evidence. |
 | 15 | `SEC-AUDIT-001` Audit trail | Retrieve patient audit-trail entries | `/api/auditlogs/?patient_id=402` | CRUD audit-log screenshot showing actor, timestamp, affected record, and before/after values; retention policy. |
 | 16 | `SEC-ENC-001` Encryption | Retrieve HTTPS service health confirmation | `/` (HTTPS health response) | Browser certificate/TLS screenshot; encryption and key-management documents; encrypted-backup evidence. |
@@ -84,7 +84,7 @@ For the standard audit cohort, ten children with due doses and eight children co
 
 - Patient `402` is ready and synthetic.
 - Seed one DHA synthetic encounter containing: coded diagnosis, allergies, active medications, vitals, lab result with LOINC, prescription, and care plan.
-- Seed one each: surveillance notification, IDSR report, outbreak alert, IHR report, and routine report.
+- Seed one each: immediate notifiable case with county delivery evidence, IDSR report, outbreak alert with county delivery evidence, IHR report, and MOH 705 routine report.
 - Seed a FHIR DiagnosticReport and Condition from the synthetic clinical data.
 - Capture all screenshots before the test date; do not use real patient data.
 
