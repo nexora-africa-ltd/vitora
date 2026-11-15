@@ -18,6 +18,7 @@ from hmis.apps.surveillance.serializers import (
     IDSRDiseaseSummarySerializer,
     IDSRReportApproveSerializer,
     IDSRReportGenerateSerializer,
+    IDSRSubmissionAttemptSerializer,
     IDSRWeeklyReportListSerializer,
     IDSRWeeklyReportSerializer,
     IHRCloseSerializer,
@@ -198,6 +199,26 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             {
                 "epi_week",
                 "epi_year",
+            }
+        ),
+    ),
+    (
+        IDSRSubmissionAttemptSerializer,
+        frozenset(
+            {
+                "attempt_number",
+                "attempted_at",
+                "completed_at",
+                "created_at",
+                "error_message",
+                "http_status",
+                "id",
+                "next_retry_at",
+                "report",
+                "response",
+                "status",
+                "trigger",
+                "validation_response",
             }
         ),
     ),
@@ -513,9 +534,9 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "category",
                 "created_at",
                 "description",
-                "icd11_codes",
                 "icd10_code_list",
                 "icd10_codes",
+                "icd11_codes",
                 "id",
                 "is_active",
                 "is_ihr_notifiable",

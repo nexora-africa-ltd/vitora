@@ -24,6 +24,7 @@ from hmis.apps.pharmacy.serializers import (
     PrescriptionItemSerializer,
     PrescriptionItemWriteSerializer,
     PrescriptionSerializer,
+    PrescriptionTransmissionSerializer,
     StockAdjustmentSerializer,
     StockAlertSerializer,
     StockAlertSeveritySummarySerializer,
@@ -319,6 +320,14 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "valid_until",
                 "verification_url",
                 "walkin_customer_name",
+            }
+        ),
+    ),
+    (
+        PrescriptionTransmissionSerializer,
+        frozenset(
+            {
+                "recipient_facility",
             }
         ),
     ),
