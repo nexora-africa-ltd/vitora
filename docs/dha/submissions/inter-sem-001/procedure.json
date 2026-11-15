@@ -1,0 +1,29 @@
+{
+  "code": {
+    "coding": [
+      {
+        "code": "LZZ.JG.AH",
+        "display": "Synthetic nonexcisional wound debridement",
+        "system": "http://id.who.int/ichi"
+      },
+      {
+        "code": "DHA-SEM-DEBRIDE",
+        "display": "Synthetic nonexcisional wound debridement",
+        "system": "urn:vitora:procedure"
+      }
+    ],
+    "text": "Synthetic nonexcisional wound debridement"
+  },
+  "id": "4",
+  "performedDateTime": "2026-11-14T22:12:14+00:00",
+  "reasonCode": [
+    {
+      "text": "Synthetic DHA semantic interoperability scenario"
+    }
+  ],
+  "resourceType": "Procedure",
+  "status": "completed",
+  "subject": {
+    "reference": "Patient/402"
+  }
+}

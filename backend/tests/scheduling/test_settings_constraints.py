@@ -60,11 +60,19 @@ class TestSchedulingSettings:
     """Tests for the scheduling settings API."""
 
     def test_get_current_creates_default(self, authenticated_client, sample_facility):
-        """GET /current/ should create settings if none exist."""
+        """GET /current/ should audibly record one-time default configuration creation."""
+        from hmis.apps.core.models import AuditLog
+
         response = authenticated_client.get("/api/scheduling/settings/current/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["max_hours_per_week"] == 48
         assert response.data["enforce_constraints"] is True
+        audit_entry = AuditLog.objects.filter(
+            action="scheduling.settings.initialized",
+            resource_type="SchedulingSettings",
+            resource_id=response.data["id"],
+        ).latest("timestamp")
+        assert audit_entry.facility_id == sample_facility.id
 
     def test_get_current_returns_existing(self, authenticated_client, scheduling_settings):
         """GET /current/ should return existing settings."""
@@ -74,7 +82,9 @@ class TestSchedulingSettings:
         assert response.data["max_hours_per_week"] == 48
 
     def test_update_settings(self, authenticated_client, scheduling_settings):
-        """PATCH should update settings fields."""
+        """PATCH should retain safe before/after values in the facility audit trail."""
+        from hmis.apps.core.models import AuditLog
+
         response = authenticated_client.patch(
             f"/api/scheduling/settings/{scheduling_settings.id}/",
             {"max_hours_per_week": 36, "max_night_shifts_per_week": 3},
@@ -83,6 +93,15 @@ class TestSchedulingSettings:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["max_hours_per_week"] == 36
         assert response.data["max_night_shifts_per_week"] == 3
+
+        audit_entry = AuditLog.objects.filter(
+            action="scheduling.settings.partial_update",
+            resource_type="SchedulingSettings",
+            resource_id=scheduling_settings.id,
+        ).latest("timestamp")
+        assert audit_entry.facility_id == scheduling_settings.facility_id
+        assert audit_entry.details["old_values"]["max_hours_per_week"] == 48
+        assert audit_entry.details["new_values"]["max_hours_per_week"] == 36
 
     def test_update_enforce_constraints(self, authenticated_client, scheduling_settings):
         """PATCH should toggle enforce_constraints."""

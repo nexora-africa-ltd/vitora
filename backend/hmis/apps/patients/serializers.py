@@ -3,6 +3,7 @@
 Serializers for the patients app.
 """
 
+import re
 from datetime import date
 
 from rest_framework import serializers
@@ -249,6 +250,21 @@ class PatientSerializer(serializers.ModelSerializer):
         """Validate date of birth is not in the future."""
         if value and value > date.today():
             raise serializers.ValidationError("Date of birth cannot be in the future.")
+        return value
+
+    def validate_identification_number(self, value):
+        """Reject malformed identifiers while accepting legacy IDs and Maisha Namba."""
+        if not value:
+            return value
+
+        identification_type = self.initial_data.get(
+            "identification_type",
+            getattr(self.instance, "identification_type", "national_id"),
+        )
+        if identification_type == "national_id" and not re.fullmatch(r"(?:\d{7,8}|\d{14})", value):
+            raise serializers.ValidationError(
+                "National ID must contain 7 or 8 legacy digits, or a 14-digit Maisha Namba."
+            )
         return value
 
     def validate(self, data):

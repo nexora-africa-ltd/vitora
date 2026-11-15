@@ -1,0 +1,244 @@
+{
+  "passed": true,
+  "results": {
+    "diagnostic-report": {
+      "authoritative": true,
+      "detail": "",
+      "is_valid": true,
+      "local_errors": [],
+      "local_valid": true,
+      "operation_outcome": {
+        "issue": [
+          {
+            "code": "processing",
+            "details": {
+              "coding": [
+                {
+                  "code": "Terminology_PassThrough_TX_Message",
+                  "system": "http://hl7.org/fhir/java-core-messageId"
+                }
+              ]
+            },
+            "diagnostics": "Unable to expand ValueSet because CodeSystem could not be found: http://loinc.org",
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-line",
+                "valueInteger": 1
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-col",
+                "valueInteger": 399
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-message-id",
+                "valueString": "Terminology_PassThrough_TX_Message"
+              }
+            ],
+            "location": [
+              "DiagnosticReport.code",
+              "Line[1] Col[399]"
+            ],
+            "severity": "information"
+          },
+          {
+            "code": "processing",
+            "details": {
+              "coding": [
+                {
+                  "code": "Terminology_TX_NoValid_3_CC",
+                  "system": "http://hl7.org/fhir/java-core-messageId"
+                }
+              ]
+            },
+            "diagnostics": "None of the codings provided are in the value set 'LOINC Diagnostic Report Codes' (http://hl7.org/fhir/ValueSet/report-codes|4.0.1), and a coding is recommended to come from this value set (codes = http://loinc.org#58410-2)",
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-line",
+                "valueInteger": 1
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-col",
+                "valueInteger": 399
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-message-id",
+                "valueString": "Terminology_TX_NoValid_3_CC"
+              }
+            ],
+            "location": [
+              "DiagnosticReport.code",
+              "Line[1] Col[399]"
+            ],
+            "severity": "information"
+          },
+          {
+            "code": "processing",
+            "details": {
+              "coding": [
+                {
+                  "code": "Terminology_PassThrough_TX_Message",
+                  "system": "http://hl7.org/fhir/java-core-messageId"
+                }
+              ]
+            },
+            "diagnostics": "Unable to expand ValueSet because CodeSystem could not be found: http://loinc.org",
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-line",
+                "valueInteger": 1
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-col",
+                "valueInteger": 399
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-message-id",
+                "valueString": "Terminology_PassThrough_TX_Message"
+              }
+            ],
+            "location": [
+              "DiagnosticReport.code",
+              "Line[1] Col[399]"
+            ],
+            "severity": "information"
+          },
+          {
+            "code": "processing",
+            "details": {
+              "coding": [
+                {
+                  "code": "Terminology_TX_NoValid_3_CC",
+                  "system": "http://hl7.org/fhir/java-core-messageId"
+                }
+              ]
+            },
+            "diagnostics": "None of the codings provided are in the value set 'LOINC Diagnostic Report Codes' (http://hl7.org/fhir/ValueSet/report-codes|4.0.1), and a coding is recommended to come from this value set (codes = http://loinc.org#58410-2)",
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-line",
+                "valueInteger": 1
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-col",
+                "valueInteger": 399
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-message-id",
+                "valueString": "Terminology_TX_NoValid_3_CC"
+              }
+            ],
+            "location": [
+              "DiagnosticReport.code",
+              "Line[1] Col[399]"
+            ],
+            "severity": "information"
+          }
+        ],
+        "resourceType": "OperationOutcome"
+      },
+      "resource_type": "DiagnosticReport",
+      "status": "validated"
+    },
+    "encounter": {
+      "authoritative": true,
+      "detail": "",
+      "is_valid": true,
+      "local_errors": [],
+      "local_valid": true,
+      "operation_outcome": {
+        "issue": [
+          {
+            "code": "processing",
+            "diagnostics": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-line",
+                "valueInteger": 1
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-col",
+                "valueInteger": 295
+              }
+            ],
+            "location": [
+              "Encounter",
+              "Line[1] Col[295]"
+            ],
+            "severity": "warning"
+          },
+          {
+            "code": "processing",
+            "diagnostics": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-line",
+                "valueInteger": 1
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-col",
+                "valueInteger": 295
+              }
+            ],
+            "location": [
+              "Encounter",
+              "Line[1] Col[295]"
+            ],
+            "severity": "warning"
+          }
+        ],
+        "resourceType": "OperationOutcome"
+      },
+      "resource_type": "Encounter",
+      "status": "validated"
+    },
+    "observation": {
+      "authoritative": true,
+      "detail": "",
+      "is_valid": true,
+      "local_errors": [],
+      "local_valid": true,
+      "operation_outcome": {
+        "issue": [
+          {
+            "code": "informational",
+            "diagnostics": "No issues detected during validation",
+            "severity": "information"
+          },
+          {
+            "code": "informational",
+            "diagnostics": "No issues detected during validation",
+            "severity": "information"
+          }
+        ],
+        "resourceType": "OperationOutcome"
+      },
+      "resource_type": "Observation",
+      "status": "validated"
+    },
+    "patient": {
+      "authoritative": true,
+      "detail": "",
+      "is_valid": true,
+      "local_errors": [],
+      "local_valid": true,
+      "operation_outcome": {
+        "issue": [
+          {
+            "code": "informational",
+            "diagnostics": "No issues detected during validation",
+            "severity": "information"
+          },
+          {
+            "code": "informational",
+            "diagnostics": "No issues detected during validation",
+            "severity": "information"
+          }
+        ],
+        "resourceType": "OperationOutcome"
+      },
+      "resource_type": "Patient",
+      "status": "validated"
+    }
+  },
+  "validation_authority": "HAPI FHIR R4 4.0.1 $validate"
+}

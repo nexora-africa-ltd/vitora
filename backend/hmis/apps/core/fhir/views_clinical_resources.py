@@ -25,7 +25,7 @@ from rest_framework.views import APIView
 
 from hmis.apps.core.fhir.security import request_can_access_fhir_resource
 from hmis.apps.core.oauth.permissions import SMARTPatientAccessPermission, SMARTScopePermission
-from hmis.apps.core.permissions import ReadRequiresModelPermission
+from hmis.apps.core.permissions import FHIRAccessPermission, ReadRequiresModelPermission
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +77,7 @@ class PublicFHIRReadAPIView(FHIRSchemaMixin, APIView):
         IsAuthenticated,
         SMARTScopePermission,
         SMARTPatientAccessPermission,
+        FHIRAccessPermission,
         ReadRequiresModelPermission,
     ]
     renderer_classes = FHIR_RENDERER_CLASSES
@@ -604,19 +605,37 @@ class FHIRDiagnosticReportView(PublicFHIRReadAPIView):
         """Convert Django DiagnosticReport to FHIR DiagnosticReport resource."""
         results = []
         specimens = []
+        report_codings = []
         for order_item in report.lab_order.items.select_related("result").all():
+            test = order_item.test
+            if test.loinc_code:
+                report_codings.append(
+                    {
+                        "system": "http://loinc.org",
+                        "code": test.loinc_code,
+                        "display": test.name,
+                    }
+                )
             if hasattr(order_item, "result"):
                 results.append({"reference": f"Observation/{order_item.result.id}"})
                 if order_item.result.specimen_id:
                     specimens.append({"reference": f"Specimen/{order_item.result.specimen_id}"})
 
+        unique_report_codings = {
+            (coding["system"], coding["code"]): coding for coding in report_codings
+        }
+        report_code = (
+            {"coding": list(unique_report_codings.values())}
+            if len(unique_report_codings) == 1
+            else {"text": "Laboratory diagnostic report"}
+        )
+
         fhir_resource = {
             "resourceType": "DiagnosticReport",
             "id": str(report.id),
             "meta": {
-                "profile": [
-                    "http://hl7.org/fhir/uv/ips/StructureDefinition/DiagnosticReport-uv-ips"
-                ]
+                "versionId": "1",
+                "lastUpdated": format_date(report.updated_at),
             },
             "status": self.STATUS_MAP.get(report.status, "unknown"),
             "category": [
@@ -631,7 +650,7 @@ class FHIRDiagnosticReportView(PublicFHIRReadAPIView):
                     "text": "Laboratory",
                 }
             ],
-            "code": {"text": "Laboratory Diagnostic Report"},
+            "code": report_code,
             "subject": {"reference": f"Patient/{report.lab_order.patient_id}"},
             "effectiveDateTime": format_date(report.issued_at or report.created_at),
             "issued": format_date(report.issued_at or report.created_at),
@@ -756,18 +775,44 @@ class FHIRProcedureView(PublicFHIRReadAPIView):
 
     def _to_fhir_procedure(self, order) -> dict:
         """Convert Django ProcedureOrder to FHIR Procedure resource."""
+        codings = []
+        if order.procedure.ichi_code:
+            codings.append(
+                {
+                    "system": "http://id.who.int/ichi",
+                    "code": order.procedure.ichi_code,
+                    "display": order.procedure.name,
+                }
+            )
+        if order.procedure.cpt_code:
+            codings.append(
+                {
+                    "system": "http://www.ama-assn.org/go/cpt",
+                    "code": order.procedure.cpt_code,
+                    "display": order.procedure.name,
+                }
+            )
+        if order.procedure.icd10_pcs_code:
+            codings.append(
+                {
+                    "system": "http://www.cms.gov/Medicare/Coding/ICD10",
+                    "code": order.procedure.icd10_pcs_code,
+                    "display": order.procedure.name,
+                }
+            )
+        codings.append(
+            {
+                "system": "urn:vitora:procedure",
+                "code": order.procedure.code,
+                "display": order.procedure.name,
+            }
+        )
         fhir_resource = {
             "resourceType": "Procedure",
             "id": str(order.id),
             "status": self.STATUS_MAP.get(order.status, "unknown"),
             "code": {
-                "coding": [
-                    {
-                        "system": "urn:vitora:procedure",
-                        "code": order.procedure.code,
-                        "display": order.procedure.name,
-                    }
-                ],
+                "coding": codings,
                 "text": order.procedure.name,
             },
             "subject": {"reference": f"Patient/{order.patient_id}"},

@@ -52,6 +52,7 @@ from hmis.apps.core.fhir.views import (
     FHIRProcedureView,
     FHIRSpecimenView,
 )
+from hmis.apps.core.fhir.views_encounter import FHIREncounterView
 from hmis.apps.core.fhir.write import (
     FHIRConditionCreateView,
     FHIRDiagnosticReportCreateView,
@@ -59,6 +60,7 @@ from hmis.apps.core.fhir.write import (
     FHIRMedicationRequestCreateView,
     FHIRObservationCreateView,
     FHIRPatientCreateView,
+    FHIRProcedureCreateView,
 )
 
 app_name = "fhir"
@@ -108,6 +110,11 @@ urlpatterns = [
         "Condition/<int:pk>",
         FHIRConditionView.as_view(),
         name="condition-read",
+    ),
+    path(
+        "Encounter/<int:pk>",
+        FHIREncounterView.as_view(),
+        name="encounter-read",
     ),
     # Composition resources (IPS document structure)
     path(
@@ -245,5 +252,10 @@ urlpatterns = [
         "DiagnosticReport/",
         FHIRDiagnosticReportCreateView.as_view(),
         name="diagnostic-report-create",
+    ),
+    path(
+        "Procedure/",
+        FHIRProcedureCreateView.as_view(),
+        name="procedure-create",
     ),
 ]

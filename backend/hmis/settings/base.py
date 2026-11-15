@@ -788,6 +788,7 @@ LOGGING = {
 RBAC_ENABLED = True
 RBAC_STRICT_MODE = True  # Deny if no explicit permission (vs allow)
 RBAC_CACHE_TIMEOUT = 300  # Cache permission checks for 5 minutes
+FHIR_RBAC_ENFORCEMENT = True  # Require the dedicated FHIR capability on protected FHIR endpoints.
 
 # Kenya Professional License Bodies
 # These are the official regulatory bodies for healthcare professionals in Kenya
@@ -1040,6 +1041,9 @@ SHA_ENDPOINTS = {
 ICD11_LOCAL_API_URL = os.getenv("ICD11_LOCAL_API_URL", "http://localhost:5080")
 ICD11_API_TIMEOUT = int(os.getenv("ICD11_API_TIMEOUT", "10"))
 ICD11_USE_LOCAL = os.getenv("ICD11_USE_LOCAL", "true").lower() == "true"
+# Declared current releases used for terminology evidence. The ICD service also
+# verifies its live WHO MMS release before emitting a passing result.
+ICD11_MMS_RELEASE = os.getenv("ICD11_MMS_RELEASE", "2026-01")
 
 # HAPI FHIR Server for Terminology (LOINC fallback)
 # Deployed via: docker/hapi-fhir/compose.yml
@@ -1054,11 +1058,15 @@ LOINC_FHIR_URL = os.getenv("LOINC_FHIR_URL", "https://fhir.loinc.org")
 LOINC_USERNAME = os.getenv("LOINC_USERNAME", "")
 LOINC_PASSWORD = os.getenv("LOINC_PASSWORD", "")
 LOINC_TIMEOUT = int(os.getenv("LOINC_TIMEOUT", "10"))
+LOINC_RELEASE = os.getenv("LOINC_RELEASE", "2.83")
 
 # SNOMED CT Snowstorm Terminology Server
 SNOMED_TERMINOLOGY_URL = os.getenv("SNOMED_TERMINOLOGY_URL", "")
 SNOMED_BRANCH = os.getenv("SNOMED_BRANCH", "MAIN")
+SNOMED_EDITION = os.getenv("SNOMED_EDITION", SNOMED_BRANCH)
+SNOMED_VERSION = os.getenv("SNOMED_VERSION", "20261030")
 SNOMED_TIMEOUT = int(os.getenv("SNOMED_TIMEOUT", "10"))
+SNOMED_CT_RELEASE = os.getenv("SNOMED_CT_RELEASE", "20261030")
 
 # SHA Webhook/Callback Configuration
 # These are the URLs DHA calls to notify us about claim status changes

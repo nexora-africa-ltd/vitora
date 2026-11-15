@@ -26,7 +26,7 @@ SNOWSTORM_BASE_URL = getattr(
     "SNOMED_SNOWSTORM_URL",
     "https://browser.ihtsdotools.org/snowstorm/snomed-ct",
 )
-SNOMED_EDITION = getattr(settings, "SNOMED_EDITION", "MAIN")
+SNOMED_EDITION = getattr(settings, "SNOMED_EDITION", getattr(settings, "SNOMED_BRANCH", "MAIN"))
 SNOMED_VERSION = getattr(settings, "SNOMED_VERSION", "")
 
 
@@ -107,6 +107,14 @@ class SNOMEDService:
             return self._lookup_snowstorm(concept_id)
         except Exception:  # noqa: BLE001 - remote terminology lookup is best-effort with local fallback
             logger.warning("Snowstorm API unavailable for concept lookup %s", concept_id)
+            return None
+
+    def lookup_authoritative(self, concept_id: str) -> SNOMEDSearchResult | None:
+        """Look up one concept from the configured SNOMED CT release only."""
+        try:
+            return self._lookup_snowstorm(concept_id)
+        except Exception:  # noqa: BLE001 - terminology evidence must fail closed on remote failure
+            logger.warning("Authoritative Snowstorm lookup unavailable for concept %s", concept_id)
             return None
 
     def _search_snowstorm(

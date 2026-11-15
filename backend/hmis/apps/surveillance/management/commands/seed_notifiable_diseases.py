@@ -3,7 +3,8 @@
 Management command to seed MOH 502 notifiable diseases.
 
 Seeds the database with Kenya's Ministry of Health notifiable disease list
-including ICD-10 code mappings, reporting categories, and timelines.
+including ICD-10/ICD-11 code mappings, county-routing policy, reporting
+categories, and timelines.
 
 Loads diseases from JSON file (data/notifiable_diseases.json) for easy maintenance
 and expansion. The JSON format allows non-developers to add/modify diseases.
@@ -140,11 +141,19 @@ class Command(BaseCommand):
                 lab_criteria = "\n".join(parts)
 
             # Prepare data for Django model
+            category = disease_data.get("category", "WEEKLY")
             model_data = {
                 "name": name,
                 "icd10_codes": disease_data.get("icd10_codes", ""),
-                "category": disease_data.get("category", "WEEKLY"),
+                "icd11_codes": NotifiableDisease.normalize_icd11_codes(
+                    disease_data.get("icd11_codes", [])
+                ),
+                "category": category,
                 "reporting_hours": disease_data.get("reporting_hours", 168),
+                "requires_county_notification": disease_data.get(
+                    "requires_county_notification",
+                    category == "IMMEDIATE",
+                ),
                 "description": disease_data.get("description", ""),
                 "case_definition": case_def,
                 "laboratory_criteria": lab_criteria,

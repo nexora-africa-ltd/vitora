@@ -74,6 +74,83 @@ class TestFacilityEmailConfig:
         assert updated.status == FacilityEmailConfig.Status.UNHEALTHY
         assert updated.custom_email_enabled is False
 
+    def test_api_update_logs_redacted_configuration_diff(
+        self,
+        authenticated_client,
+        sample_facility,
+        test_user,
+    ):
+        """SMTP changes retain safe connection evidence without credential contents."""
+        from hmis.apps.core.models import AuditLog
+
+        test_user.is_staff = True
+        test_user.save(update_fields=["is_staff"])
+        config = FacilityEmailConfig.objects.create(
+            facility=sample_facility,
+            smtp_host="smtp.old.example.test",
+            smtp_username="old-user@example.test",
+        )
+        config.smtp_password = "old-secret"
+        config.save()
+
+        response = authenticated_client.patch(
+            f"/api/core/facility-email-config/{config.id}/",
+            {
+                "smtp_host": "smtp.new.example.test",
+                "smtp_username": "new-user@example.test",
+                "smtp_password": "new-secret",
+            },
+            format="json",
+        )
+
+        assert response.status_code == 200
+        audit_entry = AuditLog.objects.filter(
+            action="core.facility_email_config.partial_update",
+            resource_type="FacilityEmailConfig",
+            resource_id=config.id,
+        ).latest("timestamp")
+        assert audit_entry.facility_id == sample_facility.id
+        assert audit_entry.details["old_values"] == {"smtp_host": "smtp.old.example.test"}
+        assert audit_entry.details["new_values"] == {"smtp_host": "smtp.new.example.test"}
+        assert audit_entry.details["redacted_fields"] == ["smtp_password", "smtp_username"]
+        assert "old-secret" not in str(audit_entry.details)
+        assert "new-secret" not in str(audit_entry.details)
+
+    @patch("hmis.apps.core.views_org_facility.get_connection")
+    def test_failed_smtp_test_logs_status_change(
+        self,
+        mock_get_connection,
+        authenticated_client,
+        sample_facility,
+        test_user,
+    ):
+        """A failed test still audits the resulting unhealthy configuration state."""
+        from hmis.apps.core.models import AuditLog
+
+        test_user.is_staff = True
+        test_user.save(update_fields=["is_staff"])
+        config = FacilityEmailConfig.objects.create(
+            facility=sample_facility,
+            smtp_host="smtp.example.test",
+            smtp_username="notifications@example.test",
+        )
+        config.smtp_password = "app-password"
+        config.save()
+        mock_get_connection.side_effect = OSError("Connection refused")
+
+        response = authenticated_client.post(
+            f"/api/core/facility-email-config/{config.id}/test-connection/"
+        )
+
+        assert response.status_code == 400
+        audit_entry = AuditLog.objects.filter(
+            action="core.facility_email_config.test_connection_failed",
+            resource_type="FacilityEmailConfig",
+            resource_id=config.id,
+        ).latest("timestamp")
+        assert audit_entry.details["old_values"]["status"] == "UNCONFIGURED"
+        assert audit_entry.details["new_values"]["status"] == "UNHEALTHY"
+
 
 def test_smtp_provider_presets_do_not_include_credentials():
     """Frontend presets provide connection metadata only, never secrets."""

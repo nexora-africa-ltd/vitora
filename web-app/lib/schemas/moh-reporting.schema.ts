@@ -65,6 +65,7 @@ export const MOH705ReportListItemSchema = z.object({
   total_under_5: z.number(),
   total_5_and_above: z.number(),
   is_submitted: z.boolean(),
+  dhis2_submitted_at: z.string().nullable(),
   disease_row_count: z.number(),
   generated_at: z.string().nullable(),
   created_at: z.string(),
@@ -125,6 +126,7 @@ export const MOH711ReportListItemSchema = z.object({
   malaria_cases_under_5: z.number(),
   malaria_cases_5_and_above: z.number(),
   is_submitted: z.boolean(),
+  dhis2_submitted_at: z.string().nullable(),
   generated_at: z.string().nullable(),
   created_at: z.string(),
 });
@@ -182,6 +184,7 @@ export const MOH717ReportListItemSchema = z.object({
   admissions_total: z.number(),
   emergency_visits: z.number(),
   is_submitted: z.boolean(),
+  dhis2_submitted_at: z.string().nullable(),
   generated_at: z.string().nullable(),
   created_at: z.string(),
 });

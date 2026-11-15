@@ -57,6 +57,8 @@ jobs:
               --name ${{ env.HAPI_FHIR_APP_NAME }} \
               --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
               --image "$HAPI_IMAGE" \
+              --cpu 1.0 --memory 2.0Gi \
+              --min-replicas 1 --max-replicas 1 \
               --output none
           else
             az containerapp create \
@@ -64,7 +66,7 @@ jobs:
               --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
               --environment ${{ env.CONTAINER_APP_ENV }} \
               --image "$HAPI_IMAGE" \
-              --cpu 0.5 --memory 1.0Gi \
+              --cpu 1.0 --memory 2.0Gi \
               --min-replicas 1 --max-replicas 1 \
               --ingress internal --target-port 8080 \
               --env-vars \

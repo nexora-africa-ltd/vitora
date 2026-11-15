@@ -88,38 +88,63 @@ export const NotifiableCaseDetailSchema = z.object({
   notified_by_name: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
-  delivery_status: z.array(
-    z.object({
-      id: z.number(),
-      case: z.number(),
-      channel: z.enum(['SMS', 'EMAIL']),
-      status: z.enum(['PENDING', 'SENT', 'DELIVERED', 'BOUNCED', 'RETRY_SCHEDULED', 'FAILED']),
-      recipient_masked: z.string(),
-      attempt_count: z.number(),
-      max_retry_attempts: z.number(),
-      retry_backoff_minutes: z.number(),
-      last_error: z.string(),
-      provider: z.string(),
-      provider_message_id: z.string(),
-      provider_event: z.string(),
-      sent_at: z.string().nullable(),
-      delivered_at: z.string().nullable(),
-      terminal_status_at: z.string().nullable(),
-      last_attempt_at: z.string().nullable(),
-      next_retry_at: z.string().nullable(),
-      triggered_by: z.number().nullable(),
-      triggered_by_name: z.string().nullable(),
-      created_at: z.string(),
-      updated_at: z.string(),
-    })
-  ).optional(),
+  delivery_status: z
+    .array(
+      z.object({
+        id: z.number(),
+        case: z.number(),
+        case_disease_name: z.string(),
+        case_patient_mrn: z.string(),
+        case_notification_status: NotifiableCaseStatusSchema,
+        channel: z.enum(['SMS', 'EMAIL']),
+        status: z.enum([
+          'PENDING',
+          'SENT',
+          'DELIVERED',
+          'BOUNCED',
+          'RETRY_SCHEDULED',
+          'FAILED',
+          'SUPERSEDED',
+        ]),
+        recipient_masked: z.string(),
+        attempt_count: z.number(),
+        max_retry_attempts: z.number(),
+        retry_backoff_minutes: z.number(),
+        last_error: z.string(),
+        provider: z.string(),
+        provider_message_id: z.string(),
+        provider_event: z.string(),
+        sent_at: z.string().nullable(),
+        delivered_at: z.string().nullable(),
+        terminal_status_at: z.string().nullable(),
+        last_attempt_at: z.string().nullable(),
+        next_retry_at: z.string().nullable(),
+        triggered_by: z.number().nullable(),
+        triggered_by_name: z.string().nullable(),
+        sent_by_name: z.string(),
+        created_at: z.string(),
+        updated_at: z.string(),
+      })
+    )
+    .optional(),
 });
 
 export const CountyNotificationDeliverySchema = z.object({
   id: z.number(),
   case: z.number(),
+  case_disease_name: z.string(),
+  case_patient_mrn: z.string(),
+  case_notification_status: NotifiableCaseStatusSchema,
   channel: z.enum(['SMS', 'EMAIL']),
-  status: z.enum(['PENDING', 'SENT', 'DELIVERED', 'BOUNCED', 'RETRY_SCHEDULED', 'FAILED']),
+  status: z.enum([
+    'PENDING',
+    'SENT',
+    'DELIVERED',
+    'BOUNCED',
+    'RETRY_SCHEDULED',
+    'FAILED',
+    'SUPERSEDED',
+  ]),
   recipient_masked: z.string(),
   attempt_count: z.number(),
   max_retry_attempts: z.number(),
@@ -135,11 +160,19 @@ export const CountyNotificationDeliverySchema = z.object({
   next_retry_at: z.string().nullable(),
   triggered_by: z.number().nullable(),
   triggered_by_name: z.string().nullable(),
+  sent_by_name: z.string(),
   created_at: z.string(),
   updated_at: z.string(),
 });
 
 export const CountyNotificationDeliveryListSchema = z.array(CountyNotificationDeliverySchema);
+
+export const PaginatedCountyNotificationDeliverySchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(CountyNotificationDeliverySchema),
+});
 
 export const SurveillanceFacilitySettingsSchema = z.object({
   id: z.number(),
@@ -162,7 +195,10 @@ export const ContactTracingFollowUpSchema = z.object({
   followup_date: z.string(),
   method: z.enum(['PHONE', 'HOME_VISIT', 'SMS', 'CLINIC']),
   symptoms_present: z.boolean(),
-  temperature_c: z.union([z.string(), z.number()]).nullable().transform((v) => (v == null ? null : String(v))),
+  temperature_c: z
+    .union([z.string(), z.number()])
+    .nullable()
+    .transform((v) => (v == null ? null : String(v))),
   notes: z.string(),
   outcome: z.enum(['CONTINUE_MONITORING', 'ESCALATE_TESTING', 'ESCALATE_ISOLATION', 'CLEARED']),
   recorded_by: z.number().nullable(),

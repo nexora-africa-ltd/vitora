@@ -26,6 +26,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from hmis.apps.core.audit import AuditedConfigurationMutationMixin
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import ReadRequiresModelPermission
@@ -34,6 +35,7 @@ from .models import (
     ContactTracingContact,
     ContactTracingFollowUp,
     CountyNotificationDelivery,
+    CountyNotificationDeliveryStatus,
     IDSRSubmissionAttempt,
     IDSRWeeklyReport,
     IHRNotification,
@@ -45,6 +47,7 @@ from .models import (
     SurveillanceAlert,
     SurveillanceFacilitySettings,
 )
+from .permissions import CountyNotificationDeliveryPermission
 from .serializers import (
     ContactTracingContactSerializer,
     ContactTracingFollowUpSerializer,
@@ -156,12 +159,13 @@ class NotifiableDiseaseViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def matching_codes(self, request, pk=None):
-        """Return all ICD-10 codes that match this disease."""
+        """Return all configured ICD-10 and ICD-11 codes that match this disease."""
         disease = self.get_object()
         return Response(
             {
                 "disease": disease.name,
                 "icd10_codes": disease.get_icd10_code_list(),
+                "icd11_codes": disease.get_icd11_code_list(),
             }
         )
 
@@ -239,8 +243,13 @@ class NotifiableDiseaseViewSet(viewsets.ModelViewSet):
             NotifiableDisease.objects.create(
                 name=name,
                 icd10_codes=entry.get("icd10_codes", ""),
+                icd11_codes=NotifiableDisease.normalize_icd11_codes(entry.get("icd11_codes", [])),
                 category=entry.get("category", "WEEKLY"),
                 reporting_hours=entry.get("reporting_hours", 168),
+                requires_county_notification=entry.get(
+                    "requires_county_notification",
+                    entry.get("category", "WEEKLY") == "IMMEDIATE",
+                ),
                 description=entry.get("description", ""),
                 case_definition=case_def,
                 laboratory_criteria=lab_criteria,
@@ -463,6 +472,16 @@ class NotifiableCaseViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
         ):
             case.mark_notified(user=request.user)
 
+        AuditLog.log(
+            action="county_notification_delivery_retry_batch",
+            user=request.user,
+            resource_type="NotifiableCase",
+            resource_id=case.id,
+            details={
+                "delivery_ids": [delivery.id for delivery in deliveries],
+                "delivery_statuses": [delivery.status for delivery in deliveries],
+            },
+        )
         serializer = CountyNotificationDeliverySerializer(deliveries, many=True)
         return Response(serializer.data)
 
@@ -710,6 +729,73 @@ class ContactTracingFollowUpViewSet(
     ordering = ["-followup_date", "-created_at"]
 
 
+class CountyNotificationDeliveryViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet):
+    """Facility-scoped ledger of surveillance county notification deliveries."""
+
+    tenant_scope = "facility"
+    queryset = CountyNotificationDelivery.objects.select_related(
+        "case",
+        "case__disease",
+        "case__patient",
+        "triggered_by",
+    ).all()
+    serializer_class = CountyNotificationDeliverySerializer
+    permission_classes = [permissions.IsAuthenticated, CountyNotificationDeliveryPermission]
+    filterset_fields = ["status", "channel", "case"]
+    search_fields = [
+        "case__disease__name",
+        "case__patient__mrn",
+        "provider",
+        "provider_message_id",
+    ]
+    ordering_fields = ["created_at", "updated_at", "status", "channel", "attempt_count"]
+    ordering = ["-created_at"]
+
+    @action(detail=True, methods=["post"])
+    def retry(self, request, pk=None):
+        """Manually retry one failed or scheduled delivery attempt."""
+        delivery = self.get_object()
+        if delivery.status not in {
+            CountyNotificationDeliveryStatus.RETRY_SCHEDULED,
+            CountyNotificationDeliveryStatus.FAILED,
+        }:
+            return Response(
+                {"detail": "Only failed or scheduled deliveries can be retried."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from .services import SurveillanceService
+
+        previous_status = delivery.status
+        delivery.triggered_by = request.user
+        delivery.save(update_fields=["triggered_by", "updated_at"])
+        retried_delivery = SurveillanceService.retry_county_delivery(
+            delivery,
+            ack_base_url=request.build_absolute_uri("/").rstrip("/"),
+        )
+        case = retried_delivery.case
+        if (
+            case.notification_status == NotificationStatus.PENDING
+            and SurveillanceService.has_case_delivery_success(case)
+        ):
+            case.mark_notified(user=request.user)
+
+        AuditLog.log(
+            action="county_notification_delivery_manual_retry",
+            user=request.user,
+            resource_type="CountyNotificationDelivery",
+            resource_id=retried_delivery.id,
+            details={
+                "case_id": case.id,
+                "channel": retried_delivery.channel,
+                "previous_status": previous_status,
+                "status": retried_delivery.status,
+                "attempt_count": retried_delivery.attempt_count,
+            },
+        )
+        return Response(CountyNotificationDeliverySerializer(retried_delivery).data)
+
+
 class SurveillanceAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     API endpoint for SurveillanceAlert management.
@@ -767,6 +853,7 @@ class SurveillanceAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
 
 class SurveillanceFacilitySettingsViewSet(
+    AuditedConfigurationMutationMixin,
     ReadOnCreateMixin,
     TenantScopedViewMixin,
     viewsets.ModelViewSet,
@@ -776,6 +863,9 @@ class SurveillanceFacilitySettingsViewSet(
     tenant_scope = "facility"
     queryset = SurveillanceFacilitySettings.objects.select_related("facility").all()
     serializer_class = SurveillanceFacilitySettingsSerializer
+    audit_resource_type = "SurveillanceFacilitySettings"
+    audit_action_prefix = "surveillance.facility_settings"
+    audit_source = "surveillance_api"
     permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     ordering = ["-updated_at"]
 
@@ -795,10 +885,17 @@ class SurveillanceFacilitySettingsViewSet(
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        settings_obj, _ = SurveillanceFacilitySettings.objects.get_or_create(
+        settings_obj, created = SurveillanceFacilitySettings.objects.get_or_create(
             facility=facility,
             defaults={"organization": organization},
         )
+        if created:
+            self.capture_configuration_creation(settings_obj)
+            self.log_captured_configuration_mutation(
+                request,
+                action="surveillance.facility_settings.initialized",
+                status_code=status.HTTP_201_CREATED,
+            )
         return Response(self.get_serializer(settings_obj).data)
 
 
@@ -1091,6 +1188,27 @@ class CountyNotificationAcknowledgeView(APIView):
                 "disease": case.disease.name if case.disease else None,
             },
         )
+        delivery = (
+            CountyNotificationDelivery.objects.filter(
+                case=case,
+                provider_event="county_acknowledged",
+            )
+            .order_by("-updated_at")
+            .first()
+        )
+        if delivery:
+            AuditLog.log(
+                action="county_notification_delivery_acknowledged",
+                user=None,
+                resource_type="CountyNotificationDelivery",
+                resource_id=delivery.id,
+                details={
+                    "case_id": case.id,
+                    "channel": delivery.channel,
+                    "status": delivery.status,
+                    "source": "public_ack_link",
+                },
+            )
         html = render_to_string(
             "surveillance/county_ack_confirmation.html",
             {

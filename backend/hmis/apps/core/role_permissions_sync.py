@@ -33,6 +33,8 @@ MODEL_MAPPING: dict[str, tuple[str, str]] = {
     "Facility": ("core", "facility"),
     "Organization": ("core", "organization"),
     "EmergencyAccess": ("core", "emergencyaccess"),
+    # FHIR capability permissions are attached to the SMART tenant-binding model.
+    "FHIR": ("core", "smartoauthclienttenantbinding"),
     # patients
     "Patient": ("patients", "patient"),
     "Allergy": ("patients", "allergy"),
@@ -196,6 +198,7 @@ MODEL_MAPPING: dict[str, tuple[str, str]] = {
     "IDSRWeeklyReport": ("surveillance", "idsrweeklyreport"),
     "IHRNotification": ("surveillance", "ihrnotification"),
     "SurveillanceAlert": ("surveillance", "surveillancealert"),
+    "CountyNotificationDelivery": ("surveillance", "countynotificationdelivery"),
     # allied health — physiotherapy
     "PhysiotherapyOrder": ("physiotherapy", "physiotherapyorder"),
     "PhysiotherapySession": ("physiotherapy", "physiotherapysession"),
@@ -299,6 +302,12 @@ ACTION_MAPPING: dict[str, str] = {
     "read": "view",
     "update": "change",
     "delete": "delete",
+}
+
+# Matrix actions whose Django permission does not follow CRUD naming.
+MATRIX_PERMISSION_OVERRIDES: dict[tuple[str, str], tuple[str, str, str]] = {
+    ("FHIR", "read"): ("core", "smartoauthclienttenantbinding", "access_fhir_api"),
+    ("FHIR", "create"): ("core", "smartoauthclienttenantbinding", "write_fhir_api"),
 }
 
 # Custom permission codenames used as-is
@@ -498,6 +507,12 @@ def get_matrix_action(codename: str, model: str) -> str | None:  # noqa: ARG001
     - Model-suffixed actions (e.g. view_sensitive_patient) -> the prefix
     - Standard CRUD (add/view/change/delete) -> create/read/update/delete
     """
+    if model == "smartoauthclienttenantbinding":
+        if codename == "access_fhir_api":
+            return "read"
+        if codename == "write_fhir_api":
+            return "create"
+
     if codename in CUSTOM_ACTIONS:
         return codename
 
@@ -549,7 +564,10 @@ def collect_permissions_for_role(role: Role) -> list[Permission]:
             if not granted:
                 continue
 
-            if action in CUSTOM_ACTIONS:
+            override = MATRIX_PERMISSION_OVERRIDES.get((model_name, action))
+            if override is not None:
+                app_label, model, codename = override
+            elif action in CUSTOM_ACTIONS:
                 codename = action
             elif action in MODEL_SUFFIXED_ACTIONS:
                 codename = f"{action}_{model}"

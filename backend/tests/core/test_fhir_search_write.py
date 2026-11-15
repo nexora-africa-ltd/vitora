@@ -492,6 +492,277 @@ class TestFHIRConditionCreate:
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
+    def test_create_condition_preserves_icd11_semantics(
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_encounter,
+    ):
+        """Should persist an inbound ICD-11 coding and return it unchanged."""
+        fhir_condition = {
+            "resourceType": "Condition",
+            "subject": {"reference": f"Patient/{sample_patient.pk}"},
+            "code": {
+                "coding": [
+                    {
+                        "system": "http://id.who.int/icd/release/11/mms",
+                        "code": "BA00",
+                        "display": "Essential hypertension",
+                    }
+                ]
+            },
+        }
+
+        response = authenticated_client.post("/fhir/Condition/", fhir_condition, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        diagnosis = sample_encounter.diagnoses.get(pk=response.data["id"])
+        assert diagnosis.icd11_code == "BA00"
+        assert diagnosis.icd11_display == "Essential hypertension"
+
+    def test_create_condition_denies_another_facility_context(
+        self,
+        authenticated_client,
+        test_staff_profile,
+        sample_patient,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
+    ):
+        """A user assigned to facility B cannot write against facility A's encounter."""
+        from hmis.apps.core.models import Facility
+
+        facility_b = Facility.objects.create(
+            organization=sample_organization,
+            name="FHIR Semantic Facility B",
+            mfl_code="99888",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        test_staff_profile.secondary_facilities.add(facility_b)
+
+        response = authenticated_client.post(
+            "/fhir/Condition/",
+            {
+                "resourceType": "Condition",
+                "subject": {"reference": f"Patient/{sample_patient.pk}"},
+                "code": {
+                    "coding": [{"system": "http://id.who.int/icd/release/11/mms", "code": "BA00"}]
+                },
+            },
+            format="json",
+            HTTP_X_FACILITY_ID=str(facility_b.pk),
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["issue"][0]["code"] == "not-found"
+
+
+@pytest.mark.django_db
+class TestFHIRProcedureCreate:
+    """Tests for facility-scoped inbound FHIR Procedure semantics."""
+
+    def test_create_procedure_maps_ichi_code_to_facility_catalog(
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+    ):
+        """Should create an order only from the active facility's ICHI mapping."""
+        from hmis.apps.procedures.models import ProcedureCatalog, ProcedureOrder
+
+        catalog = ProcedureCatalog.objects.create(
+            code="PROC-SEM-001",
+            name="Wound debridement",
+            ichi_code="MZJ.01",
+            category=ProcedureCatalog.Category.THERAPEUTIC,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        payload = {
+            "resourceType": "Procedure",
+            "status": "completed",
+            "subject": {"reference": f"Patient/{sample_patient.pk}"},
+            "encounter": {"reference": f"Encounter/{sample_encounter.pk}"},
+            "code": {
+                "coding": [
+                    {
+                        "system": "http://id.who.int/ichi",
+                        "code": "MZJ.01",
+                        "display": "Wound debridement",
+                    }
+                ]
+            },
+            "reasonCode": [{"text": "Synthetic wound-care scenario"}],
+        }
+
+        response = authenticated_client.post("/fhir/Procedure/", payload, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        order = ProcedureOrder.objects.get(pk=response.data["id"])
+        assert order.procedure_id == catalog.id
+        assert order.facility_id == sample_facility.id
+        assert response.data["code"]["coding"][0]["code"] == "MZJ.01"
+
+    def test_create_procedure_denies_another_facility_context(
+        self,
+        authenticated_client,
+        test_staff_profile,
+        sample_patient,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
+    ):
+        """A facility B context cannot use a facility A encounter or catalogue."""
+        from hmis.apps.core.models import Facility
+        from hmis.apps.procedures.models import ProcedureCatalog
+
+        ProcedureCatalog.objects.create(
+            code="PROC-SEM-DENY",
+            name="Facility A procedure",
+            ichi_code="MZJ.02",
+            category=ProcedureCatalog.Category.THERAPEUTIC,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        facility_b = Facility.objects.create(
+            organization=sample_organization,
+            name="FHIR Procedure Facility B",
+            mfl_code="99887",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        test_staff_profile.secondary_facilities.add(facility_b)
+
+        response = authenticated_client.post(
+            "/fhir/Procedure/",
+            {
+                "resourceType": "Procedure",
+                "status": "completed",
+                "subject": {"reference": f"Patient/{sample_patient.pk}"},
+                "encounter": {"reference": f"Encounter/{sample_encounter.pk}"},
+                "code": {"coding": [{"system": "http://id.who.int/ichi", "code": "MZJ.02"}]},
+            },
+            format="json",
+            HTTP_X_FACILITY_ID=str(facility_b.pk),
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["issue"][0]["code"] == "not-found"
+
+
+@pytest.mark.django_db
+class TestFHIRLaboratoryObservationCreate:
+    """Tests for facility-scoped inbound LOINC laboratory result semantics."""
+
+    def test_create_laboratory_observation_preserves_loinc_and_interpretation(
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+    ):
+        """Should persist a coded inbound result in the facility lab workflow."""
+        from hmis.apps.laboratory.models import TestCatalog
+
+        TestCatalog.objects.create(
+            code="HB-SEM-001",
+            name="Hemoglobin",
+            short_name="Hb",
+            loinc_code="718-7",
+            category="HEMATOLOGY",
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+            result_unit="g/dL",
+            normal_range_female="12.0-15.0",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        payload = {
+            "resourceType": "Observation",
+            "status": "final",
+            "category": [{"coding": [{"code": "laboratory"}]}],
+            "subject": {"reference": f"Patient/{sample_patient.pk}"},
+            "encounter": {"reference": f"Encounter/{sample_encounter.pk}"},
+            "code": {
+                "coding": [
+                    {
+                        "system": "http://loinc.org",
+                        "code": "718-7",
+                        "display": "Hemoglobin",
+                    }
+                ]
+            },
+            "valueQuantity": {
+                "value": 16.2,
+                "unit": "g/dL",
+                "system": "http://unitsofmeasure.org",
+                "code": "g/dL",
+            },
+            "referenceRange": [{"text": "12.0-15.0"}],
+            "interpretation": [{"coding": [{"code": "H"}]}],
+        }
+
+        response = authenticated_client.post("/fhir/Observation/", payload, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["code"]["coding"][0]["code"] == "718-7"
+        result = sample_encounter.lab_orders.get().items.get().result
+        assert result.result_loinc_code == "718-7"
+        assert result.result_flag == "HIGH"
+        assert result.facility_id if hasattr(result, "facility_id") else True
+
+    def test_create_laboratory_observation_denies_another_facility_context(
+        self,
+        authenticated_client,
+        test_staff_profile,
+        sample_patient,
+        sample_encounter,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
+    ):
+        """A facility B context cannot write a result against facility A's encounter."""
+        from hmis.apps.core.models import Facility
+
+        facility_b = Facility.objects.create(
+            organization=sample_organization,
+            name="FHIR Laboratory Facility B",
+            mfl_code="99886",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        test_staff_profile.secondary_facilities.add(facility_b)
+
+        response = authenticated_client.post(
+            "/fhir/Observation/",
+            {
+                "resourceType": "Observation",
+                "status": "final",
+                "category": [{"coding": [{"code": "laboratory"}]}],
+                "subject": {"reference": f"Patient/{sample_patient.pk}"},
+                "encounter": {"reference": f"Encounter/{sample_encounter.pk}"},
+                "code": {"coding": [{"system": "http://loinc.org", "code": "718-7"}]},
+                "valueQuantity": {"value": 15.1, "unit": "g/dL"},
+            },
+            format="json",
+            HTTP_X_FACILITY_ID=str(facility_b.pk),
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["issue"][0]["code"] == "not-found"
+
 
 @pytest.mark.django_db
 class TestFHIREncounterCreate:
@@ -655,6 +926,22 @@ class TestFHIRDiagnosticReportCreate:
             format="json",
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_create_diagnostic_report_missing_code(self, authenticated_client, sample_patient):
+        """Should return a FHIR OperationOutcome for a malformed report."""
+        response = authenticated_client.post(
+            "/fhir/DiagnosticReport/",
+            {
+                "resourceType": "DiagnosticReport",
+                "status": "final",
+                "subject": {"reference": f"Patient/{sample_patient.pk}"},
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["resourceType"] == "OperationOutcome"
+        assert response.data["issue"][0]["code"] == "required"
 
     def test_create_diagnostic_report_requires_auth(self, api_client):
         """Should reject unauthenticated requests."""

@@ -1,0 +1,58 @@
+{
+  "category": [
+    {
+      "coding": [
+        {
+          "code": "problem-list-item",
+          "display": "Problem List Item",
+          "system": "http://terminology.hl7.org/CodeSystem/condition-category"
+        }
+      ],
+      "text": "Problem"
+    }
+  ],
+  "clinicalStatus": {
+    "coding": [
+      {
+        "code": "active",
+        "display": "Active",
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical"
+      }
+    ]
+  },
+  "code": {
+    "coding": [
+      {
+        "code": "BA00",
+        "display": "Essential hypertension",
+        "system": "http://id.who.int/icd/release/11/mms"
+      }
+    ],
+    "text": "Essential hypertension"
+  },
+  "id": "220",
+  "meta": {
+    "lastUpdated": "2026-11-15T01:12:47+00:00",
+    "versionId": "1"
+  },
+  "onsetDateTime": "2026-11-04",
+  "recordedDate": "2026-11-04",
+  "resourceType": "Condition",
+  "subject": {
+    "display": "John Doe DHA TEST",
+    "reference": "Patient/402"
+  },
+  "text": {
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p><b>Condition</b>: Essential hypertension</p><p><b>Status</b>: Active</p></div>",
+    "status": "generated"
+  },
+  "verificationStatus": {
+    "coding": [
+      {
+        "code": "confirmed",
+        "display": "Confirmed",
+        "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status"
+      }
+    ]
+  }
+}

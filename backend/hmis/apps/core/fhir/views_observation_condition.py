@@ -25,7 +25,11 @@ from rest_framework.views import APIView
 
 from hmis.apps.core.fhir.security import request_can_access_fhir_resource
 from hmis.apps.core.oauth.permissions import SMARTPatientAccessPermission, SMARTScopePermission
-from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
+from hmis.apps.core.permissions import (
+    FHIRAccessPermission,
+    ReadRequiresModelPermission,
+    WriteRequiresRolePermission,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +81,7 @@ class PublicFHIRReadAPIView(FHIRSchemaMixin, APIView):
         IsAuthenticated,
         SMARTScopePermission,
         SMARTPatientAccessPermission,
+        FHIRAccessPermission,
         ReadRequiresModelPermission,
     ]
     renderer_classes = FHIR_RENDERER_CLASSES
@@ -432,10 +437,6 @@ class FHIRObservationView(PublicFHIRReadAPIView):
             "meta": {
                 "versionId": "1",
                 "lastUpdated": format_date(lab_result.updated_at),
-                "profile": [
-                    "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-results-laboratory-uv-ips",
-                    "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-results-uv-ips",
-                ],
             },
             "status": "final",
             "category": [
@@ -977,7 +978,6 @@ class FHIRConditionView(PublicFHIRReadAPIView):
             "meta": {
                 "versionId": "1",
                 "lastUpdated": format_date(datetime.now()),
-                "profile": ["http://hl7.org/fhir/uv/ips/StructureDefinition/Condition-uv-ips"],
             },
             "clinicalStatus": {
                 "coding": [

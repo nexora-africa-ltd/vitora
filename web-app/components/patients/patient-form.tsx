@@ -138,6 +138,11 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
+/** Return whether a Kenyan national identifier uses a supported format. */
+export function isValidKenyanNationalIdentifier(value: string): boolean {
+  return /^(?:\d{7,8}|\d{14})$/.test(value);
+}
+
 // Validation schema
 const patientFormSchema = z.object({
   // Identification (at the top)
@@ -234,6 +239,17 @@ const patientFormSchemaRefined = patientFormSchema.superRefine((data, ctx) => {
           data.identification_type === 'birth_certificate'
             ? 'Birth certificate can only contain letters, numbers, dashes, and underscores'
             : 'ID can only contain letters, numbers, and dashes',
+      });
+    }
+
+    if (
+      data.identification_type === 'national_id' &&
+      !isValidKenyanNationalIdentifier(idNumber)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['identification_number'],
+        message: 'Use a 7- or 8-digit legacy ID, or a 14-digit Maisha Namba',
       });
     }
   }
@@ -2010,7 +2026,11 @@ export function PatientForm({
                           <Input
                             {...field}
                             value={field.value || ''}
-                            placeholder="Enter ID number"
+                            placeholder={
+                              identificationType === 'national_id'
+                                ? 'Legacy ID or 14-digit Maisha Namba'
+                                : 'Enter ID number'
+                            }
                             disabled={formLocked || isFormLoading}
                             className="h-10"
                             onChange={(e) => {
@@ -2023,7 +2043,11 @@ export function PatientForm({
                             <Input
                               {...field}
                               value={field.value || ''}
-                              placeholder="Enter ID number"
+                              placeholder={
+                                identificationType === 'national_id'
+                                  ? 'Legacy ID or 14-digit Maisha Namba'
+                                  : 'Enter ID number'
+                              }
                               disabled={formLocked || isFormLoading}
                               className="h-10 pr-10"
                               onChange={(e) => {

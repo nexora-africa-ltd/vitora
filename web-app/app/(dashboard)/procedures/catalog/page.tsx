@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Search, Syringe } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -22,6 +22,9 @@ import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 import { proceduresApi } from '@/lib/api/procedures';
+import { getApiErrorMessage } from '@/lib/api/client';
+import { usePermissions } from '@/lib/hooks/use-permissions';
+import { toast } from '@/lib/hooks/use-toast';
 import { formatCurrency } from '@/lib/utils/format';
 import type { ProcedureCatalogEntry } from '@/lib/types/procedure';
 import { RISK_LEVEL_COLORS } from '@/lib/types/procedure';
@@ -58,9 +61,14 @@ const CATEGORY_COLORS: Record<string, string> = {
   OTHER: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300',
 };
 
+const PROCEDURE_CATALOG_SEED_ENABLED =
+  process.env.NEXT_PUBLIC_PROCEDURE_CATALOG_SEED_ENABLED === 'true';
+
 export default function ProcedureCatalogPage() {
   const router = useRouter();
   const canCreateRoute = useCreateRouteAccess();
+  const { hasPermission, isAdmin } = usePermissions();
+  const queryClient = useQueryClient();
   const { refresh, isRefreshing } = usePageRefresh();
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('');
@@ -90,6 +98,26 @@ export default function ProcedureCatalogPage() {
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
   const hasNext = !!data?.next;
   const hasPrev = page > 1;
+  const canSeedDefaults =
+    PROCEDURE_CATALOG_SEED_ENABLED &&
+    (isAdmin || hasPermission('procedures.add_procedurecatalog'));
+  const seedDefaults = useMutation({
+    mutationFn: proceduresApi.seedCatalogDefaults,
+    onSuccess: (result) => {
+      toast({
+        title: 'Procedure defaults seeded',
+        description: `${result.created} DHA ICHI concepts were added for this facility.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['procedure-catalog'] });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Could not seed procedure defaults',
+        description: getApiErrorMessage(error),
+        variant: 'destructive',
+      });
+    },
+  });
 
   const handleFilterChange = (setter: (v: string) => void) => (v: string) => {
     setter(v);
@@ -231,9 +259,19 @@ export default function ProcedureCatalogPage() {
         {!isLoading && totalCount === 0 && !debouncedSearch && !categoryFilter && !riskFilter && (
           <Alert>
             <AlertTitle>Procedure catalog not seeded for this tenant</AlertTitle>
-            <AlertDescription>
-              No active procedures are available for your organization yet. Run the procedure
-              catalog seed for this tenant before ordering procedures.
+            <AlertDescription className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <span>No active procedures are available for this facility yet.</span>
+              {canSeedDefaults && (
+                <Button
+                  size="sm"
+                  onClick={() => seedDefaults.mutate()}
+                  disabled={seedDefaults.isPending}
+                  className="w-full sm:w-auto"
+                >
+                  <Syringe className="mr-2 h-4 w-4" />
+                  {seedDefaults.isPending ? 'Seeding…' : 'Seed defaults'}
+                </Button>
+              )}
             </AlertDescription>
           </Alert>
         )}

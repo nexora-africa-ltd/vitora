@@ -168,6 +168,8 @@ const PERMISSION_MAP: Record<string, string[]> = {
   escalate_ihr_to_county: ['surveillance.escalate_ihr_to_county'],
   escalate_ihr_to_national: ['surveillance.escalate_ihr_to_national'],
   notify_ihr_to_who: ['surveillance.notify_ihr_to_who'],
+  'surveillance.view_submissions': ['surveillance.view_countynotificationdelivery'],
+  'surveillance.retry_submissions': ['surveillance.change_countynotificationdelivery'],
 
   // MCH permissions
   view_sensitive_mch: ['mch.view_sensitive_mch_registration'],

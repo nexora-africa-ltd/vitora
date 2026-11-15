@@ -52,12 +52,22 @@ class CountyNotificationDeliverySerializer(serializers.ModelSerializer):
 
     recipient_masked = serializers.SerializerMethodField()
     triggered_by_name = serializers.SerializerMethodField()
+    sent_by_name = serializers.SerializerMethodField()
+    case_disease_name = serializers.CharField(source="case.disease.name", read_only=True)
+    case_patient_mrn = serializers.CharField(source="case.patient.mrn", read_only=True)
+    case_notification_status = serializers.CharField(
+        source="case.notification_status",
+        read_only=True,
+    )
 
     class Meta:
         model = CountyNotificationDelivery
         fields = [
             "id",
             "case",
+            "case_disease_name",
+            "case_patient_mrn",
+            "case_notification_status",
             "channel",
             "status",
             "recipient_masked",
@@ -75,6 +85,7 @@ class CountyNotificationDeliverySerializer(serializers.ModelSerializer):
             "next_retry_at",
             "triggered_by",
             "triggered_by_name",
+            "sent_by_name",
             "created_at",
             "updated_at",
         ]
@@ -104,6 +115,10 @@ class CountyNotificationDeliverySerializer(serializers.ModelSerializer):
     def get_triggered_by_name(self, obj) -> str | None:
         """Return trigger actor display name."""
         return _display_user_name(obj.triggered_by)
+
+    def get_sent_by_name(self, obj) -> str:
+        """Return the operator name or identify an automated dispatch."""
+        return _display_user_name(obj.triggered_by) or "Automated system"
 
 
 class SurveillanceFacilitySettingsSerializer(serializers.ModelSerializer):
@@ -185,8 +200,12 @@ class NotifiableDiseaseSerializer(serializers.ModelSerializer):
     """Serializer for NotifiableDisease model."""
 
     icd10_code_list = serializers.SerializerMethodField()
+    icd11_codes = serializers.ListField(
+        child=serializers.CharField(max_length=32),
+        required=False,
+        allow_empty=True,
+    )
     is_immediate = serializers.BooleanField(read_only=True)
-    requires_county_notification = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = NotifiableDisease
@@ -194,6 +213,7 @@ class NotifiableDiseaseSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "icd10_codes",
+            "icd11_codes",
             "icd10_code_list",
             "category",
             "reporting_hours",
@@ -213,13 +233,25 @@ class NotifiableDiseaseSerializer(serializers.ModelSerializer):
         """Return list of ICD-10 codes."""
         return obj.get_icd10_code_list()
 
+    def validate_icd11_codes(self, value: list[str]) -> list[str]:
+        """Store a normalized, duplicate-free array of ICD-11 MMS codes."""
+        return NotifiableDisease.normalize_icd11_codes(value)
+
 
 class NotifiableDiseaseListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for disease list views."""
 
     class Meta:
         model = NotifiableDisease
-        fields = ["id", "name", "category", "reporting_hours", "is_immediate", "is_active"]
+        fields = [
+            "id",
+            "name",
+            "category",
+            "reporting_hours",
+            "is_immediate",
+            "requires_county_notification",
+            "is_active",
+        ]
 
 
 class NotifiableCaseSerializer(serializers.ModelSerializer):
@@ -234,6 +266,7 @@ class NotifiableCaseSerializer(serializers.ModelSerializer):
     is_overdue = serializers.BooleanField(read_only=True)
     hours_until_deadline = serializers.IntegerField(read_only=True)
     is_immediate = serializers.BooleanField(read_only=True)
+    requires_county_notification = serializers.BooleanField(read_only=True)
     reported_by_name = serializers.SerializerMethodField()
     notified_by_name = serializers.SerializerMethodField()
 
@@ -261,6 +294,7 @@ class NotifiableCaseSerializer(serializers.ModelSerializer):
             "is_overdue",
             "hours_until_deadline",
             "is_immediate",
+            "requires_county_notification",
             "county",
             "county_name",
             "sub_county",

@@ -22,7 +22,7 @@ def check_diagnosis_for_surveillance(sender, instance, created, **kwargs):
     """
     Check if a new or updated diagnosis matches a notifiable disease.
 
-    When a diagnosis is created or updated with an ICD-10 code that
+    When a diagnosis is created or updated with an ICD-10 or ICD-11 code that
     matches a notifiable disease, automatically create a NotifiableCase.
     """
     if is_sync_materialization_active():
@@ -30,8 +30,8 @@ def check_diagnosis_for_surveillance(sender, instance, created, **kwargs):
 
     from .services import SurveillanceService
 
-    # Only check confirmed diagnoses with ICD-10 codes
-    if not instance.icd10_code:
+    # Only check diagnoses with an ICD-10 or ICD-11 code.
+    if not instance.icd10_code_id and not instance.icd11_code:
         return
 
     # Skip ruled out diagnoses
@@ -62,6 +62,7 @@ def check_diagnosis_for_surveillance(sender, instance, created, **kwargs):
                     "disease_name": disease.name,
                     "diagnosis_id": instance.id,
                     "icd10_code": instance.icd10_code.code if instance.icd10_code else None,
+                    "icd11_code": instance.icd11_code or None,
                     "patient_id": getattr(instance.encounter, "patient_id", None),
                 },
                 facility_id=getattr(instance.encounter, "facility_id", None),

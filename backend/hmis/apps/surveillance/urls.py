@@ -13,6 +13,7 @@ from .views import (
     ContactTracingContactViewSet,
     ContactTracingFollowUpViewSet,
     CountyNotificationAcknowledgeView,
+    CountyNotificationDeliveryViewSet,
     CountyReportView,
     IDSRWeeklyReportViewSet,
     IHRNotificationViewSet,
@@ -32,6 +33,9 @@ router.register(r"diseases", NotifiableDiseaseViewSet, basename="disease")
 router.register(r"cases", NotifiableCaseViewSet, basename="case")
 router.register(r"alerts", SurveillanceAlertViewSet, basename="alert")
 router.register(r"settings", SurveillanceFacilitySettingsViewSet, basename="surveillance-settings")
+router.register(
+    r"deliveries", CountyNotificationDeliveryViewSet, basename="county-notification-delivery"
+)
 router.register(r"contacts", ContactTracingContactViewSet, basename="contact-tracing-contact")
 router.register(
     r"contact-followups", ContactTracingFollowUpViewSet, basename="contact-tracing-followup"

@@ -1002,6 +1002,43 @@ class TestSurveillanceSignalEvents:
         assert received[0].payload["icd10_code"] == "A01.0"
 
     @pytest.mark.django_db
+    def test_icd11_notifiable_disease_detected_publishes_event(self):
+        """ICD-11-only diagnoses retain their coding evidence in the event payload."""
+        received = []
+        bus = get_event_bus()
+        bus.subscribe(SurveillanceEvents.NOTIFIABLE_DISEASE_DETECTED, lambda e: received.append(e))
+
+        from hmis.apps.surveillance.signals import check_diagnosis_for_surveillance
+
+        encounter = MagicMock()
+        encounter.patient_id = 10
+        encounter.facility_id = 1
+
+        instance = MagicMock()
+        instance.id = 61
+        instance.icd10_code_id = None
+        instance.icd10_code = None
+        instance.icd11_code = "1A00"
+        instance.certainty = "confirmed"
+        instance.encounter = encounter
+        instance.diagnosed_by = MagicMock()
+
+        disease = MagicMock()
+        disease.name = "Cholera"
+        case = MagicMock()
+        case.id = 71
+
+        with patch("hmis.apps.surveillance.services.SurveillanceService") as MockService:
+            MockService.check_diagnosis_for_notifiable_disease.return_value = disease
+            MockService.create_case_from_diagnosis.return_value = case
+
+            check_diagnosis_for_surveillance(sender=None, instance=instance, created=True)
+
+        assert len(received) == 1
+        assert received[0].payload["icd10_code"] is None
+        assert received[0].payload["icd11_code"] == "1A00"
+
+    @pytest.mark.django_db
     def test_non_notifiable_diagnosis_does_not_publish(self):
         received = []
         bus = get_event_bus()

@@ -524,12 +524,19 @@ class TestFacilityAPI:
         assert AuditLog.objects.filter(action="facility_created").count() == initial_count + 1
 
     def test_update_logs_audit_entry(self, admin_client, sample_facility):
-        """Updating a facility should produce an audit log entry."""
+        """Updating a facility should retain a field-level before/after audit trail."""
         from hmis.apps.core.models import AuditLog
 
-        initial_count = AuditLog.objects.filter(action="facility_updated").count()
         admin_client.patch(f"/api/facilities/{sample_facility.id}/", {"name": "Updated"})
-        assert AuditLog.objects.filter(action="facility_updated").count() == initial_count + 1
+        audit_entry = AuditLog.objects.filter(
+            action="facility_updated",
+            resource_type="Facility",
+            resource_id=sample_facility.id,
+        ).latest("timestamp")
+
+        assert audit_entry.details["changed_fields"] == ["name"]
+        assert audit_entry.details["old_values"] == {"name": "Sample District Hospital"}
+        assert audit_entry.details["new_values"] == {"name": "Updated"}
 
     def test_delete_logs_audit_entry(self, admin_client, sample_facility):
         """Deleting a facility should produce an audit log entry."""

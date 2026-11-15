@@ -11,6 +11,7 @@ This module contains custom permission classes for:
 import logging
 import re
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from rest_framework import permissions
 
@@ -354,17 +355,30 @@ class EncryptionEvidencePermission(permissions.BasePermission):
         return bool(user and user.is_authenticated and user.has_perm(self.permission_name))
 
 
+class DataIntegrityEvidencePermission(EncryptionEvidencePermission):
+    """Restrict SEC-INT-001 evidence to its dedicated DHA-reader permission."""
+
+    permission_name = "core.view_data_integrity_evidence"
+
+
 class BackupRecoveryEvidencePermission(EncryptionEvidencePermission):
-    """Restrict platform backup and recovery evidence to authorized staff."""
+    """Restrict recovery evidence to staff or the DHA evidence-reader role."""
 
     permission_name = "core.view_backup_recovery_evidence"
+    evidence_reader_role_code = "DHA_EVIDENCE_READER"
 
     def has_permission(self, request, view):
-        """Require platform-staff status for infrastructure recovery posture."""
+        """Allow authorized staff or the explicit non-staff DHA reader role."""
         user = request.user
-        return bool(
-            user and user.is_authenticated and user.is_staff and user.has_perm(self.permission_name)
-        )
+        if not user or not user.is_authenticated or not user.has_perm(self.permission_name):
+            return False
+        if user.is_staff:
+            return True
+
+        try:
+            return user.staff_profile.primary_role.code == self.evidence_reader_role_code
+        except ObjectDoesNotExist:
+            return False
 
 
 class FacilityAdminPermission(permissions.BasePermission):
@@ -1112,6 +1126,45 @@ class WriteRequiresRolePermission(permissions.BasePermission):
             return False
 
         return False
+
+
+class FHIRAccessPermission(permissions.BasePermission):
+    """Require a dedicated role or Django permission for protected FHIR endpoints."""
+
+    message = "Your role does not have access to the FHIR API."
+    code = "fhir_access_denied"
+    ADMIN_ROLE_CODES = {"ADMIN", "ORG-ADMIN", "OWNER"}
+
+    def has_permission(self, request, view):  # noqa: ARG002
+        """Check the explicit FHIR capability without inferring an APIView model."""
+        from django.conf import settings
+
+        enforced = getattr(
+            settings,
+            "FHIR_RBAC_ENFORCEMENT",
+            getattr(settings, "RBAC_READ_ENFORCEMENT", True)
+            if request.method in permissions.SAFE_METHODS
+            else getattr(settings, "RBAC_WRITE_ENFORCEMENT", True),
+        )
+        if not enforced:
+            return True
+
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        action = "read" if request.method in permissions.SAFE_METHODS else "create"
+        required_permission = "core.access_fhir_api" if action == "read" else "core.write_fhir_api"
+        if user.is_superuser or user.has_perm(required_permission):
+            return True
+
+        profile = getattr(user, "staff_profile", None)
+        role = getattr(profile, "primary_role", None)
+        if role and getattr(role, "code", "") in self.ADMIN_ROLE_CODES:
+            return True
+        if not profile:
+            return False
+
+        return profile.has_permission(action, "FHIR")
 
 
 class ReadRequiresModelPermission(permissions.BasePermission):

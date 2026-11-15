@@ -9,6 +9,7 @@ import {
   ContactTracingContactSchema,
   ContactTracingFollowUpSchema,
   CountyNotificationDeliveryListSchema,
+  CountyNotificationDeliverySchema,
   CountyReportSchema,
   ExceededThresholdListSchema,
   IDSRDashboardSchema,
@@ -27,6 +28,7 @@ import {
   PaginatedIDSRWeeklyReportSchema,
   PaginatedIHRNotificationSchema,
   PaginatedContactTracingContactSchema,
+  PaginatedCountyNotificationDeliverySchema,
   SurveillanceAlertListArraySchema,
   SurveillanceFacilitySettingsSchema,
   SurveillanceDashboardSchema,
@@ -35,6 +37,7 @@ import type {
   ContactTracingContact,
   ContactTracingFollowUp,
   CountyNotificationDelivery,
+  CountyNotificationDeliveryListParams,
   CountyReport,
   ExceededThreshold,
   IDSRDashboard,
@@ -107,7 +110,10 @@ export const surveillanceApi = {
     });
   },
 
-  async updateCaseSeverity(id: number, severity: NotifiableCaseSeverity): Promise<NotifiableCaseDetail> {
+  async updateCaseSeverity(
+    id: number,
+    severity: NotifiableCaseSeverity
+  ): Promise<NotifiableCaseDetail> {
     const response = await apiClient.patch<NotifiableCaseDetail>(`/api/surveillance/cases/${id}/`, {
       severity,
     });
@@ -185,9 +191,27 @@ export const surveillanceApi = {
   },
 
   async retryCaseNotificationDeliveries(id: number): Promise<CountyNotificationDelivery[]> {
-    const response = await apiClient.post(`/api/surveillance/cases/${id}/retry_county_notifications/`);
+    const response = await apiClient.post(
+      `/api/surveillance/cases/${id}/retry_county_notifications/`
+    );
     return parseResponse(CountyNotificationDeliveryListSchema, response.data, {
       context: 'surveillanceApi.retryCaseNotificationDeliveries',
+    });
+  },
+
+  async listNotificationDeliveries(
+    params?: CountyNotificationDeliveryListParams
+  ): Promise<PaginatedResponse<CountyNotificationDelivery>> {
+    const response = await apiClient.get('/api/surveillance/deliveries/', { params });
+    return parseResponse(PaginatedCountyNotificationDeliverySchema, response.data, {
+      context: 'surveillanceApi.listNotificationDeliveries',
+    });
+  },
+
+  async retryNotificationDelivery(id: number): Promise<CountyNotificationDelivery> {
+    const response = await apiClient.post(`/api/surveillance/deliveries/${id}/retry/`);
+    return parseResponse(CountyNotificationDeliverySchema, response.data, {
+      context: 'surveillanceApi.retryNotificationDelivery',
     });
   },
 
@@ -274,9 +298,7 @@ export const surveillanceApi = {
     });
   },
 
-  async listCaseContacts(
-    caseId: number
-  ): Promise<PaginatedResponse<ContactTracingContact>> {
+  async listCaseContacts(caseId: number): Promise<PaginatedResponse<ContactTracingContact>> {
     return this.listContacts({ case: caseId });
   },
 
@@ -307,7 +329,10 @@ export const surveillanceApi = {
     action: 'mark_contacted' | 'start_monitoring' | 'mark_symptomatic' | 'mark_cleared',
     payload?: { notes?: string; monitoring_days?: number }
   ): Promise<ContactTracingContact> {
-    const response = await apiClient.post(`/api/surveillance/contacts/${contactId}/${action}/`, payload ?? {});
+    const response = await apiClient.post(
+      `/api/surveillance/contacts/${contactId}/${action}/`,
+      payload ?? {}
+    );
     return parseResponse(ContactTracingContactSchema, response.data, {
       context: 'surveillanceApi.transitionContactStatus',
     });
@@ -325,7 +350,10 @@ export const surveillanceApi = {
       outcome?: 'CONTINUE_MONITORING' | 'ESCALATE_TESTING' | 'ESCALATE_ISOLATION' | 'CLEARED';
     }
   ): Promise<ContactTracingFollowUp> {
-    const response = await apiClient.post(`/api/surveillance/contacts/${contactId}/record_followup/`, payload);
+    const response = await apiClient.post(
+      `/api/surveillance/contacts/${contactId}/record_followup/`,
+      payload
+    );
     return parseResponse(ContactTracingFollowUpSchema, response.data, {
       context: 'surveillanceApi.recordContactFollowup',
     });

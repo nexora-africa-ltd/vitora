@@ -34,7 +34,7 @@ from rest_framework.response import Response
 from hmis.apps.billing.models import FacilityBillingConfig, Invoice, Payment, PaymentPoint, Service
 from hmis.apps.billing.services.mpesa import MpesaConfigurationError
 from hmis.apps.core.api_errors import safe_error_response
-from hmis.apps.core.audit import AuditedMutationMixin
+from hmis.apps.core.audit import AuditedConfigurationMutationMixin
 from hmis.apps.core.mixins import NestedTenantScopeMixin, resolve_request_tenant
 from hmis.apps.core.models import Facility
 from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
@@ -810,7 +810,7 @@ class ReportViewSet(viewsets.ViewSet):
 
 
 class FacilityBillingConfigViewSet(
-    AuditedMutationMixin, NestedTenantScopeMixin, viewsets.ModelViewSet
+    AuditedConfigurationMutationMixin, NestedTenantScopeMixin, viewsets.ModelViewSet
 ):
     """
     ViewSet for per-facility billing configuration.
@@ -854,6 +854,7 @@ class FacilityBillingConfigViewSet(
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
+        self.capture_configuration_creation(serializer.instance)
         read_serializer = FacilityBillingConfigSerializer(serializer.instance)
         headers = self.get_success_headers(read_serializer.data)
         return Response(read_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
@@ -864,6 +865,10 @@ class FacilityBillingConfigViewSet(
 
         partial = kwargs.pop("partial", False)
         instance = self.get_object()
+        self.capture_configuration_audit(
+            instance,
+            operation=getattr(self, "action", "update"),
+        )
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)

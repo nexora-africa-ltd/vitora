@@ -1,0 +1,13 @@
+{
+  "http_status": 400,
+  "body": {
+    "resourceType": "OperationOutcome",
+    "issue": [
+      {
+        "severity": "error",
+        "code": "required",
+        "diagnostics": "DiagnosticReport.code is required"
+      }
+    ]
+  }
+}

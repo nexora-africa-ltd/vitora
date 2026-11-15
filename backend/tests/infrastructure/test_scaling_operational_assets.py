@@ -57,7 +57,9 @@ def test_make_test_removes_incompatible_stale_coverage_data():
     makefile = (REPO_ROOT / "backend" / "Makefile").read_text()
     test_target = makefile.split("test:", 1)[1].split("test-fast:", 1)[0]
 
-    assert "rm -f .coverage .coverage.*" in test_target
+    assert 'rm -f "$(COVERAGE_FILE)" "$(COVERAGE_FILE)".*' in test_target
+    assert 'COVERAGE_FILE="$(COVERAGE_FILE)"' in test_target
+    assert "$(ARTIFACTS_DIR)/.coverage" in makefile
 
 
 def test_staging_uses_redis_for_shared_cache_when_configured():

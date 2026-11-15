@@ -34,7 +34,7 @@ class TestProcedureCatalog:
         assert len(ProcedureCatalog.Category.choices) == 13
 
     def test_body_system_choices(self):
-        assert len(ProcedureCatalog.BodySystem.choices) == 13
+        assert len(ProcedureCatalog.BodySystem.choices) == 14
 
     def test_default_values(self, db):
         entry = ProcedureCatalog.objects.create(

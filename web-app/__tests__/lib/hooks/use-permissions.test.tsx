@@ -329,6 +329,34 @@ describe('usePermissions Hook', () => {
     });
   });
 
+  describe('Surveillance submission actions', () => {
+    it('allows compliance officers to view, but not retry, submission deliveries', async () => {
+      mockUseAuth.mockReturnValue({
+        user: { ...mockUser, role: 'COMPLIANCE_OFFICER', permissions: [] },
+        isAuthenticated: true,
+      } as unknown);
+
+      const { usePermissions } = await import('@/lib/hooks/use-permissions');
+      const { result } = renderHook(() => usePermissions());
+
+      expect(result.current.canPerformAction('surveillance.view_submissions')).toBe(true);
+      expect(result.current.canPerformAction('surveillance.retry_submissions')).toBe(false);
+    });
+
+    it('allows DHA evidence readers to view, but not retry, submissions', async () => {
+      mockUseAuth.mockReturnValue({
+        user: { ...mockUser, role: 'DHA_EVIDENCE_READER', permissions: [] },
+        isAuthenticated: true,
+      } as unknown);
+
+      const { usePermissions } = await import('@/lib/hooks/use-permissions');
+      const { result } = renderHook(() => usePermissions());
+
+      expect(result.current.canPerformAction('surveillance.view_submissions')).toBe(true);
+      expect(result.current.canPerformAction('surveillance.retry_submissions')).toBe(false);
+    });
+  });
+
   // ===========================================================================
   // 6. Unauthenticated Users
   // ===========================================================================

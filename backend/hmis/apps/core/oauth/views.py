@@ -241,12 +241,8 @@ class CapabilityStatementView(APIView):
                 "profile": "http://hl7.org/fhir/StructureDefinition/Patient",
                 "interaction": [
                     {"code": "read"},
-                    {"code": "vread"},
                     {"code": "search-type"},
                     {"code": "create"},
-                    {"code": "update"},
-                    {"code": "delete"},
-                    {"code": "history-instance"},
                 ],
                 "operation": [
                     {
@@ -296,7 +292,6 @@ class CapabilityStatementView(APIView):
                     {"code": "read"},
                     {"code": "search-type"},
                     {"code": "create"},
-                    {"code": "update"},
                 ],
                 "searchParam": [
                     {"name": "patient", "type": "reference"},
@@ -312,7 +307,6 @@ class CapabilityStatementView(APIView):
                     {"code": "read"},
                     {"code": "search-type"},
                     {"code": "create"},
-                    {"code": "update"},
                 ],
                 "searchParam": [
                     {"name": "patient", "type": "reference"},
@@ -329,12 +323,19 @@ class CapabilityStatementView(APIView):
                     {"code": "read"},
                     {"code": "search-type"},
                     {"code": "create"},
-                    {"code": "update"},
                 ],
                 "searchParam": [
                     {"name": "patient", "type": "reference"},
                     {"name": "code", "type": "token"},
                     {"name": "clinical-status", "type": "token"},
+                ],
+            },
+            {
+                "type": "Procedure",
+                "profile": "http://hl7.org/fhir/StructureDefinition/Procedure",
+                "interaction": [
+                    {"code": "read"},
+                    {"code": "create"},
                 ],
             },
             {
@@ -368,7 +369,6 @@ class CapabilityStatementView(APIView):
                     {"code": "read"},
                     {"code": "search-type"},
                     {"code": "create"},
-                    {"code": "update"},
                 ],
                 "searchParam": [
                     {"name": "patient", "type": "reference"},
@@ -396,7 +396,6 @@ class CapabilityStatementView(APIView):
                     {"code": "read"},
                     {"code": "search-type"},
                     {"code": "create"},
-                    {"code": "update"},
                 ],
                 "searchParam": [
                     {"name": "patient", "type": "reference"},
@@ -410,7 +409,6 @@ class CapabilityStatementView(APIView):
                     {"code": "read"},
                     {"code": "search-type"},
                     {"code": "create"},
-                    {"code": "update"},
                 ],
                 "searchParam": [
                     {"name": "patient", "type": "reference"},
@@ -424,6 +422,7 @@ class CapabilityStatementView(APIView):
                 "interaction": [
                     {"code": "read"},
                     {"code": "search-type"},
+                    {"code": "create"},
                 ],
                 "searchParam": [
                     {"name": "patient", "type": "reference"},

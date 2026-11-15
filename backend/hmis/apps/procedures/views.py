@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from hmis.apps.core.mixins import TenantScopedViewMixin
+from hmis.apps.core.mixins import TenantScopedViewMixin, resolve_request_tenant
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import (
     ReadRequiresModelPermission,
@@ -45,19 +45,18 @@ from .serializers import (
     ProcedureScheduleSerializer,
     ProcedureStartSerializer,
 )
+from .services import seed_ichi_catalog_for_facility
 
 
 class ProcedureCatalogViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """ViewSet for browsing the procedure catalog.
 
-    Catalog is reference data shared across all facilities in the
-    organization, so tenant_scope is set to "organization" rather
-    than the default "facility".
+    Procedure catalogues are configured independently by facility.
     """
 
     queryset = ProcedureCatalog.objects.all()
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
-    tenant_scope = "organization"
+    tenant_scope = "facility"
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = ProcedureCatalogFilter
     search_fields = ["code", "name", "ichi_code", "cpt_code"]
@@ -67,6 +66,40 @@ class ProcedureCatalogViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         if self.action == "list":
             return ProcedureCatalogListSerializer
         return ProcedureCatalogDetailSerializer
+
+    @action(detail=False, methods=["post"], url_path="seed-defaults")
+    def seed_defaults(self, request):
+        """Seed the canonical DHA ICHI catalogue for an empty current facility."""
+        role_code = getattr(
+            getattr(getattr(request.user, "staff_profile", None), "primary_role", None),
+            "code",
+            "",
+        )
+        can_seed = request.user.has_perm("procedures.add_procedurecatalog") or role_code in {
+            "OWNER",
+            "ADMIN",
+            "ORG-ADMIN",
+        }
+        if not can_seed:
+            return Response(
+                {"detail": "You do not have permission to seed procedure defaults."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        if facility is None:
+            return Response(
+                {"detail": "No active facility context is available for default seeding."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if ProcedureCatalog.objects.filter(facility=facility).exists():
+            return Response(
+                {"detail": "The active facility already has a procedure catalogue."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        return Response(seed_ichi_catalog_for_facility(facility), status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["get"], url_path="available-slots")
     def available_slots(self, request, pk=None):

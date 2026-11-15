@@ -16,11 +16,11 @@ import logging
 
 from django.db import models
 from django_filters import rest_framework as filters
-from rest_framework import viewsets
+from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from hmis.apps.core.audit import AuditedMutationMixin
+from hmis.apps.core.audit import AuditedConfigurationMutationMixin, AuditedMutationMixin
 from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
 from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
 
@@ -213,7 +213,11 @@ class ReferralLabViewSet(AuditedMutationMixin, TenantScopedViewMixin, viewsets.M
         serializer.save()
 
 
-class LabBarcodeConfigViewSet(AuditedMutationMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
+class LabBarcodeConfigViewSet(
+    AuditedConfigurationMutationMixin,
+    TenantScopedViewMixin,
+    viewsets.ModelViewSet,
+):
     """Singleton barcode configuration per facility. Use GET to retrieve, PATCH to update."""
 
     queryset = LabBarcodeConfig.objects.all()
@@ -240,10 +244,17 @@ class LabBarcodeConfigViewSet(AuditedMutationMixin, TenantScopedViewMixin, views
                 },
                 status=400,
             )
-        config, _created = LabBarcodeConfig.objects.get_or_create(
+        config, created = LabBarcodeConfig.objects.get_or_create(
             facility=request.facility,
             defaults={"organization": request.facility.organization},
         )
+        if created:
+            self.capture_configuration_creation(config)
+            self.log_captured_configuration_mutation(
+                request,
+                action="laboratory.barcode_config.initialized",
+                status_code=status.HTTP_201_CREATED,
+            )
         serializer = self.get_serializer(config)
         return Response(serializer.data)
 
@@ -255,7 +266,7 @@ class LabBarcodeConfigViewSet(AuditedMutationMixin, TenantScopedViewMixin, views
 
 
 class LabWorkflowSettingsViewSet(
-    AuditedMutationMixin, TenantScopedViewMixin, viewsets.ModelViewSet
+    AuditedConfigurationMutationMixin, TenantScopedViewMixin, viewsets.ModelViewSet
 ):
     """Singleton workflow settings per facility. Use GET to retrieve, PATCH to update."""
 
@@ -283,10 +294,17 @@ class LabWorkflowSettingsViewSet(
                 },
                 status=400,
             )
-        settings, _created = LabWorkflowSettings.objects.get_or_create(
+        settings, created = LabWorkflowSettings.objects.get_or_create(
             facility=request.facility,
             defaults={"organization": request.facility.organization},
         )
+        if created:
+            self.capture_configuration_creation(settings)
+            self.log_captured_configuration_mutation(
+                request,
+                action="laboratory.workflow_settings.initialized",
+                status_code=status.HTTP_201_CREATED,
+            )
         serializer = self.get_serializer(settings)
         return Response(serializer.data)
 
@@ -298,7 +316,7 @@ class LabWorkflowSettingsViewSet(
 
 
 class LaboratoryAlertSettingsViewSet(
-    AuditedMutationMixin, TenantScopedViewMixin, viewsets.ModelViewSet
+    AuditedConfigurationMutationMixin, TenantScopedViewMixin, viewsets.ModelViewSet
 ):
     """Singleton critical-result escalation settings for the active facility."""
 
@@ -328,7 +346,15 @@ class LaboratoryAlertSettingsViewSet(
                 },
                 status=400,
             )
+        exists = LaboratoryAlertSettings.objects.filter(facility=request.facility).exists()
         settings = LaboratoryAlertSettings.get_settings(request.facility)
+        if not exists:
+            self.capture_configuration_creation(settings)
+            self.log_captured_configuration_mutation(
+                request,
+                action="laboratory.alert_settings.initialized",
+                status_code=status.HTTP_201_CREATED,
+            )
         return Response(self.get_serializer(settings).data)
 
     def get_serializer_context(self):

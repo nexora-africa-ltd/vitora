@@ -302,7 +302,7 @@ export function ICD11Select({
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState<
-    Array<{ id: number; code: string; title: string; description?: string }>
+    Array<{ id?: number; code: string; title: string; description?: string }>
   >([]);
   const [isLoading, setIsLoading] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout>();
@@ -392,7 +392,7 @@ export function ICD11Select({
                 <ScrollArea className="h-[300px]">
                   {results.map((code) => (
                     <CommandItem
-                      key={code.id}
+                      key={code.id ?? code.code}
                       value={`${code.code}-${code.title}`}
                       onSelect={() => {
                         onSelect({ code: code.code, title: code.title });

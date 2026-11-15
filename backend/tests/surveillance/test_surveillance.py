@@ -63,6 +63,7 @@ class TestNotifiableDiseaseModel:
             name="Cholera",
             icd10_codes="A00",
             category="IMMEDIATE",
+            requires_county_notification=True,
             reporting_hours=24,
         )
         weekly = NotifiableDisease.objects.create(
@@ -685,6 +686,7 @@ class TestNotifiableCaseAPI:
             name="Cholera",
             icd10_codes="A00",
             category="IMMEDIATE",
+            requires_county_notification=True,
             reporting_hours=24,
         )
 
@@ -1431,7 +1433,9 @@ class TestSurveillanceSettingsAPI:
     """Tests for facility surveillance notification settings endpoints."""
 
     def test_get_current_settings(self, authenticated_client):
-        """Should return (and create) current facility settings."""
+        """Should return and audit one-time creation of current facility settings."""
+        from hmis.apps.core.models import AuditLog
+
         response = authenticated_client.get("/api/surveillance/settings/current/")
 
         assert response.status_code == status.HTTP_200_OK
@@ -1439,9 +1443,17 @@ class TestSurveillanceSettingsAPI:
         assert "notify_via_email" in response.data
         assert "sms_recipient_masked" in response.data
         assert "email_recipient_masked" in response.data
+        audit_entry = AuditLog.objects.filter(
+            action="surveillance.facility_settings.initialized",
+            resource_type="SurveillanceFacilitySettings",
+            resource_id=response.data["id"],
+        ).latest("timestamp")
+        assert audit_entry.facility_id == response.data["facility"]
 
     def test_patch_settings_with_recipients(self, authenticated_client):
-        """Should store recipients while returning masked values only."""
+        """Should audit safe values while keeping notification recipients redacted."""
+        from hmis.apps.core.models import AuditLog
+
         current = authenticated_client.get("/api/surveillance/settings/current/")
         settings_id = current.data["id"]
 
@@ -1464,6 +1476,19 @@ class TestSurveillanceSettingsAPI:
         assert response.data["notify_via_email"] is True
         assert response.data["sms_recipient_masked"]
         assert response.data["email_recipient_masked"]
+
+        audit_entry = AuditLog.objects.filter(
+            action="surveillance.facility_settings.partial_update",
+            resource_type="SurveillanceFacilitySettings",
+            resource_id=settings_id,
+        ).latest("timestamp")
+        assert audit_entry.details["new_values"]["max_retry_attempts"] == 4
+        assert set(audit_entry.details["redacted_fields"]) == {
+            "email_recipient",
+            "sms_recipient",
+        }
+        assert "+254700123456" not in str(audit_entry.details)
+        assert "county.alerts@example.org" not in str(audit_entry.details)
 
 
 class TestSurveillanceDashboardAPI:

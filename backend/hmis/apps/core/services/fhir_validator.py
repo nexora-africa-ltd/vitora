@@ -15,13 +15,15 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-# Import FHIR R4 resources
+# Local structural screening uses fhir.resources' R4B models. Authoritative
+# FHIR R4 (4.0.1) and profile validation is performed by the HAPI R4 service.
 from fhir.resources.R4B.bundle import Bundle
 from fhir.resources.R4B.claim import Claim
 from fhir.resources.R4B.claimresponse import ClaimResponse
 from fhir.resources.R4B.composition import Composition
 from fhir.resources.R4B.condition import Condition
 from fhir.resources.R4B.coverage import Coverage
+from fhir.resources.R4B.diagnosticreport import DiagnosticReport
 from fhir.resources.R4B.encounter import Encounter
 from fhir.resources.R4B.medicationdispense import MedicationDispense
 from fhir.resources.R4B.medicationrequest import MedicationRequest
@@ -102,6 +104,7 @@ FHIR_RESOURCE_MAP: dict[str, type] = {
     "Claim": Claim,
     "ClaimResponse": ClaimResponse,
     "Coverage": Coverage,
+    "DiagnosticReport": DiagnosticReport,
     "Organization": Organization,
     "Practitioner": Practitioner,
     "Composition": Composition,
@@ -110,10 +113,12 @@ FHIR_RESOURCE_MAP: dict[str, type] = {
 
 class FHIRValidator:
     """
-    FHIR R4 Resource Validator.
+    Local FHIR R4B structural validator.
 
-    Validates FHIR resources against the R4 specification using the
-    fhir.resources library (Pydantic-based validation).
+    This is a fast, dependency-free screening layer for generated resources.
+    It must not be represented as FHIR R4 (4.0.1) profile validation because
+    ``fhir.resources`` provides R4B models. DHA evidence validation is run
+    against the configured HAPI FHIR R4 validator via ``$validate``.
 
     Attributes:
         strict_mode: If True, treat warnings as errors
@@ -339,6 +344,10 @@ class FHIRValidator:
             FHIRValidationResult with validation status and any errors
         """
         return self.validate_resource(observation_dict, "Observation")
+
+    def validate_diagnostic_report(self, diagnostic_report_dict: dict) -> FHIRValidationResult:
+        """Validate a DiagnosticReport resource using the local structural validator."""
+        return self.validate_resource(diagnostic_report_dict, "DiagnosticReport")
 
     def validate_medication_request(self, med_request_dict: dict) -> FHIRValidationResult:
         """

@@ -731,7 +731,7 @@ python manage.py seed_procedure_catalog --dry-run
 python manage.py seed_procedure_catalog
 
 # Seed to specific facility
-python manage.py seed_procedure_catalog --facility 12351
+python manage.py seed_procedure_catalog --facility-id 13
 
 # Also create/link billing.Service records
 python manage.py seed_procedure_catalog --link-billing
@@ -742,12 +742,12 @@ python manage.py seed_procedure_catalog --link-billing
 | Flag | Description |
 |------|-------------|
 | `--dry-run` | Preview without creating |
-| `--facility <mfl_code>` | Target facility MFL code |
+| `--facility-id <id>` | Target facility primary key |
 | `--link-billing` | Create billing.Service records and link to catalog |
 
 **Facility Resolution** (priority order):
 
-1. Explicit `--facility` MFL code
+1. Explicit `--facility-id` primary key
 2. Demo HQ facility (`mfl_code=DEMO-HQ-001`)
 3. First active facility in the database
 

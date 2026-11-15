@@ -1,0 +1,38 @@
+DHA Domain 2 automated verification report
+Purpose: Evidence that surveillance, IDSR, IHR, outbreak, and routine-reporting regression tests passed.
+Scope: backend/tests/surveillance and backend/tests/moh_reporting
+Command: poetry run pytest tests/surveillance tests/moh_reporting --no-cov -q
+
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+django: version: 5.2.17, settings: hmis.settings.test (from ini)
+rootdir: /home/azureuser/vitora/backend
+configfile: pyproject.toml
+plugins: asyncio-1.4.0, django-4.12.0, Faker-22.7.0, xdist-3.8.0, mock-3.15.1, locust-2.46.5, anyio-4.14.1, cov-4.1.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 256 items
+
+tests/surveillance/test_automatic_notifications.py ..                    [  0%]
+tests/surveillance/test_contact_tracing.py .......                       [  3%]
+tests/surveillance/test_delivery_submissions.py ................         [  9%]
+tests/surveillance/test_idsr_weekly_reporting.py ....................... [ 18%]
+.......................                                                  [ 27%]
+tests/surveillance/test_ihr_notification.py ............................ [ 38%]
+.................                                                        [ 45%]
+tests/surveillance/test_notifiable_disease_coding.py .........           [ 48%]
+tests/surveillance/test_seed_and_threshold_crud.py ..................... [ 57%]
+                                                                         [ 57%]
+tests/surveillance/test_surveillance.py ................................ [ 69%]
+..........................                                               [ 79%]
+tests/moh_reporting/test_api.py ...............                          [ 85%]
+tests/moh_reporting/test_models.py ............                          [ 90%]
+tests/moh_reporting/test_services.py ....................                [ 98%]
+tests/moh_reporting/test_tasks.py .....                                  [100%]
+
+=============================== warnings summary ===============================
+tests/surveillance/test_surveillance.py::TestSurveillanceService::test_broadcast_alert
+  /home/azureuser/.cache/pypoetry/virtualenvs/vitora-hmis-igy63eB9-py3.12/lib/python3.12/site-packages/asgiref/sync.py:608: UserWarning: async_to_sync was passed a non-async-marked callable
+    return AsyncToSync(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 256 passed, 1 warning in 26.02s ========================

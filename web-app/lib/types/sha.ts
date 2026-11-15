@@ -442,7 +442,7 @@ export interface EligibilityState {
 // ============================================================================
 
 export interface ICD11Code {
-  id: number;
+  id?: number;
   code: string;
   title: string;
   description?: string;

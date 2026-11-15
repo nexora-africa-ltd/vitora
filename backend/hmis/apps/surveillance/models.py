@@ -76,7 +76,9 @@ class NotifiableDisease(models.Model):
     Attributes:
         name: Disease name (e.g., "Cholera", "Measles")
         icd10_codes: Comma-separated ICD-10 codes that map to this disease
+        icd11_codes: ICD-11 MMS codes that map to this disease
         category: Notification category (IMMEDIATE, WEEKLY, MONTHLY)
+        requires_county_notification: Whether a case needs individual county notification
         reporting_hours: Maximum hours to report (24 for immediate)
         description: Clinical description and criteria
         is_active: Whether disease is currently on reportable list
@@ -90,6 +92,11 @@ class NotifiableDisease(models.Model):
     icd10_codes = models.TextField(
         help_text="Comma-separated ICD-10 codes (e.g., 'A00,A00.0,A00.1,A00.9')",
     )
+    icd11_codes = models.JSONField(
+        blank=True,
+        default=list,
+        help_text="ICD-11 MMS codes (e.g., ['1A00', '1A00.0'])",
+    )
     category = models.CharField(
         max_length=20,
         choices=NotifiableCategory.choices,
@@ -100,6 +107,13 @@ class NotifiableDisease(models.Model):
         default=24,
         validators=[MinValueValidator(1), MaxValueValidator(720)],
         help_text="Maximum hours to report to authorities",
+    )
+    requires_county_notification = models.BooleanField(
+        default=False,
+        help_text=(
+            "Require individual county SMS/email notification for each case. "
+            "Outbreak alerts always require county notification."
+        ),
     )
     description = models.TextField(
         blank=True,
@@ -143,6 +157,25 @@ class NotifiableDisease(models.Model):
         """Return list of ICD-10 codes for this disease."""
         return [code.strip().upper() for code in self.icd10_codes.split(",") if code.strip()]
 
+    @staticmethod
+    def normalize_icd11_codes(value: object) -> list[str]:
+        """Normalize array or legacy comma-separated ICD-11 codes to unique MMS codes."""
+        raw_codes = value.split(",") if isinstance(value, str) else value
+        if not isinstance(raw_codes, (list, tuple)):
+            return []
+
+        return list(
+            dict.fromkeys(
+                str(code).upper().strip()
+                for code in raw_codes
+                if isinstance(code, str) and code.strip()
+            )
+        )
+
+    def get_icd11_code_list(self) -> list[str]:
+        """Return normalized ICD-11 MMS codes for this disease."""
+        return self.normalize_icd11_codes(self.icd11_codes)
+
     @property
     def is_immediate(self) -> bool:
         """Return True if this is an immediate reportable disease."""
@@ -154,7 +187,7 @@ class NotifiableCase(FacilityScopedModel):
     Recorded instance of a notifiable disease case.
 
     Created automatically when an encounter diagnosis matches a
-    NotifiableDisease ICD-10 code, or manually by clinicians.
+    NotifiableDisease ICD-10 or ICD-11 code, or manually by clinicians.
 
     Attributes:
         disease: Reference to NotifiableDisease
@@ -316,7 +349,7 @@ class NotifiableCase(FacilityScopedModel):
     def requires_county_notification(self) -> bool:
         """Whether this case needs individual county notification or escalation."""
         return (
-            self.is_immediate
+            self.disease.requires_county_notification
             or self.alerts.filter(alert_type=SurveillanceAlert.AlertType.OUTBREAK).exists()
         )
 

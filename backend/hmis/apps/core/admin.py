@@ -14,4 +14,5 @@ Supported inputs/args:
 from hmis.apps.core.admin_facility_security import *  # noqa: F403
 from hmis.apps.core.admin_pricing_org import *  # noqa: F403
 from hmis.apps.core.admin_rbac_codes import *  # noqa: F403
+from hmis.apps.core.admin_smart_oauth import *  # noqa: F403
 from hmis.apps.core.admin_user_audit import *  # noqa: F403

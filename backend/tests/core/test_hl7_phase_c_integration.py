@@ -235,11 +235,13 @@ class TestHL7IntegrationFeatureFlag:
         assert "HL7 integration is disabled" in result.errors
 
     def test_config_from_settings(self, settings):
-        """Config should load from Django settings."""
+        """Config should load secure external MLLP settings from Django settings."""
         settings.HL7_INTEGRATION_ENABLED = True
         settings.HL7_LIS_CODE_SYSTEM = "TEST_SYSTEM"
         settings.MLLP_HOST = "test.host"
         settings.MLLP_PORT = 9999
+        settings.MLLP_USE_SSL = True
+        settings.MLLP_SSL_VERIFY = True
 
         config = HL7IntegrationConfig.from_settings()
 
@@ -247,6 +249,8 @@ class TestHL7IntegrationFeatureFlag:
         assert config.lis_code_system == "TEST_SYSTEM"
         assert config.mllp_host == "test.host"
         assert config.mllp_port == 9999
+        assert config.mllp_use_ssl is True
+        assert config.mllp_ssl_verify is True
 
 
 # ============================================================================

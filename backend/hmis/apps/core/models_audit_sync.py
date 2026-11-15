@@ -266,6 +266,7 @@ class AuditLog(models.Model):
         verbose_name_plural = "Audit Logs"
         permissions = [
             ("view_encryption_evidence", "Can view encryption certification evidence"),
+            ("view_data_integrity_evidence", "Can view data integrity certification evidence"),
             (
                 "view_backup_recovery_evidence",
                 "Can view backup and recovery certification evidence",

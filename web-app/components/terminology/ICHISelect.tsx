@@ -85,7 +85,7 @@ export function ICHISelect({
       try {
         const response = await terminologyApi.searchICHI({
           search: searchQuery,
-          page_size: 20,
+          page_size: 25,
         });
         setResults(response.results);
       } catch (error) {
@@ -113,12 +113,12 @@ export function ICHISelect({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost"
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            'h-auto min-h-10 w-full justify-between py-2',
+            'h-auto min-h-10 w-full justify-between py-2 hover:outline',
             !value && 'text-muted-foreground',
             className
           )}
@@ -134,7 +134,10 @@ export function ICHISelect({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0" align="start">
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] p-0"
+        align="start"
+      >
         <Command shouldFilter={false}>
           <div className="flex items-center border-b px-3">
             <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />

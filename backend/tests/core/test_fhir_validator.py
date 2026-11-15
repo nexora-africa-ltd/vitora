@@ -1,8 +1,9 @@
 """
-Tests for FHIR R4 Validator Service.
+Tests for local FHIR R4B structural validator service.
 
-Tests the FHIRValidator service which validates FHIR R4 resources
-against the official specification using the fhir.resources library.
+Tests the FHIRValidator service, which screens FHIR resources using the
+fhir.resources R4B models. Authoritative R4 4.0.1/profile validation is
+performed by the configured HAPI FHIR R4 server.
 
 Reference: docs/fhir-validation-plan.md Phase 1
 """
@@ -409,11 +410,24 @@ class TestFHIRValidatorBasic:
             "Patient",
             "Encounter",
             "Observation",
+            "DiagnosticReport",
             "Claim",
             "MedicationRequest",
         ]
         for resource_type in expected:
             assert resource_type in FHIR_RESOURCE_MAP
+
+    def test_diagnostic_report_missing_required_code_fails(self, validator):
+        """DiagnosticReport structural validation must enforce its required code."""
+        result = validator.validate_diagnostic_report(
+            {
+                "resourceType": "DiagnosticReport",
+                "status": "final",
+            }
+        )
+
+        assert result.is_valid is False
+        assert any("code" in error.field.lower() for error in result.errors)
 
 
 # =============================================================================

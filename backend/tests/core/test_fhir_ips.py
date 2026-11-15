@@ -827,6 +827,17 @@ class TestFHIRObservation:
 class TestFHIRAdditionalResources:
     """Tests for additional FHIR resources needed by Inferno input fields."""
 
+    def test_encounter_endpoint(self, authenticated_client, sample_encounter):
+        """A FHIR Encounter must be retrievable directly by logical ID."""
+        response = authenticated_client.get(
+            reverse("fhir:encounter-read", args=[sample_encounter.id])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Encounter"
+        assert response.data["id"] == str(sample_encounter.id)
+        assert response.data["subject"]["reference"] == f"Patient/{sample_encounter.patient_id}"
+
     @pytest.mark.parametrize(
         ("fixture_name", "route_name", "resource_type", "id_attr"),
         [
@@ -911,6 +922,43 @@ class TestFHIRAdditionalResources:
         assert response.data["id"] == str(sample_diagnostic_report.id)
         assert response.data["category"][0]["coding"][0]["code"] == "LAB"
         assert response.data["performer"][0]["reference"].startswith("Practitioner/")
+        assert "profile" not in response.data.get("meta", {})
+
+    def test_diagnostic_report_uses_persisted_loinc_terminology(
+        self,
+        authenticated_client,
+        sample_diagnostic_report,
+    ):
+        """A single-test report must export its configured LOINC code."""
+        test = sample_diagnostic_report.lab_order.items.get().test
+        test.loinc_code = "58410-2"
+        test.loinc_system = "http://loinc.org"
+        test.save(update_fields=["loinc_code", "loinc_system"])
+
+        response = authenticated_client.get(
+            reverse("fhir:diagnostic-report-read", args=[sample_diagnostic_report.id])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        coding = response.data["code"]["coding"][0]
+        assert coding == {
+            "system": "http://loinc.org",
+            "code": "58410-2",
+            "display": "Complete Blood Count",
+        }
+
+    def test_standalone_lab_observation_does_not_claim_uninstalled_ips_profiles(
+        self,
+        authenticated_client,
+        sample_lab_result,
+    ):
+        """Standalone R4 exports must not claim profiles the validator cannot resolve."""
+        response = authenticated_client.get(
+            reverse("fhir:observation-read", args=[sample_lab_result.id])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "profile" not in response.data.get("meta", {})
 
     def test_immunization_endpoint(self, authenticated_client, sample_immunization_record):
         response = authenticated_client.get(

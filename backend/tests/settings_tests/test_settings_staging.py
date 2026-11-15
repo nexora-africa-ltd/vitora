@@ -63,13 +63,12 @@ class TestStagingSettings:
         assert staging.LOGGING["version"] == 1
 
     def test_staging_security_settings(self):
-        """Staging should have relaxed security for local demos."""
+        """Public certification staging should retain production-grade HSTS protections."""
         from hmis.settings import staging
 
-        # HSTS disabled for easier testing
-        assert staging.SECURE_HSTS_SECONDS == 0
-        assert staging.SECURE_HSTS_INCLUDE_SUBDOMAINS is False
-        assert staging.SECURE_HSTS_PRELOAD is False
+        assert staging.SECURE_HSTS_SECONDS == 31536000
+        assert staging.SECURE_HSTS_INCLUDE_SUBDOMAINS is True
+        assert staging.SECURE_HSTS_PRELOAD is True
 
     def test_staging_whitenoise_middleware(self):
         """Staging should include whitenoise middleware."""

@@ -36,7 +36,7 @@ class TestEncryptionStatusEndpoint:
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_allows_evidence_reader_with_dedicated_permission(self, authenticated_client):
+    def test_rejects_non_staff_user_without_evidence_reader_role(self, authenticated_client):
         user = authenticated_client.handler._force_user
         permission = Permission.objects.get(codename="view_encryption_evidence")
         user.user_permissions.add(permission)
@@ -81,7 +81,7 @@ class TestBackupRecoveryStatusEndpoint:
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_rejects_non_staff_user_with_permission(self, authenticated_client):
+    def test_allows_evidence_reader_with_dedicated_permission(self, authenticated_client):
         user = authenticated_client.handler._force_user
         permission = Permission.objects.get(codename="view_backup_recovery_evidence")
         user.user_permissions.add(permission)
@@ -90,10 +90,11 @@ class TestBackupRecoveryStatusEndpoint:
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_returns_non_secret_backup_and_recovery_evidence(self, authenticated_client):
+    def test_allows_dha_evidence_reader_role(self, authenticated_client, test_staff_profile):
         user = authenticated_client.handler._force_user
-        user.is_staff = True
-        user.save(update_fields=["is_staff"])
+        role = test_staff_profile.primary_role
+        role.code = "DHA_EVIDENCE_READER"
+        role.save(update_fields=["code"])
         permission = Permission.objects.get(codename="view_backup_recovery_evidence")
         user.user_permissions.add(permission)
         authenticated_client.force_authenticate(user=user)

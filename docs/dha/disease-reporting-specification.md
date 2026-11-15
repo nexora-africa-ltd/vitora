@@ -21,12 +21,24 @@ Vitora maintains a reference catalogue of notifiable diseases with ICD-10 mappin
 | Weekly    | Aggregate weekly IDSR reporting                                                              | Included in IDSR weekly report                                               |
 | Monthly   | Aggregate monthly reporting                                                                  | Available for applicable aggregate reporting workflows                       |
 
-The disease catalogue stores `reporting_hours`; facility governance must ensure the active catalogue and reporting timelines match the current applicable MOH guidance.
+The disease catalogue stores `reporting_hours` and an explicit
+`requires_county_notification` policy. Immediate diseases are seeded with this
+policy enabled; outbreak alerts override it so that a weekly or monthly disease
+that crosses an outbreak threshold is still individually escalated.
+
+The catalogue stores vetted ICD-10 mappings and non-empty ICD-11 MMS **arrays**
+for every MOH reporting entry. ICD-11 mappings are verified against the DHA
+WHO ICD-11 Clinical Concepts source; where DHA publishes a code family, the
+array retains the range and surveillance matching evaluates it against child
+codes. An ICD-10-only or ICD-11-only diagnosis can therefore create a
+notifiable case when it matches a configured code. Event and syndromic entries
+use the DHA diagnosis/event mappings applicable to their MOH reporting purpose;
+the system does not infer a crosswalk from a label match.
 
 ## 2. Immediate Notification Mechanism
 
 1. A clinician records a diagnosis in an encounter.
-2. When an active diagnosis ICD-10 code matches an active NotifiableDisease mapping, Vitora creates a facility-scoped `NotifiableCase` and prevents duplicate patient/encounter/disease cases.
+2. When an active diagnosis ICD-10 or ICD-11 code matches an active `NotifiableDisease` mapping, Vitora creates a facility-scoped `NotifiableCase` and prevents duplicate patient/encounter/disease cases.
 3. For immediate diseases, Vitora creates a surveillance alert, calculates the notification deadline, and publishes real-time alert data to authorized surveillance consumers.
 4. An authorized user reviews the case and sends the official county notification through:
 
@@ -58,7 +70,7 @@ PENDING -> NOTIFIED -> ACKNOWLEDGED -> INVESTIGATED -> CLOSED
 Facility settings control whether SMS and email are enabled, recipient lists, whether direct identifiers are included, retry configuration, and retry backoff. Delivery records use statuses including:
 
 ```text
-PENDING, SENT, DELIVERED, BOUNCED, RETRY_SCHEDULED, FAILED
+PENDING, SENT, DELIVERED, BOUNCED, RETRY_SCHEDULED, FAILED, SUPERSEDED
 ```
 
 Email acceptance alone may return `202 Accepted`; the case remains pending until a configured provider delivery webhook confirms delivery. SMS `SENT` is treated as an accepted county transport. Failed/scheduled deliveries can be retried through the authorized case workflow.
@@ -69,8 +81,38 @@ Email acceptance alone may return `202 Accepted`; the case remains pending until
 - SMS notification requires an active configured SMS provider.
 - Email delivery confirmation requires a configured signed provider webhook; production webhook validation requires `RESEND_WEBHOOK_SECRET`.
 - Notification recipients, county routing, and disease catalogue content are operational configuration and must be reviewed by the facility and county public-health authority.
+- After a catalogue release, apply the migration and run
+  `python manage.py seed_notifiable_diseases --update` to load revised routing
+  policy and ICD-11 mappings without deleting local catalogue records.
 - The system supports and records notification activity; it does not replace clinical judgement, statutory reporting duties, county escalation procedures, or MOH direction.
 
 ## 6. Audit And Evidence
 
 Vitora records case creation/notification workflow actions and county acknowledgements. Sensitive patient access to surveillance-linked patient records remains governed by sensitive-access controls and audit logging. Facilities should retain case, notification, delivery, acknowledgement, and investigation evidence according to applicable public-health and records-retention requirements.
+
+### Reporting Route Boundaries
+
+The following routes are intentionally distinct and must not be substituted for each other:
+
+| Workflow | Destination | Evidence in Vitora |
+| --- | --- | --- |
+| Immediate case and outbreak alert | Configured county public-health SMS/email recipient | `NotifiableCase`, `CountyNotificationDelivery`, delivery status, and county acknowledgement |
+| Weekly IDSR and routine aggregate reports | KHIS/DHIS2 | Report approval, DataValueSet preview, submission attempt, and DHIS2 import result |
+| IHR potential international concern | Facility → county → national IHR focal point → WHO | `IHRNotification`, Annex 2 assessment, escalation timestamps, and externally issued WHO reference |
+
+The current IHR workflow records a verified external WHO notification reference. It does **not** itself transmit an IHR notification to a WHO endpoint. Do not present county delivery or DHIS2 submission as WHO notification evidence.
+
+### Audit Actions
+
+The audit log records automated dispatch, manual dispatch/retry, provider delivery-status transitions, and county acknowledgement. The delivery ledger shows the originating case, masked recipient, transport channel, provider state, attempt count, and send actor. A previously sent message cannot be recalled; after a recipient configuration error it must be marked `SUPERSEDED`, retained for audit, and reissued only to the corrected authorized recipient.
+
+### Submission Ledger Access
+
+`/api/surveillance/deliveries/` is facility-scoped: list, detail, and retry operations can only address deliveries belonging to the authenticated user's active facility. The endpoint requires Django model permissions rather than a broad administrative-role bypass:
+
+| Operation | Required permission | Default roles |
+| --- | --- | --- |
+| View delivery ledger and source-case links | `surveillance.view_countynotificationdelivery` | Superuser, `OWNER`, `ADMIN`, `ORG-ADMIN`, `COMPLIANCE_OFFICER`, `DHA_EVIDENCE_READER` |
+| Retry a failed or scheduled delivery | `surveillance.change_countynotificationdelivery` | Superuser, `OWNER`, `ADMIN`, `ORG-ADMIN` |
+
+The frontend applies matching Submissions and retry action gates, while the API remains the authorization authority.

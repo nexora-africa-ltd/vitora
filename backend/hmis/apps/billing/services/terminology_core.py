@@ -47,15 +47,28 @@ class TerminologyService(
         # Reference: Kenya Digital Superhighway.postman_collection.json
         endpoints = getattr(settings, "SHA_ENDPOINTS", {})
         self.interventions_endpoint = endpoints.get(
-            "sha_interventions", "/terminology/v1/sha-intervention"
+            "terminology_sha",
+            endpoints.get("sha_interventions", "/terminology/v1/sha-intervention"),
         )
-        self.icd11_endpoint = endpoints.get("icd11", "/terminology/v1/icd11")
-        self.products_endpoint = endpoints.get("drug_products", "/terminology/v1/product")
+        self.icd11_endpoint = endpoints.get(
+            "terminology_icd11",
+            endpoints.get("icd11", "/terminology/v1/icd11"),
+        )
+        self.products_endpoint = endpoints.get(
+            "terminology_product",
+            endpoints.get("drug_products", "/terminology/v1/product"),
+        )
         self.components_endpoint = endpoints.get(
             "active_components", "/terminology/v1/active-component"
         )
-        self.loinc_endpoint = endpoints.get("loinc", "/terminology/v1/loinc")
-        self.ichi_endpoint = endpoints.get("ichi", "/terminology/v1/ichi")
+        self.loinc_endpoint = endpoints.get(
+            "terminology_loinc",
+            endpoints.get("loinc", "/terminology/v1/loinc"),
+        )
+        self.ichi_endpoint = endpoints.get(
+            "terminology_ichi",
+            endpoints.get("ichi", "/terminology/v1/ichi"),
+        )
 
         # HAPI FHIR server settings (LOINC fallback)
         self.fhir_base_url = getattr(settings, "HAPI_FHIR_BASE_URL", "http://localhost:8090/fhir")

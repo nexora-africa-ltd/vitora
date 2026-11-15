@@ -17,6 +17,7 @@ import {
   ExternalProcedureOrderRequestSchema,
   PaginatedExternalProcedureRequestSchema,
   ProcedureDashboardSchema,
+  ProcedureCatalogSeedResponseSchema,
 } from '@/lib/schemas/procedure.schema';
 
 const ProcedureOrderDetailSchema = z.object({
@@ -135,6 +136,13 @@ export const proceduresApi = {
     const response = await apiClient.patch(`/api/procedures/catalog/${id}/`, data);
     return parseResponse(ProcedureCatalogDetailSchema, response.data, {
       context: 'proceduresApi.updateCatalogEntry',
+    });
+  },
+
+  seedCatalogDefaults: async () => {
+    const response = await apiClient.post('/api/procedures/catalog/seed-defaults/');
+    return parseResponse(ProcedureCatalogSeedResponseSchema, response.data, {
+      context: 'proceduresApi.seedCatalogDefaults',
     });
   },
 

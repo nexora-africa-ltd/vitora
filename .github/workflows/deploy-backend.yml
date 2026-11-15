@@ -215,6 +215,11 @@ jobs:
             MPESA_PASSKEY=secretref:mpesa-passkey \
             MPESA_CALLBACK_URL=${{ vars.MPESA_CALLBACK_URL || (env.DEPLOY_ENV == 'production' && 'https://api.vitora.digital/api/billing/mpesa/callback/' || 'https://staging-api.vitora.digital/api/billing/mpesa/callback/') }} \
             ICD11_USE_LOCAL=false \
+            ICD11_MMS_RELEASE=2026-01 \
+            SNOMED_EDITION=MAIN \
+            SNOMED_VERSION=20261030 \
+            SNOMED_CT_RELEASE=20261030 \
+            LOINC_RELEASE=2.83 \
             HAPI_FHIR_ENABLED=true \
             HAPI_FHIR_BASE_URL=${{ vars.HAPI_FHIR_BASE_URL || '' }} \
             HAPI_FHIR_TIMEOUT=10 \

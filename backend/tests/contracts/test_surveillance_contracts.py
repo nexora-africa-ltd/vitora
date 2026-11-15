@@ -18,6 +18,7 @@ from hmis.apps.surveillance.serializers import (
     IDSRDiseaseSummarySerializer,
     IDSRReportApproveSerializer,
     IDSRReportGenerateSerializer,
+    IDSRSubmissionAttemptSerializer,
     IDSRWeeklyReportListSerializer,
     IDSRWeeklyReportSerializer,
     IHRCloseSerializer,
@@ -109,6 +110,9 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             {
                 "attempt_count",
                 "case",
+                "case_disease_name",
+                "case_notification_status",
+                "case_patient_mrn",
                 "channel",
                 "created_at",
                 "delivered_at",
@@ -123,6 +127,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "recipient_masked",
                 "retry_backoff_minutes",
                 "sent_at",
+                "sent_by_name",
                 "status",
                 "terminal_status_at",
                 "triggered_by",
@@ -194,6 +199,26 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             {
                 "epi_week",
                 "epi_year",
+            }
+        ),
+    ),
+    (
+        IDSRSubmissionAttemptSerializer,
+        frozenset(
+            {
+                "attempt_number",
+                "attempted_at",
+                "completed_at",
+                "created_at",
+                "error_message",
+                "http_status",
+                "id",
+                "next_retry_at",
+                "report",
+                "response",
+                "status",
+                "trigger",
+                "validation_response",
             }
         ),
     ),
@@ -479,6 +504,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "patient_name",
                 "reported_by",
                 "reported_by_name",
+                "requires_county_notification",
                 "severity",
                 "sub_county",
                 "sub_county_name",
@@ -496,6 +522,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "is_immediate",
                 "name",
                 "reporting_hours",
+                "requires_county_notification",
             }
         ),
     ),
@@ -509,6 +536,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "description",
                 "icd10_code_list",
                 "icd10_codes",
+                "icd11_codes",
                 "id",
                 "is_active",
                 "is_ihr_notifiable",

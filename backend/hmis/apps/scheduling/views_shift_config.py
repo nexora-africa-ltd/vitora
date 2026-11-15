@@ -24,6 +24,7 @@ from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from hmis.apps.core.audit import AuditedConfigurationMutationMixin
 from hmis.apps.core.mixins import (
     NestedTenantScopeMixin,
     ReadOnCreateMixin,
@@ -87,7 +88,11 @@ from hmis.apps.scheduling.services import (
 logger = logging.getLogger(__name__)
 
 
-class SchedulingSettingsViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+class SchedulingSettingsViewSet(
+    AuditedConfigurationMutationMixin,
+    TenantScopedViewMixin,
+    viewsets.ModelViewSet,
+):
     """
     ViewSet for per-facility scheduling settings.
 
@@ -104,6 +109,9 @@ class SchedulingSettingsViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     serializer_class = SchedulingSettingsSerializer
     permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     tenant_scope = "facility"
+    audit_resource_type = "SchedulingSettings"
+    audit_action_prefix = "scheduling.settings"
+    audit_source = "scheduling_api"
 
     def perform_create(self, serializer):
         serializer.save(**self.get_tenant_save_kwargs())
@@ -121,10 +129,17 @@ class SchedulingSettingsViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        settings_obj, _created = SchedulingSettings.objects.get_or_create(
+        settings_obj, created = SchedulingSettings.objects.get_or_create(
             facility=facility,
             defaults={"organization": getattr(facility, "organization", None)},
         )
+        if created:
+            self.capture_configuration_creation(settings_obj)
+            self.log_captured_configuration_mutation(
+                request,
+                action="scheduling.settings.initialized",
+                status_code=status.HTTP_201_CREATED,
+            )
         serializer = self.get_serializer(settings_obj)
         return Response(serializer.data)
 
@@ -163,6 +178,7 @@ class SchedulingSettingsViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             )
 
         runs = list(settings_obj.autofill_run_history or [])
+        self.capture_configuration_audit(settings_obj, operation="autofill_runs")
         run_entry = {
             "id": timezone.now().strftime("%Y%m%d%H%M%S%f"),
             "created_at": timezone.now().isoformat(),

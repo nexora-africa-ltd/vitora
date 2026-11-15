@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, Plus, CheckCircle2, Clock, AlertTriangle, Send, Loader2 } from 'lucide-react';
+import { FileText, Plus, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,36 +30,34 @@ import type {
 } from '@/lib/types/moh-reporting';
 import { useToast } from '@/lib/hooks/use-toast';
 
-// ---------------------------------------------------------------------------
-// Status badge
-// ---------------------------------------------------------------------------
+function DHIS2SubmissionStatus({
+  status,
+  submittedAt,
+}: {
+  status: MOHReportStatus;
+  submittedAt: string | null;
+}) {
+  const label =
+    status === 'SUBMITTED'
+      ? 'Submitted'
+      : status === 'FAILED'
+        ? 'Submission failed'
+        : status === 'APPROVED'
+          ? 'Ready to submit'
+          : 'Not submitted';
+  const variant =
+    status === 'SUBMITTED' ? 'default' : status === 'FAILED' ? 'destructive' : 'secondary';
 
-const statusConfig: Record<
-  MOHReportStatus,
-  { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }
-> = {
-  DRAFT: { label: 'Draft', variant: 'secondary' },
-  APPROVED: { label: 'Approved', variant: 'default' },
-  SUBMITTED: { label: 'Submitted', variant: 'default' },
-  FAILED: { label: 'Failed', variant: 'destructive' },
-};
-
-function StatusBadge({ status }: { status: MOHReportStatus }) {
-  const cfg = statusConfig[status];
-  return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
-}
-
-function StatusIcon({ status }: { status: MOHReportStatus }) {
-  switch (status) {
-    case 'SUBMITTED':
-      return <Send className="h-4 w-4 text-primary" />;
-    case 'APPROVED':
-      return <CheckCircle2 className="h-4 w-4 text-success" />;
-    case 'FAILED':
-      return <AlertTriangle className="h-4 w-4 text-destructive" />;
-    default:
-      return <Clock className="h-4 w-4 text-muted-foreground" />;
-  }
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <Badge variant={variant}>{label}</Badge>
+      {submittedAt && (
+        <span className="text-xs text-muted-foreground">
+          {new Date(submittedAt).toLocaleString()}
+        </span>
+      )}
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -190,13 +188,10 @@ export function MOHReportsDashboard() {
                 },
                 {
                   key: 'status',
-                  header: 'Status',
+                  header: 'DHIS2 submission',
                   sortable: true,
                   cell: (r) => (
-                    <div className="flex items-center gap-1.5">
-                      <StatusIcon status={r.status} />
-                      <StatusBadge status={r.status} />
-                    </div>
+                    <DHIS2SubmissionStatus status={r.status} submittedAt={r.dhis2_submitted_at} />
                   ),
                 },
                 {
@@ -238,7 +233,7 @@ export function MOHReportsDashboard() {
                       <p className="font-medium">{r.period_label}</p>
                       <p className="text-xs text-muted-foreground">{r.total_visits} visits</p>
                     </div>
-                    <StatusBadge status={r.status} />
+                    <DHIS2SubmissionStatus status={r.status} submittedAt={r.dhis2_submitted_at} />
                   </div>
                 </Card>
               )}
@@ -264,13 +259,10 @@ export function MOHReportsDashboard() {
                 },
                 {
                   key: 'status',
-                  header: 'Status',
+                  header: 'DHIS2 submission',
                   sortable: true,
                   cell: (r) => (
-                    <div className="flex items-center gap-1.5">
-                      <StatusIcon status={r.status} />
-                      <StatusBadge status={r.status} />
-                    </div>
+                    <DHIS2SubmissionStatus status={r.status} submittedAt={r.dhis2_submitted_at} />
                   ),
                 },
                 {
@@ -306,7 +298,7 @@ export function MOHReportsDashboard() {
                         {r.deliveries_total} deliveries
                       </p>
                     </div>
-                    <StatusBadge status={r.status} />
+                    <DHIS2SubmissionStatus status={r.status} submittedAt={r.dhis2_submitted_at} />
                   </div>
                 </Card>
               )}
@@ -332,13 +324,10 @@ export function MOHReportsDashboard() {
                 },
                 {
                   key: 'status',
-                  header: 'Status',
+                  header: 'DHIS2 submission',
                   sortable: true,
                   cell: (r) => (
-                    <div className="flex items-center gap-1.5">
-                      <StatusIcon status={r.status} />
-                      <StatusBadge status={r.status} />
-                    </div>
+                    <DHIS2SubmissionStatus status={r.status} submittedAt={r.dhis2_submitted_at} />
                   ),
                 },
                 {
@@ -372,7 +361,7 @@ export function MOHReportsDashboard() {
                       <p className="font-medium">{r.period_label}</p>
                       <p className="text-xs text-muted-foreground">{r.opd_total} OPD visits</p>
                     </div>
-                    <StatusBadge status={r.status} />
+                    <DHIS2SubmissionStatus status={r.status} submittedAt={r.dhis2_submitted_at} />
                   </div>
                 </Card>
               )}

@@ -346,13 +346,13 @@ export function FHIRResourceExplorer() {
               resourceType === rt.value ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
             }`}
           >
-            <p className="text-lg font-bold">
+            <div className="text-lg font-bold">
               {statsLoading ? (
                 <Skeleton className="mx-auto h-6 w-8" />
               ) : (
                 (resourceStats[rt.value] ?? '—')
               )}
-            </p>
+            </div>
             <p className="text-xs text-muted-foreground">{rt.label}s</p>
           </button>
         ))}

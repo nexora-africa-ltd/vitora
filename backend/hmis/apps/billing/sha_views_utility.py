@@ -112,7 +112,16 @@ class TerminologySearchView(APIView):
         """Search terminology codes."""
         search = request.query_params.get("search", "")
         code = str(request.query_params.get("code", "") or "").strip()
-        limit = int(request.query_params.get("limit", 50))
+        try:
+            limit = int(
+                request.query_params.get("limit", request.query_params.get("page_size", 50))
+            )
+        except ValueError:
+            return Response(
+                {"error": "limit or page_size must be an integer."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        limit = min(max(limit, 25), 200) if terminology_type == "ichi" else min(max(limit, 1), 100)
 
         if len(search) < 2 and not (
             terminology_type == "interventions"
@@ -227,26 +236,23 @@ class TerminologySearchView(APIView):
             logger.debug("ICD11_USE_LOCAL=True, using local container only")
             return self._search_icd11_local(search, limit)
 
-        sha_base = getattr(django_settings, "SHA_API_BASE_URL", "")
-        if not sha_base or sha_base == "https://example.com":
-            logger.debug("SHA_API_BASE_URL not configured, using local fallback")
-            return self._search_icd11_local(search, limit, "DHA API not configured")
-
         try:
-            logger.debug("Attempting DHA Terminology API for ICD-11 search")
+            logger.debug("Attempting DHA Clinical Concepts API for ICD-11 search")
             service = _legacy_sha_views_module().TerminologyService(use_local_fallback=False)
-            results = service.search_icd11(search, limit=limit)
+            results = service.search_concepts("icd11", search, limit=limit)
 
             if results:
-                data = []
-                for item in results:
-                    if hasattr(item, "__dict__"):
-                        item_dict = {
-                            k: v for k, v in item.__dict__.items() if not k.startswith("_")
-                        }
-                        data.append(item_dict)
-                    else:
-                        data.append(item)
+                data = [
+                    {
+                        "code": item.code,
+                        "title": item.display,
+                        "description": item.display,
+                        "is_active": True,
+                        "source": "dha_clinical_concepts",
+                        "version": item.version,
+                    }
+                    for item in results
+                ]
 
                 return Response(
                     {

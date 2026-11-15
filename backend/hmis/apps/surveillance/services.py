@@ -62,6 +62,23 @@ class SurveillanceService:
     COUNTY_ACK_TOKEN_SALT = "surveillance.county_ack"  # noqa: S105 - signing namespace, not a secret
     COUNTY_ACK_TOKEN_MAX_AGE_SECONDS = 60 * 60 * 24 * 14
 
+    @staticmethod
+    def _configured_code_matches(diagnosis_code: str, configured_code: str) -> bool:
+        """Match an exact, hierarchical, or DHA ICD-11 range mapping."""
+        normalized_diagnosis = diagnosis_code.upper().strip()
+        normalized_configured = configured_code.upper().strip()
+        if not normalized_diagnosis or not normalized_configured:
+            return False
+
+        if "-" in normalized_configured:
+            start, end = normalized_configured.split("-", maxsplit=1)
+            range_code = normalized_diagnosis.replace(".", "")
+            return start.replace(".", "") <= range_code <= end.replace(".", "")
+
+        return normalized_diagnosis == normalized_configured or normalized_diagnosis.startswith(
+            normalized_configured.rstrip(".")
+        )
+
     @classmethod
     def check_diagnosis_for_notifiable_disease(
         cls, diagnosis: "Diagnosis"
@@ -77,19 +94,26 @@ class SurveillanceService:
         """
         from .models import NotifiableDisease
 
-        if not diagnosis.icd10_code:
+        icd10_code = (
+            diagnosis.icd10_code.code.upper().strip()
+            if diagnosis.icd10_code_id and diagnosis.icd10_code
+            else ""
+        )
+        icd11_code = str(getattr(diagnosis, "icd11_code", "") or "").upper().strip()
+        if not icd10_code and not icd11_code:
             return None
 
-        code = diagnosis.icd10_code.code.upper()
-
-        # Check for exact match or prefix match
+        # Check each configured code system for exact or hierarchy-prefix match.
         diseases = NotifiableDisease.objects.filter(is_active=True)
-
         for disease in diseases:
-            disease_codes = disease.get_icd10_code_list()
-            for disease_code in disease_codes:
-                # Exact match or code starts with disease code
-                if code == disease_code or code.startswith(disease_code.rstrip(".")):
+            for diagnosis_code, disease_codes in (
+                (icd10_code, disease.get_icd10_code_list()),
+                (icd11_code, disease.get_icd11_code_list()),
+            ):
+                if any(
+                    cls._configured_code_matches(diagnosis_code, disease_code)
+                    for disease_code in disease_codes
+                ):
                     return disease
 
         return None
@@ -609,6 +633,44 @@ class SurveillanceService:
         return deliveries
 
     @classmethod
+    def retry_county_delivery(
+        cls,
+        delivery: "CountyNotificationDelivery",
+        *,
+        ack_base_url: str = "",
+    ) -> "CountyNotificationDelivery":
+        """Manually retry one failed or scheduled county-delivery attempt."""
+        from .models import CountyNotificationDeliveryStatus
+
+        if delivery.status not in {
+            CountyNotificationDeliveryStatus.RETRY_SCHEDULED,
+            CountyNotificationDeliveryStatus.FAILED,
+        }:
+            raise ValueError("Only failed or scheduled deliveries can be retried.")
+
+        case = delivery.case
+        include_patient_identifiers = bool(
+            cls._county_notification_config(case).get("include_patient_identifiers", False)
+        )
+        ack_url = (
+            cls.build_county_ack_url(delivery, base_url=ack_base_url)
+            if delivery.channel == "EMAIL"
+            else ""
+        )
+        text_message, html_message = cls._build_county_notification_message(
+            case,
+            include_patient_identifiers=include_patient_identifiers,
+            ack_url=ack_url,
+        )
+        cls._dispatch_delivery(
+            delivery,
+            text_message=text_message,
+            html_message=html_message,
+            subject=f"[Vitora HMIS] County Notification: {case.disease.name}",
+        )
+        return delivery
+
+    @classmethod
     def has_case_delivery_success(cls, case: "NotifiableCase") -> bool:
         """Return True when at least one county transport accepted the notification."""
         from .models import CountyNotificationChannel, CountyNotificationDeliveryStatus
@@ -631,6 +693,92 @@ class SurveillanceService:
         ).exists()
 
     @classmethod
+    def notify_county_automatically(
+        cls,
+        *,
+        case: "NotifiableCase",
+        alert: "SurveillanceAlert",
+    ) -> list["CountyNotificationDelivery"]:
+        """Dispatch and record automatic county notification for DHA-reportable alerts."""
+        from hmis.apps.core.models import AuditLog
+
+        from .models import (
+            CountyNotificationChannel,
+            CountyNotificationDelivery,
+            CountyNotificationDeliveryStatus,
+            NotificationStatus,
+        )
+
+        if case.notification_status != NotificationStatus.PENDING:
+            return []
+
+        existing_deliveries = list(
+            CountyNotificationDelivery.objects.filter(
+                case=case,
+                status__in=[
+                    CountyNotificationDeliveryStatus.PENDING,
+                    CountyNotificationDeliveryStatus.SENT,
+                    CountyNotificationDeliveryStatus.DELIVERED,
+                ],
+            ).order_by("created_at")
+        )
+        if existing_deliveries:
+            return existing_deliveries
+
+        alert_label = alert.get_alert_type_display().lower()
+        ack_base_url = str(getattr(settings, "CLOUD_API_BASE_URL", "") or "").rstrip("/")
+        deliveries = cls.notify_county(
+            case=case,
+            notes=f"Automatic {alert_label} notification.",
+            ack_base_url=ack_base_url,
+        )
+        if not deliveries:
+            logger.warning(
+                "Automatic county notification skipped for case %s: no channel configured",
+                case.pk,
+            )
+            return []
+
+        update_fields: list[str] = []
+        for delivery in deliveries:
+            if delivery.channel == CountyNotificationChannel.SMS and delivery.status in {
+                CountyNotificationDeliveryStatus.SENT,
+                CountyNotificationDeliveryStatus.DELIVERED,
+            }:
+                alert.sent_via_sms = True
+                alert.sms_recipient = delivery.recipient
+                update_fields.extend(["sent_via_sms", "sms_recipient_encrypted"])
+            elif delivery.channel == CountyNotificationChannel.EMAIL and delivery.status in {
+                CountyNotificationDeliveryStatus.SENT,
+                CountyNotificationDeliveryStatus.DELIVERED,
+            }:
+                alert.sent_via_email = True
+                alert.email_recipient = delivery.recipient
+                update_fields.extend(["sent_via_email", "email_recipient_encrypted"])
+
+        if update_fields:
+            alert.save(update_fields=list(dict.fromkeys(update_fields)))
+
+        if cls.has_case_delivery_success(case):
+            case.mark_notified()
+
+        AuditLog.log(
+            action="notifiable_case_auto_notify",
+            user=None,
+            resource_type="NotifiableCase",
+            resource_id=case.id,
+            details={
+                "disease": case.disease.name,
+                "alert_type": alert.alert_type,
+                "delivery_statuses": [
+                    {"channel": delivery.channel, "status": delivery.status}
+                    for delivery in deliveries
+                ],
+            },
+        )
+        return deliveries
+
+    @classmethod
     def apply_email_webhook_status(
         cls,
         *,
@@ -640,6 +788,8 @@ class SurveillanceService:
     ) -> "CountyNotificationDelivery | None":
         """Apply provider terminal status for surveillance email deliveries."""
         del payload
+        from hmis.apps.core.models import AuditLog
+
         from .models import CountyNotificationDelivery, CountyNotificationDeliveryStatus
 
         normalized = (event_type or "").strip().lower()
@@ -660,8 +810,28 @@ class SurveillanceService:
         now = timezone.now()
         # Provider events can arrive out of order. A successful delivery is
         # terminal and must never be regressed by a later failure/bounce event.
+        # A superseded delivery belongs to a corrected recipient configuration;
+        # retain that state even when the original provider event arrives late.
+        if delivery.status == CountyNotificationDeliveryStatus.SUPERSEDED:
+            delivery.provider_event = normalized
+            delivery.save(update_fields=["provider_event", "updated_at"])
+            AuditLog.log(
+                action="county_notification_delivery_provider_event_ignored",
+                user=None,
+                resource_type="CountyNotificationDelivery",
+                resource_id=delivery.id,
+                details={
+                    "case_id": delivery.case_id,
+                    "channel": delivery.channel,
+                    "status": delivery.status,
+                    "provider_event": normalized,
+                    "reason": "delivery_superseded",
+                },
+            )
+            return delivery
         if delivery.status == CountyNotificationDeliveryStatus.DELIVERED:
             return delivery
+        previous_status = delivery.status
         delivery.provider_event = normalized
         if normalized == "email.delivered":
             delivery.status = CountyNotificationDeliveryStatus.DELIVERED
@@ -691,6 +861,19 @@ class SurveillanceService:
                 "last_error",
                 "updated_at",
             ]
+        )
+        AuditLog.log(
+            action="county_notification_delivery_status_changed",
+            user=None,
+            resource_type="CountyNotificationDelivery",
+            resource_id=delivery.id,
+            details={
+                "case_id": delivery.case_id,
+                "channel": delivery.channel,
+                "previous_status": previous_status,
+                "status": delivery.status,
+                "provider_event": normalized,
+            },
         )
         return delivery
 
@@ -747,13 +930,17 @@ class SurveillanceService:
         # Broadcast via WebSocket
         cls.broadcast_alert(alert)
 
-        # Send SMS/email for immediate diseases
-        if case.disease.is_immediate and alert_type in [
-            SurveillanceAlert.AlertType.NEW_CASE,
-            SurveillanceAlert.AlertType.OUTBREAK,
-        ]:
-            cls.send_sms_alert(alert)
-            cls.send_email_alert(alert)
+        # DHA-reportable immediate and outbreak alerts must be dispatched through
+        # the durable county-delivery workflow, not only via an untracked alert.
+        if (
+            alert_type
+            in [
+                SurveillanceAlert.AlertType.NEW_CASE,
+                SurveillanceAlert.AlertType.OUTBREAK,
+            ]
+            and case.requires_county_notification
+        ):
+            cls.notify_county_automatically(case=case, alert=alert)
 
         return alert
 

@@ -35,9 +35,111 @@ class TestProcedureCatalogAPI:
         response = authenticated_client.get("/api/procedures/catalog/?category=WOUND_CARE")
         assert response.status_code == status.HTTP_200_OK
 
+    def test_list_catalog_is_scoped_to_the_active_facility(
+        self,
+        authenticated_client,
+        procedure_catalog_entry,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
+    ):
+        """A facility must not see another facility's procedure catalogue."""
+        from hmis.apps.core.models import Facility
+        from hmis.apps.procedures.models import ProcedureCatalog
+
+        other_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Other Procedure Facility",
+            mfl_code="PROC-OTHER-001",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        other = ProcedureCatalog.objects.create(
+            code="OTHER-FACILITY-PROC",
+            name="Other Facility Procedure",
+            facility=other_facility,
+            organization=sample_organization,
+        )
+
+        response = authenticated_client.get(
+            "/api/procedures/catalog/",
+            HTTP_X_FACILITY_ID=str(procedure_catalog_entry.facility_id),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert procedure_catalog_entry.id in [item["id"] for item in response.data["results"]]
+        assert other.id not in [item["id"] for item in response.data["results"]]
+
     def test_unauthenticated_access_denied(self, api_client):
         response = api_client.get("/api/procedures/catalog/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_seed_defaults_requires_catalog_create_permission(
+        self, authenticated_client, sample_facility
+    ):
+        """Only catalog creators or elevated tenant roles may seed a facility."""
+        response = authenticated_client.post(
+            "/api/procedures/catalog/seed-defaults/",
+            HTTP_X_FACILITY_ID=str(sample_facility.id),
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_seed_defaults_creates_catalog_for_active_facility(
+        self, authenticated_client, sample_facility
+    ):
+        """Catalog defaults are created only within the request's facility scope."""
+        from django.contrib.auth.models import Permission
+
+        from hmis.apps.procedures.models import ProcedureCatalog
+
+        user = authenticated_client.handler._force_user
+        permission = Permission.objects.get(codename="add_procedurecatalog")
+        user.user_permissions.add(permission)
+        authenticated_client.force_authenticate(user=user)
+
+        response = authenticated_client.post(
+            "/api/procedures/catalog/seed-defaults/",
+            HTTP_X_FACILITY_ID=str(sample_facility.id),
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["created"] == 183
+        assert ProcedureCatalog.objects.filter(facility=sample_facility).count() == 183
+
+    def test_seed_defaults_allows_owner_role_without_direct_permission(
+        self, authenticated_client, sample_facility, test_staff_profile, sample_role
+    ):
+        """OWNER, ADMIN, and ORG-ADMIN roles may seed defaults without a direct grant."""
+        sample_role.code = "OWNER"
+        sample_role.save(update_fields=["code"])
+
+        response = authenticated_client.post(
+            "/api/procedures/catalog/seed-defaults/",
+            HTTP_X_FACILITY_ID=str(sample_facility.id),
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+    def test_seed_defaults_refuses_to_overwrite_existing_catalogue(
+        self, authenticated_client, sample_facility, procedure_catalog_entry
+    ):
+        """Seed action does not overwrite a facility's configured catalogue."""
+        from django.contrib.auth.models import Permission
+
+        user = authenticated_client.handler._force_user
+        permission = Permission.objects.get(codename="add_procedurecatalog")
+        user.user_permissions.add(permission)
+        authenticated_client.force_authenticate(user=user)
+
+        response = authenticated_client.post(
+            "/api/procedures/catalog/seed-defaults/",
+            HTTP_X_FACILITY_ID=str(sample_facility.id),
+        )
+
+        assert response.status_code == status.HTTP_409_CONFLICT
 
 
 class TestProcedureOrderCRUD:

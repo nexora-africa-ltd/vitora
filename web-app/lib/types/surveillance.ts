@@ -98,11 +98,15 @@ export type CountyNotificationDeliveryStatus =
   | 'DELIVERED'
   | 'BOUNCED'
   | 'RETRY_SCHEDULED'
-  | 'FAILED';
+  | 'FAILED'
+  | 'SUPERSEDED';
 
 export interface CountyNotificationDelivery {
   id: number;
   case: number;
+  case_disease_name: string;
+  case_patient_mrn: string;
+  case_notification_status: NotifiableCaseStatus;
   channel: CountyNotificationChannel;
   status: CountyNotificationDeliveryStatus;
   recipient_masked: string;
@@ -120,8 +124,19 @@ export interface CountyNotificationDelivery {
   next_retry_at: string | null;
   triggered_by: number | null;
   triggered_by_name: string | null;
+  sent_by_name: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface CountyNotificationDeliveryListParams {
+  status?: CountyNotificationDeliveryStatus;
+  channel?: CountyNotificationChannel;
+  case?: number;
+  search?: string;
+  ordering?: string;
+  page?: number;
+  page_size?: number;
 }
 
 export interface SurveillanceFacilitySettings {

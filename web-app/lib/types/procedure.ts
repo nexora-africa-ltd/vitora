@@ -8,7 +8,15 @@ export interface ProcedureCatalogEntry {
   body_system: string;
   risk_level: string;
   ichi_code: string;
+  ichi_system?: string;
+  ichi_owner?: string;
+  ichi_source?: string;
+  ichi_retrieved_at?: string | null;
+  ichi_version?: string;
+  ichi_checksum?: string;
   cpt_code: string;
+  cpt_provenance?: Record<string, unknown>;
+  icd10_pcs_provenance?: Record<string, unknown>;
   consent_required: boolean;
   typical_duration_minutes: number;
   base_fee: number | null;
@@ -40,10 +48,29 @@ export interface ProcedureCatalogDetail extends ProcedureCatalogEntry {
   billing_service: number | null;
   billing_price: number | null;
   billing_service_name: string | null;
+  complexity: string;
+  sha_intervention_code: string;
+  requires_icu_bed: boolean;
+  typical_blood_requirement: string;
+  special_equipment: string;
+  setup_time_minutes: number;
+  cleanup_time_minutes: number;
+  surgeon_fee: number | null;
+  theatre_fee: number | null;
+  anesthesia_fee: number | null;
   organization: number | null;
   facility: number | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ProcedureCatalogSeedResponse {
+  created: number;
+  updated: number;
+  skipped: number;
+  legacy_removed: number;
+  total: number;
+  facility_id: number;
 }
 
 export type ProcedureOrderStatus =

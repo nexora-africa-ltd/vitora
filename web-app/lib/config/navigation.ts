@@ -91,6 +91,7 @@ import {
   Inbox,
   Wrench,
   TrendingUp,
+  Send,
 } from 'lucide-react';
 
 import { ENABLE_THEATRE, ENABLE_AI } from '@/lib/utils/constants';
@@ -357,6 +358,13 @@ const _allNavItems: NavItemType[] = [
         href: '/surveillance/alerts',
         icon: CircleAlert,
         actionKey: 'surveillance.view_alerts',
+      },
+      {
+        label: 'Submissions',
+        href: '/surveillance/submissions',
+        icon: Send,
+        actionKey: 'surveillance.view_submissions',
+        requiresInternet: true,
       },
       {
         label: 'IDSR Reports',

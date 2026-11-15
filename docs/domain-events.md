@@ -593,7 +593,7 @@ Appointment status → Event mapping:
 
 | Handler | Signal | Model | Event(s) Published | Payload |
 |---------|--------|-------|--------------------|---------|
-| `check_diagnosis_for_surveillance` | `post_save` | `Diagnosis` | `NOTIFIABLE_DISEASE_DETECTED` | `disease_name`, `diagnosis_id`, `icd10_code`, `patient_id` |
+| `check_diagnosis_for_surveillance` | `post_save` | `Diagnosis` | `NOTIFIABLE_DISEASE_DETECTED` | `disease_name`, `diagnosis_id`, `icd10_code`, `icd11_code`, `patient_id` |
 
 ### Imaging (`hmis/apps/imaging/signals.py`)
 

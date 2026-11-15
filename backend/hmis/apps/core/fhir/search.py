@@ -26,6 +26,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from hmis.apps.core.fhir.tenant import scope_fhir_queryset
 from hmis.apps.core.fhir.views import FHIR_RENDERER_CLASSES, FHIRSchemaMixin
 from hmis.apps.core.oauth.permissions import (
     SMARTPatientAccessPermission,
@@ -33,7 +34,7 @@ from hmis.apps.core.oauth.permissions import (
     get_patient_context_id,
     get_smart_filter_for_patient_scopes,
 )
-from hmis.apps.core.permissions import ReadRequiresModelPermission
+from hmis.apps.core.permissions import FHIRAccessPermission, ReadRequiresModelPermission
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +154,7 @@ class FHIRSearchAPIView(FHIRSearchMixin, FHIRSchemaMixin, APIView):
         IsAuthenticated,
         SMARTScopePermission,
         SMARTPatientAccessPermission,
+        FHIRAccessPermission,
         ReadRequiresModelPermission,
     ]
     renderer_classes = FHIR_RENDERER_CLASSES
@@ -177,7 +179,10 @@ class FHIRPatientSearchView(FHIRSearchAPIView):
         from hmis.apps.patients.models import Patient
 
         queryset = get_smart_filter_for_patient_scopes(
-            request, Patient.objects.select_related("county", "sub_county", "ward")
+            request,
+            scope_fhir_queryset(
+                request, Patient.objects.select_related("county", "sub_county", "ward")
+            ),
         )
 
         # _id
@@ -276,8 +281,12 @@ class FHIRObservationSearchView(FHIRSearchAPIView):
 
         # Lab results as Observations
         if category in (None, "laboratory"):
-            lab_qs = LabResult.objects.select_related(
-                "order_item__test", "order_item__lab_order__patient"
+            lab_qs = scope_fhir_queryset(
+                request,
+                LabResult.objects.select_related(
+                    "order_item__test", "order_item__lab_order__patient"
+                ),
+                organization_lookup="order_item__lab_order__organization",
             )
             if patient_id:
                 lab_qs = lab_qs.filter(order_item__lab_order__patient_id=patient_id)
@@ -324,7 +333,7 @@ class FHIRObservationSearchView(FHIRSearchAPIView):
 
         # Vitals as Observations
         if category in (None, "vital-signs"):
-            enc_qs = Encounter.objects.all()
+            enc_qs = scope_fhir_queryset(request, Encounter.objects.all())
             if patient_id:
                 enc_qs = enc_qs.filter(patient_id=patient_id)
             if obs_date:
@@ -396,7 +405,11 @@ class FHIRConditionSearchView(FHIRSearchAPIView):
     def get(self, request):
         from hmis.apps.encounters.models import Diagnosis
 
-        queryset = Diagnosis.objects.select_related("encounter__patient", "icd10_code")
+        queryset = scope_fhir_queryset(
+            request,
+            Diagnosis.objects.select_related("encounter__patient", "icd10_code"),
+            organization_lookup="encounter__organization",
+        )
 
         patient_id = get_patient_context_id(request, request.query_params.get("patient"))
         if patient_id:
@@ -467,6 +480,14 @@ class FHIRConditionSearchView(FHIRSearchAPIView):
                         ),
                     }
                 )
+            if getattr(dx, "icd11_code", ""):
+                resource["code"]["coding"].append(
+                    {
+                        "system": "http://id.who.int/icd/release/11/mms",
+                        "code": dx.icd11_code,
+                        "display": dx.icd11_display or dx.icd11_code,
+                    }
+                )
             if getattr(dx, "snomed_code", None):
                 resource["code"]["coding"].append(
                     {
@@ -495,7 +516,7 @@ class FHIRMedicationStatementSearchView(FHIRSearchAPIView):
     def get(self, request):
         from hmis.apps.pharmacy.models import Prescription
 
-        queryset = Prescription.objects.select_related("patient")
+        queryset = scope_fhir_queryset(request, Prescription.objects.select_related("patient"))
 
         patient_id = get_patient_context_id(request, request.query_params.get("patient"))
         if patient_id:
@@ -558,9 +579,10 @@ class FHIREncounterSearchView(FHIRSearchAPIView):
     """
 
     def get(self, request):
+        from hmis.apps.core.fhir.views_encounter import FHIREncounterView
         from hmis.apps.encounters.models import Encounter
 
-        queryset = Encounter.objects.select_related("patient")
+        queryset = scope_fhir_queryset(request, Encounter.objects.select_related("patient"))
 
         patient_id = get_patient_context_id(request, request.query_params.get("patient"))
         if patient_id:
@@ -594,32 +616,7 @@ class FHIREncounterSearchView(FHIRSearchAPIView):
 
         entries = []
         for enc in encounters:
-            type_to_class = {"OPD": "AMB", "IPD": "IMP", "EMERGENCY": "EMER"}
-            fhir_class = type_to_class.get(enc.encounter_type, "AMB")
-
-            # Map local status to FHIR status
-            local_status = getattr(enc, "status", "IN_PROGRESS")
-            fhir_status = "in-progress"
-            if local_status in ("COMPLETED", "DISCHARGED"):
-                fhir_status = "finished"
-            elif local_status == "CANCELLED":
-                fhir_status = "cancelled"
-
-            resource = {
-                "resourceType": "Encounter",
-                "id": str(enc.pk),
-                "status": fhir_status,
-                "class": {
-                    "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
-                    "code": fhir_class,
-                },
-                "subject": {"reference": f"Patient/{enc.patient_id}"},
-                "period": {
-                    "start": enc.encounter_date.isoformat() if enc.encounter_date else None,
-                },
-                "reasonCode": [{"text": enc.chief_complaint}] if enc.chief_complaint else [],
-            }
-            entries.append(resource)
+            entries.append(FHIREncounterView.to_fhir_resource(enc))
 
         return Response(self.build_bundle(entries, total, request, count, offset))
 
@@ -640,7 +637,11 @@ class FHIRDiagnosticReportSearchView(FHIRSearchAPIView):
     def get(self, request):
         from hmis.apps.laboratory.models import DiagnosticReport
 
-        queryset = DiagnosticReport.objects.select_related("lab_order__patient", "lab_order")
+        queryset = scope_fhir_queryset(
+            request,
+            DiagnosticReport.objects.select_related("lab_order__patient", "lab_order"),
+            organization_lookup="lab_order__organization",
+        )
 
         patient_id = get_patient_context_id(request, request.query_params.get("patient"))
         if patient_id:
@@ -674,46 +675,10 @@ class FHIRDiagnosticReportSearchView(FHIRSearchAPIView):
         reports = queryset.order_by("-issued_at")[offset : offset + count]
 
         entries = []
-        for report in reports:
-            # Map local status to FHIR
-            local_status = getattr(report, "status", "FINAL")
-            fhir_status = "final"
-            status_reverse_map = {
-                "DRAFT": "registered",
-                "PARTIAL": "partial",
-                "PRELIMINARY": "preliminary",
-                "FINAL": "final",
-                "RELEASED": "final",
-                "AMENDED": "amended",
-                "CANCELLED": "cancelled",
-            }
-            fhir_status = status_reverse_map.get(local_status, "final")
+        from hmis.apps.core.fhir.views_clinical_resources import FHIRDiagnosticReportView
 
-            resource = {
-                "resourceType": "DiagnosticReport",
-                "id": str(report.pk),
-                "status": fhir_status,
-                "code": {
-                    "coding": [
-                        {
-                            "system": "http://loinc.org",
-                            "code": getattr(report, "report_number", "") or "",
-                            "display": getattr(report, "conclusion", "")[:100] or "",
-                        }
-                    ]
-                },
-                "subject": {
-                    "reference": (
-                        f"Patient/{report.lab_order.patient_id}" if report.lab_order else None
-                    )
-                },
-                "issued": (
-                    report.issued_at.isoformat()
-                    if hasattr(report, "issued_at") and report.issued_at
-                    else None
-                ),
-                "conclusion": getattr(report, "conclusion", "") or "",
-            }
-            entries.append(resource)
+        diagnostic_report_view = FHIRDiagnosticReportView()
+        for report in reports:
+            entries.append(diagnostic_report_view._to_fhir_diagnostic_report(report))
 
         return Response(self.build_bundle(entries, total, request, count, offset))

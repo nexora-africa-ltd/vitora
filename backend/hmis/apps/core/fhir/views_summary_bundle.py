@@ -25,7 +25,11 @@ from rest_framework.views import APIView
 
 from hmis.apps.core.fhir.security import request_can_access_fhir_resource
 from hmis.apps.core.oauth.permissions import SMARTPatientAccessPermission, SMARTScopePermission
-from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
+from hmis.apps.core.permissions import (
+    FHIRAccessPermission,
+    ReadRequiresModelPermission,
+    WriteRequiresRolePermission,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +98,7 @@ class PublicFHIRReadAPIView(FHIRSchemaMixin, APIView):
         IsAuthenticated,
         SMARTScopePermission,
         SMARTPatientAccessPermission,
+        FHIRAccessPermission,
         ReadRequiresModelPermission,
     ]
     renderer_classes = FHIR_RENDERER_CLASSES
@@ -316,6 +321,7 @@ class FHIRPatientSummaryView(FHIRSchemaMixin, APIView):
         IsAuthenticated,
         SMARTScopePermission,
         SMARTPatientAccessPermission,
+        FHIRAccessPermission,
         ReadRequiresModelPermission,
     ]
     renderer_classes = FHIR_RENDERER_CLASSES

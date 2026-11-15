@@ -1,0 +1,31 @@
+{
+  "passed": true,
+  "verified_at": "2026-11-14T22:58:14.359670+00:00",
+  "facility": {
+    "id": 13,
+    "name": "DHA Certification Test Facility"
+  },
+  "standards": {
+    "icd11": {
+      "system": "http://id.who.int/icd/release/11/mms",
+      "code": "BA00",
+      "display": "Essential hypertension",
+      "version": "2026-01",
+      "valid": true
+    },
+    "snomed_ct": {
+      "system": "http://snomed.info/sct",
+      "code": "38341003",
+      "display": "Hypertensive disorder",
+      "version": "20261030",
+      "valid": true
+    },
+    "loinc": {
+      "system": "http://loinc.org",
+      "code": "57021-8",
+      "display": "CBC W Auto Differential panel - Blood",
+      "version": "2.83",
+      "valid": true
+    }
+  }
+}

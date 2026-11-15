@@ -1,0 +1,15 @@
+{
+  "issue": [
+    {
+      "code": "informational",
+      "diagnostics": "No issues detected during validation",
+      "severity": "information"
+    },
+    {
+      "code": "informational",
+      "diagnostics": "No issues detected during validation",
+      "severity": "information"
+    }
+  ],
+  "resourceType": "OperationOutcome"
+}
