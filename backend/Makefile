@@ -5,6 +5,11 @@
 	prod-deploy prod-env prod-logs prod-exec prod-shell prod-status prod-restart prod-verify \
 	runserver api api-wsgi kill-api r notif-burst notif-burst5
 
+ARTIFACTS_DIR := $(CURDIR)/.artifacts
+COVERAGE_FILE := $(ARTIFACTS_DIR)/.coverage
+COVERAGE_HTML_DIR := $(ARTIFACTS_DIR)/htmlcov
+COVERAGE_XML := $(ARTIFACTS_DIR)/coverage.xml
+
 help:
 	@echo "Vitora HMIS Backend - Make Commands"
 	@echo "===================================="
@@ -188,8 +193,10 @@ notif-burst5:
 	./scripts/notif-burst.sh "$(NOTIF_USER)" 5
 
 test:
-	@rm -f .coverage .coverage.*
-	poetry run pytest --cov=hmis --cov-report=term-missing --cov-report=html --cov-report=xml --cov-fail-under=75
+	@mkdir -p "$(ARTIFACTS_DIR)"
+	@rm -f "$(COVERAGE_FILE)" "$(COVERAGE_FILE)".*
+	COVERAGE_FILE="$(COVERAGE_FILE)" poetry run pytest --cov=hmis --cov-report=term-missing --cov-report=html:"$(COVERAGE_HTML_DIR)" --cov-report=xml:"$(COVERAGE_XML)" --cov-fail-under=75
+	@rm -f "$(COVERAGE_FILE)".*
 
 test-fast:
 	poetry run pytest --no-cov --tb=short -q
@@ -337,10 +344,10 @@ clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete
 	find . -type f -name "*.pyo" -delete
-	find . -type f -name "*.coverage" -delete
+	rm -rf "$(ARTIFACTS_DIR)"
+	# Remove coverage artifacts created before .artifacts/ became the standard.
+	rm -f .coverage .coverage.* coverage.xml
 	rm -rf htmlcov/
-	rm -rf .coverage
-	rm -rf coverage.xml
 	rm -rf .pytest_cache/
 	rm -rf .mypy_cache/
 	rm -rf .ruff_cache/
@@ -367,11 +374,14 @@ package-hub: build-compiled-hub ## Compile + package into tarball
 	echo "Package ready: dist/vitora-hub-$${VERSION}.tar.gz"
 
 coverage-html:
-	poetry run pytest --cov=hmis --cov-report=html
-	@echo "Coverage report generated in htmlcov/index.html"
+	@mkdir -p "$(ARTIFACTS_DIR)"
+	@rm -f "$(COVERAGE_FILE)" "$(COVERAGE_FILE)".*
+	COVERAGE_FILE="$(COVERAGE_FILE)" poetry run pytest --cov=hmis --cov-report=html:"$(COVERAGE_HTML_DIR)"
+	@rm -f "$(COVERAGE_FILE)".*
+	@echo "Coverage report generated in $(COVERAGE_HTML_DIR)/index.html"
 
 coverage-report:
-	poetry run coverage report
+	COVERAGE_FILE="$(COVERAGE_FILE)" poetry run coverage report
 
 showmigrations:
 	poetry run python manage.py showmigrations
