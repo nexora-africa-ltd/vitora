@@ -237,7 +237,9 @@ class TestFacilityBillingConfigAPI:
         assert FacilityBillingConfig.objects.filter(facility=second_facility).exists()
 
     def test_update_config(self, authenticated_client, billing_config):
-        """Should update config fields."""
+        """Should retain a field-level audit trail for billing configuration changes."""
+        from hmis.apps.core.models import AuditLog
+
         response = authenticated_client.patch(
             f"/api/billing/facility-configs/{billing_config.id}/",
             {"default_due_days": 60, "auto_finalize_on_checkout": True},
@@ -247,6 +249,15 @@ class TestFacilityBillingConfigAPI:
         billing_config.refresh_from_db()
         assert billing_config.default_due_days == 60
         assert billing_config.auto_finalize_on_checkout is True
+
+        audit_entry = AuditLog.objects.filter(
+            action="billing.facility_config.partial_update",
+            resource_type="FacilityBillingConfig",
+            resource_id=billing_config.id,
+        ).latest("timestamp")
+        assert audit_entry.facility_id == billing_config.facility_id
+        assert audit_entry.details["old_values"]["default_due_days"] == 14
+        assert audit_entry.details["new_values"]["default_due_days"] == 60
 
     def test_update_capitation_intervention_visibility_toggle(
         self, authenticated_client, billing_config

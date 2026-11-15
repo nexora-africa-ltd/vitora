@@ -43,6 +43,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from .audit import AuditedConfigurationMutationMixin
 from .mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
 from .models import (
     AuditLog,
@@ -1221,7 +1222,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
 # ============================================================================
 
 
-class FacilityViewSet(viewsets.ModelViewSet):
+class FacilityViewSet(AuditedConfigurationMutationMixin, viewsets.ModelViewSet):
     """
     ViewSet for healthcare facility CRUD operations.
 
@@ -1249,6 +1250,15 @@ class FacilityViewSet(viewsets.ModelViewSet):
     """
 
     queryset = Facility.objects.select_related("county", "sub_county", "ward", "organization").all()
+    audit_resource_type = "Facility"
+    audit_action_prefix = "facility"
+    audit_source = "core_api"
+    audit_action_names = {
+        "create": "facility_created",
+        "update": "facility_updated",
+        "partial_update": "facility_updated",
+        "destroy": "facility_deleted",
+    }
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name", "mfl_code"]
     ordering_fields = ["name", "level", "mfl_code", "created_at"]
@@ -1399,19 +1409,7 @@ class FacilityViewSet(viewsets.ModelViewSet):
             )
 
         facility = serializer.save()
-        AuditLog.log(
-            action="facility_created",
-            user=self.request.user,
-            resource_type="Facility",
-            resource_id=facility.id,
-            ip_address=_get_client_ip(self.request),
-            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
-            details={
-                "name": facility.name,
-                "mfl_code": facility.mfl_code,
-                "level": facility.level,
-            },
-        )
+        self.capture_configuration_creation(facility)
         # Re-serialize with FacilityDetailSerializer so the response
         # includes id, modules, county_name, timestamps, etc.
         read_serializer = FacilityDetailSerializer(facility)
@@ -1428,35 +1426,10 @@ class FacilityViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         """Update facility and log the action for audit compliance."""
-        facility = serializer.save()
-        AuditLog.log(
-            action="facility_updated",
-            user=self.request.user,
-            resource_type="Facility",
-            resource_id=facility.id,
-            ip_address=_get_client_ip(self.request),
-            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
-            details={
-                "name": facility.name,
-                "mfl_code": facility.mfl_code,
-                "updated_fields": list(serializer.validated_data.keys()),
-            },
-        )
+        serializer.save()
 
     def perform_destroy(self, instance):
         """Delete facility and log the action for audit compliance."""
-        AuditLog.log(
-            action="facility_deleted",
-            user=self.request.user,
-            resource_type="Facility",
-            resource_id=instance.id,
-            ip_address=_get_client_ip(self.request),
-            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
-            details={
-                "name": instance.name,
-                "mfl_code": instance.mfl_code,
-            },
-        )
         instance.delete()
 
     @extend_schema(
@@ -2095,12 +2068,20 @@ class DHIS2ConfigViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 # =============================================================================
 
 
-class FacilityEmailConfigViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
+class FacilityEmailConfigViewSet(
+    AuditedConfigurationMutationMixin,
+    ReadOnCreateMixin,
+    TenantScopedViewMixin,
+    viewsets.ModelViewSet,
+):
     """Manage the current facility's encrypted SMTP configuration."""
 
     queryset = FacilityEmailConfig.objects.select_related("facility", "organization")
     serializer_class = FacilityEmailConfigSerializer
     tenant_scope = "facility"
+    audit_resource_type = "FacilityEmailConfig"
+    audit_action_prefix = "core.facility_email_config"
+    audit_source = "core_api"
 
     def get_permissions(self):
         return [FacilityAdminPermission()]
@@ -2129,6 +2110,7 @@ class FacilityEmailConfigViewSet(ReadOnCreateMixin, TenantScopedViewMixin, views
 
         existing = FacilityEmailConfig.objects.filter(facility=facility).first()
         if existing:
+            self.capture_configuration_audit(existing, operation="partial_update")
             serializer = self.get_serializer(existing, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
@@ -2137,6 +2119,7 @@ class FacilityEmailConfigViewSet(ReadOnCreateMixin, TenantScopedViewMixin, views
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(**tenant_kwargs)
+        self.capture_configuration_creation(serializer.instance)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=["get"], url_path="providers")
@@ -2150,6 +2133,7 @@ class FacilityEmailConfigViewSet(ReadOnCreateMixin, TenantScopedViewMixin, views
     def test_connection(self, request, pk=None):
         """Verify SMTP authentication before the facility can enable Custom Email."""
         config = self.get_object()
+        self.capture_configuration_audit(config, operation="test_connection")
         if not config.is_configured:
             return Response(
                 {"detail": "Complete SMTP configuration is required before testing."},
@@ -2182,6 +2166,11 @@ class FacilityEmailConfigViewSet(ReadOnCreateMixin, TenantScopedViewMixin, views
             config.last_test_error = "SMTP connection or authentication failed."
             config.last_tested_at = timezone.now()
             config.save(update_fields=["status", "last_test_error", "last_tested_at", "updated_at"])
+            self.log_captured_configuration_mutation(
+                request,
+                action="core.facility_email_config.test_connection_failed",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
             return Response({"detail": config.last_test_error}, status=status.HTTP_400_BAD_REQUEST)
 
         config.status = FacilityEmailConfig.Status.HEALTHY

@@ -26,6 +26,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from hmis.apps.core.audit import AuditedConfigurationMutationMixin
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import ReadRequiresModelPermission
@@ -852,6 +853,7 @@ class SurveillanceAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
 
 class SurveillanceFacilitySettingsViewSet(
+    AuditedConfigurationMutationMixin,
     ReadOnCreateMixin,
     TenantScopedViewMixin,
     viewsets.ModelViewSet,
@@ -861,6 +863,9 @@ class SurveillanceFacilitySettingsViewSet(
     tenant_scope = "facility"
     queryset = SurveillanceFacilitySettings.objects.select_related("facility").all()
     serializer_class = SurveillanceFacilitySettingsSerializer
+    audit_resource_type = "SurveillanceFacilitySettings"
+    audit_action_prefix = "surveillance.facility_settings"
+    audit_source = "surveillance_api"
     permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     ordering = ["-updated_at"]
 
@@ -880,10 +885,17 @@ class SurveillanceFacilitySettingsViewSet(
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        settings_obj, _ = SurveillanceFacilitySettings.objects.get_or_create(
+        settings_obj, created = SurveillanceFacilitySettings.objects.get_or_create(
             facility=facility,
             defaults={"organization": organization},
         )
+        if created:
+            self.capture_configuration_creation(settings_obj)
+            self.log_captured_configuration_mutation(
+                request,
+                action="surveillance.facility_settings.initialized",
+                status_code=status.HTTP_201_CREATED,
+            )
         return Response(self.get_serializer(settings_obj).data)
 
 
