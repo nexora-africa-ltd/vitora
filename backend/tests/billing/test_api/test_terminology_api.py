@@ -1,13 +1,18 @@
 import pytest
-from django.test import override_settings
 from rest_framework import status
 
 from hmis.apps.billing.services.terminology_models import TerminologyConcept
 
 
+@pytest.fixture(autouse=True)
+def dha_first_icd11_settings(settings):
+    """Exercise the DHA-first ICD-11 fallback flow independently of environment."""
+    settings.SHA_API_BASE_URL = ""
+    settings.ICD11_USE_LOCAL = False
+
+
 @pytest.mark.django_db
 class TestTerminologyICD11FallbackAPI:
-    @override_settings(SHA_API_BASE_URL="", ICD11_USE_LOCAL=False)
     def test_icd11_search_uses_dha_clinical_concepts_without_sha_base_url(
         self,
         authenticated_client,
