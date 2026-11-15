@@ -483,6 +483,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "patient_name",
                 "reported_by",
                 "reported_by_name",
+                "requires_county_notification",
                 "severity",
                 "sub_county",
                 "sub_county_name",

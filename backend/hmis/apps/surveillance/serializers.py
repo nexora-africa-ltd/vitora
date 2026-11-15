@@ -249,6 +249,7 @@ class NotifiableCaseSerializer(serializers.ModelSerializer):
     is_overdue = serializers.BooleanField(read_only=True)
     hours_until_deadline = serializers.IntegerField(read_only=True)
     is_immediate = serializers.BooleanField(read_only=True)
+    requires_county_notification = serializers.BooleanField(read_only=True)
     reported_by_name = serializers.SerializerMethodField()
     notified_by_name = serializers.SerializerMethodField()
 
@@ -276,6 +277,7 @@ class NotifiableCaseSerializer(serializers.ModelSerializer):
             "is_overdue",
             "hours_until_deadline",
             "is_immediate",
+            "requires_county_notification",
             "county",
             "county_name",
             "sub_county",

@@ -173,6 +173,17 @@ class TestDeliverySubmissions:
         assert item["case_notification_status"] == "PENDING"
         assert item["sent_by_name"] == "Automated system"
 
+    def test_case_detail_includes_county_notification_requirement(
+        self,
+        authenticated_client,
+        failed_delivery,
+    ):
+        """Case detail must satisfy the frontend's county-notification contract."""
+        response = authenticated_client.get(f"/api/surveillance/cases/{failed_delivery.case_id}/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["requires_county_notification"] is True
+
     def test_delivery_from_other_facility_is_hidden(
         self,
         authenticated_client,
