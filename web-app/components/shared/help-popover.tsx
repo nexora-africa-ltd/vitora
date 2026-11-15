@@ -4,6 +4,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 interface HelpPopoverProps {
   /** Help content to display */
   content: string;
+  /** Accessible name for the help control. */
+  ariaLabel?: string;
   /** Size of the help icon */
   size?: 'sm' | 'md';
 }
@@ -12,7 +14,7 @@ interface HelpPopoverProps {
  * Help popover with question mark icon.
  * Use to provide contextual help for page sections or form fields.
  */
-export function HelpPopover({ content, size = 'sm' }: HelpPopoverProps) {
+export function HelpPopover({ content, ariaLabel = 'Help', size = 'sm' }: HelpPopoverProps) {
   const iconSize = size === 'sm' ? 'h-4 w-4' : 'h-5 w-5';
 
   return (
@@ -21,7 +23,7 @@ export function HelpPopover({ content, size = 'sm' }: HelpPopoverProps) {
         <button
           type="button"
           className="inline-flex items-center justify-center rounded-full p-1 transition-colors hover:bg-muted"
-          aria-label="Help"
+          aria-label={ariaLabel}
         >
           <HelpCircle className={`${iconSize} cursor-help text-muted-foreground`} />
         </button>
