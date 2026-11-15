@@ -236,13 +236,8 @@ class TerminologySearchView(APIView):
             logger.debug("ICD11_USE_LOCAL=True, using local container only")
             return self._search_icd11_local(search, limit)
 
-        sha_base = getattr(django_settings, "SHA_API_BASE_URL", "")
-        if not sha_base or sha_base == "https://example.com":
-            logger.debug("SHA_API_BASE_URL not configured, using local fallback")
-            return self._search_icd11_local(search, limit, "DHA API not configured")
-
         try:
-            logger.debug("Attempting DHA Terminology API for ICD-11 search")
+            logger.debug("Attempting DHA Clinical Concepts API for ICD-11 search")
             service = _legacy_sha_views_module().TerminologyService(use_local_fallback=False)
             results = service.search_concepts("icd11", search, limit=limit)
 
