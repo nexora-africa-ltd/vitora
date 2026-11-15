@@ -558,10 +558,10 @@ class TestICD11Code:
     """Tests for ICD11Code data class."""
 
     def test_from_api_response(self):
-        """Should create from API response."""
+        """Should prefer DHA Clinical Concepts display text from the API response."""
         data = {
             "code": "1A00",
-            "title": "Cholera",
+            "display": "Cholera",
             "chapter": "01",
         }
 
@@ -569,6 +569,7 @@ class TestICD11Code:
 
         assert code.code == "1A00"
         assert code.title == "Cholera"
+        assert code.description == "Cholera"
 
 
 class TestDrugProduct:

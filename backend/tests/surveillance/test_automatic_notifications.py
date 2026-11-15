@@ -46,6 +46,7 @@ class TestAutomaticCountyNotifications:
             name="Automatic Cholera",
             icd10_codes="A00",
             category="IMMEDIATE",
+            requires_county_notification=True,
             reporting_hours=24,
         )
         case = NotifiableCase.objects.create(

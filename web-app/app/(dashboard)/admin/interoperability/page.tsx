@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { apiClient } from '@/lib/api/client';
+import { shaApi } from '@/lib/api/sha';
 import { FHIRResourceExplorer } from '@/components/admin/fhir-resource-explorer';
 
 interface FHIRPatientResult {
@@ -111,7 +112,7 @@ export default function InteroperabilityPage() {
   // ICD-11 Search
   const [icd11Query, setIcd11Query] = useState('');
   const [icd11Results, setIcd11Results] = useState<
-    Array<{ code: string; title: string; definition?: string }>
+    Array<{ code: string; title: string; description?: string }>
   >([]);
   const [icd11Loading, setIcd11Loading] = useState(false);
   const debouncedIcd11Query = useDebounce(icd11Query, 400);
@@ -238,12 +239,8 @@ export default function InteroperabilityPage() {
     }
     setIcd11Loading(true);
     try {
-      const response = await apiClient.get<{
-        results: Array<{ code: string; title: string; definition?: string }>;
-      }>('/api/sha/terminology/search/', {
-        params: { type: 'icd11', search: query, page_size: 20 },
-      });
-      setIcd11Results(response.data.results || []);
+      const response = await shaApi.searchICD11({ search: query, page_size: 20 });
+      setIcd11Results(response.results);
     } catch {
       setIcd11Results([]);
     } finally {
@@ -574,9 +571,9 @@ export default function InteroperabilityPage() {
                             </Badge>
                             <span className="text-sm">{r.title}</span>
                           </div>
-                          {r.definition && (
+                          {r.description && (
                             <p className="ml-[72px] mt-1 line-clamp-2 text-xs text-muted-foreground">
-                              {r.definition}
+                              {r.description}
                             </p>
                           )}
                         </div>

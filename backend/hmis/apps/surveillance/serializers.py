@@ -200,8 +200,12 @@ class NotifiableDiseaseSerializer(serializers.ModelSerializer):
     """Serializer for NotifiableDisease model."""
 
     icd10_code_list = serializers.SerializerMethodField()
+    icd11_codes = serializers.ListField(
+        child=serializers.CharField(max_length=32),
+        required=False,
+        allow_empty=True,
+    )
     is_immediate = serializers.BooleanField(read_only=True)
-    requires_county_notification = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = NotifiableDisease
@@ -209,6 +213,7 @@ class NotifiableDiseaseSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "icd10_codes",
+            "icd11_codes",
             "icd10_code_list",
             "category",
             "reporting_hours",
@@ -228,13 +233,25 @@ class NotifiableDiseaseSerializer(serializers.ModelSerializer):
         """Return list of ICD-10 codes."""
         return obj.get_icd10_code_list()
 
+    def validate_icd11_codes(self, value: list[str]) -> list[str]:
+        """Store a normalized, duplicate-free array of ICD-11 MMS codes."""
+        return NotifiableDisease.normalize_icd11_codes(value)
+
 
 class NotifiableDiseaseListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for disease list views."""
 
     class Meta:
         model = NotifiableDisease
-        fields = ["id", "name", "category", "reporting_hours", "is_immediate", "is_active"]
+        fields = [
+            "id",
+            "name",
+            "category",
+            "reporting_hours",
+            "is_immediate",
+            "requires_county_notification",
+            "is_active",
+        ]
 
 
 class NotifiableCaseSerializer(serializers.ModelSerializer):

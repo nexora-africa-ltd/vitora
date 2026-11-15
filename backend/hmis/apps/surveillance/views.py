@@ -158,12 +158,13 @@ class NotifiableDiseaseViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def matching_codes(self, request, pk=None):
-        """Return all ICD-10 codes that match this disease."""
+        """Return all configured ICD-10 and ICD-11 codes that match this disease."""
         disease = self.get_object()
         return Response(
             {
                 "disease": disease.name,
                 "icd10_codes": disease.get_icd10_code_list(),
+                "icd11_codes": disease.get_icd11_code_list(),
             }
         )
 
@@ -241,8 +242,13 @@ class NotifiableDiseaseViewSet(viewsets.ModelViewSet):
             NotifiableDisease.objects.create(
                 name=name,
                 icd10_codes=entry.get("icd10_codes", ""),
+                icd11_codes=NotifiableDisease.normalize_icd11_codes(entry.get("icd11_codes", [])),
                 category=entry.get("category", "WEEKLY"),
                 reporting_hours=entry.get("reporting_hours", 168),
+                requires_county_notification=entry.get(
+                    "requires_county_notification",
+                    entry.get("category", "WEEKLY") == "IMMEDIATE",
+                ),
                 description=entry.get("description", ""),
                 case_definition=case_def,
                 laboratory_criteria=lab_criteria,

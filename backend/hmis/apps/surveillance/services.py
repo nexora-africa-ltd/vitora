@@ -62,6 +62,23 @@ class SurveillanceService:
     COUNTY_ACK_TOKEN_SALT = "surveillance.county_ack"  # noqa: S105 - signing namespace, not a secret
     COUNTY_ACK_TOKEN_MAX_AGE_SECONDS = 60 * 60 * 24 * 14
 
+    @staticmethod
+    def _configured_code_matches(diagnosis_code: str, configured_code: str) -> bool:
+        """Match an exact, hierarchical, or DHA ICD-11 range mapping."""
+        normalized_diagnosis = diagnosis_code.upper().strip()
+        normalized_configured = configured_code.upper().strip()
+        if not normalized_diagnosis or not normalized_configured:
+            return False
+
+        if "-" in normalized_configured:
+            start, end = normalized_configured.split("-", maxsplit=1)
+            range_code = normalized_diagnosis.replace(".", "")
+            return start.replace(".", "") <= range_code <= end.replace(".", "")
+
+        return normalized_diagnosis == normalized_configured or normalized_diagnosis.startswith(
+            normalized_configured.rstrip(".")
+        )
+
     @classmethod
     def check_diagnosis_for_notifiable_disease(
         cls, diagnosis: "Diagnosis"
@@ -77,19 +94,26 @@ class SurveillanceService:
         """
         from .models import NotifiableDisease
 
-        if not diagnosis.icd10_code:
+        icd10_code = (
+            diagnosis.icd10_code.code.upper().strip()
+            if diagnosis.icd10_code_id and diagnosis.icd10_code
+            else ""
+        )
+        icd11_code = str(getattr(diagnosis, "icd11_code", "") or "").upper().strip()
+        if not icd10_code and not icd11_code:
             return None
 
-        code = diagnosis.icd10_code.code.upper()
-
-        # Check for exact match or prefix match
+        # Check each configured code system for exact or hierarchy-prefix match.
         diseases = NotifiableDisease.objects.filter(is_active=True)
-
         for disease in diseases:
-            disease_codes = disease.get_icd10_code_list()
-            for disease_code in disease_codes:
-                # Exact match or code starts with disease code
-                if code == disease_code or code.startswith(disease_code.rstrip(".")):
+            for diagnosis_code, disease_codes in (
+                (icd10_code, disease.get_icd10_code_list()),
+                (icd11_code, disease.get_icd11_code_list()),
+            ):
+                if any(
+                    cls._configured_code_matches(diagnosis_code, disease_code)
+                    for disease_code in disease_codes
+                ):
                     return disease
 
         return None
@@ -908,10 +932,14 @@ class SurveillanceService:
 
         # DHA-reportable immediate and outbreak alerts must be dispatched through
         # the durable county-delivery workflow, not only via an untracked alert.
-        if alert_type in [
-            SurveillanceAlert.AlertType.NEW_CASE,
-            SurveillanceAlert.AlertType.OUTBREAK,
-        ] and (case.disease.is_immediate or alert_type == SurveillanceAlert.AlertType.OUTBREAK):
+        if (
+            alert_type
+            in [
+                SurveillanceAlert.AlertType.NEW_CASE,
+                SurveillanceAlert.AlertType.OUTBREAK,
+            ]
+            and case.requires_county_notification
+        ):
             cls.notify_county_automatically(case=case, alert=alert)
 
         return alert

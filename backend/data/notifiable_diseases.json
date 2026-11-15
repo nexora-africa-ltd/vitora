@@ -1,6 +1,6 @@
 {
   "_metadata": {
-    "version": "2.2.0",
+    "version": "2.4.0",
     "source": "Kenya MOH 502 Notifiable Diseases List",
     "reference_documents": [
       {
@@ -20,10 +20,16 @@
         "notes": "Enhanced handbook with NCDs (diabetes, hypertension, cancers), AEFI, SARI, road traffic injuries, and updated thresholds"
       }
     ],
-    "last_updated": "2026-02-22",
+    "last_updated": "2026-11-15",
     "maintainer": "Vitora HMIS Team",
-    "schema_version": "2.2",
-    "notes": "v2.2: Integrated IDSR Clinicians Handbook with 42+ priority diseases including NCDs, AEFI, SARI, and road traffic injuries"
+    "schema_version": "2.4",
+    "notes": "v2.4: ICD-11 MMS mappings are DHA WHO terminology-verified arrays. Range codes are retained where DHA publishes a code family; surveillance matching recognises those ranges. Each catalogue entry has one or more diagnosis or event mappings appropriate to its MOH reporting purpose.",
+    "icd11_mapping_source": {
+      "endpoint": "https://ilm-dev.dha.go.ke/uat-middleware/api/v1/clinical/concepts",
+      "owner": "WHO",
+      "source": "ICD-11",
+      "verified_on": "2026-11-15"
+    }
   },
   "outbreak_thresholds": {
     "_description": "Alert and action thresholds for epidemic detection per IDSR guidelines",
@@ -185,7 +191,11 @@
         "turnaround": "24-48 hours",
         "source": "IDSR Guidelines"
       },
-      "is_ihr_notifiable": true
+      "is_ihr_notifiable": true,
+      "icd11_codes": [
+        "1A00"
+      ],
+      "requires_county_notification": true
     },
     {
       "name": "Yellow Fever",
@@ -204,7 +214,11 @@
         "turnaround": "3-7 days",
         "source": "IDSR Guidelines"
       },
-      "is_ihr_notifiable": true
+      "is_ihr_notifiable": true,
+      "icd11_codes": [
+        "1D47"
+      ],
+      "requires_county_notification": true
     },
     {
       "name": "Plague",
@@ -223,7 +237,17 @@
         "turnaround": "24-72 hours",
         "source": "IDSR Guidelines"
       },
-      "is_ihr_notifiable": true
+      "is_ihr_notifiable": true,
+      "icd11_codes": [
+        "1B93",
+        "1B93.0",
+        "1B93.1",
+        "1B93.2",
+        "1B93.3",
+        "1B93.Y",
+        "1B93.Z"
+      ],
+      "requires_county_notification": true
     },
     {
       "name": "Viral Hemorrhagic Fevers",
@@ -243,7 +267,20 @@
         "biosafety": "BSL-4 required for culture",
         "source": "IDSR Guidelines"
       },
-      "is_ihr_notifiable": true
+      "is_ihr_notifiable": true,
+      "icd11_codes": [
+        "1D86",
+        "1D61.0",
+        "1D4A",
+        "1D49",
+        "1D61.1",
+        "1D4C",
+        "1D61.3",
+        "1D40-1D4Z",
+        "1D4Y",
+        "1D62.0"
+      ],
+      "requires_county_notification": true
     },
     {
       "name": "Measles",
@@ -262,7 +299,15 @@
         "turnaround": "24-72 hours",
         "source": "IDSR Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "1F03",
+        "1F03.0",
+        "1F03.1",
+        "1F03.2",
+        "1F03.Y"
+      ],
+      "requires_county_notification": true
     },
     {
       "name": "Acute Flaccid Paralysis (Polio)",
@@ -281,7 +326,11 @@
         "turnaround": "14-28 days",
         "source": "IDSR Guidelines"
       },
-      "is_ihr_notifiable": true
+      "is_ihr_notifiable": true,
+      "icd11_codes": [
+        "1C81"
+      ],
+      "requires_county_notification": true
     },
     {
       "name": "Meningococcal Meningitis",
@@ -300,7 +349,14 @@
         "turnaround": "24-48 hours",
         "source": "IDSR Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "1C1C",
+        "1C1C.0",
+        "1C1C.Y",
+        "1C1C.Z"
+      ],
+      "requires_county_notification": true
     },
     {
       "name": "Rabies (Human)",
@@ -319,7 +375,11 @@
         "turnaround": "24-72 hours",
         "source": "IDSR Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "1C82"
+      ],
+      "requires_county_notification": true
     },
     {
       "name": "Diphtheria",
@@ -338,7 +398,18 @@
         "turnaround": "24-48 hours",
         "source": "MOH Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "1C17",
+        "1C17.0Y",
+        "1C17.0Z",
+        "1C17.1",
+        "1C17.2",
+        "1C17.3",
+        "1C17.Y",
+        "1C17.Z"
+      ],
+      "requires_county_notification": true
     },
     {
       "name": "Neonatal Tetanus",
@@ -357,7 +428,11 @@
         "turnaround": "N/A",
         "source": "IDSR Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "1C15"
+      ],
+      "requires_county_notification": true
     },
     {
       "name": "Pertussis (Whooping Cough)",
@@ -376,7 +451,15 @@
         "turnaround": "3-7 days (culture), 1-2 days (PCR)",
         "source": "MOH Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "1C12",
+        "1C12.0",
+        "1C12.1",
+        "1C12.Y",
+        "1C12.Z"
+      ],
+      "requires_county_notification": true
     },
     {
       "name": "Anthrax",
@@ -396,7 +479,11 @@
         "biosafety": "BSL-3 required",
         "source": "MOH Guidelines"
       },
-      "is_ihr_notifiable": true
+      "is_ihr_notifiable": true,
+      "icd11_codes": [
+        "1B97"
+      ],
+      "requires_county_notification": true
     },
     {
       "name": "SARS/Novel Coronavirus",
@@ -415,7 +502,13 @@
         "turnaround": "4-24 hours",
         "source": "IDSR Guidelines"
       },
-      "is_ihr_notifiable": true
+      "is_ihr_notifiable": true,
+      "icd11_codes": [
+        "1D65",
+        "1D92",
+        "RA01.0"
+      ],
+      "requires_county_notification": true
     },
     {
       "name": "Influenza (Novel/Pandemic)",
@@ -434,7 +527,13 @@
         "turnaround": "24-48 hours",
         "source": "IDSR Guidelines"
       },
-      "is_ihr_notifiable": true
+      "is_ihr_notifiable": true,
+      "icd11_codes": [
+        "1E30",
+        "1E31",
+        "1E32"
+      ],
+      "requires_county_notification": true
     },
     {
       "name": "Smallpox",
@@ -454,7 +553,11 @@
         "biosafety": "BSL-4 required, immediate WHO notification",
         "source": "WHO"
       },
-      "is_ihr_notifiable": true
+      "is_ihr_notifiable": true,
+      "icd11_codes": [
+        "1E70"
+      ],
+      "requires_county_notification": true
     },
     {
       "name": "Malaria",
@@ -473,7 +576,18 @@
         "turnaround": "30 minutes - 2 hours",
         "source": "IDSR Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "1F40-1F4Z",
+        "1F40",
+        "1F41",
+        "1F42",
+        "1F43",
+        "1F44",
+        "1F45",
+        "1F4Z"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Typhoid Fever",
@@ -492,7 +606,14 @@
         "turnaround": "48-72 hours",
         "source": "IDSR Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "1A07",
+        "1A07.0",
+        "1A07.Y",
+        "1A07.Z"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Dysentery",
@@ -511,7 +632,17 @@
         "turnaround": "24-48 hours",
         "source": "IDSR Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "1A02",
+        "1A36",
+        "1A36.00",
+        "1A36.0Y",
+        "1A36.12",
+        "1A36.1Y",
+        "1A36.Z"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Tuberculosis",
@@ -530,7 +661,18 @@
         "turnaround": "Same day (smear), 2 hours (GeneXpert), 2-8 weeks (culture)",
         "source": "IDSR Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "1B10-1B1Z",
+        "1B10",
+        "1B11",
+        "1B12",
+        "1B13",
+        "1B14",
+        "1B1Y",
+        "1B1Z"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Acute Respiratory Infections (ARI)",
@@ -549,7 +691,17 @@
         "turnaround": "N/A for routine cases",
         "source": "IMCI Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "CA07",
+        "CA07.0",
+        "CA07.1",
+        "CA41.0",
+        "CA42.2",
+        "CA45",
+        "CA4Y"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Pneumonia",
@@ -569,7 +721,22 @@
         "turnaround": "24-48 hours",
         "source": "IDSR Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "CA40",
+        "CA40.00",
+        "CA40.04",
+        "CA40.06",
+        "CA40.07",
+        "CA40.0Z",
+        "CA40.1",
+        "CA40.1Z",
+        "CA40.20",
+        "CA40.2Z",
+        "CA40.Y",
+        "CA40.Z"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Diarrhea (Non-Bloody)",
@@ -589,7 +756,15 @@
         "turnaround": "24-48 hours",
         "source": "IDSR Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "ME05.1",
+        "DA90.0",
+        "1A40.0",
+        "1A40.Z",
+        "1A2Z"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Leprosy",
@@ -608,7 +783,18 @@
         "turnaround": "Same day",
         "source": "IDSR Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "1B20",
+        "1B20.0",
+        "1B20.1",
+        "1B20.2",
+        "1B20.20",
+        "1B20.21",
+        "1B20.3",
+        "1B20.Z"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Brucellosis",
@@ -627,7 +813,11 @@
         "turnaround": "48-72 hours (serology), 1-4 weeks (culture)",
         "source": "MOH Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "1B95"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Tetanus (Non-Neonatal)",
@@ -646,7 +836,11 @@
         "turnaround": "N/A",
         "source": "MOH Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "1C13"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Hepatitis (Viral)",
@@ -665,7 +859,23 @@
         "turnaround": "24-48 hours",
         "source": "MOH Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "1E50-1E5Z",
+        "1E50",
+        "1E50.1",
+        "1E50.Y",
+        "1E50.Z",
+        "1E51",
+        "1E51.0Y",
+        "1E51.0Z",
+        "1E51.1",
+        "1E51.2",
+        "1E51.Y",
+        "1E51.Z",
+        "1E5Z"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Chikungunya",
@@ -684,7 +894,11 @@
         "turnaround": "24-72 hours",
         "source": "MOH Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "1D40"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Dengue Fever",
@@ -703,7 +917,15 @@
         "turnaround": "30 min (NS1 RDT), 24-48 hours (PCR/ELISA)",
         "source": "MOH Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "1D20-1D2Z",
+        "1D20",
+        "1D21",
+        "1D22",
+        "1D2Z"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Rift Valley Fever",
@@ -723,7 +945,11 @@
         "biosafety": "BSL-3 required for culture",
         "source": "IDSR Guidelines"
       },
-      "is_ihr_notifiable": true
+      "is_ihr_notifiable": true,
+      "icd11_codes": [
+        "1D44"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Trypanosomiasis (Sleeping Sickness)",
@@ -742,7 +968,19 @@
         "turnaround": "Same day",
         "source": "MOH Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "1F51",
+        "1F51.0",
+        "1F51.0Y",
+        "1F51.0Z",
+        "1F51.1",
+        "1F51.1Y",
+        "1F51.1Z",
+        "1F51.Y",
+        "1F51.Z"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Leishmaniasis (Kala-azar)",
@@ -761,7 +999,15 @@
         "turnaround": "15 min (RDT), 1-2 hours (microscopy)",
         "source": "MOH Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "1F54",
+        "1F54.0",
+        "1F54.1",
+        "1F54.2",
+        "1F54.Z"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Schistosomiasis (Bilharzia)",
@@ -780,7 +1026,16 @@
         "turnaround": "Same day",
         "source": "MOH Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "1F86",
+        "1F86.0",
+        "1F86.1",
+        "1F86.2",
+        "1F86.3",
+        "1F86.Z"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Trachoma",
@@ -799,7 +1054,15 @@
         "turnaround": "N/A for routine surveillance",
         "source": "MOH Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "1C23",
+        "1C23.0",
+        "1C23.1",
+        "1C23.Y",
+        "1C23.Z"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Onchocerciasis (River Blindness)",
@@ -818,7 +1081,15 @@
         "turnaround": "Same day",
         "source": "MOH Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "1F6A",
+        "1F6A.0",
+        "1F6A.1",
+        "1F6A.Y",
+        "1F6A.Z"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Lymphatic Filariasis",
@@ -837,7 +1108,17 @@
         "turnaround": "Same day",
         "source": "MOH Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "1F66",
+        "1F66.3",
+        "1F66.30",
+        "1F66.31",
+        "1F66.3Z",
+        "1F66.Y",
+        "1F66.Z"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Sexually Transmitted Infections",
@@ -857,7 +1138,20 @@
         "turnaround": "Same day (Gram stain), 24-48 hours (culture)",
         "source": "IDSR Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "1A60-1A9Z",
+        "1A80-1A8Z",
+        "1A81",
+        "1A81.Y",
+        "1A81.Z",
+        "1A8Y",
+        "1A8Z",
+        "1A93",
+        "1A9Y",
+        "1A9Z"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "HIV/AIDS",
@@ -879,7 +1173,22 @@
         "turnaround": "15-30 minutes (rapid test), 24-48 hours (ELISA)",
         "source": "NASCOP Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "1C60-1C62.Z",
+        "1C60.3Y",
+        "1C60.Z",
+        "1C61.3Y",
+        "1C61.Z",
+        "1C62.0",
+        "1C62.1",
+        "1C62.2",
+        "1C62.30",
+        "1C62.3Y",
+        "1C62.3Z",
+        "1C62.Z"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Maternal Deaths",
@@ -898,7 +1207,13 @@
         "turnaround": "N/A",
         "source": "MOH MPDSR Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "JB60",
+        "JB61.0",
+        "JB61.1"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Perinatal Deaths",
@@ -917,7 +1232,15 @@
         "turnaround": "N/A",
         "source": "MOH MPDSR Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "KD30-KD3Y",
+        "KD3B.0",
+        "KD3B.1",
+        "MH11",
+        "MH11.Z"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Severe Acute Malnutrition",
@@ -936,7 +1259,13 @@
         "turnaround": "N/A",
         "source": "MOH IMAM Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "5B51",
+        "5B52",
+        "5B60"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Animal Bites",
@@ -955,7 +1284,16 @@
         "turnaround": "24-48 hours",
         "source": "MOH Rabies Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "PA75",
+        "PA77",
+        "PA78",
+        "PC44",
+        "PE15",
+        "PG65"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Snake Bites",
@@ -974,7 +1312,11 @@
         "turnaround": "20 minutes (bedside test)",
         "source": "MOH Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "PA78"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Dracunculiasis (Guinea Worm)",
@@ -993,7 +1335,11 @@
         "turnaround": "Immediate",
         "source": "IDSR Clinicians Handbook"
       },
-      "is_ihr_notifiable": true
+      "is_ihr_notifiable": true,
+      "icd11_codes": [
+        "1F64"
+      ],
+      "requires_county_notification": true
     },
     {
       "name": "Adverse Events Following Immunization (AEFI)",
@@ -1012,7 +1358,12 @@
         "turnaround": "Variable",
         "source": "WHO AEFI Guidelines"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "EA51",
+        "FA11.1"
+      ],
+      "requires_county_notification": true
     },
     {
       "name": "SARI (Severe Acute Respiratory Infections)",
@@ -1032,7 +1383,18 @@
         "turnaround": "24-48 hours",
         "source": "IDSR Guidelines"
       },
-      "is_ihr_notifiable": true
+      "is_ihr_notifiable": true,
+      "icd11_codes": [
+        "1D65",
+        "CA40",
+        "CA45",
+        "CB00",
+        "CB41.0",
+        "CB41.00",
+        "CB41.01",
+        "CB41.0Z"
+      ],
+      "requires_county_notification": true
     },
     {
       "name": "Acute Jaundice",
@@ -1051,7 +1413,11 @@
         "turnaround": "24-48 hours",
         "source": "IDSR Clinicians Handbook"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "ME10.1"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Diabetes Mellitus",
@@ -1070,7 +1436,16 @@
         "turnaround": "Same day",
         "source": "IDSR Clinicians Handbook"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "5A10",
+        "5A11",
+        "5A12",
+        "5A13",
+        "5A14",
+        "5A24"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Hypertension",
@@ -1089,7 +1464,20 @@
         "turnaround": "Immediate",
         "source": "IDSR Clinicians Handbook"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "BA00",
+        "BA00.1",
+        "BA00.2",
+        "BA00.Y",
+        "BA00.Z",
+        "BA04",
+        "BA04.Y",
+        "BA04.Z",
+        "BB01",
+        "BB01.Z"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Cancer (Breast)",
@@ -1108,7 +1496,14 @@
         "turnaround": "3-7 days",
         "source": "IDSR Clinicians Handbook"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "2C60",
+        "2C65",
+        "2C6Y",
+        "2C6Z"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Cancer (Cervical)",
@@ -1127,7 +1522,11 @@
         "turnaround": "3-7 days",
         "source": "IDSR Clinicians Handbook"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "2C77.Z"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Cancer (Esophageal)",
@@ -1146,7 +1545,11 @@
         "turnaround": "3-7 days",
         "source": "IDSR Clinicians Handbook"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "2B70.Z"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Cancer (Prostate)",
@@ -1165,7 +1568,14 @@
         "turnaround": "3-7 days",
         "source": "IDSR Clinicians Handbook"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "2C82",
+        "2C82.0",
+        "2C82.Y",
+        "2C82.Z"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Road Traffic Injuries",
@@ -1184,7 +1594,22 @@
         "turnaround": "N/A",
         "source": "IDSR Clinicians Handbook"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "PA00-PA0Z",
+        "PA20-PA2Z",
+        "PB80",
+        "PD50",
+        "PD52",
+        "PF40-PF4Z",
+        "PF60-PF6Z",
+        "PF60",
+        "PF62",
+        "PF64",
+        "PF66",
+        "PF67"
+      ],
+      "requires_county_notification": false
     },
     {
       "name": "Methanol Poisoning",
@@ -1203,7 +1628,13 @@
         "turnaround": "Varies by lab capability",
         "source": "IDSR Clinicians Handbook"
       },
-      "is_ihr_notifiable": false
+      "is_ihr_notifiable": false,
+      "icd11_codes": [
+        "PB30",
+        "PD00",
+        "PE90"
+      ],
+      "requires_county_notification": true
     },
     {
       "name": "Smallpox (Variola)",
@@ -1224,7 +1655,11 @@
         "biosafety": "BSL-4 required, immediate WHO notification",
         "source": "WHO IHR 2005"
       },
-      "is_ihr_notifiable": true
+      "is_ihr_notifiable": true,
+      "icd11_codes": [
+        "1E70"
+      ],
+      "requires_county_notification": true
     }
   ]
 }

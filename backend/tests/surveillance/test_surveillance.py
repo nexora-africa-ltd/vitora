@@ -63,6 +63,7 @@ class TestNotifiableDiseaseModel:
             name="Cholera",
             icd10_codes="A00",
             category="IMMEDIATE",
+            requires_county_notification=True,
             reporting_hours=24,
         )
         weekly = NotifiableDisease.objects.create(
@@ -685,6 +686,7 @@ class TestNotifiableCaseAPI:
             name="Cholera",
             icd10_codes="A00",
             category="IMMEDIATE",
+            requires_county_notification=True,
             reporting_hours=24,
         )
 

@@ -21,12 +21,24 @@ Vitora maintains a reference catalogue of notifiable diseases with ICD-10 mappin
 | Weekly    | Aggregate weekly IDSR reporting                                                              | Included in IDSR weekly report                                               |
 | Monthly   | Aggregate monthly reporting                                                                  | Available for applicable aggregate reporting workflows                       |
 
-The disease catalogue stores `reporting_hours`; facility governance must ensure the active catalogue and reporting timelines match the current applicable MOH guidance.
+The disease catalogue stores `reporting_hours` and an explicit
+`requires_county_notification` policy. Immediate diseases are seeded with this
+policy enabled; outbreak alerts override it so that a weekly or monthly disease
+that crosses an outbreak threshold is still individually escalated.
+
+The catalogue stores vetted ICD-10 mappings and non-empty ICD-11 MMS **arrays**
+for every MOH reporting entry. ICD-11 mappings are verified against the DHA
+WHO ICD-11 Clinical Concepts source; where DHA publishes a code family, the
+array retains the range and surveillance matching evaluates it against child
+codes. An ICD-10-only or ICD-11-only diagnosis can therefore create a
+notifiable case when it matches a configured code. Event and syndromic entries
+use the DHA diagnosis/event mappings applicable to their MOH reporting purpose;
+the system does not infer a crosswalk from a label match.
 
 ## 2. Immediate Notification Mechanism
 
 1. A clinician records a diagnosis in an encounter.
-2. When an active diagnosis ICD-10 code matches an active NotifiableDisease mapping, Vitora creates a facility-scoped `NotifiableCase` and prevents duplicate patient/encounter/disease cases.
+2. When an active diagnosis ICD-10 or ICD-11 code matches an active `NotifiableDisease` mapping, Vitora creates a facility-scoped `NotifiableCase` and prevents duplicate patient/encounter/disease cases.
 3. For immediate diseases, Vitora creates a surveillance alert, calculates the notification deadline, and publishes real-time alert data to authorized surveillance consumers.
 4. An authorized user reviews the case and sends the official county notification through:
 
@@ -69,6 +81,9 @@ Email acceptance alone may return `202 Accepted`; the case remains pending until
 - SMS notification requires an active configured SMS provider.
 - Email delivery confirmation requires a configured signed provider webhook; production webhook validation requires `RESEND_WEBHOOK_SECRET`.
 - Notification recipients, county routing, and disease catalogue content are operational configuration and must be reviewed by the facility and county public-health authority.
+- After a catalogue release, apply the migration and run
+  `python manage.py seed_notifiable_diseases --update` to load revised routing
+  policy and ICD-11 mappings without deleting local catalogue records.
 - The system supports and records notification activity; it does not replace clinical judgement, statutory reporting duties, county escalation procedures, or MOH direction.
 
 ## 6. Audit And Evidence

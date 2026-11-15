@@ -394,13 +394,14 @@ export type DirectEligibilityCheckResponseSchemaType = z.infer<
 // =============================================================================
 
 export const ICD11CodeSchema = z.object({
-  id: z.number(),
+  // DHA Clinical Concepts results do not expose a local database ID.
+  id: z.number().optional(),
   code: z.string(),
   title: z.string(),
   description: z.string().optional(),
   chapter: z.string().optional(),
   block: z.string().optional(),
-  is_active: z.boolean(),
+  is_active: z.boolean().optional().default(true),
 });
 
 export type ICD11CodeSchemaType = z.infer<typeof ICD11CodeSchema>;
@@ -967,9 +968,13 @@ export const PaginatedClaimsSchema = z.object({
 
 export const PaginatedICD11CodesSchema = z.object({
   count: z.number(),
-  next: z.string().nullable(),
-  previous: z.string().nullable(),
+  // Terminology endpoints use limit/page-size instead of DRF cursor links.
+  next: z.string().nullable().optional().default(null),
+  previous: z.string().nullable().optional().default(null),
   results: z.array(ICD11CodeSchema),
+  source: z.string().optional(),
+  fallback: z.boolean().optional(),
+  fallback_reason: z.string().optional(),
 });
 
 // Backend `/api/billing/terminology/interventions/` returns `{ results, count }`

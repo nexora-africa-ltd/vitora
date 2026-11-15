@@ -157,8 +157,13 @@ class ICD11Code:
         """Create from DHA API response."""
         return cls(
             code=data.get("icd_11_code", "") or data.get("code", ""),
-            title=data.get("description", "") or data.get("title", "") or data.get("name", ""),
-            description=data.get("description"),
+            title=(
+                data.get("display", "")
+                or data.get("description", "")
+                or data.get("title", "")
+                or data.get("name", "")
+            ),
+            description=data.get("description") or data.get("display"),
             parent_code=data.get("parent_code"),
             chapter=data.get("chapter"),
             is_leaf=data.get("is_leaf", True),

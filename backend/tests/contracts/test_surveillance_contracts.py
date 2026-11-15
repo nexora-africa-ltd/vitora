@@ -501,6 +501,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "is_immediate",
                 "name",
                 "reporting_hours",
+                "requires_county_notification",
             }
         ),
     ),
@@ -512,6 +513,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "category",
                 "created_at",
                 "description",
+                "icd11_codes",
                 "icd10_code_list",
                 "icd10_codes",
                 "id",

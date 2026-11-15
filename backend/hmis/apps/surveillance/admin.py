@@ -34,21 +34,41 @@ class NotifiableDiseaseAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
         "name",
         "category",
         "reporting_hours",
+        "requires_county_notification",
         "is_ihr_notifiable",
         "is_active",
         "icd10_code_count",
     ]
-    list_filter = ["category", "is_active", "is_ihr_notifiable"]
-    search_fields = ["name", "icd10_codes", "description"]
+    list_filter = [
+        "category",
+        "requires_county_notification",
+        "is_active",
+        "is_ihr_notifiable",
+    ]
+    search_fields = ["name", "icd10_codes", "icd11_codes", "description"]
     ordering = ["category", "name"]
     readonly_fields = ["created_at", "updated_at"]
     fieldsets = (
-        (None, {"fields": ("name", "icd10_codes", "category", "reporting_hours")}),
+        (
+            None,
+            {
+                "fields": (
+                    "name",
+                    "icd10_codes",
+                    "icd11_codes",
+                    "category",
+                    "reporting_hours",
+                )
+            },
+        ),
         (
             "Clinical Information",
             {"fields": ("description", "case_definition", "laboratory_criteria")},
         ),
-        ("Settings", {"fields": ("is_ihr_notifiable", "is_active")}),
+        (
+            "Settings",
+            {"fields": ("requires_county_notification", "is_ihr_notifiable", "is_active")},
+        ),
         ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
 
