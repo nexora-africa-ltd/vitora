@@ -66,6 +66,9 @@ The endpoint is fail-closed: if any required terminology cannot be resolved, it 
 | --- | --- |
 | `inter-term-001/standard-usage-response.json` | Successful Facility 13 live terminology endpoint response. |
 | `inter-term-001/facility-13-loinc-assignment.json` | Active synthetic Facility 13 lab test and its LOINC assignment. |
+| `inter-term-001/ui-icd11-ba00-lookup.png` | Rendered diagnosis-entry ICD-11 lookup returning `BA00`. |
+| `inter-term-001/ui-snomed-lookup.png` | Rendered diagnosis-entry SNOMED CT lookup returning `38341003`. |
+| `inter-term-001/ui-loinc-facility-13-assignment.png` | Rendered Facility 13 test-catalogue LOINC assignment. |
 | `inter-term-001/automated-test-report.txt` | Targeted terminology endpoint, SNOMED, and source-binding tests. |
 | `inter-term-001/README.md` | Evidence-package usage and standard/source summary. |
 | `inter-term-001/SHA256SUMS.txt` | Integrity hashes for the frozen package. |
@@ -73,5 +76,5 @@ The endpoint is fail-closed: if any required terminology cannot be resolved, it 
 ## Final portal checklist
 
 1. Immediately before submission, verify the endpoint returns `200 OK` and `passed: true` with `X-Facility-ID: 13`.
-2. Upload the listed evidence artifacts and `SHA256SUMS.txt`.
+2. Upload the listed evidence artifacts, rendered UI screenshots, and `SHA256SUMS.txt`.
 3. Use the DHA clinician pre-request script; do not upload a token or any real patient data.
