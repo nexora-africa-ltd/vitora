@@ -360,17 +360,6 @@ class SupersetGuestTokenView(AnalyticsSchemaMixin, APIView):
             if getattr(profile, "organization_id", None):
                 organization_id = profile.organization_id
 
-        # Build RLS rules for tenant isolation.
-        # Superset applies ALL rules with AND logic per dataset.
-        # We send both facility and org clauses — each dataset will only
-        # match the column it actually has (Superset ignores clauses that
-        # reference non-existent columns in a given dataset).
-        rls_rules = []
-        if facility_id:
-            rls_rules.append({"clause": f"facility_id = {int(facility_id)}"})
-        if organization_id:
-            rls_rules.append({"clause": f"organization_id = {int(organization_id)}"})
-
         try:
             access_token, csrf_token = _SupersetTokenCache.get_tokens()
             superset_session = _SupersetTokenCache.get_session()
@@ -399,6 +388,43 @@ class SupersetGuestTokenView(AnalyticsSchemaMixin, APIView):
                 {
                     "detail": "Dashboard is not configured for embedding. Enable embedding in Superset first."
                 },
+                status=400,
+            )
+
+        # Scope each RLS rule to datasets that actually expose its column.
+        # Sending a facility predicate to an organization-scoped dataset makes
+        # PostgreSQL reject the chart query rather than silently ignoring it.
+        try:
+            datasets_resp = superset_session.get(
+                f"{base_url}/api/v1/dashboard/{dashboard_id}/datasets",
+                timeout=10,
+            )
+            datasets_resp.raise_for_status()
+        except http_requests.RequestException:
+            logger.exception("Failed to resolve Superset dashboard datasets")
+            return Response({"detail": "Could not resolve dashboard datasets."}, status=502)
+
+        rls_rules = []
+        for dataset in datasets_resp.json().get("result", []):
+            dataset_id = dataset.get("id")
+            columns = set(dataset.get("column_names", []))
+            if not dataset_id:
+                continue
+            if facility_id and "facility_id" in columns:
+                rls_rules.append(
+                    {"dataset": dataset_id, "clause": f"facility_id = {int(facility_id)}"}
+                )
+            if organization_id and "organization_id" in columns:
+                rls_rules.append(
+                    {
+                        "dataset": dataset_id,
+                        "clause": f"organization_id = {int(organization_id)}",
+                    }
+                )
+
+        if not rls_rules:
+            return Response(
+                {"detail": "Dashboard cannot be safely scoped to this facility."},
                 status=400,
             )
 

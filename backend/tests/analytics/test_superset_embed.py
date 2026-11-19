@@ -55,6 +55,19 @@ def _make_embedded_uuid_response(uuid="fake-embedded-uuid"):
     return resp
 
 
+def _make_dashboard_datasets_response():
+    resp = MagicMock()
+    resp.status_code = 200
+    resp.json.return_value = {
+        "result": [
+            {"id": 1, "column_names": ["organization_id"]},
+            {"id": 2, "column_names": ["facility_id", "organization_id"]},
+        ]
+    }
+    resp.raise_for_status = MagicMock()
+    return resp
+
+
 @pytest.fixture(autouse=True)
 def _clear_token_cache():
     """Clear the Superset token cache before each test."""
@@ -107,6 +120,7 @@ class TestSupersetGuestTokenView:
         session_mock.get.side_effect = [
             _make_csrf_response(),
             _make_embedded_uuid_response(),
+            _make_dashboard_datasets_response(),
         ]
         mock_requests.RequestException = Exception
 
@@ -131,6 +145,7 @@ class TestSupersetGuestTokenView:
         session_mock.get.side_effect = [
             _make_csrf_response(),
             _make_embedded_uuid_response(),
+            _make_dashboard_datasets_response(),
         ]
         mock_requests.RequestException = Exception
 
@@ -155,6 +170,7 @@ class TestSupersetGuestTokenView:
         session_mock.get.side_effect = [
             _make_csrf_response(),
             _make_embedded_uuid_response(),
+            _make_dashboard_datasets_response(),
         ]
         mock_requests.RequestException = Exception
 
@@ -166,6 +182,9 @@ class TestSupersetGuestTokenView:
         rls_rules = body["rls"]
         rls_clauses = [r["clause"] for r in rls_rules]
         assert f"facility_id = {sample_facility.id}" in rls_clauses
+        assert all(
+            "facility_id" not in rule["clause"] or rule["dataset"] == 2 for rule in rls_rules
+        )
 
     @override_settings(
         SUPERSET_URL="https://superset.example.com",

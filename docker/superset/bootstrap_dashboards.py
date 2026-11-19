@@ -30,6 +30,10 @@ ADMIN_USER = "admin"
 ADMIN_PASS = os.environ.get("SUPERSET_ADMIN_PASSWORD", "admin")
 DB_NAME = "PostgreSQL"  # Must match the database display name in Superset
 REQUEST_TIMEOUT = 120  # seconds per API call (dataset introspection can be slow)
+EMBEDDED_DASHBOARD_ALLOWED_DOMAINS = os.environ.get(
+    "SUPERSET_EMBEDDED_ALLOWED_DOMAINS",
+    "https://staging.vitora.digital,https://app.vitora.digital",
+).split(",")
 
 # ---------------------------------------------------------------------------
 # Auth — with automatic re-login on 401
@@ -2142,6 +2146,12 @@ def create_dashboard(base_url, title, chart_ids):
             linked += 1
         else:
             print(f"\n    ⚠ Chart {cid} link failed: {r.status_code}", end="")
+    embedding_response = api_post(
+        f"{base_url}/api/v1/dashboard/{dash_id}/embedded",
+        json={"allowed_domains": EMBEDDED_DASHBOARD_ALLOWED_DOMAINS},
+    )
+    if embedding_response.status_code not in (200, 201):
+        print(f"\n    ⚠ Dashboard embedding failed: {embedding_response.status_code}", end="")
     print(f"  ✓ Dashboard '{title}' (id={dash_id}, {linked}/{len(chart_ids)} charts linked)")
     return dash_id
 
