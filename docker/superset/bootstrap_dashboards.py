@@ -322,20 +322,25 @@ def create_datasets(base_url, db_id, schema="public"):
     skipped = 0
     failed = 0
     total = len(DATASETS)
+    existing_datasets = set()
+    response = api_get(
+        f"{base_url}/api/v1/dataset/",
+        params={"q": json.dumps({"page_size": 500})},
+    )
+    if response.status_code == 200:
+        existing_datasets = {
+            dataset["table_name"]
+            for dataset in response.json().get("result", [])
+            if dataset.get("database", {}).get("id") == db_id
+        }
+    else:
+        print(f"✗ Failed to list existing datasets: {response.status_code}")
+        return
 
     for i, (table_name, display_name) in enumerate(DATASETS, 1):
         print(f"  [{i}/{total}] {table_name}... ", end="", flush=True)
         try:
-            # Check if dataset already exists
-            r = api_get(
-                f"{base_url}/api/v1/dataset/",
-                params={"q": json.dumps({"filters": [
-                    {"col": "table_name", "opr": "eq", "value": table_name},
-                    {"col": "database", "opr": "rel_o_m", "value": db_id},
-                ]})},
-            )
-
-            if r.status_code == 200 and r.json().get("count", 0) > 0:
+            if table_name in existing_datasets:
                 skipped += 1
                 print("exists")
                 continue

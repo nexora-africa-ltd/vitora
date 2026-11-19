@@ -80,3 +80,24 @@ def test_existing_chart_is_updated_instead_of_skipped(monkeypatch):
     assert dashboard_charts == {"Staffing & Scheduling": [63]}
     assert api_put.call_args.args[0].endswith("/api/v1/chart/63")
     assert '"x_axis": "shift_date"' in api_put.call_args.kwargs["json"]["params"]
+
+
+def test_dataset_reconciliation_lists_existing_datasets_once(monkeypatch):
+    """Avoids one Superset list request per dataset during an audit."""
+    monkeypatch.setattr(
+        bootstrap, "DATASETS", [("existing_table", "Existing"), ("new_table", "New")]
+    )
+    list_response = MagicMock(status_code=200)
+    list_response.json.return_value = {
+        "result": [{"table_name": "existing_table", "database": {"id": 1}}]
+    }
+    api_get = MagicMock(return_value=list_response)
+    api_post = MagicMock(return_value=MagicMock(status_code=201))
+    monkeypatch.setattr(bootstrap, "api_get", api_get)
+    monkeypatch.setattr(bootstrap, "api_post", api_post)
+
+    bootstrap.create_datasets("https://superset.example.com", db_id=1)
+
+    assert api_get.call_count == 1
+    assert api_post.call_count == 1
+    assert api_post.call_args.args[0].endswith("/api/v1/dataset/")
