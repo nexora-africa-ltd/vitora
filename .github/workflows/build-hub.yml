@@ -576,7 +576,7 @@ jobs:
           WIN_ZIP_SHA=$(cat "${WIN_ZIP}.sha256" | awk '{print $1}')
           python3 -c "
           import json
-           manifest = {
+          manifest = {
                'version': '${VERSION}',
                'published_at': '$(date -u +"%Y-%m-%dT%H:%M:%SZ")',
                'url': '${CDN_BASE_URL}/hub/vitora-hub-${VERSION}.tar.gz',
