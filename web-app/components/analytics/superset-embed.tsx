@@ -8,7 +8,7 @@
  * A guest token (fetched from our backend) provides auth + RLS scoping.
  */
 
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { analyticsApi } from '@/lib/api/analytics';
@@ -16,8 +16,6 @@ import { analyticsApi } from '@/lib/api/analytics';
 export interface SupersetEmbedProps {
   /** Superset dashboard ID (numeric, from our backend list endpoint). */
   dashboardId: number;
-  /** The Superset embedded UUID for the dashboard (string). */
-  embeddedId: string;
   /** Superset instance domain, e.g. "https://superset.example.com" */
   supersetDomain: string;
   /** Minimum height for the embed container */
@@ -28,7 +26,6 @@ export interface SupersetEmbedProps {
 
 export function SupersetEmbed({
   dashboardId,
-  embeddedId,
   supersetDomain,
   minHeight = '600px',
   title,
@@ -37,25 +34,32 @@ export function SupersetEmbed({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchGuestToken = useCallback(async () => {
-    const resp = await analyticsApi.getSupersetGuestToken(dashboardId);
-    return resp.guest_token;
-  }, [dashboardId]);
-
   useEffect(() => {
-    if (!containerRef.current || !embeddedId || !supersetDomain) return;
+    if (!containerRef.current || !supersetDomain) return;
 
     let cancelled = false;
     const mountPoint = containerRef.current;
 
     (async () => {
       try {
+        const initialToken = await analyticsApi.getSupersetGuestToken(dashboardId);
+        let cachedGuestToken: string | undefined = initialToken.guest_token;
+        const fetchGuestToken = async () => {
+          if (cachedGuestToken) {
+            const token = cachedGuestToken;
+            cachedGuestToken = undefined;
+            return token;
+          }
+
+          const refreshedToken = await analyticsApi.getSupersetGuestToken(dashboardId);
+          return refreshedToken.guest_token;
+        };
         const { embedDashboard } = await import('@superset-ui/embedded-sdk');
 
         if (cancelled || !mountPoint) return;
 
         await embedDashboard({
-          id: embeddedId,
+          id: initialToken.embedded_id,
           supersetDomain,
           mountPoint,
           fetchGuestToken,
@@ -83,7 +87,7 @@ export function SupersetEmbed({
         mountPoint.removeChild(mountPoint.firstChild);
       }
     };
-  }, [embeddedId, supersetDomain, fetchGuestToken]);
+  }, [dashboardId, supersetDomain]);
 
   if (error) {
     const isNotConfigured = error.includes('503') || error.includes('not configured');

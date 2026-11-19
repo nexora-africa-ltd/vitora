@@ -150,6 +150,7 @@ export const PaginatedDemographicSnapshotSchema = paginatedResponse(
 
 export const SupersetGuestTokenResponseSchema = z.object({
   guest_token: z.string(),
+  embedded_id: z.string(),
   instance_url: z.string(),
 });
 
@@ -157,7 +158,6 @@ export const SupersetDashboardInfoSchema = z.object({
   id: z.number(),
   name: z.string(),
   description: z.string(),
-  embedded_id: z.string(),
 });
 
 export const SupersetDashboardListSchema = z.array(SupersetDashboardInfoSchema);

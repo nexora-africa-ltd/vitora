@@ -168,6 +168,7 @@ export interface DiagnosisTrendParams {
 
 export interface SupersetGuestTokenResponse {
   guest_token: string;
+  embedded_id: string;
   instance_url: string;
 }
 
@@ -175,7 +176,6 @@ export interface SupersetDashboardInfo {
   id: number;
   name: string;
   description: string;
-  embedded_id: string;
 }
 
 // ---------------------------------------------------------------------------

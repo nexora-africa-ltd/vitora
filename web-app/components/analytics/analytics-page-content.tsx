@@ -25,7 +25,10 @@ const SUPERSET_DOMAIN = process.env.NEXT_PUBLIC_SUPERSET_URL || '';
 
 export function AnalyticsPageContent() {
   const [period, setPeriod] = useState<Period>('30d');
+  const [selectedDashboardId, setSelectedDashboardId] = useState<number | null>(null);
   const { data: dashboards, isLoading: dashboardsLoading } = useSupersetDashboards();
+  const selectedDashboard =
+    dashboards?.find((dashboard) => dashboard.id === selectedDashboardId) ?? dashboards?.[0];
 
   return (
     <Tabs defaultValue="dashboard">
@@ -100,24 +103,39 @@ export function AnalyticsPageContent() {
           </div>
         )}
 
-        {dashboards
-          ?.filter((d) => d.embedded_id)
-          .map((dashboard) => (
-            <Card key={dashboard.id}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">{dashboard.name}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SupersetEmbed
-                  dashboardId={dashboard.id}
-                  embeddedId={dashboard.embedded_id}
-                  supersetDomain={SUPERSET_DOMAIN}
-                  title={dashboard.name}
-                  minHeight="500px"
-                />
-              </CardContent>
-            </Card>
-          ))}
+        {selectedDashboard && (
+          <Card>
+            <CardHeader className="space-y-3 pb-2">
+              <CardTitle className="text-base">{selectedDashboard.name}</CardTitle>
+              <Select
+                value={String(selectedDashboard.id)}
+                onValueChange={(value) => setSelectedDashboardId(Number(value))}
+              >
+                <SelectTrigger className="w-full sm:w-80">
+                  <SelectValue placeholder="Choose a dashboard" />
+                </SelectTrigger>
+                <SelectContent>
+                  {dashboards?.map((dashboard) => (
+                    <SelectItem key={dashboard.id} value={String(dashboard.id)}>
+                      {dashboard.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedDashboard.description && (
+                <p className="text-sm text-muted-foreground">{selectedDashboard.description}</p>
+              )}
+            </CardHeader>
+            <CardContent>
+              <SupersetEmbed
+                dashboardId={selectedDashboard.id}
+                supersetDomain={SUPERSET_DOMAIN}
+                title={selectedDashboard.name}
+                minHeight="500px"
+              />
+            </CardContent>
+          </Card>
+        )}
       </TabsContent>
     </Tabs>
   );

@@ -426,6 +426,7 @@ class SupersetGuestTokenView(AnalyticsSchemaMixin, APIView):
         return Response(
             {
                 "guest_token": guest_token,
+                "embedded_id": embedded_uuid,
                 "instance_url": base_url,
             }
         )
@@ -496,30 +497,14 @@ class SupersetDashboardListView(AnalyticsSchemaMixin, APIView):
                 status=502,
             )
 
-        dashboards = []
-        for d in resp.json().get("result", []):
-            dash_id = d["id"]
-            # Fetch the embedded UUID for this dashboard
-            embedded_id = ""
-            try:
-                emb_resp = superset_session.get(
-                    f"{base_url}/api/v1/dashboard/{dash_id}/embedded",
-                    timeout=5,
-                )
-                if emb_resp.status_code == 200:
-                    result = emb_resp.json().get("result", {})
-                    embedded_id = result.get("uuid", "")
-            except http_requests.RequestException:
-                pass  # Dashboard not configured for embedding
-
-            dashboards.append(
-                {
-                    "id": dash_id,
-                    "name": d.get("dashboard_title", ""),
-                    "description": d.get("description") or "",
-                    "embedded_id": embedded_id,
-                }
-            )
+        dashboards = [
+            {
+                "id": dashboard["id"],
+                "name": dashboard.get("dashboard_title", ""),
+                "description": dashboard.get("description") or "",
+            }
+            for dashboard in resp.json().get("result", [])
+        ]
 
         return Response(dashboards)
 

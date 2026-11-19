@@ -113,6 +113,7 @@ class TestSupersetGuestTokenView:
         response = authenticated_client.get(GUEST_TOKEN_URL, {"dashboard_id": 42})
         assert response.status_code == status.HTTP_200_OK
         assert response.data["guest_token"] == "test-guest-token"
+        assert response.data["embedded_id"] == "fake-embedded-uuid"
         assert response.data["instance_url"] == "https://superset.example.com"
 
     @override_settings(
@@ -207,16 +208,16 @@ class TestSupersetDashboardListView:
         session_mock.get.side_effect = [
             _make_csrf_response(),
             _make_dashboard_list_response(),
-            # embedded UUID calls for each dashboard
-            _make_embedded_uuid_response("emb-1"),
-            _make_embedded_uuid_response("emb-2"),
         ]
 
         response = authenticated_client.get(DASHBOARD_LIST_URL)
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 2
-        assert response.data[0]["name"] == "Facility Overview"
-        assert response.data[1]["name"] == "Revenue"
+        assert response.data == [
+            {"id": 1, "name": "Facility Overview", "description": "Main dashboard"},
+            {"id": 2, "name": "Revenue", "description": ""},
+        ]
+        assert session_mock.get.call_count == 2
 
     @override_settings(
         SUPERSET_URL="https://superset.example.com",
