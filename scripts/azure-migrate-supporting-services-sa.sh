@@ -34,6 +34,7 @@ set -euo pipefail
 #   TARGET_HL7_APP=vitora-hl7-mock-sa
 #   TARGET_HAPI_APP=vitora-hapi-fhir-sa
 #   TARGET_SUPERSET_APP=vitora-superset-sa
+#   TARGET_SUPERSET_MIGRATION_JOB=vitora-superset-migrate-sa
 #   SOURCE_TIBABOT_APP=tibabot
 #   TARGET_TIBABOT_APP=tibabot-sa
 #   TARGET_TIBABOT_STORAGE_ACCOUNT=tibabotdatasa
@@ -59,6 +60,7 @@ SOURCE_TIBABOT_APP="${SOURCE_TIBABOT_APP:-tibabot}"
 TARGET_HL7_APP="${TARGET_HL7_APP:-vitora-hl7-mock-sa}"
 TARGET_HAPI_APP="${TARGET_HAPI_APP:-vitora-hapi-fhir-sa}"
 TARGET_SUPERSET_APP="${TARGET_SUPERSET_APP:-vitora-superset-sa}"
+TARGET_SUPERSET_MIGRATION_JOB="${TARGET_SUPERSET_MIGRATION_JOB:-vitora-superset-migrate-sa}"
 TARGET_TIBABOT_APP="${TARGET_TIBABOT_APP:-tibabot-sa}"
 TARGET_TIBABOT_STORAGE_ACCOUNT="${TARGET_TIBABOT_STORAGE_ACCOUNT:-tibabotdatasa}"
 TARGET_TIBABOT_STORAGE_SHARE="${TARGET_TIBABOT_STORAGE_SHARE:-tibabot-data}"
@@ -79,6 +81,12 @@ containerapp_exists() {
   local rg="$1"
   local app="$2"
   az containerapp show -g "$rg" -n "$app" -o none >/dev/null 2>&1
+}
+
+containerapp_job_exists() {
+  local rg="$1"
+  local job="$2"
+  az containerapp job show -g "$rg" -n "$job" -o none >/dev/null 2>&1
 }
 
 import_image_from_source_app() {
@@ -205,6 +213,92 @@ if [[ -z "${SUPERSET_SECRET_KEY}" || -z "${SUPERSET_META_DB_URL}" || -z "${SUPER
   echo "ERROR: Missing required Superset secrets from source app ${SOURCE_SUPERSET_APP}"
   exit 1
 fi
+
+echo "==> Running Superset migrations as a deploy-time Container Apps Job"
+TARGET_ACR_USERNAME="$(az acr credential show -n "${TARGET_ACR_NAME}" --query username -o tsv)"
+TARGET_ACR_PASSWORD="$(az acr credential show -n "${TARGET_ACR_NAME}" --query "passwords[0].value" -o tsv)"
+SUPERSET_JOB_ENV=(
+  "SUPERSET_SECRET_KEY=secretref:superset-key"
+  "SUPERSET_META_DB_URL=secretref:superset-db-url"
+  "SUPERSET_ADMIN_PASSWORD=secretref:superset-admin"
+  "SUPERSET_REDIS_URL="
+  "SUPERSET_CORS_ORIGINS=https://vitora-navy.vercel.app,https://staging.vitora.digital,https://app.vitora.digital"
+  "SUPERSET_FRAME_ANCESTORS=https://vitora-navy.vercel.app https://staging.vitora.digital https://app.vitora.digital"
+)
+
+if containerapp_job_exists "${TARGET_RG}" "${TARGET_SUPERSET_MIGRATION_JOB}"; then
+  az containerapp job secret set \
+    -g "${TARGET_RG}" \
+    -n "${TARGET_SUPERSET_MIGRATION_JOB}" \
+    --secrets \
+      "superset-key=${SUPERSET_SECRET_KEY}" \
+      "superset-db-url=${SUPERSET_META_DB_URL}" \
+      "superset-admin=${SUPERSET_ADMIN_PASSWORD}" \
+    -o none
+  az containerapp job update \
+    -g "${TARGET_RG}" \
+    -n "${TARGET_SUPERSET_MIGRATION_JOB}" \
+    --image "${TARGET_ACR_NAME}.azurecr.io/vitora-superset:sa-latest" \
+    --command "/bin/bash" "/app/migrate-superset.sh" \
+    --replace-env-vars "${SUPERSET_JOB_ENV[@]}" \
+    -o none
+else
+  az containerapp job create \
+    -g "${TARGET_RG}" \
+    -n "${TARGET_SUPERSET_MIGRATION_JOB}" \
+    --environment "${TARGET_ENV}" \
+    --trigger-type Manual \
+    --replica-timeout 900 \
+    --replica-retry-limit 1 \
+    --image "${TARGET_ACR_NAME}.azurecr.io/vitora-superset:sa-latest" \
+    --registry-server "${TARGET_ACR_NAME}.azurecr.io" \
+    --registry-username "${TARGET_ACR_USERNAME}" \
+    --registry-password "${TARGET_ACR_PASSWORD}" \
+    --cpu 1.0 \
+    --memory 2.0Gi \
+    --command "/bin/bash" "/app/migrate-superset.sh" \
+    --secrets \
+      "superset-key=${SUPERSET_SECRET_KEY}" \
+      "superset-db-url=${SUPERSET_META_DB_URL}" \
+      "superset-admin=${SUPERSET_ADMIN_PASSWORD}" \
+    --env-vars "${SUPERSET_JOB_ENV[@]}" \
+    -o none
+fi
+
+SUPERSET_JOB_EXECUTION="$(az containerapp job start \
+  -g "${TARGET_RG}" \
+  -n "${TARGET_SUPERSET_MIGRATION_JOB}" \
+  --query name -o tsv)"
+
+if [[ -z "${SUPERSET_JOB_EXECUTION}" ]]; then
+  echo "ERROR: Superset migration job did not return an execution name."
+  exit 1
+fi
+
+for attempt in $(seq 1 90); do
+  SUPERSET_JOB_STATUS="$(az containerapp job execution show \
+    -g "${TARGET_RG}" \
+    -n "${TARGET_SUPERSET_MIGRATION_JOB}" \
+    --job-execution-name "${SUPERSET_JOB_EXECUTION}" \
+    --query properties.status -o tsv)"
+  case "${SUPERSET_JOB_STATUS}" in
+    Succeeded)
+      echo "    Superset migration job completed."
+      break
+      ;;
+    Failed)
+      echo "ERROR: Superset migration job failed: ${SUPERSET_JOB_EXECUTION}" >&2
+      exit 1
+      ;;
+    *)
+      if [[ "${attempt}" == "90" ]]; then
+        echo "ERROR: Timed out waiting for Superset migration job: ${SUPERSET_JOB_EXECUTION}" >&2
+        exit 1
+      fi
+      sleep 10
+      ;;
+  esac
+done
 
 if containerapp_exists "${TARGET_RG}" "${TARGET_SUPERSET_APP}"; then
   az containerapp secret set \

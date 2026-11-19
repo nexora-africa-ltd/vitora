@@ -8,7 +8,8 @@ RUN pip install --no-cache-dir psycopg2-binary flask-cors
 # Bake in the production config + startup script
 COPY superset_config_production.py /app/superset_config.py
 COPY start-superset.sh /app/start-superset.sh
-RUN chmod +x /app/start-superset.sh
+COPY migrate-superset.sh /app/migrate-superset.sh
+RUN chmod +x /app/start-superset.sh /app/migrate-superset.sh
 
 ENV SUPERSET_CONFIG_PATH=/app/superset_config.py
 

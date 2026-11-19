@@ -1,24 +1,30 @@
-name: Deploy Superset to Azure Container Apps
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
+# Deploys the production-only Superset service to South Africa North.
+#
+# Use: push a superset-v* tag or run this workflow manually. It delegates image
+# build, deploy-time migrations, rollout, and health validation to
+# backend/scripts/deploy-superset-sa.sh.
+name: Deploy Superset
 
 on:
   push:
     tags:
-      - 'production'
+      - "superset-v*"
   workflow_dispatch:
 
 env:
-  AZURE_RESOURCE_GROUP: vitora-rg
-  CONTAINER_APP_NAME: vitora-superset
-  CONTAINER_APP_WORKER: vitora-superset-worker
-  CONTAINER_APP_ENV: vitora-env
-  REGISTRY_NAME: vitoraacr
-  IMAGE_NAME: vitora-superset
+  AZURE_RESOURCE_GROUP: vitora-rg-sa
+  CONTAINER_APP_NAME: vitora-superset-sa
+  CONTAINER_APP_ENV: vitora-env-private-sa
+  CONTAINER_APP_JOB: vitora-superset-migrate-sa
+  REGISTRY_NAME: vitoraacrsa
+  EXPECTED_AZURE_SUBSCRIPTION_ID: b7dc0a20-1bad-484b-bd8a-c22e7698bdd3
 
 jobs:
-  build-and-deploy:
-    name: Build & Deploy Superset
+  deploy:
+    name: Build, migrate, and deploy Superset
     runs-on: ubuntu-latest
-    environment: staging
+    environment: production
     permissions:
       id-token: write
       contents: read
@@ -30,53 +36,26 @@ jobs:
       - name: Log in to Azure (OIDC)
         uses: azure/login@v3
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ secrets.AZURE_SA_CLIENT_ID != '' && secrets.AZURE_SA_CLIENT_ID || secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_SA_TENANT_ID != '' && secrets.AZURE_SA_TENANT_ID || secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SA_SUBSCRIPTION_ID != '' && secrets.AZURE_SA_SUBSCRIPTION_ID || secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Log in to Azure Container Registry
-        run: az acr login --name ${{ env.REGISTRY_NAME }}
-
-      - name: Build and push Docker image
-        working-directory: docker/superset
+      - name: Verify Azure deployment subscription
         run: |
-          IMAGE_TAG="${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}"
-          IMAGE_LATEST="${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest"
-          docker build -f Dockerfile.production -t "$IMAGE_TAG" -t "$IMAGE_LATEST" .
-          docker push "$IMAGE_TAG"
-          docker push "$IMAGE_LATEST"
+          ACTUAL_SUBSCRIPTION_ID=$(az account show --query id --output tsv)
+          if [ "$ACTUAL_SUBSCRIPTION_ID" != "${{ env.EXPECTED_AZURE_SUBSCRIPTION_ID }}" ]; then
+            echo "ERROR: Expected subscription ${{ env.EXPECTED_AZURE_SUBSCRIPTION_ID }}, got $ACTUAL_SUBSCRIPTION_ID." >&2
+            exit 1
+          fi
 
-      - name: Deploy Superset web server
-        run: |
-          az containerapp update \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --image ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            --output none
-
-      - name: Deploy Superset Celery worker
-        run: |
-          az containerapp update \
-            --name ${{ env.CONTAINER_APP_WORKER }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --image ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            --output none
-
-      - name: Verify deployment
-        run: |
-          FQDN=$(az containerapp show \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --query "properties.configuration.ingress.fqdn" -o tsv)
-          echo "Superset deployed to: https://${FQDN}"
-          # Health check
-          for i in $(seq 1 12); do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${FQDN}/health" || echo "000")
-            if [[ "$STATUS" == "200" ]]; then
-              echo "Health check passed!"
-              exit 0
-            fi
-            echo "  Waiting for healthy... (attempt $i/12, got $STATUS)"
-            sleep 10
-          done
-          echo "WARNING: Health check did not pass within 2 minutes"
+      - name: Build, migrate, deploy, and health-check
+        working-directory: backend
+        env:
+          SS_ASSUME_YES: "1"
+          DEPLOY_TAG: ${{ github.sha }}
+          ACA_RG: ${{ env.AZURE_RESOURCE_GROUP }}
+          ACA_ENV: ${{ env.CONTAINER_APP_ENV }}
+          ACA_NAME: ${{ env.CONTAINER_APP_NAME }}
+          ACA_JOB: ${{ env.CONTAINER_APP_JOB }}
+          ACR_NAME: ${{ env.REGISTRY_NAME }}
+        run: bash scripts/deploy-superset-sa.sh
