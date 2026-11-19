@@ -64,28 +64,8 @@ export function AnalyticsPageContent() {
       <TabsContent value="explore" className="mt-4 space-y-6">
         {!SUPERSET_DOMAIN && (
           <div className="rounded-lg border border-dashed border-muted-foreground/30 p-4 text-sm text-muted-foreground">
-            <p>
-              Superset is not configured. Set <code>NEXT_PUBLIC_SUPERSET_URL</code> to enable
-              embedded dashboards.
-            </p>
-          </div>
-        )}
-
-        {SUPERSET_DOMAIN && (
-          <div className="rounded-lg border border-dashed border-muted-foreground/30 p-4 text-sm text-muted-foreground">
-            <p>
-              The Explore tab connects to Apache Superset for ad-hoc analytics. Dashboards must be
-              created and published in Superset first.{' '}
-              <a
-                href={SUPERSET_DOMAIN}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-foreground"
-              >
-                Open Superset
-              </a>{' '}
-              to manage them.
-            </p>
+            Analytics dashboards are temporarily unavailable. Please contact your facility
+            administrator if this persists.
           </div>
         )}
 
@@ -98,8 +78,7 @@ export function AnalyticsPageContent() {
 
         {!dashboardsLoading && (!dashboards || dashboards.length === 0) && SUPERSET_DOMAIN && (
           <div className="rounded-lg border border-dashed border-muted-foreground/30 p-8 text-center text-sm text-muted-foreground">
-            No dashboards available for embedding yet. Open Superset to create and publish
-            dashboards.
+            No analytics dashboards are currently available for your facility.
           </div>
         )}
 

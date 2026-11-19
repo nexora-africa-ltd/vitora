@@ -44,6 +44,11 @@ def parse_args():
     parser.add_argument("--password", default=ADMIN_PASS, help="Admin password")
     parser.add_argument("--db-name", default=DB_NAME, help="Database display name in Superset")
     parser.add_argument("--schema", default="public", help="Database schema (default: public)")
+    parser.add_argument(
+        "--audit-only",
+        action="store_true",
+        help="Validate chart columns against live Superset datasets without making changes",
+    )
     return parser.parse_args()
 
 
@@ -374,6 +379,67 @@ def get_dataset_id(base_url, table_name):
     return None
 
 
+def _chart_column_references(params):
+    """Return configured chart fields that must exist in its dataset."""
+    references = []
+    for key in ("x_axis", "time_column"):
+        value = params.get(key)
+        if isinstance(value, str):
+            references.append((key, value))
+    for column in params.get("groupby", []):
+        if isinstance(column, str):
+            references.append(("groupby", column))
+    for metric in [params.get("metric"), *params.get("metrics", [])]:
+        if isinstance(metric, dict):
+            column = metric.get("column", {}).get("column_name")
+            if column:
+                references.append(("metric", column))
+    return references
+
+
+def audit_chart_definitions(base_url):
+    """Validate every configured chart against the live Superset dataset schema."""
+    columns_by_table = {}
+    issues = []
+
+    for chart in CHARTS:
+        table_name = chart["table"]
+        if table_name not in columns_by_table:
+            dataset_id = get_dataset_id(base_url, table_name)
+            if not dataset_id:
+                columns_by_table[table_name] = None
+            else:
+                response = api_get(f"{base_url}/api/v1/dataset/{dataset_id}")
+                columns_by_table[table_name] = (
+                    {
+                        column["column_name"]
+                        for column in response.json()["result"].get("columns", [])
+                    }
+                    if response.status_code == 200
+                    else None
+                )
+
+        columns = columns_by_table[table_name]
+        if columns is None:
+            issues.append(f"{chart['name']}: dataset '{table_name}' is unavailable")
+            continue
+        for field_type, column_name in _chart_column_references(chart["params"]):
+            if column_name not in columns:
+                issues.append(
+                    f"{chart['name']}: {field_type} column '{column_name}' is absent "
+                    f"from '{table_name}'"
+                )
+
+    if issues:
+        print("✗ Chart schema audit failed:")
+        for issue in issues:
+            print(f"  - {issue}")
+        return False
+
+    print(f"✓ Chart schema audit passed ({len(CHARTS)} charts)")
+    return True
+
+
 CHARTS = [
     # ═══════════════════════════════════════════════════════════════════════
     #  PATIENTS
@@ -460,7 +526,7 @@ CHARTS = [
         "dashboard": "Patient Analytics",
         "params": {
             "viz_type": "pie",
-            "groupby": ["allergy_type"],
+            "groupby": ["substance_type"],
             "metric": COUNT("id", "Count"),
             "row_limit": 10,
             "sort_by_metric": True,
@@ -653,7 +719,7 @@ CHARTS = [
         "dashboard": "Billing & Revenue",
         "params": {
             "viz_type": "pie",
-            "groupby": ["payment_method"],
+            "groupby": ["method"],
             "metric": SUM("amount", "Amount (KES)"),
             "row_limit": 10,
             "sort_by_metric": True,
@@ -667,7 +733,7 @@ CHARTS = [
         "params": {
             "viz_type": "dist_bar",
             "groupby": ["description"],
-            "metrics": [SUM("total", "Revenue (KES)")],
+            "metrics": [SUM("line_total", "Revenue (KES)")],
             "row_limit": 15,
             "order_desc": True,
         },
@@ -733,7 +799,7 @@ CHARTS = [
         "dashboard": "SHA Claims",
         "params": {
             "viz_type": "big_number_total",
-            "metric": SUM("total_amount", "Total Claimed (KES)"),
+            "metric": SUM("claimed_amount", "Total Claimed (KES)"),
         },
     },
     {
@@ -743,7 +809,7 @@ CHARTS = [
         "dashboard": "SHA Claims",
         "params": {
             "viz_type": "echarts_timeseries_bar",
-            "x_axis": "created_at",
+            "x_axis": "payment_date",
             "time_grain_sqla": "P1M",
             "metrics": [SUM("total_amount", "Remitted (KES)")],
             "groupby": [],
@@ -826,7 +892,7 @@ CHARTS = [
         "dashboard": "Laboratory",
         "params": {
             "viz_type": "pie",
-            "groupby": ["is_abnormal"],
+            "groupby": ["result_flag"],
             "metric": COUNT("id", "Results"),
             "row_limit": 5,
             "sort_by_metric": True,
@@ -910,7 +976,7 @@ CHARTS = [
         "dashboard": "Pharmacy",
         "params": {
             "viz_type": "dist_bar",
-            "groupby": ["drug_name"],
+            "groupby": ["drug_id"],
             "metrics": [SUM("quantity", "Qty Dispensed")],
             "row_limit": 20,
             "order_desc": True,
@@ -984,7 +1050,7 @@ CHARTS = [
         "dashboard": "Inpatient",
         "params": {
             "viz_type": "echarts_timeseries_bar",
-            "x_axis": "admitted_at",
+            "x_axis": "admission_date",
             "time_grain_sqla": "P1W",
             "metrics": [COUNT("id", "Admissions")],
             "groupby": [],
@@ -998,20 +1064,20 @@ CHARTS = [
         "dashboard": "Inpatient",
         "params": {
             "viz_type": "pie",
-            "groupby": ["status"],
+            "groupby": ["admission_status"],
             "metric": COUNT("id", "Count"),
             "row_limit": 10,
             "sort_by_metric": True,
         },
     },
     {
-        "name": "Admissions by Type",
+        "name": "Admissions by Payer Type",
         "table": "inpatient_admission",
         "viz_type": "pie",
         "dashboard": "Inpatient",
         "params": {
             "viz_type": "pie",
-            "groupby": ["admission_type"],
+            "groupby": ["payer_type"],
             "metric": COUNT("id", "Count"),
             "row_limit": 10,
             "sort_by_metric": True,
@@ -1024,7 +1090,7 @@ CHARTS = [
         "dashboard": "Inpatient",
         "params": {
             "viz_type": "echarts_timeseries_bar",
-            "x_axis": "discharged_at",
+            "x_axis": "discharge_date",
             "time_grain_sqla": "P1W",
             "metrics": [COUNT("id", "Discharges")],
             "groupby": [],
@@ -1032,13 +1098,13 @@ CHARTS = [
         },
     },
     {
-        "name": "Discharge Disposition",
+        "name": "Discharge Type",
         "table": "inpatient_discharge",
         "viz_type": "pie",
         "dashboard": "Inpatient",
         "params": {
             "viz_type": "pie",
-            "groupby": ["disposition"],
+            "groupby": ["discharge_type"],
             "metric": COUNT("id", "Count"),
             "row_limit": 10,
             "sort_by_metric": True,
@@ -1152,7 +1218,7 @@ CHARTS = [
         "dashboard": "Imaging & Radiology",
         "params": {
             "viz_type": "echarts_timeseries_bar",
-            "x_axis": "created_at",
+            "x_axis": "ordered_at",
             "time_grain_sqla": "P1M",
             "metrics": [COUNT("id", "Orders")],
             "groupby": [],
@@ -1235,7 +1301,7 @@ CHARTS = [
         "dashboard": "Staffing & Scheduling",
         "params": {
             "viz_type": "echarts_timeseries_bar",
-            "x_axis": "date",
+            "x_axis": "shift_date",
             "time_grain_sqla": "P1W",
             "metrics": [COUNT("id", "Shifts")],
             "groupby": [],
@@ -1249,7 +1315,7 @@ CHARTS = [
         "dashboard": "Staffing & Scheduling",
         "params": {
             "viz_type": "echarts_timeseries_bar",
-            "x_axis": "start_time",
+            "x_axis": "scheduled_start",
             "time_grain_sqla": "P1W",
             "metrics": [COUNT("id", "Appointments")],
             "groupby": [],
@@ -1279,7 +1345,7 @@ CHARTS = [
         "dashboard": "Immunizations",
         "params": {
             "viz_type": "echarts_timeseries_bar",
-            "x_axis": "administered_at",
+            "x_axis": "administered_date",
             "time_grain_sqla": "P1M",
             "metrics": [COUNT("id", "Immunizations")],
             "groupby": [],
@@ -1293,7 +1359,7 @@ CHARTS = [
         "dashboard": "Immunizations",
         "params": {
             "viz_type": "echarts_timeseries_bar",
-            "x_axis": "reported_at",
+            "x_axis": "report_date",
             "time_grain_sqla": "P1M",
             "metrics": [COUNT("id", "AEFIs")],
             "groupby": [],
@@ -1364,7 +1430,7 @@ CHARTS = [
         "dashboard": "Clinics",
         "params": {
             "viz_type": "echarts_timeseries_bar",
-            "x_axis": "enrolled_at",
+            "x_axis": "enrollment_date",
             "time_grain_sqla": "P1M",
             "metrics": [COUNT("id", "Enrollments")],
             "groupby": [],
@@ -1395,7 +1461,7 @@ CHARTS = [
         "dashboard": "Surveillance",
         "params": {
             "viz_type": "pie",
-            "groupby": ["status"],
+            "groupby": ["notification_status"],
             "metric": COUNT("id", "Cases"),
             "row_limit": 10,
             "sort_by_metric": True,
@@ -1593,7 +1659,7 @@ CHARTS = [
         "dashboard": "Referrals & Allied Health",
         "params": {
             "viz_type": "echarts_timeseries_bar",
-            "x_axis": "created_at",
+            "x_axis": "ordered_at",
             "time_grain_sqla": "P1M",
             "metrics": [COUNT("id", "Orders")],
             "groupby": [],
@@ -1654,7 +1720,7 @@ CHARTS = [
         "dashboard": "AI & Clinical Decision Support",
         "params": {
             "viz_type": "pie",
-            "groupby": ["severity"],
+            "groupby": ["priority"],
             "metric": COUNT("id", "Alerts"),
             "row_limit": 10,
             "sort_by_metric": True,
@@ -1715,10 +1781,10 @@ CHARTS = [
         "dashboard": "Executive Summary",
         "params": {
             "viz_type": "echarts_timeseries_line",
-            "x_axis": "date",
+            "x_axis": "period_start",
             "time_grain_sqla": "P1W",
-            "metrics": [SUM("count", "Cases")],
-            "groupby": ["diagnosis_name"],
+            "metrics": [SUM("case_count", "Cases")],
+            "groupby": ["icd10_name"],
             "row_limit": 10000,
         },
     },
@@ -1729,8 +1795,8 @@ CHARTS = [
         "dashboard": "Executive Summary",
         "params": {
             "viz_type": "dist_bar",
-            "groupby": ["department_name"],
-            "metrics": [SUM("encounters_total", "Encounters")],
+            "groupby": ["department"],
+            "metrics": [SUM("visit_count", "Encounters")],
             "row_limit": 30,
             "order_desc": True,
         },
@@ -1862,34 +1928,31 @@ CHARTS = [
 def create_charts(base_url):
     """Create charts from the CHARTS definitions. Returns {dashboard_name: [chart_ids]}."""
     created = 0
-    skipped = 0
+    updated = 0
     failed = 0
     total = len(CHARTS)
     dashboard_charts = {}  # dashboard_name → [chart_id, ...]
+    existing_chart_ids = {}
+    response = api_get(
+        f"{base_url}/api/v1/chart/",
+        params={"q": json.dumps({"page_size": 500, "columns": ["id", "slice_name"]})},
+    )
+    if response.status_code == 200:
+        existing_chart_ids = {
+            chart["slice_name"]: chart["id"]
+            for chart in response.json().get("result", [])
+            if chart.get("slice_name")
+        }
+    else:
+        print(f"✗ Failed to list existing charts: {response.status_code}")
+        return dashboard_charts
 
     for i, chart_def in enumerate(CHARTS, 1):
         dashboard_name = chart_def.get("dashboard", "Vitora HMIS Overview")
         print(f"  [{i}/{total}] {chart_def['name']}... ", end="", flush=True)
 
         try:
-            # Check if chart already exists by name — list all and match in
-            # Python to avoid Superset filter issues with & in slice_name
-            cid = None
-            r = api_get(
-                f"{base_url}/api/v1/chart/",
-                params={"q": json.dumps({"page_size": 500, "columns": ["id", "slice_name"]})},
-            )
-            if r.status_code == 200:
-                for c in r.json().get("result", []):
-                    if c.get("slice_name") == chart_def["name"]:
-                        cid = c["id"]
-                        break
-
-            if cid is not None:
-                dashboard_charts.setdefault(dashboard_name, []).append(cid)
-                skipped += 1
-                print("exists")
-                continue
+            cid = existing_chart_ids.get(chart_def["name"])
 
             ds_id = get_dataset_id(base_url, chart_def["table"])
             if not ds_id:
@@ -1908,12 +1971,20 @@ def create_charts(base_url):
                 "params": json.dumps(params),
             }
 
-            r = api_post(f"{base_url}/api/v1/chart/", json=payload)
+            is_new_chart = cid is None
+            if is_new_chart:
+                r = api_post(f"{base_url}/api/v1/chart/", json=payload)
+            else:
+                r = api_put(f"{base_url}/api/v1/chart/{cid}", json=payload)
             if r.status_code in (200, 201):
-                cid = r.json()["id"]
+                cid = r.json().get("id", cid)
                 dashboard_charts.setdefault(dashboard_name, []).append(cid)
-                created += 1
-                print("created")
+                if is_new_chart:
+                    created += 1
+                    print("created")
+                else:
+                    updated += 1
+                    print("updated")
             else:
                 failed += 1
                 print(f"FAILED ({r.status_code})")
@@ -1924,7 +1995,7 @@ def create_charts(base_url):
             failed += 1
             print(f"ERROR ({e})")
 
-    print(f"✓ Charts: {created} created, {skipped} already existed, {failed} failed")
+    print(f"✓ Charts: {created} created, {updated} updated, {failed} failed")
     return dashboard_charts
 
 
@@ -2057,6 +2128,10 @@ def main():
     login(base_url, args.user, args.password)
     db_id = get_database_id(base_url, args.db_name)
     create_datasets(base_url, db_id, args.schema)
+    if not audit_chart_definitions(base_url):
+        sys.exit(1)
+    if args.audit_only:
+        return
     dashboard_charts = create_charts(base_url)
 
     if dashboard_charts:

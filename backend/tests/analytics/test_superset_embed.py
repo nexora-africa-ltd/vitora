@@ -205,6 +205,7 @@ class TestSupersetDashboardListView:
         session_mock = mock_requests.Session.return_value
         session_mock.post.return_value = _make_login_response()
         mock_requests.RequestException = Exception
+        mock_requests.get.return_value = _make_embedded_uuid_response()
         session_mock.get.side_effect = [
             _make_csrf_response(),
             _make_dashboard_list_response(),
@@ -219,6 +220,7 @@ class TestSupersetDashboardListView:
         ]
         assert session_mock.get.call_count == 2
         assert session_mock.get.call_args_list[1].kwargs["timeout"] == 30
+        assert mock_requests.get.call_count == 2
 
     @override_settings(
         SUPERSET_URL="https://superset.example.com",

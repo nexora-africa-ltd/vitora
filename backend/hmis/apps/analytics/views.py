@@ -13,6 +13,7 @@ Scope levels
 
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import jwt
 import requests as http_requests
@@ -497,7 +498,7 @@ class SupersetDashboardListView(AnalyticsSchemaMixin, APIView):
                 status=502,
             )
 
-        dashboards = [
+        published_dashboards = [
             {
                 "id": dashboard["id"],
                 "name": dashboard.get("dashboard_title", ""),
@@ -505,6 +506,34 @@ class SupersetDashboardListView(AnalyticsSchemaMixin, APIView):
             }
             for dashboard in resp.json().get("result", [])
         ]
+
+        # A published dashboard is not automatically safe or configured for
+        # tenant embedding. Resolve embedding availability in parallel so the
+        # discovery request remains bounded even when Superset has many
+        # platform-admin dashboards.
+        def is_embeddable(dashboard: dict) -> bool:
+            try:
+                embedded_response = http_requests.get(
+                    f"{base_url}/api/v1/dashboard/{dashboard['id']}/embedded",
+                    headers={"Authorization": f"Bearer {access_token}"},
+                    timeout=5,
+                )
+                return embedded_response.status_code == 200
+            except http_requests.RequestException:
+                return False
+
+        dashboards = []
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            futures = {
+                executor.submit(is_embeddable, dashboard): dashboard
+                for dashboard in published_dashboards
+            }
+            for future in as_completed(futures):
+                dashboard = futures[future]
+                if future.result():
+                    dashboards.append(dashboard)
+
+        dashboards.sort(key=lambda dashboard: dashboard["name"].casefold())
 
         return Response(dashboards)
 
