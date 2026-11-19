@@ -149,6 +149,24 @@ def api_put(url, **kwargs):
     return r
 
 
+def api_list_all(base_url, resource):
+    """Return every row from a paginated Superset REST collection."""
+    results = []
+    page = 0
+    while True:
+        response = api_get(
+            f"{base_url}/api/v1/{resource}/",
+            params={"q": json.dumps({"page": page, "page_size": 100})},
+        )
+        if response.status_code != 200:
+            return None
+        page_results = response.json().get("result", [])
+        results.extend(page_results)
+        if len(page_results) < 100:
+            return results
+        page += 1
+
+
 def get_database_id(base_url, db_name):
     """Find the Vitora database by name."""
     r = api_get(f"{base_url}/api/v1/database/", params={"q": json.dumps({"filters": [{"col": "database_name", "opr": "eq", "value": db_name}]})})
@@ -323,14 +341,11 @@ def create_datasets(base_url, db_id, schema="public"):
     failed = 0
     total = len(DATASETS)
     existing_datasets = set()
-    response = api_get(
-        f"{base_url}/api/v1/dataset/",
-        params={"q": json.dumps({"page_size": 500})},
-    )
-    if response.status_code == 200:
+    all_datasets = api_list_all(base_url, "dataset")
+    if all_datasets is not None:
         existing_datasets = {
             dataset["table_name"]
-            for dataset in response.json().get("result", [])
+            for dataset in all_datasets
             if dataset.get("database", {}).get("id") == db_id
         }
     else:
@@ -1938,14 +1953,11 @@ def create_charts(base_url):
     total = len(CHARTS)
     dashboard_charts = {}  # dashboard_name → [chart_id, ...]
     existing_chart_ids = {}
-    response = api_get(
-        f"{base_url}/api/v1/chart/",
-        params={"q": json.dumps({"page_size": 500, "columns": ["id", "slice_name"]})},
-    )
-    if response.status_code == 200:
+    existing_charts = api_list_all(base_url, "chart")
+    if existing_charts is not None:
         existing_chart_ids = {
             chart["slice_name"]: chart["id"]
-            for chart in response.json().get("result", [])
+            for chart in existing_charts
             if chart.get("slice_name")
         }
     else:

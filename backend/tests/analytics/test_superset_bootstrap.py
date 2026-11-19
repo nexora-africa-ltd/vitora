@@ -101,3 +101,18 @@ def test_dataset_reconciliation_lists_existing_datasets_once(monkeypatch):
     assert api_get.call_count == 1
     assert api_post.call_count == 1
     assert api_post.call_args.args[0].endswith("/api/v1/dataset/")
+
+
+def test_api_list_all_requests_every_superset_page(monkeypatch):
+    """Does not mistake Superset's 100-row page limit for a complete inventory."""
+    first_page = MagicMock(status_code=200)
+    first_page.json.return_value = {"result": [{"id": index} for index in range(100)]}
+    second_page = MagicMock(status_code=200)
+    second_page.json.return_value = {"result": [{"id": 100}]}
+    api_get = MagicMock(side_effect=[first_page, second_page])
+    monkeypatch.setattr(bootstrap, "api_get", api_get)
+
+    results = bootstrap.api_list_all("https://superset.example.com", "dataset")
+
+    assert len(results) == 101
+    assert api_get.call_count == 2
