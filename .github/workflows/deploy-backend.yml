@@ -283,7 +283,7 @@ jobs:
             METABASE_API_URL=${{ vars.METABASE_API_URL || 'http://vitora-metabase' }} \
             METABASE_EMBEDDING_SECRET=secretref:metabase-embedding-secret \
             METABASE_API_KEY=secretref:metabase-api-key \
-            SUPERSET_URL=${{ vars.SUPERSET_URL || '' }} \
+            SUPERSET_URL=${{ vars.SUPERSET_URL || 'https://vitora-superset-sa.wittysmoke-66276dae.southafricanorth.azurecontainerapps.io' }} \
             SUPERSET_ADMIN_USERNAME=${{ vars.SUPERSET_ADMIN_USERNAME || 'admin' }} \
             SUPERSET_ADMIN_PASSWORD=secretref:superset-admin-password \
             RESEND_API_KEY=secretref:resend-api-key \

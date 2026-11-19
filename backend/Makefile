@@ -3,6 +3,8 @@
 	staging-migrate staging-shell staging-restart staging-env staging-secrets \
 	staging-deploy staging-verify staging-login-test load-test-smoke load-test-ui check-ilm \
 	prod-deploy prod-env prod-logs prod-exec prod-shell prod-status prod-restart prod-verify \
+	ss-deploy ss-status ss-logs ss-migrate ss-cold \
+	commands custom-commands command-args \
 	runserver api api-wsgi kill-api r notif-burst notif-burst5
 
 ARTIFACTS_DIR := $(CURDIR)/.artifacts
@@ -34,6 +36,9 @@ help:
 	@echo "  test-integration - Run integration tests only"
 	@echo "  test-contracts - Run serializer contract tests"
 	@echo "  test-watch    - Run tests in watch mode"
+	@echo "  commands      - List Django management commands (COMMAND_ARGS='--with-args')"
+	@echo "  custom-commands - List Vitora custom management commands"
+	@echo "  command-args  - Show command arguments (COMMAND=<name>)"
 	@echo "  test-fhir     - Run FHIR validation tests"
 	@echo "  test-shr      - Run SHA SHR compliance tests"
 	@echo "  test-fhir-integration - Run FHIR server integration tests"
@@ -166,6 +171,13 @@ help:
 	@echo "  prod-restart        - Restart the active production revision"
 	@echo "  prod-verify         - Post-deploy: PII integrity + login smoke test"
 	@echo ""
+	@echo "Superset (Production-only):"
+	@echo "  ss-deploy           - Build, migrate, deploy, and health-check Superset"
+	@echo "  ss-status           - Show Superset deployment, scale, and active revision"
+	@echo "  ss-logs             - Tail Superset container logs"
+	@echo "  ss-migrate          - Run the deploy-time Superset migration job"
+	@echo "  ss-cold             - Measure an approved scale-to-zero cold start"
+	@echo ""
 	@echo "Utilities:"
 	@echo "  gen-secret    - Generate a random 32-character secret"
 	@echo ""
@@ -296,6 +308,28 @@ test-shr:
 
 test-watch:
 	poetry run pytest-watch
+
+commands:
+	@if command -v python3 >/dev/null 2>&1 && python3 -c "import django" >/dev/null 2>&1; then \
+		python3 manage.py list_commands $(COMMAND_ARGS); \
+	elif command -v python >/dev/null 2>&1 && python -c "import django" >/dev/null 2>&1; then \
+		python manage.py list_commands $(COMMAND_ARGS); \
+	elif command -v poetry >/dev/null 2>&1; then \
+		poetry run python manage.py list_commands $(COMMAND_ARGS); \
+	else \
+		echo "ERROR: Django is not available through python3 or python, and Poetry is not installed." >&2; \
+		exit 1; \
+	fi
+
+custom-commands:
+	@$(MAKE) commands COMMAND_ARGS="--custom-only"
+
+command-args:
+	@if [ -z "$(COMMAND)" ]; then \
+		echo "Usage: make command-args COMMAND=<management-command>"; \
+		exit 1; \
+	fi
+	@$(MAKE) commands COMMAND_ARGS="--command $(COMMAND) --with-args"
 
 lint:
 	poetry run ruff check .
@@ -913,6 +947,38 @@ prod-status:
 prod-restart:
 	az containerapp revision restart -n $(ACA_PROD_NAME) -g $(ACA_RG) \
 		--revision $$(az containerapp revision list -n $(ACA_PROD_NAME) -g $(ACA_RG) --query "[0].name" -o tsv)
+
+# ============================================================================
+# Superset (production-only Azure Container Apps)
+# ============================================================================
+
+SUPERSET_ACA_NAME ?= vitora-superset-sa
+SUPERSET_ACA_JOB  ?= vitora-superset-migrate-sa
+
+ss-deploy:
+	@SS_ASSUME_YES="$(SS_ASSUME_YES)" ACA_RG="$(ACA_RG)" ACA_ENV="vitora-env-private-sa" \
+		ACA_NAME="$(SUPERSET_ACA_NAME)" ACA_JOB="$(SUPERSET_ACA_JOB)" ACR_NAME="$(ACR_NAME)" \
+		DEPLOY_TAG="$(DEPLOY_TAG)" bash scripts/deploy-superset-sa.sh
+
+ss-status:
+	@az containerapp show -g "$(ACA_RG)" -n "$(SUPERSET_ACA_NAME)" \
+		--query "{name:name,health:properties.runningStatus,fqdn:properties.configuration.ingress.fqdn,scale:properties.template.scale,image:properties.template.containers[0].image}" \
+		-o table
+	@az containerapp revision list -g "$(ACA_RG)" -n "$(SUPERSET_ACA_NAME)" \
+		--query "[?properties.active].{Revision:name,Health:properties.healthState,Replicas:properties.replicas,Created:properties.createdTime}" \
+		-o table
+
+ss-logs:
+	az containerapp logs show -g "$(ACA_RG)" -n "$(SUPERSET_ACA_NAME)" --type console --follow --tail 100
+
+ss-migrate:
+	@SS_ASSUME_YES="$(SS_ASSUME_YES)" SS_MIGRATE_ONLY=1 ACA_RG="$(ACA_RG)" ACA_ENV="vitora-env-private-sa" \
+		ACA_NAME="$(SUPERSET_ACA_NAME)" ACA_JOB="$(SUPERSET_ACA_JOB)" ACR_NAME="$(ACR_NAME)" \
+		bash scripts/deploy-superset-sa.sh
+
+ss-cold:
+	@SS_COLD_CONFIRM="$(SS_COLD_CONFIRM)" ACA_RG="$(ACA_RG)" ACA_NAME="$(SUPERSET_ACA_NAME)" \
+		COLD_TIMEOUT_SECONDS="$(COLD_TIMEOUT_SECONDS)" bash scripts/check-superset-cold-start-sa.sh
 
 gen-secret:
 	@echo "Generating a random 32-character secret..."
