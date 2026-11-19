@@ -475,7 +475,7 @@ class SupersetDashboardListView(AnalyticsSchemaMixin, APIView):
                     "q": "(filters:!((col:published,opr:eq,value:!t)))",
                     "page_size": 100,
                 },
-                timeout=10,
+                timeout=30,
             )
             if resp.status_code == 401:
                 _SupersetTokenCache.invalidate()
@@ -487,7 +487,7 @@ class SupersetDashboardListView(AnalyticsSchemaMixin, APIView):
                         "q": "(filters:!((col:published,opr:eq,value:!t)))",
                         "page_size": 100,
                     },
-                    timeout=10,
+                    timeout=30,
                 )
             resp.raise_for_status()
         except http_requests.RequestException:

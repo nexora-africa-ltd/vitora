@@ -218,6 +218,7 @@ class TestSupersetDashboardListView:
             {"id": 2, "name": "Revenue", "description": ""},
         ]
         assert session_mock.get.call_count == 2
+        assert session_mock.get.call_args_list[1].kwargs["timeout"] == 30
 
     @override_settings(
         SUPERSET_URL="https://superset.example.com",
