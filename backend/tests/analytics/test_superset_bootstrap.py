@@ -48,10 +48,12 @@ def test_schema_audit_rejects_stale_chart_columns(monkeypatch):
             }
         ],
     )
-    monkeypatch.setattr(bootstrap, "get_dataset_id", lambda *_: 1)
+    monkeypatch.setattr(
+        bootstrap, "api_list_all", lambda *_: [{"id": 1, "table_name": "example_table"}]
+    )
     response = MagicMock(status_code=200)
     response.json.return_value = {"result": {"columns": [{"column_name": "created_at"}]}}
-    monkeypatch.setattr(bootstrap, "api_get", lambda *_: response)
+    monkeypatch.setattr(bootstrap.requests, "get", lambda *_args, **_kwargs: response)
 
     assert bootstrap.audit_chart_definitions("https://superset.example.com") is False
 
@@ -66,9 +68,9 @@ def test_existing_chart_is_updated_instead_of_skipped(monkeypatch):
         "params": {"x_axis": "shift_date"},
     }
     monkeypatch.setattr(bootstrap, "CHARTS", [chart])
-    list_response = MagicMock(status_code=200)
-    list_response.json.return_value = {"result": [{"id": 63, "slice_name": chart["name"]}]}
-    monkeypatch.setattr(bootstrap, "api_get", lambda *_args, **_kwargs: list_response)
+    monkeypatch.setattr(
+        bootstrap, "api_list_all", lambda *_: [{"id": 63, "slice_name": chart["name"]}]
+    )
     monkeypatch.setattr(bootstrap, "get_dataset_id", lambda *_: 48)
     put_response = MagicMock(status_code=200)
     put_response.json.return_value = {"id": 63}

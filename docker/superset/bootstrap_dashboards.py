@@ -18,13 +18,16 @@ Prerequisites:
 
 import argparse
 import json
+import os
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 import requests
 
 # Defaults (override with CLI args)
 SUPERSET_URL = "http://localhost:8088"
 ADMIN_USER = "admin"
-ADMIN_PASS = "admin"
+ADMIN_PASS = os.environ.get("SUPERSET_ADMIN_PASSWORD", "admin")
 DB_NAME = "PostgreSQL"  # Must match the database display name in Superset
 REQUEST_TIMEOUT = 120  # seconds per API call (dataset introspection can be slow)
 
@@ -41,7 +44,11 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Bootstrap Superset dashboards for Vitora HMIS")
     parser.add_argument("--url", default=SUPERSET_URL, help="Superset base URL")
     parser.add_argument("--user", default=ADMIN_USER, help="Admin username")
-    parser.add_argument("--password", default=ADMIN_PASS, help="Admin password")
+    parser.add_argument(
+        "--password",
+        default=ADMIN_PASS,
+        help="Admin password (prefer SUPERSET_ADMIN_PASSWORD environment variable)",
+    )
     parser.add_argument("--db-name", default=DB_NAME, help="Database display name in Superset")
     parser.add_argument("--schema", default="public", help="Database schema (default: public)")
     parser.add_argument(
@@ -419,26 +426,49 @@ def _chart_column_references(params):
 
 def audit_chart_definitions(base_url):
     """Validate every configured chart against the live Superset dataset schema."""
+    all_datasets = api_list_all(base_url, "dataset")
+    if all_datasets is None:
+        print("✗ Chart schema audit failed: unable to list Superset datasets")
+        return False
+
+    dataset_ids = {
+        dataset["table_name"]: dataset["id"]
+        for dataset in all_datasets
+        if dataset.get("table_name")
+    }
+    tables = sorted({chart["table"] for chart in CHARTS})
     columns_by_table = {}
     issues = []
 
+    def fetch_columns(table_name):
+        dataset_id = dataset_ids.get(table_name)
+        if not dataset_id:
+            return table_name, None
+        try:
+            response = requests.get(
+                f"{base_url}/api/v1/dataset/{dataset_id}",
+                headers=dict(session.headers),
+                timeout=REQUEST_TIMEOUT,
+            )
+        except requests.RequestException:
+            return table_name, None
+        if response.status_code != 200:
+            return table_name, None
+        return table_name, {
+            column["column_name"]
+            for column in response.json()["result"].get("columns", [])
+        }
+
+    print(f"  Auditing {len(tables)} datasource schemas...")
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = {executor.submit(fetch_columns, table_name): table_name for table_name in tables}
+        for completed, future in enumerate(as_completed(futures), 1):
+            table_name, columns = future.result()
+            columns_by_table[table_name] = columns
+            print(f"    [{completed}/{len(tables)}] {table_name}", flush=True)
+
     for chart in CHARTS:
         table_name = chart["table"]
-        if table_name not in columns_by_table:
-            dataset_id = get_dataset_id(base_url, table_name)
-            if not dataset_id:
-                columns_by_table[table_name] = None
-            else:
-                response = api_get(f"{base_url}/api/v1/dataset/{dataset_id}")
-                columns_by_table[table_name] = (
-                    {
-                        column["column_name"]
-                        for column in response.json()["result"].get("columns", [])
-                    }
-                    if response.status_code == 200
-                    else None
-                )
-
         columns = columns_by_table[table_name]
         if columns is None:
             issues.append(f"{chart['name']}: dataset '{table_name}' is unavailable")
