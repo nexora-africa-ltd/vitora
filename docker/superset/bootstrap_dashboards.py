@@ -410,6 +410,74 @@ def get_dataset_id(base_url, table_name):
     return None
 
 
+PATIENT_AGE_BAND_SQL = """\
+CASE
+  WHEN date_of_birth IS NULL OR date_of_birth > CURRENT_DATE THEN 'Unknown'
+  WHEN date_of_birth > CURRENT_DATE - INTERVAL '1 year' THEN '<1'
+  WHEN date_of_birth > CURRENT_DATE - INTERVAL '5 years' THEN '1–4'
+  WHEN date_of_birth > CURRENT_DATE - INTERVAL '15 years' THEN '5–14'
+  WHEN date_of_birth > CURRENT_DATE - INTERVAL '25 years' THEN '15–24'
+  WHEN date_of_birth > CURRENT_DATE - INTERVAL '45 years' THEN '25–44'
+  WHEN date_of_birth > CURRENT_DATE - INTERVAL '65 years' THEN '45–64'
+  ELSE '65+'
+END"""
+
+
+def ensure_patient_age_band(base_url):
+    """Add the readable age-band virtual column required by the patient chart."""
+    dataset_id = get_dataset_id(base_url, "patients_patient")
+    if not dataset_id:
+        print("✗ Patient age bands unavailable: patients dataset is missing")
+        return False
+    response = api_get(f"{base_url}/api/v1/dataset/{dataset_id}")
+    if response.status_code != 200:
+        print(f"✗ Patient age bands unavailable: dataset lookup failed ({response.status_code})")
+        return False
+
+    allowed_column_keys = {
+        "id",
+        "column_name",
+        "type",
+        "advanced_data_type",
+        "verbose_name",
+        "description",
+        "expression",
+        "extra",
+        "filterable",
+        "groupby",
+        "is_active",
+        "is_dttm",
+        "python_date_format",
+        "uuid",
+    }
+    columns = [
+        {key: value for key, value in column.items() if key in allowed_column_keys}
+        for column in response.json()["result"].get("columns", [])
+        if column.get("column_name") != "age_band"
+    ]
+    columns.append(
+        {
+            "column_name": "age_band",
+            "type": "VARCHAR(10)",
+            "verbose_name": "Age band",
+            "description": "Patient age band calculated from date of birth.",
+            "expression": PATIENT_AGE_BAND_SQL,
+            "filterable": True,
+            "groupby": True,
+            "is_dttm": False,
+        }
+    )
+    update = api_put(
+        f"{base_url}/api/v1/dataset/{dataset_id}",
+        json={"columns": columns},
+    )
+    if update.status_code not in (200, 201):
+        print(f"✗ Patient age bands update failed ({update.status_code})")
+        return False
+    print("✓ Patient age-band virtual column synchronized")
+    return True
+
+
 def _chart_column_references(params):
     """Return configured chart fields that must exist in its dataset."""
     references = []
@@ -541,12 +609,14 @@ CHARTS = [
     {
         "name": "Patient Age Distribution",
         "table": "patients_patient",
-        "viz_type": "histogram",
+        "viz_type": "dist_bar",
         "dashboard": "Patient Analytics",
         "params": {
-            "viz_type": "histogram",
-            "all_columns_x": ["date_of_birth"],
-            "row_limit": 50000,
+            "viz_type": "dist_bar",
+            "groupby": ["age_band"],
+            "metrics": [COUNT("id", "Patients")],
+            "row_limit": 8,
+            "order_desc": False,
         },
     },
     {
@@ -2185,6 +2255,8 @@ def main():
     login(base_url, args.user, args.password)
     db_id = get_database_id(base_url, args.db_name)
     create_datasets(base_url, db_id, args.schema)
+    if not ensure_patient_age_band(base_url):
+        sys.exit(1)
     if not audit_chart_definitions(base_url):
         sys.exit(1)
     if args.audit_only:
