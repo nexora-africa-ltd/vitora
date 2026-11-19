@@ -175,6 +175,48 @@ class PatientDemographicSnapshotViewSet(
 
 logger = logging.getLogger(__name__)
 
+# Tenant-facing dashboards must declare the facility capability and Django
+# read permission required to receive them from the embedded-dashboard API.
+SUPERSET_TENANT_DASHBOARD_CATALOG = {
+    "Patient Analytics": ("outpatient", "patients.view_patient"),
+    "Blood Bank": ("blood_bank", "blood_bank.view_bloodunit"),
+    "Triage & Emergency": ("triage", "triage.view_triageassessment"),
+    "Theatre & Surgery": ("theatre", "theatre.view_surgerycase"),
+    "Staffing & Scheduling": ("scheduling", "scheduling.view_shift"),
+    "Referrals & Allied Health": ("allied_health", "referrals.view_clinicalreferral"),
+    "Imaging & Radiology": ("imaging", "imaging.view_imagingorder"),
+    "Billing & Revenue": ("billing", "billing.view_invoice"),
+    "AI & Clinical Decision Support": ("cds", "cds.view_cdsalert"),
+    "Surveillance": ("surveillance", "surveillance.view_notifiablecase"),
+    "SHA Claims": ("billing", "billing.view_shaclaim"),
+    "Quality": ("quality", "quality.view_qualitymeasureresult"),
+    "Procedures": ("procedures", "procedures.view_procedureorder"),
+    "Pharmacy": ("pharmacy", "pharmacy.view_prescription"),
+    "Operations": ("outpatient", "checkin.view_checkin"),
+    "Laboratory": ("laboratory", "laboratory.view_laborder"),
+    "Inventory": ("inventory", "inventory.view_purchaseorder"),
+    "Inpatient": ("inpatient", "inpatient.view_admission"),
+    "Immunizations": ("immunizations", "immunizations.view_immunizationrecord"),
+    "Executive Summary": ("analytics", None),
+    "Dialysis": ("dialysis", "dialysis.view_dialysissession"),
+    "Clinics": ("outpatient", "clinics.view_clinicvisit"),
+}
+
+
+def get_tenant_dashboard_titles(request: Request) -> set[str]:
+    """Return dashboards enabled for the requester's facility and permissions."""
+    profile = getattr(request.user, "staff_profile", None)
+    facility = getattr(profile, "primary_facility", None)
+    if not facility:
+        return set()
+
+    return {
+        title
+        for title, (module, permission) in SUPERSET_TENANT_DASHBOARD_CATALOG.items()
+        if facility.modules.get(module, False)
+        and (permission is None or request.user.is_superuser or request.user.has_perm(permission))
+    }
+
 
 class AnalyticsSchemaMixin:
     """Schema fallback helpers for APIViews used by drf-spectacular."""
@@ -452,6 +494,7 @@ class SupersetDashboardListView(AnalyticsSchemaMixin, APIView):
     subscription_feature = "custom_reports"
 
     def get(self, request: Request) -> Response:
+        eligible_titles = get_tenant_dashboard_titles(request)
         base_url = getattr(settings, "SUPERSET_URL", "").rstrip("/")
         if not base_url:
             return Response(
@@ -505,6 +548,7 @@ class SupersetDashboardListView(AnalyticsSchemaMixin, APIView):
                 "description": dashboard.get("description") or "",
             }
             for dashboard in resp.json().get("result", [])
+            if dashboard.get("dashboard_title") in eligible_titles
         ]
 
         # A published dashboard is not automatically safe or configured for

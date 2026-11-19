@@ -201,26 +201,40 @@ class TestSupersetDashboardListView:
         SUPERSET_ADMIN_PASSWORD="secret",
     )
     @patch("hmis.apps.analytics.views.http_requests")
-    def test_returns_published_dashboards(self, mock_requests, authenticated_client):
+    def test_returns_published_dashboards(
+        self, mock_requests, authenticated_client, sample_facility
+    ):
+        from django.contrib.auth.models import Permission
+
+        user = authenticated_client.handler._force_user
+        user.user_permissions.add(
+            Permission.objects.get(codename="view_patient"),
+        )
+        sample_facility.has_outpatient = True
+        sample_facility.save(update_fields=["has_outpatient"])
         session_mock = mock_requests.Session.return_value
         session_mock.post.return_value = _make_login_response()
         mock_requests.RequestException = Exception
         mock_requests.get.return_value = _make_embedded_uuid_response()
         session_mock.get.side_effect = [
             _make_csrf_response(),
-            _make_dashboard_list_response(),
+            _make_dashboard_list_response(
+                [
+                    {"id": 1, "dashboard_title": "Patient Analytics", "description": "Patients"},
+                    {"id": 2, "dashboard_title": "Pharmacy", "description": "Dispensing"},
+                ]
+            ),
         ]
 
         response = authenticated_client.get(DASHBOARD_LIST_URL)
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 2
+        assert len(response.data) == 1
         assert response.data == [
-            {"id": 1, "name": "Facility Overview", "description": "Main dashboard"},
-            {"id": 2, "name": "Revenue", "description": ""},
+            {"id": 1, "name": "Patient Analytics", "description": "Patients"},
         ]
         assert session_mock.get.call_count == 2
         assert session_mock.get.call_args_list[1].kwargs["timeout"] == 30
-        assert mock_requests.get.call_count == 2
+        assert mock_requests.get.call_count == 1
 
     @override_settings(
         SUPERSET_URL="https://superset.example.com",
