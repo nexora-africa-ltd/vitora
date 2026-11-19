@@ -21,8 +21,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSupersetDashboards } from '@/lib/hooks/use-analytics';
 import type { Period } from '@/components/analytics/analytics-dashboard';
 
-const SUPERSET_DOMAIN = process.env.NEXT_PUBLIC_SUPERSET_URL || '';
-
 export function AnalyticsPageContent() {
   const [period, setPeriod] = useState<Period>('30d');
   const [selectedDashboardId, setSelectedDashboardId] = useState<number | null>(null);
@@ -62,13 +60,6 @@ export function AnalyticsPageContent() {
       </TabsContent>
 
       <TabsContent value="explore" className="mt-4 space-y-6">
-        {!SUPERSET_DOMAIN && (
-          <div className="rounded-lg border border-dashed border-muted-foreground/30 p-4 text-sm text-muted-foreground">
-            Analytics dashboards are temporarily unavailable. Please contact your facility
-            administrator if this persists.
-          </div>
-        )}
-
         {dashboardsLoading && (
           <div className="flex items-center justify-center py-12 text-muted-foreground">
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -76,7 +67,7 @@ export function AnalyticsPageContent() {
           </div>
         )}
 
-        {!dashboardsLoading && (!dashboards || dashboards.length === 0) && SUPERSET_DOMAIN && (
+        {!dashboardsLoading && (!dashboards || dashboards.length === 0) && (
           <div className="rounded-lg border border-dashed border-muted-foreground/30 p-8 text-center text-sm text-muted-foreground">
             No analytics dashboards are currently available for your facility.
           </div>
@@ -108,7 +99,6 @@ export function AnalyticsPageContent() {
             <CardContent>
               <SupersetEmbed
                 dashboardId={selectedDashboard.id}
-                supersetDomain={SUPERSET_DOMAIN}
                 title={selectedDashboard.name}
                 minHeight="500px"
               />

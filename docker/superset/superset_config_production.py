@@ -52,6 +52,10 @@ CORS_OPTIONS = {
 # ---------------------------------------------------------------------------
 TALISMAN_ENABLED = True
 TALISMAN_CONFIG = {
+    # CSP frame-ancestors below controls the approved Vitora embedding origins.
+    # The legacy X-Frame-Options header cannot express an allowlist and would
+    # otherwise block every cross-origin embedded dashboard as SAMEORIGIN.
+    "frame_options": None,
     "content_security_policy": {
         "default-src": ["'self'"],
         "img-src": ["'self'", "data:", "blob:"],

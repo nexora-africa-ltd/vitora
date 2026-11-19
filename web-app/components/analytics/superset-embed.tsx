@@ -16,8 +16,6 @@ import { analyticsApi } from '@/lib/api/analytics';
 export interface SupersetEmbedProps {
   /** Superset dashboard ID (numeric, from our backend list endpoint). */
   dashboardId: number;
-  /** Superset instance domain, e.g. "https://superset.example.com" */
-  supersetDomain: string;
   /** Minimum height for the embed container */
   minHeight?: string;
   /** Optional title shown above the embed */
@@ -26,7 +24,6 @@ export interface SupersetEmbedProps {
 
 export function SupersetEmbed({
   dashboardId,
-  supersetDomain,
   minHeight = '600px',
   title,
 }: SupersetEmbedProps) {
@@ -35,7 +32,7 @@ export function SupersetEmbed({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!containerRef.current || !supersetDomain) return;
+    if (!containerRef.current) return;
 
     let cancelled = false;
     const mountPoint = containerRef.current;
@@ -60,7 +57,7 @@ export function SupersetEmbed({
 
         await embedDashboard({
           id: initialToken.embedded_id,
-          supersetDomain,
+          supersetDomain: initialToken.instance_url,
           mountPoint,
           fetchGuestToken,
           dashboardUiConfig: {
@@ -87,7 +84,7 @@ export function SupersetEmbed({
         mountPoint.removeChild(mountPoint.firstChild);
       }
     };
-  }, [dashboardId, supersetDomain]);
+  }, [dashboardId]);
 
   if (error) {
     const isNotConfigured = error.includes('503') || error.includes('not configured');

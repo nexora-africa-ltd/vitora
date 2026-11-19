@@ -98,3 +98,11 @@ def test_superset_workflow_targets_the_production_only_sa_deployment_path():
     assert "vitora-env-private-sa" in workflow
     assert "scripts/deploy-superset-sa.sh" in workflow
     assert "environment: production" in workflow
+
+
+def test_superset_embedding_uses_csp_not_legacy_sameorigin_frame_header():
+    """Approved Vitora origins must be able to frame Superset dashboards."""
+    config = (SUPERSET_DIR / "superset_config_production.py").read_text(encoding="utf-8")
+
+    assert '"frame_options": None' in config
+    assert '"frame-ancestors"' in config
